@@ -72,6 +72,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
         setToken(data.token);
         return data;
     } catch (error) {
+        console.error('🚨 LOGIN ERROR (REAL BACKEND FAILED):', error);
         console.warn('Backend unavailable, using Mock Fallback for Login');
         // Fallback for development/demo if backend is down
         const mockResponse: LoginResponse = {
