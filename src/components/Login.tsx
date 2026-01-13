@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Lock, Mail, Loader2, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import * as api from '../services/api';
 
 interface LoginProps {
   onLogin: (token: string, user: any) => void;
@@ -11,35 +12,37 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setIsLoading(true);
-    
-    setTimeout(() => {
-      const mockUser = {
-        id: 'u1',
-        name: 'Carlos Nobre',
-        role: 'admin',
-        email: email || 'admin@nobre.com'
-      };
-      onLogin('mock-jwt-token', mockUser);
+    setError(null);
+
+    try {
+      const response = await api.login(email, password);
+      onLogin(response.token, response.user);
+    } catch (err: any) {
+      console.error('Login failed:', err);
+      setError(err.message || 'Falha no login. Verifique suas credenciais.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleQuickAdminLogin = () => {
+  const handleQuickAdminLogin = async () => {
     setIsAdminLoading(true);
-    setTimeout(() => {
-      const mockUser = {
-        id: 'u1',
-        name: 'Carlos Nobre',
-        role: 'admin',
-        email: 'admin@nobre.com'
-      };
-      onLogin('mock-jwt-token', mockUser);
+    setError(null);
+
+    try {
+      const response = await api.login('admin@nobremarketing.com', 'admin123');
+      onLogin(response.token, response.user);
+    } catch (err: any) {
+      console.error('Admin login failed:', err);
+      setError(err.message || 'Falha no login de admin.');
+    } finally {
       setIsAdminLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -63,8 +66,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Identificação</label>
               <div className="relative">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -78,8 +81,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Senha Segura</label>
               <div className="relative">
                 <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -89,9 +92,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="pt-2 space-y-4">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading || isAdminLoading}
                 className="w-full py-5 bg-rose-600 hover:bg-rose-700 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-rose-600/20 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
               >
@@ -102,7 +111,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 )}
               </button>
 
-              <button 
+              <button
                 type="button"
                 onClick={handleQuickAdminLogin}
                 disabled={isLoading || isAdminLoading}
@@ -121,7 +130,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-colors">Solicitar acesso ao TI</button>
           </div>
         </div>
-        
+
         <p className="text-center mt-10 text-[9px] text-slate-300 font-black uppercase tracking-[0.4em]">© 2024 Nobre Marketing Group</p>
       </div>
     </div>
