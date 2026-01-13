@@ -1,7 +1,7 @@
 // API Service - Connects frontend to backend
 // Cache bust: 2026-01-13T16:59:00 - Force new bundle hash for production login fix
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
+console.log('[API] Build version: 2026-01-13-v2 | URL:', API_URL);
 // Get stored token
 const getToken = (): string | null => {
     return localStorage.getItem('token');
