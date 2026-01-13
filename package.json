@@ -1,24 +1,33 @@
 {
-  "name": "nobre-hub",
+  "name": "nobre-crm",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "lucide-react": "^0.562.0",
-    "recharts": "^3.6.0",
-    "react-dom": "^19.2.3",
+    "@dnd-kit/core": "^6.0.8",
+    "@dnd-kit/sortable": "^7.0.2",
+    "@dnd-kit/utilities": "^3.2.1",
     "@google/genai": "^1.35.0",
-    "react": "^19.2.3"
+    "lucide-react": "^0.294.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/node": "^20.9.0",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
   }
 }

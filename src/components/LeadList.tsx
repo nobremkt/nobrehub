@@ -1,26 +1,36 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, Square, CheckSquare } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
 import TagSelector from './TagSelector';
 import LeadModal from './LeadModal';
-
-const MOCK_LEADS: any[] = [
-  { id: '1', name: 'Ana Oliveira', email: 'vendas@techsolutions.com.br', phone: '(51) 95555-5555', company: 'Tech Solutions LTDA', pipeline: 'high-ticket', status: 'qualificado', estimatedValue: 15000, createdAt: '2024-06-01T10:30:00Z' },
-  { id: '2', name: 'Carlos Santos', email: 'contato@modaplus.com.br', phone: '(41) 96666-4444', company: 'Moda Plus', pipeline: 'low-ticket', status: 'novo', estimatedValue: 497, createdAt: '2024-06-02T14:15:00Z' },
-  { id: '3', name: 'Roberto Lima', email: 'roberto@construtora.com', phone: '(11) 97777-8888', company: 'Lima Construções', pipeline: 'high-ticket', status: 'negociacao', estimatedValue: 45000, createdAt: '2024-06-03T09:00:00Z' },
-  { id: '4', name: 'Julia Martins', email: 'julia@design.com', phone: '(21) 96666-2222', company: 'Studio J', pipeline: 'low-ticket', status: 'novo', estimatedValue: 1200, createdAt: '2024-06-04T16:20:00Z' },
-];
+import { getLeads, Lead, deleteLead } from '../services/api';
 
 const LeadList: React.FC = () => {
-  const [leads, setLeads] = useState<any[]>(MOCK_LEADS);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      const data = await getLeads();
+      setLeads(data);
+    } catch (error) {
+      console.error('Erro ao buscar leads:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filtra leads antes de renderizar para garantir que a seleção em massa respeite a busca
   const filteredLeads = useMemo(() => {
-    return leads.filter(l => 
+    return leads.filter(l =>
       l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.company.toLowerCase().includes(searchTerm.toLowerCase())
@@ -32,14 +42,9 @@ const LeadList: React.FC = () => {
   };
 
   const handleSaveLead = (lead: any) => {
-    const newLead = {
-      ...lead,
-      estimatedValue: Number(lead.value) || 0,
-      email: 'sem@email.com',
-      phone: '(00) 00000-0000'
-    };
-    setLeads([newLead, ...leads]);
-    alert(`Lead "${lead.name}" adicionado à lista.`);
+    // TODO: Implementar criação real via API
+    alert('Funcionalidade de criar lead será conectada em breve.');
+    setIsLeadModalOpen(false);
   };
 
   // Lógica de Seleção
@@ -59,10 +64,29 @@ const LeadList: React.FC = () => {
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (window.confirm(`Tem certeza que deseja excluir ${selectedLeads.length} leads selecionados?`)) {
-      setLeads(leads.filter(l => !selectedLeads.includes(l.id)));
-      setSelectedLeads([]);
+      // Deletar um por um por enquanto, pois a API pode n suportar bulk delete ainda
+      try {
+        await Promise.all(selectedLeads.map(id => deleteLead(id)));
+        setLeads(leads.filter(l => !selectedLeads.includes(l.id)));
+        setSelectedLeads([]);
+      } catch (error) {
+        console.error('Erro ao excluir leads em massa:', error);
+        alert('Erro ao excluir alguns leads.');
+      }
+    }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este lead?')) {
+      try {
+        await deleteLead(id);
+        setLeads(leads.filter(l => l.id !== id));
+      } catch (error) {
+        console.error('Erro ao excluir lead:', error);
+        alert('Erro ao excluir lead.');
+      }
     }
   };
 
@@ -76,18 +100,18 @@ const LeadList: React.FC = () => {
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Gestão de Leads</h1>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Base de dados unificada Nobre Marketing</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {selectedLeads.length > 0 && (
-              <button 
+              <button
                 onClick={handleBulkDelete}
                 className="flex items-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-700 px-6 py-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 whitespace-nowrap animate-in zoom-in duration-200"
               >
                 <Trash2 size={16} /> Excluir ({selectedLeads.length})
               </button>
             )}
-            
-            <button 
+
+            <button
               onClick={() => setIsLeadModalOpen(true)}
               className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl transition-all shadow-xl shadow-rose-600/30 font-black text-[10px] uppercase tracking-widest active:scale-95 whitespace-nowrap"
             >
@@ -99,8 +123,8 @@ const LeadList: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Filtrar por nome, email ou telefone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -122,11 +146,10 @@ const LeadList: React.FC = () => {
                   <div className="flex items-center justify-center">
                     <button
                       onClick={toggleSelectAll}
-                      className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${
-                        isAllSelected
+                      className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${isAllSelected
                           ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
                           : 'bg-white border-slate-200 hover:border-rose-300'
-                      }`}
+                        }`}
                     >
                       {isAllSelected && <Check size={14} className="text-white" strokeWidth={4} />}
                     </button>
@@ -143,8 +166,8 @@ const LeadList: React.FC = () => {
               {filteredLeads.map((lead) => {
                 const isSelected = selectedLeads.includes(lead.id);
                 return (
-                  <tr 
-                    key={lead.id} 
+                  <tr
+                    key={lead.id}
                     className={`group transition-colors cursor-pointer ${isSelected ? 'bg-rose-50/50 hover:bg-rose-50' : 'hover:bg-slate-50'}`}
                     onClick={() => toggleSelectOne(lead.id)}
                   >
@@ -155,11 +178,10 @@ const LeadList: React.FC = () => {
                             e.stopPropagation();
                             toggleSelectOne(lead.id);
                           }}
-                          className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${
-                            isSelected
+                          className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${isSelected
                               ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
                               : 'bg-white border-slate-200 hover:border-rose-300'
-                          }`}
+                            }`}
                         >
                           {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
                         </button>
@@ -185,7 +207,7 @@ const LeadList: React.FC = () => {
                     </td>
                     <td className="px-6 py-6">
                       <span className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        {lead.status}
+                        {lead.statusHT || lead.statusLT || 'Novo'}
                       </span>
                     </td>
                     <td className="px-6 py-6">
@@ -193,16 +215,16 @@ const LeadList: React.FC = () => {
                     </td>
                     <td className="px-6 py-6 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><Edit2 size={16} /></button>
-                         <button 
+                        <button className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><Edit2 size={16} /></button>
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setLeads(leads.filter(l => l.id !== lead.id));
+                            handleDeleteLead(lead.id);
                           }}
                           className="p-2.5 text-slate-400 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
-                         >
+                        >
                           <Trash2 size={16} />
-                         </button>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -210,8 +232,8 @@ const LeadList: React.FC = () => {
               })}
             </tbody>
           </table>
-          
-          {filteredLeads.length === 0 && (
+
+          {filteredLeads.length === 0 && !isLoading && (
             <div className="p-10 text-center text-slate-400 flex flex-col items-center">
               <Search size={40} className="mb-4 opacity-20" />
               <p className="text-xs font-bold uppercase tracking-widest">Nenhum lead encontrado</p>
@@ -220,10 +242,10 @@ const LeadList: React.FC = () => {
         </div>
       </div>
 
-      <LeadModal 
-        isOpen={isLeadModalOpen} 
-        onClose={() => setIsLeadModalOpen(false)} 
-        onSave={handleSaveLead} 
+      <LeadModal
+        isOpen={isLeadModalOpen}
+        onClose={() => setIsLeadModalOpen(false)}
+        onSave={handleSaveLead}
       />
     </div>
   );

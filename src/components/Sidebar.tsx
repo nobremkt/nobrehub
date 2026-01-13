@@ -14,6 +14,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, onLogout }) => {
   const menuItems = [
     { id: 'kanban', icon: LayoutDashboard, label: 'Pipeline' },
+    { id: 'personal_workspace', icon: Users, label: 'Meu Workspace' },
     { id: 'leads', icon: ListFilter, label: 'Leads' },
     { id: 'chat', icon: MessageSquare, label: 'Atendimento' },
     { id: 'flows', icon: Zap, label: 'Automações' },
@@ -38,11 +39,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, onLogout })
           <button
             key={item.id}
             onClick={() => onViewChange(item.id as ViewType)}
-            className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 relative group ${
-              activeView === item.id 
-                ? 'bg-rose-50 text-rose-600' 
+            className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 relative group ${activeView === item.id
+                ? 'bg-rose-50 text-rose-600'
                 : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'
-            }`}
+              }`}
           >
             {activeView === item.id && (
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-rose-600 rounded-r-full shadow-[2px_0_10px_rgba(225,29,72,0.4)]"></div>
@@ -60,8 +60,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, onLogout })
           <Settings size={20} />
           <span className="font-black uppercase tracking-widest text-[10px]">Configurações</span>
         </button>
-        
-        <button 
+
+        <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
         >

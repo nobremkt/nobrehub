@@ -7,6 +7,7 @@ import Chat from './components/Chat';
 import FlowBuilder from './components/FlowBuilder';
 import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
+import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
 import { ViewType, Agent } from './types';
 
@@ -58,6 +59,7 @@ const App: React.FC = () => {
       case 'flows': return <FlowBuilder />;
       case 'analytics': return <Analytics />;
       case 'team': return <TeamManagement onMonitor={startMonitoring} />;
+      case 'personal_workspace': return <PersonalWorkspace />;
       default: return <Kanban />;
     }
   };
@@ -66,15 +68,15 @@ const App: React.FC = () => {
     <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 overflow-hidden">
       {/* Esconde o sidebar se estiver monitorando para focar no workspace */}
       {!monitoredUser && (
-        <Sidebar 
-          activeView={activeView} 
-          onViewChange={setActiveView} 
-          isDarkMode={false} 
-          onToggleTheme={() => {}} 
+        <Sidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          isDarkMode={false}
+          onToggleTheme={() => { }}
           onLogout={handleLogout}
         />
       )}
-      
+
       <main className={`flex-1 ${!monitoredUser ? 'ml-64' : 'ml-0'} min-h-screen overflow-hidden relative transition-all duration-500`}>
         {renderView()}
       </main>

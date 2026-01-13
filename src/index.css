@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --red: #e11d48;
+  --border: #e2e8f0;
+}
+
+.dark {
+  --bg: #0b0b0e;
+  --card: #12121a;
+  --text: #f5f5f7;
+  --muted: #a0a0b2;
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.5s ease-out;
+}

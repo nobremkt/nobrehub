@@ -55,4 +55,4 @@ export interface PipelineStage {
   deals: Contact[];
 }
 
-export type ViewType = 'kanban' | 'leads' | 'chat' | 'flows' | 'analytics' | 'team';
+export type ViewType = 'kanban' | 'leads' | 'chat' | 'flows' | 'analytics' | 'team' | 'personal_workspace';

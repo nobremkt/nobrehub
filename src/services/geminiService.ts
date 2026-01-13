@@ -1,7 +1,16 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAIClient = () => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("VITE_GEMINI_API_KEY not set. AI features disabled.");
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
+const ai = getAIClient();
 
 /**
  * Analisa o score do lead com base em dados cadastrais e histórico.
@@ -9,6 +18,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  */
 export const analyzeLeadScore = async (contactInfo: string, lastMessages: string) => {
   try {
+    if (!ai) return { score: 50, reasoning: "IA não configurada." };
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `CONTEXTO DO LEAD:
@@ -45,6 +55,7 @@ export const analyzeLeadScore = async (contactInfo: string, lastMessages: string
  */
 export const generateAIReply = async (history: string, language: string = 'pt-BR') => {
   try {
+    if (!ai) return "Olá! Chat IA temporariamente indisponível.";
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: history,
@@ -69,6 +80,7 @@ export const generateAIReply = async (history: string, language: string = 'pt-BR
  */
 export const getAnalyticsSummary = async (stats: any) => {
   try {
+    if (!ai) return "Dados de vendas atualizados. Mantenha o foco.";
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Analise os seguintes dados de performance de vendas e forneça um insight estratégico curto em Português: ${JSON.stringify(stats)}`,
