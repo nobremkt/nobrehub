@@ -1,0 +1,8 @@
+{
+  "name": "NOBRE HUB",
+  "description": "A premium AI-powered Marketing CRM featuring Kanban lead management, visual flow automation, and real-time WhatsApp-style chat integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
