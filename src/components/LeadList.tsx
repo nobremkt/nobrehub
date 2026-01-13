@@ -4,6 +4,7 @@ import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, Sq
 import CustomDropdown from './CustomDropdown';
 import TagSelector from './TagSelector';
 import LeadModal from './LeadModal';
+import * as api from '../services/api';
 import { getLeads, Lead, deleteLead } from '../services/api';
 
 const LeadList: React.FC = () => {
@@ -41,10 +42,21 @@ const LeadList: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
   };
 
-  const handleSaveLead = (lead: any) => {
-    // TODO: Implementar criação real via API
-    alert('Funcionalidade de criar lead será conectada em breve.');
-    setIsLeadModalOpen(false);
+  const handleSaveLead = async (leadData: any) => {
+    try {
+      const formattedData = {
+        ...leadData,
+        estimatedValue: Number(leadData.value.toString().replace(/\D/g, '')) / 100, // Format currency string to number
+        tags: ['novo']
+      };
+
+      await api.createLead(formattedData);
+      fetchLeads(); // Refresh list from backend
+      setIsLeadModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao criar lead:', error);
+      alert('Erro ao criar lead. Verifique os dados e tente novamente.');
+    }
   };
 
   // Lógica de Seleção
@@ -147,8 +159,8 @@ const LeadList: React.FC = () => {
                     <button
                       onClick={toggleSelectAll}
                       className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${isAllSelected
-                          ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
-                          : 'bg-white border-slate-200 hover:border-rose-300'
+                        ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
+                        : 'bg-white border-slate-200 hover:border-rose-300'
                         }`}
                     >
                       {isAllSelected && <Check size={14} className="text-white" strokeWidth={4} />}
@@ -179,8 +191,8 @@ const LeadList: React.FC = () => {
                             toggleSelectOne(lead.id);
                           }}
                           className={`w-6 h-6 rounded-xl border-2 transition-all flex items-center justify-center ${isSelected
-                              ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
-                              : 'bg-white border-slate-200 hover:border-rose-300'
+                            ? 'bg-rose-600 border-rose-600 shadow-lg shadow-rose-600/20'
+                            : 'bg-white border-slate-200 hover:border-rose-300'
                             }`}
                         >
                           {isSelected && <Check size={14} className="text-white" strokeWidth={4} />}
