@@ -72,17 +72,9 @@ export async function login(email: string, password: string): Promise<LoginRespo
         setToken(data.token);
         return data;
     } catch (error) {
-        console.error('🚨 LOGIN ERROR (REAL BACKEND FAILED):', error);
-        console.warn('Backend unavailable, using Mock Fallback for Login');
-        // Fallback for development/demo if backend is down
-        const mockResponse: LoginResponse = {
-            token: 'mock-jwt-token-dev-mode',
-            user: MOCK_ADMIN
-        };
-        setToken(mockResponse.token);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return mockResponse;
+        console.error('🚨 LOGIN ERROR:', error);
+        // In production, do NOT fallback to mock - show the real error
+        throw error;
     }
 }
 
