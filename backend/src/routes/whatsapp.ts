@@ -86,7 +86,8 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         // 2. Create if missing
         if (!lead) {
-            const senderProfile = payload.contacts?.find((c: any) => c.wa_id === incomingMessage.from);
+            // Improved profile extraction: fallback to first contact if specific ID match fails
+            const senderProfile = payload.contacts?.find((c: any) => c.wa_id === incomingMessage.from) || payload.contacts?.[0];
             const leadName = senderProfile?.profile?.name || `WhatsApp ${phoneKey.slice(-4)}`;
 
             try {
