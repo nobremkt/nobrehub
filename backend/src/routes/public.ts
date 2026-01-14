@@ -26,6 +26,7 @@ export default async function publicRoutes(server: FastifyInstance) {
                     statusHT: body.pipeline === 'low_ticket' ? null : 'novo',
                     statusLT: body.pipeline === 'low_ticket' ? 'novo' : null,
                     notes: body.notes || null,
+                    contactReason: body.goal || body.challenge || body.contactReason || null, // "Qual seu maior desafio hoje"
                     estimatedValue: 0,
                     tags: []
                 }

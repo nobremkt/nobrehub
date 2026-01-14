@@ -117,6 +117,8 @@ export interface Lead {
     createdAt: string;
     updatedAt: string;
     assignedAgentId?: string;
+    lastMessage?: string;     // Last message preview for Kanban cards
+    contactReason?: string;   // Reason for contact (motivo do contato)
 }
 
 export interface CreateLeadData {

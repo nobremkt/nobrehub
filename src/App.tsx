@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
+import { Toaster } from 'sonner';
 import Sidebar from './components/Sidebar';
 import Kanban from './components/Kanban';
 import LeadList from './components/LeadList';
-import Chat from './components/Chat';
+import Inbox from './components/Inbox';
 import FlowBuilder from './components/FlowBuilder';
 import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
@@ -46,6 +47,18 @@ const App: React.FC = () => {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Get current user from localStorage
+  const getCurrentUser = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const currentUser = getCurrentUser();
+
   const renderView = () => {
     // Se estiver monitorando, força a renderização do Kanban com o contexto do usuário
     if (monitoredUser) {
@@ -55,7 +68,7 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'kanban': return <Kanban />;
       case 'leads': return <LeadList />;
-      case 'chat': return <Chat />;
+      case 'chat': return <Inbox userId={currentUser?.id || ''} isAdmin={currentUser?.role === 'admin'} />;
       case 'flows': return <FlowBuilder />;
       case 'analytics': return <Analytics />;
       case 'team': return <TeamManagement onMonitor={startMonitoring} />;
@@ -65,23 +78,27 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 overflow-hidden">
-      {/* Esconde o sidebar se estiver monitorando para focar no workspace */}
-      {!monitoredUser && (
-        <Sidebar
-          activeView={activeView}
-          onViewChange={setActiveView}
-          isDarkMode={false}
-          onToggleTheme={() => { }}
-          onLogout={handleLogout}
-        />
-      )}
+    <>
+      <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 overflow-hidden">
+        {/* Esconde o sidebar se estiver monitorando para focar no workspace */}
+        {!monitoredUser && (
+          <Sidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            isDarkMode={false}
+            onToggleTheme={() => { }}
+            onLogout={handleLogout}
+          />
+        )}
 
-      <main className={`flex-1 ${!monitoredUser ? 'ml-64' : 'ml-0'} min-h-screen overflow-hidden relative transition-all duration-500`}>
-        {renderView()}
-      </main>
-    </div>
+        <main className={`flex-1 ${!monitoredUser ? 'ml-64' : 'ml-0'} min-h-screen overflow-hidden relative transition-all duration-500`}>
+          {renderView()}
+        </main>
+      </div>
+      <Toaster richColors position="top-right" />
+    </>
   );
 };
 
 export default App;
+

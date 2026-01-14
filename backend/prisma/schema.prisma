@@ -99,13 +99,19 @@ model User {
   pipelineType PipelineType? @map("pipeline_type")
   isActive     Boolean      @default(true) @map("is_active")
   
+  // Chat/Atendimento fields
+  maxConcurrentChats Int     @default(5) @map("max_concurrent_chats")
+  currentChatCount   Int     @default(0) @map("current_chat_count")
+  isOnline           Boolean @default(false) @map("is_online")
+  
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
   
   // Relations
-  assignedLeads Lead[]       @relation("AssignedLeads")
-  interactions  Interaction[]
-  sentMessages  Message[]    @relation("SentMessages")
+  assignedLeads   Lead[]         @relation("AssignedLeads")
+  interactions    Interaction[]
+  sentMessages    Message[]      @relation("SentMessages")
+  conversations   Conversation[] @relation("AgentConversations")
   
   @@map("users")
 }
@@ -136,13 +142,16 @@ model Lead {
   // Metadata
   tags         String[]     @default([])
   notes        String?      @db.Text
+  contactReason String?     @map("contact_reason")  // Reason for contact / "Qual seu maior desafio hoje"
   
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
   
   // Relations
-  interactions Interaction[]
-  messages     Message[]
+  interactions  Interaction[]
+  messages      Message[]
+  conversations Conversation[]
+  queueEntries  Queue[]
   
   @@map("leads")
 }
@@ -195,6 +204,10 @@ model Message {
   leadId        String?          @map("lead_id")
   lead          Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
   
+  // Related conversation
+  conversationId String?         @map("conversation_id")
+  conversation   Conversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  
   // Phone number (normalized, no +)
   phone         String
   
@@ -217,6 +230,93 @@ model Message {
   
   @@index([phone])
   @@index([leadId])
+  @@index([conversationId])
   @@map("messages")
+}
+
+// ============ OMNICHANNEL CHAT ============
+
+enum ConversationStatus {
+  queued
+  active
+  closed
+}
+
+enum ConversationChannel {
+  whatsapp
+  instagram
+  email
+  manual
+}
+
+enum ClosedReason {
+  payment
+  no_interest
+  transferred
+  resolved
+  timeout
+}
+
+model Conversation {
+  id              String              @id @default(uuid())
+  
+  // Related lead
+  leadId          String              @map("lead_id")
+  lead            Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  // Assigned agent
+  assignedAgentId String?             @map("assigned_agent_id")
+  assignedAgent   User?               @relation("AgentConversations", fields: [assignedAgentId], references: [id])
+  
+  // Channel and status
+  channel         ConversationChannel @default(whatsapp)
+  status          ConversationStatus  @default(queued)
+  closedReason    ClosedReason?       @map("closed_reason")
+  
+  // Pipeline for routing
+  pipeline        PipelineType        @default(high_ticket)
+  
+  // Timestamps
+  lastMessageAt   DateTime?           @map("last_message_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  closedAt        DateTime?           @map("closed_at")
+  
+  // Relations
+  messages        Message[]
+  
+  @@index([leadId])
+  @@index([assignedAgentId])
+  @@index([status])
+  @@index([pipeline])
+  @@map("conversations")
+}
+
+enum QueueStatus {
+  waiting
+  assigned
+  expired
+}
+
+model Queue {
+  id         String      @id @default(uuid())
+  
+  // Related lead
+  leadId     String      @map("lead_id")
+  lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  // Pipeline for routing
+  pipeline   PipelineType
+  
+  // Status
+  status     QueueStatus @default(waiting)
+  priority   Int         @default(0)
+  
+  // Timestamps
+  createdAt  DateTime    @default(now()) @map("created_at")
+  assignedAt DateTime?   @map("assigned_at")
+  
+  @@index([pipeline])
+  @@index([status])
+  @@map("queue")
 }
 

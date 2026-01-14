@@ -2,6 +2,9 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { dialog360 } from '../services/dialog360.js';
 import { prisma } from '../lib/prisma.js';
+import { addToQueue } from '../services/queueManager.js';
+import { emitNewMessage } from '../services/socketService.js';
+import { PipelineType } from '@prisma/client';
 
 // Types for request bodies
 interface SendMessageBody {
@@ -78,22 +81,19 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         const phoneKey = incomingMessage.from.replace(/\D/g, '');
         console.log(`📱 Process Msg from: ${incomingMessage.from} (Key: ${phoneKey})`);
 
-        // 1. Check DB - Use more precise matching if possible, or log what we found
+        // 1. Check DB - Find existing lead
         let lead = await prisma.lead.findFirst({
-            where: { phone: { contains: phoneKey.slice(-8) } } // Match last 8 digits to be safer against DDI/9th digit variations
+            where: { phone: { contains: phoneKey.slice(-8) } }
         });
 
         if (lead) {
             console.log(`🔎 DB Search FOUND Lead ID: ${lead.id} Name: ${lead.name} Phone: ${lead.phone}`);
-            // Optional: Update name if it's a generic "WhatsApp" name and we have better info now? 
-            // For now, just log.
         } else {
             console.log(`🔎 DB Search MISSING for ${phoneKey}`);
         }
 
-        // 2. Create if missing
+        // 2. Create lead if missing
         if (!lead) {
-            // Improved profile extraction: fallback to first contact if specific ID match fails
             const senderProfile = payload.contacts?.find((c: any) => c.wa_id === incomingMessage.from) || payload.contacts?.[0];
             const profileName = senderProfile?.profile?.name;
             const leadName = profileName || `WhatsApp ${phoneKey.slice(-4)}`;
@@ -115,25 +115,53 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                 console.log(`✨ Created OK: ${lead.id}`);
             } catch (err: any) {
                 console.error(`❌ Create Fail: ${err.message}`);
+                return reply.code(200).send({ status: 'ok' });
             }
         }
 
-        // 3. Save Message
-        if (lead) {
-            await prisma.message.create({
-                data: {
-                    waMessageId: incomingMessage.messageId,
-                    phone: phoneKey,
-                    leadId: lead.id,
-                    direction: 'in',
-                    type: incomingMessage.type === 'text' ? 'text' : 'text',
-                    text: incomingMessage.text,
-                    status: 'delivered'
-                }
+        // 3. Find or Create Conversation + Add to Queue
+        let conversation = await prisma.conversation.findFirst({
+            where: { leadId: lead.id, status: { not: 'closed' } }
+        });
+
+        if (!conversation) {
+            // No active conversation - add to queue for assignment
+            console.log(`📥 No active conversation - adding to queue`);
+            const pipeline = lead.pipeline as PipelineType || 'low_ticket';
+            await addToQueue(lead.id, pipeline);
+
+            // Fetch the newly created conversation
+            conversation = await prisma.conversation.findFirst({
+                where: { leadId: lead.id, status: { not: 'closed' } }
             });
-            console.log('💾 Msg Saved');
-        } else {
-            console.log('⚠️ Msg Skipped (No Lead)');
+        }
+
+        // 4. Save Message
+        const savedMessage = await prisma.message.create({
+            data: {
+                waMessageId: incomingMessage.messageId,
+                phone: phoneKey,
+                leadId: lead.id,
+                conversationId: conversation?.id,
+                direction: 'in',
+                type: incomingMessage.type === 'text' ? 'text' : 'text',
+                text: incomingMessage.text,
+                status: 'delivered'
+            }
+        });
+        console.log('💾 Msg Saved');
+
+        // 5. Update conversation lastMessageAt
+        if (conversation) {
+            await prisma.conversation.update({
+                where: { id: conversation.id },
+                data: { lastMessageAt: new Date() }
+            });
+
+            // Emit real-time event to agent
+            if (conversation.assignedAgentId) {
+                emitNewMessage(conversation.id, savedMessage);
+            }
         }
 
         return reply.code(200).send({ status: 'ok' });

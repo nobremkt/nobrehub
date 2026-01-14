@@ -3,6 +3,7 @@ import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Settings, DollarSi
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import { getLeads, Lead, updateLeadStatus } from '../services/api';
+import { toast } from 'sonner';
 import {
   DndContext,
   closestCenter,
@@ -11,6 +12,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
@@ -22,10 +25,18 @@ interface KanbanProps {
 
 // Configurações de colunas por setor
 const PIPELINE_TEMPLATES = {
-  sales: [
+  high_ticket: [
     { id: 'novo', name: 'Novo Lead', color: 'slate' },
     { id: 'qualificado', name: 'Qualificado', color: 'amber' },
+    { id: 'call_agendada', name: 'Call Agendada', color: 'blue' },
     { id: 'proposta', name: 'Proposta', color: 'purple' },
+    { id: 'negociacao', name: 'Negociação', color: 'orange' },
+    { id: 'fechado', name: 'Fechado', color: 'emerald' },
+  ] as BoardStageConfig[],
+  low_ticket: [
+    { id: 'novo', name: 'Novo', color: 'slate' },
+    { id: 'atribuido', name: 'Atribuído', color: 'blue' },
+    { id: 'em_negociacao', name: 'Em Negociação', color: 'amber' },
     { id: 'fechado', name: 'Fechado', color: 'emerald' },
   ] as BoardStageConfig[],
   production: [
@@ -59,9 +70,12 @@ const DraggableLeadCard = ({ lead, onClick }: { lead: Lead; onClick: () => void 
     data: { lead },
   });
 
-  const style = transform ? {
+  const style: React.CSSProperties = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+    zIndex: 9999,
+    position: 'relative',
+    pointerEvents: 'none',
+  } : {};
 
   return (
     <div
@@ -70,7 +84,7 @@ const DraggableLeadCard = ({ lead, onClick }: { lead: Lead; onClick: () => void 
       {...listeners}
       {...attributes}
       onClick={onClick}
-      className={`bg-white p-4 rounded-xl shadow-sm border border-slate-100 cursor-grab active:cursor-grabbing hover:border-rose-200 hover:shadow-md transition-all ${isDragging ? 'opacity-50 ring-2 ring-rose-500 rotate-2 z-50' : ''
+      className={`bg-white p-4 rounded-xl shadow-sm border border-slate-100 cursor-grab active:cursor-grabbing hover:border-rose-200 hover:shadow-md ${isDragging ? 'opacity-80 ring-2 ring-rose-500 shadow-2xl scale-105' : 'transition-all'
         }`}
     >
       <div className="flex justify-between items-start mb-2">
@@ -81,7 +95,15 @@ const DraggableLeadCard = ({ lead, onClick }: { lead: Lead; onClick: () => void 
           </span>
         )}
       </div>
-      <h3 className="font-bold text-slate-800 leading-tight mb-3">{lead.name}</h3>
+      <h3 className="font-bold text-slate-800 leading-tight mb-2">{lead.name}</h3>
+
+      {/* Last Message Preview */}
+      {lead.lastMessage && (
+        <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg mb-3 line-clamp-2 italic border-l-2 border-slate-300">
+          "{lead.lastMessage}"
+        </p>
+      )}
+
       <div className="flex items-center justify-between text-[11px] text-slate-400">
         <span>{new Date(lead.createdAt).toLocaleDateString('pt-BR')}</span>
         {lead.source && <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px] uppercase">{lead.source}</span>}
@@ -138,11 +160,12 @@ const DroppableColumn = ({ stage, children, count, onAddLead, buttons, editor }:
 
 const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
   const [currentPipeline, setCurrentPipeline] = useState<'sales' | 'production' | 'post_sales'>('sales');
+  const [salesSubPipeline, setSalesSubPipeline] = useState<'high_ticket' | 'low_ticket'>('high_ticket');
 
   // Se estiver monitorando, usa o board do usuário. Se não, usa o template do pipeline selecionado.
   const getInitialStages = () => {
     if (monitoredUser?.boardConfig) return monitoredUser.boardConfig;
-    return PIPELINE_TEMPLATES['sales'];
+    return PIPELINE_TEMPLATES['high_ticket'];
   };
 
   const [boardStages, setBoardStages] = useState<BoardStageConfig[]>(getInitialStages());
@@ -153,13 +176,14 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
 
   // Map internal pipeline names to API pipeline types
   const getApiPipelineType = (pipeline: string) => {
     switch (pipeline) {
-      case 'sales': return 'high_ticket';
-      case 'production': return 'producao';
-      case 'post_sales': return 'pos-venda';
+      case 'sales': return salesSubPipeline; // Uses the sub-pipeline (high_ticket or low_ticket)
+      case 'production': return 'production';
+      case 'post_sales': return 'post_sales';
       default: return 'high_ticket';
     }
   };
@@ -190,16 +214,19 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
       }
     };
     loadLeads();
-  }, [currentPipeline, monitoredUser]);
+  }, [currentPipeline, salesSubPipeline, monitoredUser]);
 
   // Atualiza colunas quando o usuário monitorado muda ou o pipeline selecionado muda
   useEffect(() => {
     if (monitoredUser) {
-      setBoardStages(monitoredUser.boardConfig || PIPELINE_TEMPLATES.sales);
+      setBoardStages(monitoredUser.boardConfig || PIPELINE_TEMPLATES.high_ticket);
+    } else if (currentPipeline === 'sales') {
+      // Use separate templates for HT and LT
+      setBoardStages(PIPELINE_TEMPLATES[salesSubPipeline]);
     } else {
       setBoardStages(PIPELINE_TEMPLATES[currentPipeline]);
     }
-  }, [monitoredUser, currentPipeline]);
+  }, [monitoredUser, currentPipeline, salesSubPipeline]);
 
   // Handler para fechar ao clicar fora e pressionar ESC
   useEffect(() => {
@@ -221,7 +248,14 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
     };
   }, []);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const lead = leads.find(l => l.id === active.id);
+    if (lead) setActiveLead(lead);
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveLead(null); // Clear active lead
     const { active, over } = event;
     if (!over) return;
 
@@ -281,13 +315,13 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
 
   const handleSaveLead = (lead: any) => {
     console.log("Novo lead salvo:", lead);
-    alert(`Lead "${lead.name}" registrado com sucesso!`);
+    toast.success(`Lead "${lead.name}" registrado com sucesso!`);
     setIsLeadModalOpen(false);
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <div className="h-screen flex flex-col bg-[#f8fafc] animate-in slide-in-from-right duration-500">
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in slide-in-from-right duration-500">
 
         {/* SUPERVISION HEADER */}
         {monitoredUser && (
@@ -357,6 +391,30 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
                     }`}
                 >
                   <HeartHandshake size={14} /> Pós-Venda
+                </button>
+              </div>
+            )}
+
+            {/* SUBTABS HT/LT - Aparece apenas quando 'sales' está selecionado */}
+            {!monitoredUser && currentPipeline === 'sales' && (
+              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 gap-1">
+                <button
+                  onClick={() => setSalesSubPipeline('high_ticket')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'high_ticket'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                    : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+                    }`}
+                >
+                  <Layers size={12} /> High Ticket
+                </button>
+                <button
+                  onClick={() => setSalesSubPipeline('low_ticket')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'low_ticket'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                >
+                  <Layers size={12} /> Low Ticket
                 </button>
               </div>
             )}
@@ -438,8 +496,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
                               key={c.name}
                               onClick={() => updateStage(stage.id, { color: c.name as any })}
                               className={`w-8 h-8 rounded-full transition-all relative border-2 ${stage.color === c.name
-                                  ? 'border-slate-900 scale-110 shadow-lg'
-                                  : 'border-transparent hover:scale-110'
+                                ? 'border-slate-900 scale-110 shadow-lg'
+                                : 'border-transparent hover:scale-110'
                                 } ${c.bg}`}
                             >
                               {stage.color === c.name && <div className="absolute inset-0 flex items-center justify-center text-white"><Plus size={12} strokeWidth={4} /></div>}
@@ -461,15 +519,16 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
                 )}
               >
                 {stageLeads.map(lead => (
-                  <DraggableLeadCard key={lead.id} lead={lead} onClick={() => alert('Abrir modal do lead')} />
+                  <DraggableLeadCard key={lead.id} lead={lead} onClick={() => toast.info('Detalhes do lead em breve!')} />
                 ))}
               </DroppableColumn>
             );
           })}
 
           {/* Botão Nova Coluna */}
-          <div className="min-w-[280px] w-[280px] flex flex-col h-full gap-5">
-            <div className="min-h-[40px] invisible select-none">Spacer</div>
+          <div className="min-w-[280px] w-[280px] flex flex-col gap-5">
+            {/* Spacer to align with column header (40px) + gap (16px) = 56px */}
+            <div className="h-[56px]" />
             <button
               onClick={addStage}
               className="w-full h-[140px] border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300 hover:text-rose-600 hover:border-rose-200 hover:bg-white transition-all gap-3 group shadow-sm shrink-0"
@@ -489,6 +548,27 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
           onSave={handleSaveLead}
         />
       </div>
+
+      {/* DragOverlay renders the dragging card in a portal above everything */}
+      <DragOverlay dropAnimation={null}>
+        {activeLead ? (
+          <div className="bg-white p-4 rounded-xl shadow-2xl border-2 border-rose-500 cursor-grabbing scale-105 opacity-95">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activeLead.company || 'Sem Empresa'}</span>
+              {activeLead.estimatedValue && (
+                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(activeLead.estimatedValue)}
+                </span>
+              )}
+            </div>
+            <h3 className="font-bold text-slate-800 leading-tight mb-3">{activeLead.name}</h3>
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>{new Date(activeLead.createdAt).toLocaleDateString('pt-BR')}</span>
+              {activeLead.source && <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px] uppercase">{activeLead.source}</span>}
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };

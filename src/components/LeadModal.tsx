@@ -1,16 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, DollarSign, Target, Plus, Check, Mail, Phone } from 'lucide-react';
+import { X, User, Briefcase, DollarSign, Target, Check, Mail, Phone, Globe } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
+import { Lead } from '../services/api';
 
 interface LeadModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialStage?: string;
   onSave: (lead: any) => void;
+  leadToEdit?: Lead | null;
 }
 
-const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, onSave }) => {
+const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, onSave, leadToEdit }) => {
+  const isEditMode = !!leadToEdit;
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,8 +22,36 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
     company: '',
     value: '',
     status: initialStage || 'novo',
-    pipeline: 'high_ticket'
+    pipeline: 'high_ticket' as 'high_ticket' | 'low_ticket',
+    source: ''
   });
+
+  // Reset form when modal opens/closes or leadToEdit changes
+  useEffect(() => {
+    if (isOpen && leadToEdit) {
+      setFormData({
+        name: leadToEdit.name || '',
+        email: leadToEdit.email || '',
+        phone: leadToEdit.phone || '',
+        company: leadToEdit.company || '',
+        value: leadToEdit.estimatedValue?.toString() || '',
+        status: leadToEdit.statusHT || leadToEdit.statusLT || 'novo',
+        pipeline: leadToEdit.pipeline || 'high_ticket',
+        source: leadToEdit.source || ''
+      });
+    } else if (isOpen && !leadToEdit) {
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        value: '',
+        status: initialStage || 'novo',
+        pipeline: 'high_ticket',
+        source: ''
+      });
+    }
+  }, [isOpen, leadToEdit, initialStage]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -33,8 +65,10 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    setFormData({ name: '', email: '', phone: '', company: '', value: '', status: initialStage || 'novo', pipeline: 'high_ticket' });
+    onSave({
+      ...formData,
+      id: leadToEdit?.id // Include id for edit mode
+    });
     onClose();
   };
 
@@ -49,15 +83,19 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
       >
         <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div>
-            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Novo Registro</h2>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Insira as informações do lead</p>
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+              {isEditMode ? 'Editar Registro' : 'Novo Registro'}
+            </h2>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
+              {isEditMode ? 'Atualize as informações do lead' : 'Insira as informações do lead'}
+            </p>
           </div>
           <button onClick={onClose} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-rose-600 transition-all">
             <X size={20} />
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-4">
+        <form onSubmit={handleSubmit} className="p-8 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome Completo</label>
             <div className="relative">
@@ -145,6 +183,20 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Origem</label>
+            <div className="relative">
+              <Globe className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input
+                type="text"
+                value={formData.source}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                placeholder="Ex: Instagram, WhatsApp, Indicação..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-14 pr-6 text-slate-900 focus:outline-none focus:border-rose-600/50 transition-all shadow-inner"
+              />
+            </div>
+          </div>
+
           <div className="pt-4 flex gap-3">
             <button
               type="button"
@@ -157,7 +209,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
               type="submit"
               className="flex-2 px-10 py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <Check size={16} strokeWidth={3} /> Salvar Registro
+              <Check size={16} strokeWidth={3} /> {isEditMode ? 'Atualizar' : 'Salvar Registro'}
             </button>
           </div>
         </form>
