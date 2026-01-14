@@ -44,7 +44,55 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [showActions, setShowActions] = useState(false);
+
+    // Transfer Modal State
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [availableAgents, setAvailableAgents] = useState<{ id: string; name: string }[]>([]);
+    const [isLoadingAgents, setIsLoadingAgents] = useState(false);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const fetchAvailableAgents = async () => {
+        setIsLoadingAgents(true);
+        try {
+            const token = localStorage.getItem('token');
+            // Fetch agents from same pipeline or all relevant ones
+            // Assuming current conversation pipeline implies target agents
+            const response = await fetch(`${API_URL}/conversations/agents/available?pipeline=${conversation?.pipeline}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                // Filter out current assigned agent
+                setAvailableAgents(data.filter((a: any) => a.id !== conversation?.assignedAgent?.id));
+                setShowTransferModal(true);
+                setShowActions(false); // Close actions menu
+            }
+        } catch (error) {
+            toast.error('Erro ao buscar agentes');
+        } finally {
+            setIsLoadingAgents(false);
+        }
+    };
+
+    const handleTransfer = async (newAgentId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_URL}/conversations/${conversationId}/transfer`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ newAgentId })
+            });
+            toast.success('Conversa transferida com sucesso!');
+            setShowTransferModal(false);
+            onConversationClosed();
+        } catch (error) {
+            toast.error('Erro ao transferir conversa');
+        }
+    };
 
     const { subscribeToConversation, sendMessage } = useSocket({ userId });
 
@@ -216,8 +264,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                                     <span className="text-sm font-bold text-rose-600">Sem Interesse</span>
                                 </button>
                                 <button
-                                    onClick={() => toast.info('Transferência em desenvolvimento')}
-                                    className="w-full flex items-center gap-3 px-5 py-4 hover:bg-blue-50 text-left transition-colors"
+                                    onClick={fetchAvailableAgents}
+                                    disabled={isLoadingAgents}
+                                    className="w-full flex items-center gap-3 px-5 py-4 hover:bg-blue-50 text-left transition-colors disabled:opacity-50"
                                 >
                                     <RefreshCw size={18} className="text-blue-500" />
                                     <span className="text-sm font-bold text-blue-600">Transferir</span>
@@ -237,8 +286,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     >
                         <div
                             className={`max-w-[70%] rounded-2xl px-5 py-3 ${msg.direction === 'out'
-                                    ? 'bg-rose-600 text-white rounded-br-md'
-                                    : 'bg-white border border-slate-200 text-slate-900 rounded-bl-md'
+                                ? 'bg-rose-600 text-white rounded-br-md'
+                                : 'bg-white border border-slate-200 text-slate-900 rounded-bl-md'
                                 }`}
                         >
                             <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
@@ -271,7 +320,53 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     </button>
                 </div>
             </div>
-        </div>
+
+            {/* Transfer Modal */}
+            {
+                showTransferModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
+                                <button
+                                    onClick={() => setShowTransferModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                >
+                                    <XCircle size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 max-h-[300px] overflow-y-auto">
+                                {availableAgents.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <User size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">Nenhum outro agente online</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {availableAgents.map(agent => (
+                                            <button
+                                                key={agent.id}
+                                                onClick={() => handleTransfer(agent.id)}
+                                                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                    {agent.name.charAt(0)}
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
+                                                    <p className="text-xs text-emerald-500 font-bold">Online</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
