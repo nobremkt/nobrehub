@@ -4,8 +4,8 @@ import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, Sq
 import CustomDropdown from './CustomDropdown';
 import TagSelector from './TagSelector';
 import LeadModal from './LeadModal';
+import { getLeads, Lead, deleteLead, createLead } from '../services/api';
 import * as api from '../services/api';
-import { getLeads, Lead, deleteLead } from '../services/api';
 
 const LeadList: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -44,18 +44,21 @@ const LeadList: React.FC = () => {
 
   const handleSaveLead = async (leadData: any) => {
     try {
-      const formattedData = {
-        ...leadData,
-        estimatedValue: Number(leadData.value.toString().replace(/\D/g, '')) / 100, // Format currency string to number
-        tags: ['novo']
-      };
-
-      await api.createLead(formattedData);
-      fetchLeads(); // Refresh list from backend
+      const newLeadRaw = await api.createLead({
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        company: leadData.company,
+        estimatedValue: parseFloat(leadData.value) || 0,
+        pipeline: leadData.pipeline,
+        statusHT: leadData.pipeline === 'high_ticket' ? leadData.status : undefined,
+        statusLT: leadData.pipeline === 'low_ticket' ? leadData.status : undefined
+      });
+      setLeads((prev) => [...prev, newLeadRaw]);
       setIsLeadModalOpen(false);
     } catch (error) {
       console.error('Erro ao criar lead:', error);
-      alert('Erro ao criar lead. Verifique os dados e tente novamente.');
+      alert('Falha ao criar lead. Tente novamente.');
     }
   };
 
