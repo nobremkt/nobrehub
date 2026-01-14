@@ -22,38 +22,36 @@ const server = Fastify({ logger: true });
 // Register plugins
 async function bootstrap() {
     try {
-        // CORS - Allow frontend and landing pages
+        console.log('🚀 Starting server bootstrap...');
+        console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+        console.log(`🔌 PORT: ${process.env.PORT || 'undefined (using 3000)'}`);
+
+        // CORS
+        console.log('Starting CORS registration...');
         await server.register(cors, {
             origin: (origin, cb) => {
-                // Allow requests with no origin (like mobile apps or curl)
                 if (!origin) return cb(null, true);
-
-                // List of allowed origins
                 const allowedOrigins = [
                     'http://localhost:5173',
                     'http://localhost:3000',
                     process.env.FRONTEND_URL,
-                    // Landing pages can be from any domain
                 ].filter(Boolean);
-
-                // Allow if origin matches OR if it's a landing page making public requests
                 if (allowedOrigins.includes(origin) || origin) {
                     return cb(null, true);
                 }
-
                 cb(new Error('Not allowed by CORS'), false);
             },
             credentials: true
         });
+        console.log('✅ CORS registered');
 
-        // JWT - CRITICAL: Must have a secure secret, fail fast if not set
+        // JWT
         const jwtSecret = process.env.JWT_SECRET;
         if (!jwtSecret) {
-            throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start in an insecure state.');
+            throw new Error('FATAL: JWT_SECRET environment variable is not set.');
         }
-        await server.register(jwt, {
-            secret: jwtSecret
-        });
+        await server.register(jwt, { secret: jwtSecret });
+        console.log('✅ JWT registered');
 
         // Auth decorator
         server.decorate('authenticate', async (request: any, reply: any) => {
@@ -65,12 +63,15 @@ async function bootstrap() {
         });
 
         // Health check
-        server.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+        server.get('/health', async () => {
+            console.log('💓 Health check requested');
+            return { status: 'ok', timestamp: new Date().toISOString() };
+        });
+        console.log('✅ Health check route registered');
 
-        // Register public routes (no auth required)
+        // Routes
+        console.log('Registering routes...');
         await server.register(publicRoutes, { prefix: '/public' });
-
-        // Register authenticated routes
         await server.register(authRoutes, { prefix: '/auth' });
         await server.register(leadRoutes, { prefix: '/leads' });
         await server.register(userRoutes, { prefix: '/users' });
@@ -78,28 +79,27 @@ async function bootstrap() {
         await server.register(roundRobinRoutes, { prefix: '/round-robin' });
         await server.register(whatsappRoutes, { prefix: '/whatsapp' });
         await server.register(conversationsRoutes, { prefix: '/conversations' });
+        console.log('✅ All routes registered');
 
-        console.log('📱 WhatsApp routes registered at /whatsapp');
-        console.log('💬 Conversations routes registered at /conversations');
-
-        // Start Fastify server first
+        // Start Fastify server
         const port = parseInt(process.env.PORT || '3000');
         const host = process.env.HOST || '0.0.0.0';
 
+        console.log(`Attempting to listen on ${host}:${port}...`);
         await server.listen({ port, host });
-        console.log(`🚀 Fastify server running at http://${host}:${port}`);
+        console.log(`🚀 Fastify server successfully listening at http://${host}:${port}`);
 
-        // Initialize Socket.io on the same HTTP server after Fastify is ready
+        // Initialize Socket.io
         try {
+            console.log('Initializing Socket.io...');
             const io = initializeSocketService(server.server);
             console.log('🔌 Socket.io initialized on same server');
         } catch (socketError) {
             console.error('⚠️ Socket.io init failed:', socketError);
-            // Continue without Socket.io for now
         }
 
     } catch (err) {
-        console.error('Error starting server:', err);
+        console.error('❌ FATAL ERROR starting server:', err);
         process.exit(1);
     }
 }
