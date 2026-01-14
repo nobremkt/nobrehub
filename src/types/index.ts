@@ -69,7 +69,7 @@ export interface Lead {
 // Alias for backward compatibility
 export type Contact = Lead;
 
-export type AgentRole = 'Administração' | 'Vendas' | 'Produção' | 'Pós-Venda' | 'Outros';
+export type AgentRole = 'Administracao' | 'Vendas' | 'Producao' | 'Pos-Venda' | 'Outros';
 
 export interface Agent {
   id: string;

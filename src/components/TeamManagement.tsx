@@ -22,10 +22,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
           id: u.id,
           name: u.name,
           email: u.email,
-          role: u.role === 'admin' ? 'Administração' :
+          role: u.role === 'admin' ? 'Administracao' :
             u.role === 'closer_ht' || u.role === 'closer_lt' || u.role === 'manager_sales' ? 'Vendas' :
-              u.role === 'production' || u.role === 'manager_production' ? 'Produção' :
-                u.role === 'post_sales' ? 'Pós-Venda' : 'Outros',
+              u.role === 'production' || u.role === 'manager_production' ? 'Producao' :
+                u.role === 'post_sales' ? 'Pos-Venda' : 'Outros',
           status: 'offline', // Default status for now
           activeLeads: 0, // Placeholder
           boardConfig: []
@@ -42,27 +42,27 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   }, []);
 
   // Definição das categorias e sua ordem de exibição
-  const CATEGORIES: AgentRole[] = ['Administração', 'Vendas', 'Produção', 'Pós-Venda'];
+  const CATEGORIES: AgentRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
 
   // Determina quais categorias exibir com base no filtro
   const visibleCategories = filter === 'Todos' ? CATEGORIES : [filter as AgentRole];
 
   const getRoleStyle = (role: AgentRole) => {
     switch (role) {
-      case 'Administração': return 'bg-purple-50 text-purple-600 border-purple-100';
+      case 'Administracao': return 'bg-purple-50 text-purple-600 border-purple-100';
       case 'Vendas': return 'bg-rose-50 text-rose-600 border-rose-100';
-      case 'Produção': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'Pós-Venda': return 'bg-amber-50 text-amber-600 border-amber-100';
+      case 'Producao': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'Pos-Venda': return 'bg-amber-50 text-amber-600 border-amber-100';
       default: return 'bg-slate-50 text-slate-600 border-slate-100';
     }
   };
 
   const getSectionHeaderColor = (role: AgentRole) => {
     switch (role) {
-      case 'Administração': return 'bg-purple-500';
+      case 'Administracao': return 'bg-purple-500';
       case 'Vendas': return 'bg-rose-500';
-      case 'Produção': return 'bg-blue-500';
-      case 'Pós-Venda': return 'bg-amber-500';
+      case 'Producao': return 'bg-blue-500';
+      case 'Pos-Venda': return 'bg-amber-500';
       default: return 'bg-slate-500';
     }
   };
@@ -82,7 +82,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
 
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
-            {['Todos', 'Administração', 'Vendas', 'Produção', 'Pós-Venda'].map((tab) => (
+            {['Todos', 'Administracao', 'Vendas', 'Producao', 'Pos-Venda'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
