@@ -69,13 +69,13 @@ export interface Lead {
 // Alias for backward compatibility
 export type Contact = Lead;
 
-export type AgentRole = 'Administracao' | 'Vendas' | 'Producao' | 'Pos-Venda' | 'Outros';
+export type TeamRole = 'Administracao' | 'Vendas' | 'Producao' | 'Pos-Venda' | 'Outros';
 
 export interface Agent {
   id: string;
   name: string;
   email: string;
-  role: AgentRole;
+  role: TeamRole;
   status: 'online' | 'offline' | 'busy';
   activeLeads: number;
   boardConfig: any[];

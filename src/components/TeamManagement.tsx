@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Target, Briefcase, Search, Plus, Eye, Monitor, ArrowUpRight } from 'lucide-react';
-import { Agent, AgentRole } from '../types';
+import { Agent, TeamRole } from '../types';
 import { getUsers } from '../services/api';
 
 interface TeamManagementProps {
@@ -42,12 +42,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   }, []);
 
   // Definição das categorias e sua ordem de exibição
-  const CATEGORIES: AgentRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
+  const CATEGORIES: TeamRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
 
   // Determina quais categorias exibir com base no filtro
-  const visibleCategories = filter === 'Todos' ? CATEGORIES : [filter as AgentRole];
+  const visibleCategories = filter === 'Todos' ? CATEGORIES : [filter as TeamRole];
 
-  const getRoleStyle = (role: AgentRole) => {
+  const getRoleStyle = (role: TeamRole) => {
     switch (role) {
       case 'Administracao': return 'bg-purple-50 text-purple-600 border-purple-100';
       case 'Vendas': return 'bg-rose-50 text-rose-600 border-rose-100';
@@ -57,7 +57,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
     }
   };
 
-  const getSectionHeaderColor = (role: AgentRole) => {
+  const getSectionHeaderColor = (role: TeamRole) => {
     switch (role) {
       case 'Administracao': return 'bg-purple-500';
       case 'Vendas': return 'bg-rose-500';
