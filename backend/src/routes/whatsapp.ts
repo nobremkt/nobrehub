@@ -3,7 +3,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { dialog360 } from '../services/dialog360.js';
 import { prisma } from '../lib/prisma.js';
 import { addToQueue } from '../services/queueManager.js';
-import { emitNewMessage } from '../services/socketService.js';
+import { emitNewMessage, emitNewLead, emitNewConversation } from '../services/socketService.js';
 import { PipelineType } from '@prisma/client';
 
 // Types for request bodies
@@ -154,6 +154,9 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                     }
                 });
                 console.log(`✨ Created OK: ${lead.id}`);
+
+                // Emit real-time event for new lead
+                emitNewLead(lead);
             } catch (err: any) {
                 console.error(`❌ Create Fail: ${err.message}`);
                 return reply.code(200).send({ status: 'ok' });
@@ -173,8 +176,17 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
             // Fetch the newly created conversation
             conversation = await prisma.conversation.findFirst({
-                where: { leadId: lead.id, status: { not: 'closed' } }
+                where: { leadId: lead.id, status: { not: 'closed' } },
+                include: {
+                    lead: { select: { id: true, name: true, phone: true, company: true } },
+                    messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                }
             });
+
+            // Emit real-time event for new conversation
+            if (conversation) {
+                emitNewConversation(conversation);
+            }
         }
 
         // 4. Save Message (use upsert to handle duplicates from webhook retries)

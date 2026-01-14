@@ -32,7 +32,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    const { isConnected, subscribeToAssignments, subscribeToConversationsData, requestConversations } = useSocket({ userId });
+    const { isConnected, subscribeToAssignments, subscribeToConversationsData, subscribeToNewConversations, requestConversations } = useSocket({ userId });
 
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {
@@ -63,6 +63,20 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
         });
         return unsubscribe;
     }, [subscribeToAssignments]);
+
+    // NEW: Subscribe to new conversations (real-time updates)
+    useEffect(() => {
+        const unsubscribe = subscribeToNewConversations((newConversation) => {
+            console.log('📩 New conversation received:', newConversation);
+            setConversations(prev => {
+                // Check if conversation already exists
+                const exists = prev.some(c => c.id === newConversation.id);
+                if (exists) return prev;
+                return [newConversation, ...prev];
+            });
+        });
+        return unsubscribe;
+    }, [subscribeToNewConversations]);
 
     // Subscribe to conversations data from socket
     useEffect(() => {

@@ -172,6 +172,24 @@ export function emitQueueUpdate(queueItem: any) {
     io?.emit('queue:update', queueItem);
 }
 
+// NEW: Emit when a new lead is created (for real-time lead list updates)
+export function emitNewLead(lead: any) {
+    console.log('📣 Emitting lead:new event for:', lead.name);
+    io?.emit('lead:new', lead);
+}
+
+// NEW: Emit when a lead is updated (status change, pipeline move, etc.)
+export function emitLeadUpdated(lead: any) {
+    console.log('📣 Emitting lead:updated event for:', lead.name);
+    io?.emit('lead:updated', lead);
+}
+
+// NEW: Emit when a new conversation is created (for real-time inbox updates)
+export function emitNewConversation(conversation: any) {
+    console.log('📣 Emitting conversation:new event');
+    io?.emit('conversation:new', conversation);
+}
+
 // Get the Socket.io server instance
 export function getSocketServer(): Server | null {
     return io;

@@ -67,6 +67,30 @@ export function useSocket({ userId, autoConnect = true }: UseSocketOptions = {})
         };
     }, []);
 
+    // NEW: Subscribe to new leads (real-time lead list updates)
+    const subscribeToNewLeads = useCallback((callback: (lead: any) => void) => {
+        socketRef.current?.on('lead:new', callback);
+        return () => {
+            socketRef.current?.off('lead:new', callback);
+        };
+    }, []);
+
+    // NEW: Subscribe to lead updates
+    const subscribeToLeadUpdates = useCallback((callback: (lead: any) => void) => {
+        socketRef.current?.on('lead:updated', callback);
+        return () => {
+            socketRef.current?.off('lead:updated', callback);
+        };
+    }, []);
+
+    // NEW: Subscribe to new conversations (real-time inbox updates)
+    const subscribeToNewConversations = useCallback((callback: (conversation: any) => void) => {
+        socketRef.current?.on('conversation:new', callback);
+        return () => {
+            socketRef.current?.off('conversation:new', callback);
+        };
+    }, []);
+
     // Send a message
     const sendMessage = useCallback((conversationId: string, text: string, userId: string) => {
         socketRef.current?.emit('message:send', { conversationId, text, userId });
@@ -91,8 +115,12 @@ export function useSocket({ userId, autoConnect = true }: UseSocketOptions = {})
         subscribeToConversation,
         subscribeToAssignments,
         subscribeToQueue,
+        subscribeToNewLeads,
+        subscribeToLeadUpdates,
+        subscribeToNewConversations,
         subscribeToConversationsData,
         sendMessage,
         requestConversations
     };
 }
+
