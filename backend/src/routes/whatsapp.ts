@@ -26,6 +26,47 @@ interface WebhookPayload {
     contacts?: any[];
 }
 
+// Utility: Format Brazilian phone number
+function formatBrazilianPhone(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+
+    // Brazilian format: 55 + DDD (2) + Number (8-9)
+    if (digits.length === 13 && digits.startsWith('55')) {
+        // 55 + DDD + 9XXXX-XXXX
+        const ddd = digits.slice(2, 4);
+        const part1 = digits.slice(4, 9);
+        const part2 = digits.slice(9, 13);
+        return `(${ddd}) ${part1}-${part2}`;
+    } else if (digits.length === 12 && digits.startsWith('55')) {
+        // 55 + DDD + XXXX-XXXX (old format)
+        const ddd = digits.slice(2, 4);
+        const part1 = digits.slice(4, 8);
+        const part2 = digits.slice(8, 12);
+        return `(${ddd}) ${part1}-${part2}`;
+    }
+
+    // Fallback: return as-is with spaces
+    return phone;
+}
+
+// Utility: Extract name from WhatsApp contacts
+function extractWhatsAppName(payload: any, senderId: string): string | null {
+    // Try to find contact matching the sender
+    if (payload.contacts && Array.isArray(payload.contacts)) {
+        const contact = payload.contacts.find((c: any) =>
+            c.wa_id === senderId || c.wa_id === senderId.replace(/\D/g, '')
+        );
+        if (contact?.profile?.name) {
+            return contact.profile.name;
+        }
+        // Try first contact as fallback
+        if (payload.contacts[0]?.profile?.name) {
+            return payload.contacts[0].profile.name;
+        }
+    }
+    return null;
+}
+
 export default async function whatsappRoutes(server: FastifyInstance) {
 
     // Webhook verification (GET) - Meta/360Dialog verifies webhook URL
@@ -94,18 +135,20 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         // 2. Create lead if missing
         if (!lead) {
-            const senderProfile = payload.contacts?.find((c: any) => c.wa_id === incomingMessage.from) || payload.contacts?.[0];
-            const profileName = senderProfile?.profile?.name;
+            // Use utility function for better name extraction
+            const profileName = extractWhatsAppName(payload, incomingMessage.from);
             const leadName = profileName || `WhatsApp ${phoneKey.slice(-4)}`;
+            const formattedPhone = formatBrazilianPhone(phoneKey);
 
             console.log(`👤 Profile Data: ${JSON.stringify(payload.contacts)} -> Extracted Name: ${profileName}`);
+            console.log(`📞 Phone: ${phoneKey} -> Formatted: ${formattedPhone}`);
 
             try {
                 console.log(`🚀 Creating Lead: ${leadName}`);
                 lead = await prisma.lead.create({
                     data: {
                         name: leadName,
-                        phone: phoneKey,
+                        phone: formattedPhone,
                         source: 'whatsapp',
                         pipeline: 'low_ticket',
                         statusLT: 'novo',
