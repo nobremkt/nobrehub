@@ -32,7 +32,14 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    const { isConnected, subscribeToAssignments, subscribeToConversationsData, subscribeToNewConversations, requestConversations } = useSocket({ userId });
+    const {
+        isConnected,
+        subscribeToAssignments,
+        subscribeToConversationsData,
+        subscribeToNewConversations,
+        subscribeToConversationUpdates,
+        requestConversations
+    } = useSocket({ userId });
 
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {
@@ -63,6 +70,27 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
         });
         return unsubscribe;
     }, [subscribeToAssignments]);
+
+    // NEW: Subscribe to conversation updates (close, transfer)
+    useEffect(() => {
+        const unsubscribe = subscribeToConversationUpdates((updatedConv) => {
+            setConversations(prev => {
+                // If closed or transferred to someone else (unless admin), remove it
+                if (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId !== userId)) {
+                    return prev.filter(c => c.id !== updatedConv.id);
+                }
+
+                // Otherwise update existing
+                return prev.map(c => c.id === updatedConv.id ? { ...c, ...updatedConv } : c);
+            });
+
+            // If selected was closed/transferred, deselect
+            if (selectedConversation === updatedConv.id && (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId !== userId))) {
+                setSelectedConversation(null);
+            }
+        });
+        return unsubscribe;
+    }, [subscribeToConversationUpdates, isAdmin, userId, selectedConversation]);
 
     // NEW: Subscribe to new conversations (real-time updates)
     useEffect(() => {

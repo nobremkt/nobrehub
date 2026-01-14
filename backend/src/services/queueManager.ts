@@ -1,5 +1,5 @@
 import { PrismaClient, PipelineType, QueueStatus, ConversationStatus } from '@prisma/client';
-import { emitConversationAssigned, emitQueueUpdate } from './socketService.js';
+import { emitConversationAssigned, emitQueueUpdate, emitConversationUpdated, emitLeadUpdated } from './socketService.js';
 
 const prisma = new PrismaClient();
 
@@ -150,7 +150,7 @@ export async function closeConversation(
 
     // If closed with payment, update lead status
     if (reason === 'payment') {
-        await prisma.lead.update({
+        const updatedLead = await prisma.lead.update({
             where: { id: conversation.leadId },
             data: {
                 pipeline: 'post_sales',
@@ -159,7 +159,10 @@ export async function closeConversation(
                 statusLT: null
             }
         });
+        emitLeadUpdated(updatedLead);
     }
+
+    emitConversationUpdated(updated);
 
     return updated;
 }
@@ -203,6 +206,7 @@ export async function transferConversation(
     });
 
     emitConversationAssigned(newAgentId, updated);
+    emitConversationUpdated(updated);
 
     return updated;
 }

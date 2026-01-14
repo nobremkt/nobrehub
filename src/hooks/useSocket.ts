@@ -91,6 +91,14 @@ export function useSocket({ userId, autoConnect = true }: UseSocketOptions = {})
         };
     }, []);
 
+    // NEW: Subscribe to conversation updates (status changes, transfers)
+    const subscribeToConversationUpdates = useCallback((callback: (conversation: any) => void) => {
+        socketRef.current?.on('conversation:updated', callback);
+        return () => {
+            socketRef.current?.off('conversation:updated', callback);
+        };
+    }, []);
+
     // Send a message
     const sendMessage = useCallback((conversationId: string, text: string, userId: string) => {
         socketRef.current?.emit('message:send', { conversationId, text, userId });
@@ -118,6 +126,7 @@ export function useSocket({ userId, autoConnect = true }: UseSocketOptions = {})
         subscribeToNewLeads,
         subscribeToLeadUpdates,
         subscribeToNewConversations,
+        subscribeToConversationUpdates,
         subscribeToConversationsData,
         sendMessage,
         requestConversations

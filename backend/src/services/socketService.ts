@@ -167,6 +167,12 @@ export function emitConversationAssigned(agentId: string, conversation: any) {
     }
 }
 
+// NEW: Emit when a conversation is updated (status, assignment, etc.)
+export function emitConversationUpdated(conversation: any) {
+    console.log('📣 Emitting conversation:updated event');
+    io?.emit('conversation:updated', conversation);
+}
+
 // Emit to all admins about new queued conversation
 export function emitQueueUpdate(queueItem: any) {
     io?.emit('queue:update', queueItem);
