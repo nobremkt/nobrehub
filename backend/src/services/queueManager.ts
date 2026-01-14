@@ -1,5 +1,5 @@
 import { PrismaClient, PipelineType, QueueStatus, ConversationStatus } from '@prisma/client';
-import { emitConversationAssigned, emitQueueUpdate } from './socketService';
+import { emitConversationAssigned, emitQueueUpdate } from './socketService.js';
 
 const prisma = new PrismaClient();
 

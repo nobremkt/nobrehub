@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { closeConversation, transferConversation, getQueueStatus } from '../services/queueManager';
+import { closeConversation, transferConversation, getQueueStatus } from '../services/queueManager.js';
 
 const prisma = new PrismaClient();
 
