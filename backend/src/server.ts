@@ -90,8 +90,13 @@ async function bootstrap() {
         console.log(`🚀 Fastify server running at http://${host}:${port}`);
 
         // Initialize Socket.io on the same HTTP server after Fastify is ready
-        const io = initializeSocketService(server.server);
-        console.log('🔌 Socket.io initialized on same server');
+        try {
+            const io = initializeSocketService(server.server);
+            console.log('🔌 Socket.io initialized on same server');
+        } catch (socketError) {
+            console.error('⚠️ Socket.io init failed:', socketError);
+            // Continue without Socket.io for now
+        }
 
     } catch (err) {
         console.error('Error starting server:', err);
