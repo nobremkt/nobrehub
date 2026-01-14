@@ -78,8 +78,8 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
     }, [isConnected, subscribeToConversationsData, requestConversations, userId]);
 
     const filteredConversations = conversations.filter(conv =>
-        conv.lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conv.lead.phone.includes(searchTerm)
+        conv.lead?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+        conv.lead?.phone?.includes(searchTerm)
     );
 
     const formatTime = (dateStr: string | null) => {
@@ -203,7 +203,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
                                         </div>
 
                                         {/* Last message preview */}
-                                        {conv.messages[0]?.text && (
+                                        {conv.messages?.length > 0 && conv.messages[0]?.text && (
                                             <p className="text-xs text-slate-500 mt-2 truncate">
                                                 {conv.messages[0].text}
                                             </p>

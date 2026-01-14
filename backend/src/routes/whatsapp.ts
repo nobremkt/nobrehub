@@ -136,9 +136,10 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             });
         }
 
-        // 4. Save Message
-        const savedMessage = await prisma.message.create({
-            data: {
+        // 4. Save Message (use upsert to handle duplicates from webhook retries)
+        const savedMessage = await prisma.message.upsert({
+            where: { waMessageId: incomingMessage.messageId },
+            create: {
                 waMessageId: incomingMessage.messageId,
                 phone: phoneKey,
                 leadId: lead.id,
@@ -147,7 +148,8 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                 type: incomingMessage.type === 'text' ? 'text' : 'text',
                 text: incomingMessage.text,
                 status: 'delivered'
-            }
+            },
+            update: {} // Do nothing if already exists
         });
         console.log('💾 Msg Saved');
 
