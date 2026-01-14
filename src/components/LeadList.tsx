@@ -6,7 +6,11 @@ import LeadDetailModal from './LeadDetailModal';
 import { getLeads, Lead, deleteLead, createLead, updateLead } from '../services/api';
 import { toast } from 'sonner';
 
-const LeadList: React.FC = () => {
+interface LeadListProps {
+  onNavigateToChat?: () => void;
+}
+
+const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
@@ -176,8 +180,13 @@ const LeadList: React.FC = () => {
   };
 
   const handleOpenChat = (lead: Lead) => {
-    // TODO: Navigate to chat/conversation with this lead
-    toast.info(`Abrindo conversa com ${lead.name}`);
+    // Navigate to chat/inbox view
+    if (onNavigateToChat) {
+      onNavigateToChat();
+      toast.success(`Navegando para Atendimento - ${lead.name}`);
+    } else {
+      toast.info(`Chat com ${lead.name} - vá para Atendimento`);
+    }
   };
 
   const isAllSelected = filteredLeads.length > 0 && selectedLeads.length === filteredLeads.length;
@@ -192,15 +201,6 @@ const LeadList: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {selectedLeads.length > 0 && (
-              <button
-                onClick={handleBulkDelete}
-                className="flex items-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-700 px-6 py-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 whitespace-nowrap animate-in zoom-in duration-200"
-              >
-                <Trash2 size={16} /> Excluir ({selectedLeads.length})
-              </button>
-            )}
-
             <button
               onClick={() => setIsLeadModalOpen(true)}
               className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl transition-all shadow-xl shadow-rose-600/30 font-black text-[10px] uppercase tracking-widest active:scale-95 whitespace-nowrap"
@@ -385,6 +385,79 @@ const LeadList: React.FC = () => {
         onDelete={handleDeleteLead}
         onOpenChat={handleOpenChat}
       />
+
+      {/* Bulk Actions Bar - Fixed at bottom */}
+      {selectedLeads.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom duration-300">
+          <div className="bg-slate-900 text-white rounded-2xl shadow-2xl shadow-slate-900/50 px-6 py-4 flex items-center gap-4">
+            {/* Counter */}
+            <div className="flex items-center gap-2 pr-4 border-r border-slate-700">
+              <div className="w-8 h-8 bg-rose-600 rounded-lg flex items-center justify-center font-black text-sm">
+                {selectedLeads.length}
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">selecionados</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    await Promise.all(selectedLeads.map(id =>
+                      updateLead(id, { pipeline: 'high_ticket', statusHT: 'novo' })
+                    ));
+                    await fetchLeads();
+                    setSelectedLeads([]);
+                    toast.success('Leads movidos para High Ticket!');
+                  } catch (e) {
+                    toast.error('Erro ao mover leads');
+                  }
+                }}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+              >
+                <Target size={14} />
+                High Ticket
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    await Promise.all(selectedLeads.map(id =>
+                      updateLead(id, { pipeline: 'low_ticket', statusLT: 'novo' })
+                    ));
+                    await fetchLeads();
+                    setSelectedLeads([]);
+                    toast.success('Leads movidos para Low Ticket!');
+                  } catch (e) {
+                    toast.error('Erro ao mover leads');
+                  }
+                }}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+              >
+                <Target size={14} />
+                Low Ticket
+              </button>
+
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+              >
+                <Trash2 size={14} />
+                Excluir
+              </button>
+            </div>
+
+            {/* Close */}
+            <button
+              onClick={() => setSelectedLeads([])}
+              className="ml-2 p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white"
+              title="Limpar seleção"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

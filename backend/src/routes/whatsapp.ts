@@ -138,17 +138,15 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             // Use utility function for better name extraction
             const profileName = extractWhatsAppName(payload, incomingMessage.from);
             const leadName = profileName || `WhatsApp ${phoneKey.slice(-4)}`;
-            const formattedPhone = formatBrazilianPhone(phoneKey);
 
             console.log(`👤 Profile Data: ${JSON.stringify(payload.contacts)} -> Extracted Name: ${profileName}`);
-            console.log(`📞 Phone: ${phoneKey} -> Formatted: ${formattedPhone}`);
 
             try {
-                console.log(`🚀 Creating Lead: ${leadName}`);
+                console.log(`🚀 Creating Lead: ${leadName} Phone: ${phoneKey}`);
                 lead = await prisma.lead.create({
                     data: {
                         name: leadName,
-                        phone: formattedPhone,
+                        phone: phoneKey, // Store raw digits - format on frontend display
                         source: 'whatsapp',
                         pipeline: 'low_ticket',
                         statusLT: 'novo',

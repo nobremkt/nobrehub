@@ -69,7 +69,7 @@ export interface Lead {
 // Alias for backward compatibility
 export type Contact = Lead;
 
-export type AgentRole = 'admin' | 'sdr' | 'closer' | 'manager';
+export type AgentRole = 'Administração' | 'Vendas' | 'Produção' | 'Pós-Venda' | 'Outros';
 
 export interface Agent {
   id: string;
@@ -77,15 +77,8 @@ export interface Agent {
   email: string;
   role: AgentRole;
   status: 'online' | 'offline' | 'busy';
-  activeChats: number;
-  completedChats: number;
-  permissions: {
-    dashboard: boolean;
-    leads: boolean;
-    team: boolean;
-    chat: boolean;
-    flows: boolean;
-  };
+  activeLeads: number;
+  boardConfig: any[];
 }
 
 export interface Message {

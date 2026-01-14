@@ -67,7 +67,7 @@ const App: React.FC = () => {
 
     switch (activeView) {
       case 'kanban': return <Kanban />;
-      case 'leads': return <LeadList />;
+      case 'leads': return <LeadList onNavigateToChat={() => setActiveView('chat')} />;
       case 'chat': return <Inbox userId={currentUser?.id || ''} isAdmin={currentUser?.role === 'admin'} />;
       case 'flows': return <FlowBuilder />;
       case 'analytics': return <Analytics />;
@@ -95,7 +95,7 @@ const App: React.FC = () => {
           {renderView()}
         </main>
       </div>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="bottom-right" />
     </>
   );
 };
