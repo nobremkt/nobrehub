@@ -1,8 +1,10 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
+import { Dialog360Service } from './dialog360.js';
 
 const prisma = new PrismaClient();
+const dialog360 = new Dialog360Service();
 
 let io: Server | null = null;
 
@@ -101,7 +103,29 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                 // Broadcast to conversation participants
                 io?.emit(`conversation:${conversationId}:message`, message);
 
-                // TODO: Actually send via WhatsApp API
+                // Send via WhatsApp API
+                try {
+                    const waResponse = await dialog360.sendMessage({
+                        to: conversation.lead.phone,
+                        text
+                    });
+                    console.log('📤 Sent to WhatsApp:', waResponse.messages?.[0]?.id);
+
+                    // Update message status to sent
+                    await prisma.message.update({
+                        where: { id: message.id },
+                        data: {
+                            status: 'sent',
+                            waMessageId: waResponse.messages?.[0]?.id
+                        }
+                    });
+                } catch (waError) {
+                    console.error('❌ Failed to send to WhatsApp:', waError);
+                    await prisma.message.update({
+                        where: { id: message.id },
+                        data: { status: 'failed' }
+                    });
+                }
 
             } catch (error) {
                 console.error('Error sending message:', error);
