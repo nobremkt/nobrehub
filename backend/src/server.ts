@@ -1,3 +1,4 @@
+console.log('🚨 SERVER ENTRY POINT - server.ts loading...');
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
