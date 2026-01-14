@@ -2,7 +2,6 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
-import { createServer } from 'http';
 import { initializeSocketService } from './services/socketService.js';
 
 // Load environment variables
@@ -83,19 +82,17 @@ async function bootstrap() {
         console.log('📱 WhatsApp routes registered at /whatsapp');
         console.log('💬 Conversations routes registered at /conversations');
 
-        // Create HTTP server for Socket.io
-        const httpServer = createServer(server.server);
-
-        // Initialize Socket.io
-        const io = initializeSocketService(httpServer);
-        console.log('🔌 Socket.io initialized');
-
-        // Start server
+        // Start Fastify server first
         const port = parseInt(process.env.PORT || '3000');
         const host = process.env.HOST || '0.0.0.0';
 
         await server.listen({ port, host });
-        console.log(`🚀 Server running at http://localhost:${port}`);
+        console.log(`🚀 Fastify server running at http://${host}:${port}`);
+
+        // Initialize Socket.io on the same HTTP server after Fastify is ready
+        const io = initializeSocketService(server.server);
+        console.log('🔌 Socket.io initialized on same server');
+
     } catch (err) {
         console.error('Error starting server:', err);
         process.exit(1);
