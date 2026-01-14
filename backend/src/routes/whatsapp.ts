@@ -75,23 +75,33 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             return reply.code(200).send({ status: 'ok' });
         }
 
-        console.log(`📱 Msg from: ${incomingMessage.from}`);
         const phoneKey = incomingMessage.from.replace(/\D/g, '');
+        console.log(`📱 Process Msg from: ${incomingMessage.from} (Key: ${phoneKey})`);
 
-        // 1. Check DB
+        // 1. Check DB - Use more precise matching if possible, or log what we found
         let lead = await prisma.lead.findFirst({
-            where: { phone: { contains: phoneKey.slice(-9) } }
+            where: { phone: { contains: phoneKey.slice(-8) } } // Match last 8 digits to be safer against DDI/9th digit variations
         });
-        console.log(`🔎 DB Search (${phoneKey.slice(-9)}): ${lead ? 'FOUND' : 'MISSING'}`);
+
+        if (lead) {
+            console.log(`🔎 DB Search FOUND Lead ID: ${lead.id} Name: ${lead.name} Phone: ${lead.phone}`);
+            // Optional: Update name if it's a generic "WhatsApp" name and we have better info now? 
+            // For now, just log.
+        } else {
+            console.log(`🔎 DB Search MISSING for ${phoneKey}`);
+        }
 
         // 2. Create if missing
         if (!lead) {
             // Improved profile extraction: fallback to first contact if specific ID match fails
             const senderProfile = payload.contacts?.find((c: any) => c.wa_id === incomingMessage.from) || payload.contacts?.[0];
-            const leadName = senderProfile?.profile?.name || `WhatsApp ${phoneKey.slice(-4)}`;
+            const profileName = senderProfile?.profile?.name;
+            const leadName = profileName || `WhatsApp ${phoneKey.slice(-4)}`;
+
+            console.log(`👤 Profile Data: ${JSON.stringify(payload.contacts)} -> Extracted Name: ${profileName}`);
 
             try {
-                console.log(`🚀 Creating: ${leadName}`);
+                console.log(`🚀 Creating Lead: ${leadName}`);
                 lead = await prisma.lead.create({
                     data: {
                         name: leadName,
@@ -105,20 +115,6 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                 console.log(`✨ Created OK: ${lead.id}`);
             } catch (err: any) {
                 console.error(`❌ Create Fail: ${err.message}`);
-                // Fallback
-                try {
-                    lead = await prisma.lead.create({
-                        data: {
-                            name: leadName,
-                            phone: phoneKey,
-                            source: 'whatsapp',
-                            pipeline: 'low_ticket'
-                        }
-                    });
-                    console.log(`✨ Fallback OK: ${lead.id}`);
-                } catch (retryErr: any) {
-                    console.error(`❌ Fallback Fail: ${retryErr.message}`);
-                }
             }
         }
 
@@ -130,7 +126,7 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                     phone: phoneKey,
                     leadId: lead.id,
                     direction: 'in',
-                    type: incomingMessage.type === 'text' ? 'text' : 'text', // Simple fallback
+                    type: incomingMessage.type === 'text' ? 'text' : 'text',
                     text: incomingMessage.text,
                     status: 'delivered'
                 }
