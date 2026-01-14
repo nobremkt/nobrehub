@@ -46,9 +46,9 @@ const LeadList: React.FC = () => {
     try {
       const newLeadRaw = await api.createLead({
         name: leadData.name,
-        email: leadData.email,
+        email: leadData.email || undefined,
         phone: leadData.phone,
-        company: leadData.company,
+        company: leadData.company || undefined,
         estimatedValue: parseFloat(leadData.value) || 0,
         pipeline: leadData.pipeline,
         statusHT: leadData.pipeline === 'high_ticket' ? leadData.status : undefined,

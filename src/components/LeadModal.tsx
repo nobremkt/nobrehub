@@ -18,7 +18,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
     company: '',
     value: '',
     status: initialStage || 'novo',
-    pipeline: 'high-ticket'
+    pipeline: 'high_ticket'
   });
 
   useEffect(() => {
@@ -34,7 +34,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
-    setFormData({ name: '', email: '', phone: '', company: '', value: '', status: initialStage || 'novo', pipeline: 'high-ticket' });
+    setFormData({ name: '', email: '', phone: '', company: '', value: '', status: initialStage || 'novo', pipeline: 'high_ticket' });
     onClose();
   };
 
@@ -137,8 +137,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
             <CustomDropdown
               label="Pipeline"
               options={[
-                { value: 'high-ticket', label: 'High Ticket' },
-                { value: 'low-ticket', label: 'Low Ticket' },
+                { value: 'high_ticket', label: 'High Ticket' },
+                { value: 'low_ticket', label: 'Low Ticket' },
               ]}
               value={formData.pipeline}
               onChange={(val) => setFormData({ ...formData, pipeline: val as any })}
