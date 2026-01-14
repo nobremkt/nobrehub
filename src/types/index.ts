@@ -16,8 +16,8 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   whatsapp: 'WhatsApp',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
-  referral: 'Indicação',
-  ads: 'Tráfego Pago',
+  referral: 'Indicacao',
+  ads: 'Trafego Pago',
   other: 'Outros'
 };
 
@@ -27,15 +27,15 @@ export const LEAD_STATUS_LABELS: Record<string, string> = {
   // High Ticket
   novo: 'Novo Lead',
   qualificado: 'Qualificado',
-  apresentacao: 'Apresentação',
+  apresentacao: 'Apresentacao',
   fechamento: 'Fechamento',
   contrato: 'Contrato',
 
   // Low Ticket
   lead: 'Entrada',
-  conversao: 'Conversão',
+  conversao: 'Conversao',
   checkout: 'Checkout',
-  recuperacao: 'Recuperação',
+  recuperacao: 'Recuperacao',
   pago: 'Pago',
 
   // Common
@@ -56,12 +56,12 @@ export interface Lead {
   tags?: string[];
   notes?: string;
   assignedTo?: string;
-  assignedAgentId?: string; // For chat assignment
+  assignedAgentId?: string;
   scoreAi?: number;
   lastMessage?: string;
   chatStatus?: 'open' | 'pending' | 'closed';
   language?: string;
-  origin?: string; // Lead source display
+  origin?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -102,7 +102,7 @@ export type ViewType = 'kanban' | 'leads' | 'chat' | 'flows' | 'analytics' | 'te
 export const HIGH_TICKET_STAGES = [
   { id: 'novo', name: 'Novo Lead', color: 'rose' },
   { id: 'qualificado', name: 'Qualificado', color: 'emerald' },
-  { id: 'apresentacao', name: 'Apresentação', color: 'amber' },
+  { id: 'apresentacao', name: 'Apresentacao', color: 'amber' },
   { id: 'fechamento', name: 'Fechamento', color: 'blue' },
   { id: 'contrato', name: 'Contrato', color: 'purple' },
   { id: 'perdido', name: 'Perdido', color: 'slate' },
@@ -110,9 +110,9 @@ export const HIGH_TICKET_STAGES = [
 
 export const LOW_TICKET_STAGES = [
   { id: 'lead', name: 'Entrada', color: 'rose' },
-  { id: 'conversao', name: 'Conversão', color: 'emerald' },
+  { id: 'conversao', name: 'Conversao', color: 'emerald' },
   { id: 'checkout', name: 'Checkout', color: 'amber' },
-  { id: 'recuperacao', name: 'Recuperação', color: 'orange' },
+  { id: 'recuperacao', name: 'Recuperacao', color: 'orange' },
   { id: 'pago', name: 'Pago', color: 'emerald' },
 ];
 
