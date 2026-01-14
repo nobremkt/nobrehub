@@ -20,6 +20,17 @@ export async function addToQueue(leadId: string, pipeline: PipelineType): Promis
         return existingConversation;
     }
 
+    // Check if lead already has a waiting queue entry
+    const existingQueue = await prisma.queue.findFirst({
+        where: { leadId, status: 'waiting' },
+        include: { lead: true }
+    });
+
+    if (existingQueue) {
+        console.log(`Lead ${leadId} already in queue`);
+        return existingQueue;
+    }
+
     // Create queue entry
     const queueEntry = await prisma.queue.create({
         data: {
