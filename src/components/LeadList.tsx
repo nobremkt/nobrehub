@@ -92,9 +92,9 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
 
     // Standard local formats (10 or 11)
     if (digits.length === 11) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+      return `+55 (${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     } else if (digits.length === 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+      return `+55 (${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
     }
 
     return `+${digits}`; // Fallback for international/unknown
@@ -342,14 +342,22 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                         {lead.statusHT || lead.statusLT || 'Novo'}
                       </span>
                     </td>
-                    <td className="px-4 py-5">
-                      {lead.contactReason ? (
-                        <span className="text-xs text-slate-500 line-clamp-1 max-w-[150px]" title={lead.contactReason}>
-                          {lead.contactReason}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-300">-</span>
-                      )}
+                    <td className="px-4 py-5 max-w-[180px]">
+                      <div className="flex flex-col gap-1">
+                        {lead.contactReason && (
+                          <span className="text-xs text-slate-600 line-clamp-1" title={lead.contactReason}>
+                            {lead.contactReason}
+                          </span>
+                        )}
+                        {lead.lastMessage && (
+                          <span className="text-[10px] text-slate-400 italic line-clamp-1 border-l-2 border-slate-200 pl-1" title={lead.lastMessage}>
+                            "{lead.lastMessage}"
+                          </span>
+                        )}
+                        {!lead.contactReason && !lead.lastMessage && (
+                          <span className="text-xs text-slate-300">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-5">
                       <span className="text-sm font-black text-slate-900 tracking-tighter">{formatCurrency(lead.estimatedValue || 0)}</span>

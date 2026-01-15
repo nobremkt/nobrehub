@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma.js';
 import { z } from 'zod';
+import { emitNewLead, emitLeadUpdated } from '../services/socketService.js';
 
 // Validation schemas
 const createLeadSchema = z.object({
@@ -52,11 +53,23 @@ export default async function leadRoutes(server: FastifyInstance) {
 
         const leads = await prisma.lead.findMany({
             where,
-            include: { assignedUser: { select: { id: true, name: true } } },
+            include: {
+                assignedUser: { select: { id: true, name: true } },
+                messages: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: { text: true, createdAt: true }
+                }
+            },
             orderBy: { createdAt: 'desc' }
         });
 
-        return leads;
+        // Map to include lastMessage property cleanly
+        return leads.map(l => ({
+            ...l,
+            lastMessage: l.messages[0]?.text || null,
+            lastMessageAt: l.messages[0]?.createdAt || null
+        }));
     });
 
     // GET /leads/:id
@@ -87,6 +100,7 @@ export default async function leadRoutes(server: FastifyInstance) {
 
             const leadData: any = {
                 ...data,
+                phone: data.phone.replace(/\D/g, ''),
                 statusHT: data.pipeline === 'high_ticket' ? (data.statusHT || 'novo') : null,
                 statusLT: data.pipeline === 'low_ticket' ? (data.statusLT || 'novo') : null
             };
@@ -96,6 +110,9 @@ export default async function leadRoutes(server: FastifyInstance) {
             await prisma.interaction.create({
                 data: { leadId: lead.id, userId: user.id, type: 'note', content: 'Lead criado' }
             });
+
+            // Emit Real-time Event
+            emitNewLead(lead);
 
             return reply.code(201).send(lead);
         } catch (error) {
@@ -112,6 +129,10 @@ export default async function leadRoutes(server: FastifyInstance) {
             const { id } = request.params as { id: string };
             const data = updateLeadSchema.parse(request.body);
             const lead = await prisma.lead.update({ where: { id }, data });
+
+            // Emit Real-time Event
+            emitLeadUpdated(lead);
+
             return lead;
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -146,6 +167,9 @@ export default async function leadRoutes(server: FastifyInstance) {
             }
         });
 
+        // Emit Real-time Event
+        emitLeadUpdated(updatedLead);
+
         return updatedLead;
     });
 
@@ -174,6 +198,9 @@ export default async function leadRoutes(server: FastifyInstance) {
                 metadata: { assignedTo: userId }
             }
         });
+
+        // Emit Real-time Event
+        emitLeadUpdated(lead);
 
         return lead;
     });

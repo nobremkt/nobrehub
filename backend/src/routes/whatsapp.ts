@@ -139,14 +139,33 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         console.log(`📱 Process Msg from: ${incomingMessage.from} (Key: ${phoneKey})`);
 
         // 1. Check DB - Find existing lead
-        let lead = await prisma.lead.findFirst({
-            where: { phone: { contains: phoneKey.slice(-8) } }
+        // Improved matching: fetch candidates by suffix, then strict-check sanitized numbers
+        const suffix = phoneKey.slice(-4);
+        const candidates = await prisma.lead.findMany({
+            where: { phone: { endsWith: suffix } }
         });
 
+        let lead = candidates.find(candidate => {
+            const cleanCandidate = candidate.phone.replace(/\D/g, '');
+            // Check match with or without DDI (55) - robust comparison
+            // phoneKey usually is 55 + DDD + NUM (12-13 digits) or sometimes without 55
+
+            // Exact match
+            if (cleanCandidate === phoneKey) return true;
+
+            // Candidate has no 55, incoming has 55
+            if (phoneKey.endsWith(cleanCandidate) && cleanCandidate.length >= 8) return true;
+
+            // Candidate has 55, incoming has no 55
+            if (cleanCandidate.endsWith(phoneKey) && phoneKey.length >= 8) return true;
+
+            return false;
+        }) || null;
+
         if (lead) {
-            console.log(`🔎 DB Search FOUND Lead ID: ${lead.id} Name: ${lead.name} Phone: ${lead.phone}`);
+            console.log(`🔎 DB Search FOUND Lead ID: ${lead.id} via Smart Match`);
         } else {
-            console.log(`🔎 DB Search MISSING for ${phoneKey}`);
+            console.log(`🔎 DB Search MISSING for ${phoneKey} (Candidates: ${candidates.length})`);
         }
 
         // 2. Create lead if missing
