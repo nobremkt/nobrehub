@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import Sidebar from './components/Sidebar';
 import Kanban from './components/Kanban';
@@ -12,18 +12,45 @@ import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
 import { ViewType, Agent } from './types';
 
+// Default view per role (first accessible view)
+const DEFAULT_VIEW_BY_ROLE: Record<string, ViewType> = {
+  admin: 'kanban',
+  manager_sales: 'kanban',
+  manager_production: 'kanban',
+  strategic: 'kanban',
+  closer_ht: 'personal_workspace',
+  closer_lt: 'personal_workspace',
+  sdr: 'personal_workspace',
+};
+
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('isLoggedIn') === 'true';
   });
-  const [activeView, setActiveView] = useState<ViewType>('kanban');
+
+  // Get initial view based on stored user role
+  const getInitialView = (): ViewType => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return DEFAULT_VIEW_BY_ROLE[user.role] || 'personal_workspace';
+      }
+    } catch { }
+    return 'kanban';
+  };
+
+  const [activeView, setActiveView] = useState<ViewType>(getInitialView);
   const [monitoredUser, setMonitoredUser] = useState<Agent | null>(null);
+  const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
 
   const handleLogin = (token: string, user: any) => {
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setIsLoggedIn(true);
+    // Set initial view based on user role
+    setActiveView(DEFAULT_VIEW_BY_ROLE[user.role] || 'personal_workspace');
   };
 
   const handleLogout = () => {
@@ -67,8 +94,11 @@ const App: React.FC = () => {
 
     switch (activeView) {
       case 'kanban': return <Kanban />;
-      case 'leads': return <LeadList onNavigateToChat={() => setActiveView('chat')} />;
-      case 'chat': return <Inbox userId={currentUser?.id || ''} isAdmin={currentUser?.role === 'admin'} />;
+      case 'leads': return <LeadList onNavigateToChat={(leadId) => {
+        setPendingLeadId(leadId || null);
+        setActiveView('chat');
+      }} />;
+      case 'chat': return <Inbox userId={currentUser?.id || ''} isAdmin={currentUser?.role === 'admin'} initialLeadId={pendingLeadId} onConversationOpened={() => setPendingLeadId(null)} />;
       case 'flows': return <FlowBuilder />;
       case 'analytics': return <Analytics />;
       case 'team': return <TeamManagement onMonitor={startMonitoring} />;
@@ -88,6 +118,7 @@ const App: React.FC = () => {
             isDarkMode={false}
             onToggleTheme={() => { }}
             onLogout={handleLogout}
+            userRole={currentUser?.role}
           />
         )}
 

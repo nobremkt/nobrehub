@@ -22,15 +22,18 @@ interface Conversation {
 interface InboxProps {
     userId: string;
     isAdmin?: boolean;
+    initialLeadId?: string | null;
+    onConversationOpened?: () => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
+const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, onConversationOpened }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'mine' | 'queue'>('mine');
 
     const {
         isConnected,
@@ -63,6 +66,18 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
         fetchConversations();
     }, [fetchConversations]);
 
+    // Auto-select conversation when initialLeadId is provided
+    useEffect(() => {
+        if (initialLeadId && conversations.length > 0 && !selectedConversation) {
+            // Find conversation for this lead
+            const conversation = conversations.find(c => c.lead.id === initialLeadId);
+            if (conversation) {
+                setSelectedConversation(conversation.id);
+                onConversationOpened?.();
+            }
+        }
+    }, [initialLeadId, conversations, selectedConversation, onConversationOpened]);
+
     // Subscribe to new assignments
     useEffect(() => {
         const unsubscribe = subscribeToAssignments((newConversation) => {
@@ -80,8 +95,24 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
                     return prev.filter(c => c.id !== updatedConv.id);
                 }
 
-                // Otherwise update existing
-                return prev.map(c => c.id === updatedConv.id ? { ...c, ...updatedConv } : c);
+                // Check if exists
+                const exists = prev.some(c => c.id === updatedConv.id);
+
+                let newConversations;
+                if (exists) {
+                    // Update existing
+                    newConversations = prev.map(c => c.id === updatedConv.id ? { ...c, ...updatedConv } : c);
+                } else {
+                    // Add new (Upsert) - e.g. from unassigned to assigned, or created via webhook
+                    newConversations = [updatedConv, ...prev];
+                }
+
+                // Sort by lastMessageAt descending
+                return newConversations.sort((a, b) => {
+                    const dateA = new Date(a.lastMessageAt || 0).getTime();
+                    const dateB = new Date(b.lastMessageAt || 0).getTime();
+                    return dateB - dateA;
+                });
             });
 
             // If selected was closed/transferred, deselect
@@ -119,10 +150,22 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
         return unsubscribe;
     }, [isConnected, subscribeToConversationsData, requestConversations, userId]);
 
-    const filteredConversations = conversations.filter(conv =>
+    // Filter by tab first, then by search
+    const tabFilteredConversations = conversations.filter(conv => {
+        if (activeTab === 'mine') {
+            return conv.assignedAgent?.id === userId || conv.status === 'active';
+        } else {
+            // Queue: unassigned or queued status
+            return !conv.assignedAgent || conv.status === 'queued';
+        }
+    });
+
+    const filteredConversations = tabFilteredConversations.filter(conv =>
         conv.lead?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
         conv.lead?.phone?.includes(searchTerm)
     );
+
+    const queueCount = conversations.filter(c => !c.assignedAgent || c.status === 'queued').length;
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return '-';
@@ -162,31 +205,58 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
     return (
         <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in fade-in duration-700">
             {/* Header */}
-            <header className="px-10 py-10 flex flex-col gap-6">
+            <header className="px-10 pt-10 pb-6 flex flex-col gap-5">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Atendimento</h1>
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-1">
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Atendimento</h1>
+                        <p className="text-slate-400 text-xs font-medium mt-1">
                             {isAdmin ? 'Todas as conversas' : 'Suas conversas ativas'}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${isConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold ${isConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                             {isConnected ? 'Online' : 'Offline'}
                         </div>
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="flex bg-slate-100 rounded-2xl p-1">
+                    <button
+                        onClick={() => setActiveTab('mine')}
+                        className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all ${activeTab === 'mine'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Meus
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('queue')}
+                        className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'queue'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Fila
+                        {queueCount > 0 && (
+                            <span className="bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full font-bold min-w-[20px]">
+                                {queueCount}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
                 {/* Search */}
                 <div className="relative">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Buscar por nome ou telefone..."
+                        placeholder="Pesquisar..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-[2rem] py-5 pl-16 pr-8 text-sm focus:outline-none focus:border-rose-600/50 shadow-sm transition-all text-slate-900"
+                        className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 shadow-sm transition-all text-slate-900 placeholder:text-slate-400"
                     />
                 </div>
             </header>
@@ -209,7 +279,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false }) => {
                             <button
                                 key={conv.id}
                                 onClick={() => setSelectedConversation(conv.id)}
-                                className="w-full bg-white border border-slate-200 rounded-3xl p-6 text-left hover:border-rose-200 hover:shadow-lg hover:shadow-rose-600/5 transition-all group"
+                                className="w-full bg-white border border-slate-200 rounded-2xl p-5 text-left hover:border-rose-300 hover:shadow-lg hover:shadow-rose-500/10 hover:translate-x-1 transition-all duration-200 group animate-fade-in-up"
                             >
                                 <div className="flex items-center gap-4">
                                     {/* Avatar */}

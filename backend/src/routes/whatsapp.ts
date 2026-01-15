@@ -247,15 +247,22 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         // 5. Update conversation lastMessageAt
         if (conversation) {
-            await prisma.conversation.update({
+            const updatedConversation = await prisma.conversation.update({
                 where: { id: conversation.id },
-                data: { lastMessageAt: new Date() }
+                data: { lastMessageAt: new Date() },
+                include: {
+                    lead: { select: { id: true, name: true, phone: true, company: true } },
+                    messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                }
             });
 
-            // Emit real-time event to agent
-            if (conversation.assignedAgentId) {
-                emitNewMessage(conversation.id, savedMessage);
-            }
+            // Emit real-time event to update the conversation list (for all listening agents/admins)
+            const { emitConversationUpdated } = await import('../services/socketService.js');
+            emitConversationUpdated(updatedConversation);
+
+            // Emit real-time message to the specific conversation room
+            // Always emit, regardless of assignment, so admins/supervisors can see it
+            emitNewMessage(conversation.id, savedMessage);
         }
 
         return reply.code(200).send({ status: 'ok' });

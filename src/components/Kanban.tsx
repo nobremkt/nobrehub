@@ -22,6 +22,7 @@ import {
 interface KanbanProps {
   monitoredUser?: Agent | null;
   onExitMonitor?: () => void;
+  isOwnWorkspace?: boolean; // When true, don't show supervision banner (viewing own workspace)
 }
 
 // Configurações de colunas por setor
@@ -163,7 +164,7 @@ const DroppableColumn = ({ stage, children, count, onAddLead, buttons, editor }:
 };
 
 
-const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
+const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWorkspace = false }) => {
   const [currentPipeline, setCurrentPipeline] = useState<'sales' | 'production' | 'post_sales'>('sales');
   const [salesSubPipeline, setSalesSubPipeline] = useState<'high_ticket' | 'low_ticket'>('high_ticket');
 
@@ -375,8 +376,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in slide-in-from-right duration-500">
 
-        {/* SUPERVISION HEADER */}
-        {monitoredUser && (
+        {/* SUPERVISION HEADER - Only show when supervising ANOTHER user's workspace */}
+        {monitoredUser && !isOwnWorkspace && onExitMonitor && (
           <div className="bg-amber-400 px-10 py-4 flex items-center justify-between shadow-lg shadow-amber-400/20 z-[60] animate-in slide-in-from-top duration-500">
             <div className="flex items-center gap-4">
               <div className="bg-amber-900/10 p-2 rounded-xl">
@@ -399,7 +400,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
         <header className="px-10 pt-10 pb-8 border-b border-slate-200 bg-white shadow-sm z-10 transition-all">
           <div className="flex flex-col xl:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 w-full xl:w-auto">
-              {monitoredUser && (
+              {monitoredUser && !isOwnWorkspace && onExitMonitor && (
                 <button
                   onClick={onExitMonitor}
                   className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 hover:bg-white transition-all"

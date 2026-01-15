@@ -17,7 +17,13 @@ export function initializeSocketService(httpServer: HttpServer): Server {
             origin: process.env.CORS_ORIGIN || '*',
             methods: ['GET', 'POST'],
             credentials: true
-        }
+        },
+        // Stability settings to reduce connection flapping
+        pingTimeout: 60000,      // Wait 60s for pong before marking disconnected
+        pingInterval: 25000,     // Send ping every 25s
+        transports: ['websocket', 'polling'],
+        allowUpgrades: true,
+        perMessageDeflate: false // Disable compression for faster processing
     });
 
     io.on('connection', (socket: Socket) => {

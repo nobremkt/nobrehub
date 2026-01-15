@@ -15,10 +15,15 @@ export function useSocket({ userId, autoConnect = true }: UseSocketOptions = {})
     useEffect(() => {
         if (!autoConnect) return;
 
-        // Create socket connection
+        // Create socket connection with stability settings
         socketRef.current = io(SOCKET_URL, {
             transports: ['websocket', 'polling'],
-            autoConnect: true
+            autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000
         });
 
         const socket = socketRef.current;

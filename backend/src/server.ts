@@ -75,6 +75,30 @@ async function bootstrap() {
         await server.register(publicRoutes, { prefix: '/public' });
         await server.register(authRoutes, { prefix: '/auth' });
         await server.register(leadRoutes, { prefix: '/leads' });
+
+        // DEV ONLY: Public dev routes (no auth required)
+        if (process.env.NODE_ENV !== 'production') {
+            server.get('/users/dev-list', async () => {
+                const { PrismaClient } = await import('@prisma/client');
+                const prisma = new PrismaClient();
+                const users = await prisma.user.findMany({
+                    where: { isActive: true },
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                        role: true,
+                        pipelineType: true,
+                        isOnline: true
+                    },
+                    orderBy: { name: 'asc' }
+                });
+                await prisma.$disconnect();
+                return users;
+            });
+            console.log('✅ Dev routes registered (dev-list)');
+        }
+
         await server.register(userRoutes, { prefix: '/users' });
         await server.register(statsRoutes, { prefix: '/stats' });
         await server.register(roundRobinRoutes, { prefix: '/round-robin' });

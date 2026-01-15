@@ -38,10 +38,10 @@ const PersonalWorkspace: React.FC = () => {
 
     // We reuse the Kanban component, passing the current user as the "monitored" user
     // This will force the Kanban to display *their* data and board configuration.
-    // We pass undefined to onExitMonitor so no "Exit" button is shown, or we can handle it differently.
+    // isOwnWorkspace=true tells Kanban not to show the supervision banner
     return (
         <div className="h-full w-full">
-            <Kanban monitoredUser={currentUser} />
+            <Kanban monitoredUser={currentUser} isOwnWorkspace={true} />
         </div>
     );
 };

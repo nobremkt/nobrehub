@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 
 interface LeadListProps {
-  onNavigateToChat?: () => void;
+  onNavigateToChat?: (leadId?: string) => void;
 }
 
 const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
@@ -210,10 +210,10 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   };
 
   const handleOpenChat = (lead: Lead) => {
-    // Navigate to chat/inbox view
+    // Navigate to chat/inbox view with lead ID
     if (onNavigateToChat) {
-      onNavigateToChat();
-      toast.success(`Navegando para Atendimento - ${lead.name}`);
+      onNavigateToChat(lead.id);
+      toast.success(`Abrindo conversa com ${lead.name}`);
     } else {
       toast.info(`Chat com ${lead.name} - vá para Atendimento`);
     }

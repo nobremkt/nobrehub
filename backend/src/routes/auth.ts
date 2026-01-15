@@ -63,6 +63,47 @@ export default async function authRoutes(server: FastifyInstance) {
         }
     });
 
+    // POST /auth/dev-login - Development login without password (DEV ONLY)
+    server.post('/dev-login', async (request, reply) => {
+        // Only allow in development
+        if (process.env.NODE_ENV === 'production') {
+            return reply.code(403).send({ error: 'Dev login disabled in production' });
+        }
+
+        try {
+            const { userId } = request.body as { userId: string };
+
+            const user = await prisma.user.findUnique({
+                where: { id: userId }
+            });
+
+            if (!user) {
+                return reply.code(404).send({ error: 'User not found' });
+            }
+
+            const token = server.jwt.sign({
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                pipelineType: user.pipelineType
+            }, { expiresIn: '7d' });
+
+            return {
+                token,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    pipelineType: user.pipelineType
+                }
+            };
+        } catch (error) {
+            console.error('Dev login error:', error);
+            return reply.code(500).send({ error: 'Dev login failed' });
+        }
+    });
+
     // POST /auth/register (admin only)
     server.post('/register', {
         preHandler: [(server as any).authenticate]

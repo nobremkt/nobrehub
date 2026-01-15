@@ -158,7 +158,10 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
             where: {
                 isActive: true,
                 isOnline: true,
-                ...(pipeline && { pipelineType: pipeline as any })
+                OR: [
+                    { pipelineType: pipeline ? (pipeline as any) : undefined },
+                    { role: { in: ['admin', 'manager_sales', 'manager_production', 'post_sales'] } }
+                ]
             },
             select: { id: true, name: true, pipelineType: true, currentChatCount: true, maxConcurrentChats: true }
         });
