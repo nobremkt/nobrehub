@@ -78,16 +78,26 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
     if (!phone) return '-';
     // Remove all non-digits
     const digits = phone.replace(/\D/g, '');
-    // Format as (XX) X XXXX-XXXX for 11 digits or (XX) XXXX-XXXX for 10 digits
+
+    // 12 digits (55 + 2 DDD + 8 NUM) or 13 digits (55 + 2 DDD + 9 NUM)
+    if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+      const ddd = digits.slice(2, 4);
+      const num = digits.slice(4);
+      if (num.length === 9) {
+        return `+55 (${ddd}) ${num.slice(0, 5)}-${num.slice(5)}`;
+      } else {
+        return `+55 (${ddd}) ${num.slice(0, 4)}-${num.slice(4)}`;
+      }
+    }
+
+    // Standard local formats (10 or 11)
     if (digits.length === 11) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7)}`;
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     } else if (digits.length === 10) {
       return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    } else if (digits.length === 13) {
-      // With country code 55
-      return `(${digits.slice(2, 4)}) ${digits.slice(4, 5)} ${digits.slice(5, 9)}-${digits.slice(9)}`;
     }
-    return phone; // Return original if format unknown
+
+    return `+${digits}`; // Fallback for international/unknown
   };
 
   const getPipelineLabel = (pipeline?: string) => {

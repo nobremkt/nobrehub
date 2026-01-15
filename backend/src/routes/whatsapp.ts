@@ -109,6 +109,7 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         // Efficient Logging (Avoid Rate Limits)
         console.log('📩 Webhook Hit');
+        console.log('🔍 FULL PAYLOAD:', JSON.stringify(payload, null, 2));
 
         const incomingMessage = dialog360.parseIncomingMessage(payload);
 
