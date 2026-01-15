@@ -33,6 +33,15 @@ export default async function publicRoutes(server: FastifyInstance) {
             });
 
             console.log(`📥 New lead from landing page: ${lead.name} (${lead.phone})`);
+            console.log(`📝 Reason/Goal: ${lead.contactReason}`);
+
+            // Emit real-time event
+            try {
+                const { emitNewLead } = await import('../services/socketService.js');
+                emitNewLead(lead);
+            } catch (socketError) {
+                console.error('Error emitting socket event:', socketError);
+            }
 
             return reply.code(201).send({ success: true, leadId: lead.id });
         } catch (error) {
