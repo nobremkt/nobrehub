@@ -58,7 +58,7 @@ export default async function leadRoutes(server: FastifyInstance) {
                 messages: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    select: { text: true, createdAt: true }
+                    select: { text: true, createdAt: true, direction: true }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -68,6 +68,7 @@ export default async function leadRoutes(server: FastifyInstance) {
         return leads.map(l => ({
             ...l,
             lastMessage: l.messages[0]?.text || null,
+            lastMessageFrom: l.messages[0]?.direction || null,
             lastMessageAt: l.messages[0]?.createdAt || null
         }));
     });

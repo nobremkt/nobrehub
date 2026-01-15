@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target } from 'lucide-react';
+import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User } from 'lucide-react';
 import LeadModal from './LeadModal';
 import LeadDetailModal from './LeadDetailModal';
 import { getLeads, Lead, deleteLead, createLead, updateLead } from '../services/api';
@@ -350,9 +350,14 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                           </span>
                         )}
                         {lead.lastMessage && (
-                          <span className="text-[10px] text-slate-400 italic line-clamp-1 border-l-2 border-slate-200 pl-1" title={lead.lastMessage}>
-                            "{lead.lastMessage}"
-                          </span>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className={lead.lastMessageFrom === 'out' ? "text-blue-400 shrink-0" : "text-slate-400 shrink-0"}>
+                              {lead.lastMessageFrom === 'out' ? <Headphones size={10} /> : <User size={10} />}
+                            </span>
+                            <span className={`text-[10px] italic line-clamp-1 border-l-2 border-slate-200 pl-1 ${lead.lastMessageFrom === 'out' ? "text-blue-500" : "text-slate-400"}`} title={lead.lastMessage}>
+                              "{lead.lastMessage}"
+                            </span>
+                          </div>
                         )}
                         {!lead.contactReason && !lead.lastMessage && (
                           <span className="text-xs text-slate-300">-</span>

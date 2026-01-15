@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Settings, DollarSign, Factory, HeartHandshake, Layers } from 'lucide-react';
+import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Settings, DollarSign, Factory, HeartHandshake, Layers, Headphones, User } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import { getLeads, Lead, updateLeadStatus } from '../services/api';
@@ -99,10 +99,14 @@ const DraggableLeadCard = ({ lead, onClick }: { lead: Lead; onClick: () => void 
       <h3 className="font-bold text-slate-800 leading-tight mb-2">{lead.name}</h3>
 
       {/* Last Message Preview */}
+      {/* Last Message Preview */}
       {lead.lastMessage && (
-        <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg mb-3 line-clamp-2 italic border-l-2 border-slate-300">
-          "{lead.lastMessage}"
-        </p>
+        <div className={`text-[11px] px-3 py-2 rounded-lg mb-3 line-clamp-2 italic border-l-2 flex gap-2 items-start ${lead.lastMessageFrom === 'out' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-slate-50 text-slate-500 border-slate-300'}`}>
+          <span className="shrink-0 mt-0.5 opacity-70">
+            {lead.lastMessageFrom === 'out' ? <Headphones size={12} /> : <User size={12} />}
+          </span>
+          <span className="leading-tight">"{lead.lastMessage}"</span>
+        </div>
       )}
 
       <div className="flex items-center justify-between text-[11px] text-slate-400">

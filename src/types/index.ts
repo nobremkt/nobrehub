@@ -65,6 +65,7 @@ export interface Lead {
   assignedAgentId?: string;
   scoreAi?: number;
   lastMessage?: string;
+  lastMessageFrom?: 'in' | 'out';
   chatStatus?: 'open' | 'pending' | 'closed';
   language?: string;
   origin?: string;
