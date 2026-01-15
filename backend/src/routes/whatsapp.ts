@@ -517,3 +517,4 @@ if (conversation) {
             return reply.send({ messages: formattedMessages });
         });
     }
+}

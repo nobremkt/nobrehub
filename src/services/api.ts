@@ -118,6 +118,7 @@ export interface Lead {
     updatedAt: string;
     assignedAgentId?: string;
     lastMessage?: string;     // Last message preview for Kanban cards
+    lastMessageFrom?: 'in' | 'out';
     contactReason?: string;   // Reason for contact (motivo do contato)
 }
 
