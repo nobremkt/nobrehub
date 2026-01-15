@@ -104,6 +104,30 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
         return conversation;
     });
 
+    // Get conversation by lead ID (for WhatsApp button navigation)
+    fastify.get<{ Params: { leadId: string } }>('/by-lead/:leadId', async (request, reply) => {
+        const { leadId } = request.params;
+
+        const conversation = await prisma.conversation.findFirst({
+            where: {
+                leadId,
+                status: { not: 'closed' }
+            },
+            include: {
+                lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true } },
+                assignedAgent: { select: { id: true, name: true } },
+                messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+            },
+            orderBy: { lastMessageAt: 'desc' }
+        });
+
+        if (!conversation) {
+            return reply.status(404).send({ error: 'Nenhuma conversa encontrada para este lead' });
+        }
+
+        return conversation;
+    });
+
     // Get messages for a conversation
     fastify.get<{ Params: ConversationParams }>('/:id/messages', async (request, reply) => {
         const { id } = request.params;

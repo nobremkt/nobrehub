@@ -68,13 +68,47 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
 
     // Auto-select conversation when initialLeadId is provided
     useEffect(() => {
-        if (initialLeadId && conversations.length > 0 && !selectedConversation) {
-            // Find conversation for this lead
-            const conversation = conversations.find(c => c.lead.id === initialLeadId);
-            if (conversation) {
-                setSelectedConversation(conversation.id);
+        const findOrFetchConversation = async () => {
+            if (!initialLeadId || selectedConversation) return;
+
+            // First, try to find in local list
+            const localConv = conversations.find(c => c.lead.id === initialLeadId);
+            if (localConv) {
+                setSelectedConversation(localConv.id);
+                onConversationOpened?.();
+                return;
+            }
+
+            // If not found locally, try to fetch from API (might be assigned to another agent or in queue)
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const conv = await response.json();
+                    if (conv && conv.id) {
+                        // Add to local list and select it
+                        setConversations(prev => {
+                            if (prev.some(c => c.id === conv.id)) return prev;
+                            return [conv, ...prev];
+                        });
+                        setSelectedConversation(conv.id);
+                        onConversationOpened?.();
+                    }
+                } else {
+                    console.log('No conversation found for lead:', initialLeadId);
+                    onConversationOpened?.();
+                }
+            } catch (error) {
+                console.error('Error fetching conversation for lead:', error);
                 onConversationOpened?.();
             }
+        };
+
+        if (initialLeadId && conversations.length >= 0) {
+            findOrFetchConversation();
         }
     }, [initialLeadId, conversations, selectedConversation, onConversationOpened]);
 
