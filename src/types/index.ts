@@ -21,6 +21,12 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   other: 'Outros'
 };
 
+export interface BoardStageConfig {
+  id: string;
+  name: string;
+  color: 'rose' | 'emerald' | 'amber' | 'blue' | 'purple' | 'slate' | 'orange' | 'indigo';
+}
+
 export type LeadStatus = string;
 
 export const LEAD_STATUS_LABELS: Record<string, string> = {
@@ -79,6 +85,7 @@ export interface Agent {
   status: 'online' | 'offline' | 'busy';
   activeLeads: number;
   boardConfig: any[];
+  avatar?: string;
 }
 
 export interface Message {
@@ -97,7 +104,7 @@ export interface PipelineStage {
   deals: Lead[];
 }
 
-export type ViewType = 'kanban' | 'leads' | 'chat' | 'flows' | 'analytics' | 'team';
+export type ViewType = 'kanban' | 'leads' | 'chat' | 'flows' | 'analytics' | 'team' | 'personal_workspace';
 
 export const HIGH_TICKET_STAGES = [
   { id: 'novo', name: 'Novo Lead', color: 'rose' },
