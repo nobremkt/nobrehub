@@ -5,6 +5,7 @@ import LeadModal from './LeadModal';
 import LeadDetailModal from './LeadDetailModal';
 import { getLeads, Lead, deleteLead, createLead, updateLead } from '../services/api';
 import { toast } from 'sonner';
+import { useSocket } from '../hooks/useSocket';
 
 interface LeadListProps {
   onNavigateToChat?: () => void;
@@ -20,9 +21,28 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
+  const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
+
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  // Real-time Listeners
+  useEffect(() => {
+    const unsubscribeNew = subscribeToNewLeads((newLead: Lead) => {
+      toast.success(`Novo Lead na base: ${newLead.name}`);
+      setLeads(prev => [newLead, ...prev]);
+    });
+
+    const unsubscribeUpdate = subscribeToLeadUpdates((updatedLead: Lead) => {
+      setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeUpdate();
+    };
+  }, [subscribeToNewLeads, subscribeToLeadUpdates]);
 
   const fetchLeads = async () => {
     try {

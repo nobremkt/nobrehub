@@ -4,6 +4,7 @@ import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import { getLeads, Lead, updateLeadStatus } from '../services/api';
 import { toast } from 'sonner';
+import { useSocket } from '../hooks/useSocket';
 import {
   DndContext,
   closestCenter,
@@ -188,6 +189,9 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
     }
   };
 
+  // Socket Integration
+  const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket(); // Using global socket
+
   // DND Sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -215,6 +219,50 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor }) => {
     };
     loadLeads();
   }, [currentPipeline, salesSubPipeline, monitoredUser]);
+
+  // Real-time Updates: New Leads
+  useEffect(() => {
+    const isRelevantPipeline = (lead: Lead) => {
+      if (monitoredUser && lead.assignedAgentId !== monitoredUser.id) return false;
+      const pipelineType = getApiPipelineType(currentPipeline);
+      return lead.pipeline === pipelineType;
+    };
+
+    const unsubscribeNew = subscribeToNewLeads((newLead: Lead) => {
+      if (isRelevantPipeline(newLead)) {
+        toast.success(`Novo Lead: ${newLead.name}`);
+        setLeads(prev => [newLead, ...prev]);
+      }
+    });
+
+    const unsubscribeUpdate = subscribeToLeadUpdates((updatedLead: Lead) => {
+      const prevLead = leads.find(l => l.id === updatedLead.id);
+
+      // If belongs to current view, update or add
+      if (isRelevantPipeline(updatedLead)) {
+        setLeads(prev => {
+          const exists = prev.some(l => l.id === updatedLead.id);
+          if (exists) {
+            return prev.map(l => l.id === updatedLead.id ? updatedLead : l);
+          }
+          return [updatedLead, ...prev];
+        });
+
+        // Notify if moved pipeline/status significantly (optional)
+        if (prevLead && prevLead.pipeline !== updatedLead.pipeline) {
+          toast.info(`Lead movido para este pipeline: ${updatedLead.name}`);
+        }
+      } else {
+        // If it was here but moved away (pipeline changed), remove it
+        setLeads(prev => prev.filter(l => l.id !== updatedLead.id));
+      }
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeUpdate();
+    };
+  }, [currentPipeline, salesSubPipeline, monitoredUser, leads, subscribeToNewLeads, subscribeToLeadUpdates]);
 
   // Atualiza colunas quando o usuário monitorado muda ou o pipeline selecionado muda
   useEffect(() => {
