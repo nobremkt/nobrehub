@@ -50,20 +50,35 @@ function formatBrazilianPhone(phone: string): string {
 }
 
 // Utility: Extract name from WhatsApp contacts
+// Utility: Extract name from WhatsApp contacts
 function extractWhatsAppName(payload: any, senderId: string): string | null {
+    let contacts = payload.contacts;
+
+    // Normalize: Check for Meta "entry" format if contacts are missing in root
+    if (!contacts && payload.entry?.[0]?.changes?.[0]?.value?.contacts) {
+        contacts = payload.entry[0].changes[0].value.contacts;
+    }
+
     // Try to find contact matching the sender
-    if (payload.contacts && Array.isArray(payload.contacts)) {
-        const contact = payload.contacts.find((c: any) =>
+    if (contacts && Array.isArray(contacts)) {
+        console.log(`👤 Contacts found: ${contacts.length}`, JSON.stringify(contacts));
+
+        const contact = contacts.find((c: any) =>
             c.wa_id === senderId || c.wa_id === senderId.replace(/\D/g, '')
         );
+
         if (contact?.profile?.name) {
             return contact.profile.name;
         }
-        // Try first contact as fallback
-        if (payload.contacts[0]?.profile?.name) {
-            return payload.contacts[0].profile.name;
+
+        // Try first contact as fallback (usually there is only one in webhook)
+        if (contacts[0]?.profile?.name) {
+            return contacts[0].profile.name;
         }
+    } else {
+        console.log('👤 No contacts array found in payload');
     }
+
     return null;
 }
 
