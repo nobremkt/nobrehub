@@ -281,6 +281,7 @@ enum ConversationStatus { queued, active, closed }
 |--------|------|-----------|
 | POST | `/whatsapp/webhook` | Recebe webhooks 360Dialog |
 | POST | `/whatsapp/send` | Envia mensagem via API |
+| POST | `/whatsapp/upload` | Upload e Envio de Mídia |
 | GET | `/whatsapp/verify` | Verificação do webhook |
 
 ### Autenticação
@@ -444,10 +445,9 @@ O socket real-time para mensagens **RECEBIDAS** (do cliente WhatsApp) não está
 ### 🔴 Críticos
 
 #### 1. Socket.io Incoming Messages
-**Descrição:** Mensagens recebidas do WhatsApp não aparecem em tempo real, apenas via polling.  
-**Impacto:** Delay de até 5 segundos para ver mensagens novas.  
-**Status:** Em investigação.  
-**Workaround:** Polling de 5 segundos implementado.
+**Descrição:** Mensagens recebidas do WhatsApp não apareciam em tempo real.  
+**Status:** ✅ **RESOLVIDO** (v2.1 - 16/01/2026).
+**Solução:** Implementado Singleton Global no backend e corrigido filtro de fila no frontend.
 
 ### 🟡 Médios
 
@@ -514,9 +514,9 @@ Central de comunicação unificada.
 | Inbox Unificado | ✅ | Lista de todas as conversas |
 | Fila de Espera | ✅ | Leads não atribuídos |
 | Transfer de Conversa | ✅ | Passar para outro agente |
-| Real-time Mensagens | 🔴 | Socket.io não funciona para incoming |
-| Mensagens de Áudio | ❌ | Não implementado |
-| Mensagens de Imagem | ❌ | Não implementado |
+| Real-time Mensagens | ✅ | Socket.io Global Singleton + Polling Backup |
+| Mensagens de Áudio | ✅ | Playback no chat e envio |
+| Mensagens de Imagem | ✅ | Preview e envio |
 | Templates WhatsApp | ❌ | Não implementado |
 
 ### MÓDULO EQUIPE (Workspace) ✅ Implementado
@@ -538,7 +538,7 @@ Substituição do Trello para gestão de entregas.
 | Pipeline de Vídeos | ❌ | Backlog → Fazendo → Revisão → Concluído |
 | Cards de Entrega | ❌ | Vinculados ao lead/cliente |
 | Checklist de Etapas | ❌ | Roteiro, Gravação, Edição, Aprovação |
-| Upload de Arquivos | ❌ | Anexar vídeos, imagens, docs |
+| Upload de Arquivos | ✅ | Backend e Frontend integrados |
 | Deadlines | ❌ | Prazo de entrega por card |
 | Notificações | ❌ | Alertas de prazo |
 
@@ -590,7 +590,8 @@ Analytics e métricas.
 ## 13. PRÓXIMOS PASSOS (ROADMAP)
 
 ### Imediato (Esta Semana)
-- [ ] **FIX:** Resolver socket real-time para incoming messages
+- [x] **FIX:** Resolver socket real-time para incoming messages ✅
+- [x] **FEATURE:** Envio de Mídia (Imagem/Áudio) ✅
 - [ ] **CLEANUP:** Remover console.logs de debug
 - [ ] **TEST:** Validar fluxo completo de atendimento
 
@@ -743,7 +744,7 @@ DIALOG360_API_KEY=your_key
 #### 16.2.3 Armazenamento de Objetos (Object Storage)
 - **Plataformas recomendadas:** Amazon S3, Google Cloud Storage, Supabase Storage
 - **Uso:** Áudios de reuniões, imagens, documentos anexados
-- **Status Nobre:** ❌ Não implementado
+- **Status Nobre:** ✅ Supabase Storage
 
 ### 16.3 APIs e Serviços de Terceiros
 

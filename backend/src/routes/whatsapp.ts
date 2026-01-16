@@ -1,6 +1,7 @@
 // WhatsApp Routes - Handles webhook and message sending
 import { emitNewMessage, emitNewLead, emitNewConversation, emitLeadUpdated, emitConversationUpdated } from '../services/socketService.js';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { MultipartFile } from '@fastify/multipart';
 import { prisma } from '../lib/prisma.js';
 import { dialog360 } from '../services/dialog360.js';
 import { addToQueue } from '../services/queueManager.js';
@@ -558,6 +559,165 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         }));
 
         return reply.send({ messages: formattedMessages });
+    });
+
+    // Send media (Image/Audio/Doc)
+    server.post('/upload', {
+        preHandler: [(server as any).authenticate as any]
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+        const parts = request.parts();
+        const user = (request as any).user;
+        let fileBuffer: Buffer | null = null;
+        let fileName = '';
+        let fileType = ''; // mimetype
+        let fields: Record<string, any> = {};
+
+        // Parse multipart
+        for await (const part of parts) {
+            if (part.type === 'file') {
+                fileBuffer = await part.toBuffer();
+                fileName = part.filename;
+                fileType = part.mimetype;
+            } else {
+                fields[part.fieldname] = part.value;
+            }
+        }
+
+        const { to, type, leadId, caption } = fields;
+
+        if (!fileBuffer || !to || !type) {
+            return reply.code(400).send({ error: 'File, "to" phone, and "type" are required' });
+        }
+
+        console.log(`📤 Uploading media: ${fileName} (${type}) for ${to}`);
+
+        try {
+            // 1. Upload to Supabase Storage
+            const { supabase } = await import('../lib/supabase.js');
+            const fileExt = fileName.split('.').pop();
+            const storagePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('chat-media')
+                .upload(storagePath, fileBuffer, {
+                    contentType: fileType,
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('❌ Supabase Upload Error:', uploadError);
+                throw new Error('Failed to upload file to storage');
+            }
+
+            // 2. Get Public URL
+            const { data: publicUrlData } = supabase.storage
+                .from('chat-media')
+                .getPublicUrl(storagePath);
+
+            const publicUrl = publicUrlData.publicUrl;
+            console.log('🔗 Public URL:', publicUrl);
+
+            // 3. Resolve Lead and Conversation (Logic shared with /send)
+            const phoneKey = to.replace(/\D/g, '');
+            let resolvedLeadId = leadId;
+            if (!resolvedLeadId) {
+                const lead = await prisma.lead.findFirst({
+                    where: { phone: { contains: phoneKey.slice(-9) } }
+                });
+                resolvedLeadId = lead?.id;
+            }
+
+            // Find valid user
+            let validUserId: string | undefined;
+            if (user?.id) {
+                const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
+                if (existingUser) validUserId = user.id;
+            }
+
+            // Find conversation
+            let conversationId: string | undefined;
+            if (resolvedLeadId) {
+                const conversation = await prisma.conversation.findFirst({
+                    where: { leadId: resolvedLeadId, status: { not: 'closed' } },
+                    select: { id: true, assignedAgentId: true }
+                });
+                conversationId = conversation?.id;
+
+                // Auto-assign logic
+                if (conversation && !conversation.assignedAgentId && validUserId) {
+                    const updatedConversation = await prisma.conversation.update({
+                        where: { id: conversation.id },
+                        data: { assignedAgentId: validUserId, status: 'active', lastMessageAt: new Date() },
+                        include: {
+                            lead: { select: { id: true, name: true, phone: true, company: true } },
+                            messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                        }
+                    });
+                    emitConversationUpdated(updatedConversation);
+                }
+            }
+
+            // 4. Save to Database (Pending)
+            const savedMessage = await prisma.message.create({
+                data: {
+                    phone: phoneKey,
+                    leadId: resolvedLeadId,
+                    conversationId: conversationId,
+                    direction: 'out',
+                    type: type as any, // image, audio, etc.
+                    text: caption || `[${type}]`,
+                    mediaUrl: publicUrl,
+                    status: 'pending',
+                    sentByUserId: validUserId
+                }
+            });
+
+            // 5. Send via WhatsApp API
+            const result = await dialog360.sendMedia({
+                to,
+                link: publicUrl,
+                type: type as any,
+                caption
+            });
+
+            // 6. Update Message (Sent)
+            await prisma.message.update({
+                where: { id: savedMessage.id },
+                data: {
+                    waMessageId: result.messages[0]?.id,
+                    status: 'sent'
+                }
+            });
+
+            // 7. Emit Realtime Events
+            if (savedMessage.conversationId) {
+                emitNewMessage(savedMessage.conversationId, {
+                    ...savedMessage,
+                    status: 'sent',
+                    waMessageId: result.messages[0]?.id
+                });
+            }
+
+            if (resolvedLeadId) {
+                // Update lead last message
+                await prisma.lead.update({
+                    where: { id: resolvedLeadId },
+                    data: { updatedAt: new Date() } // Trigger update
+                });
+                // Emit lead update...
+            }
+
+            return reply.send({
+                success: true,
+                messageId: result.messages[0]?.id,
+                mediaUrl: publicUrl
+            });
+
+        } catch (error: any) {
+            console.error('❌ Upload/Send Failed:', error);
+            return reply.code(500).send({ error: error.message });
+        }
     });
 }
 

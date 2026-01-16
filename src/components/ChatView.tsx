@@ -7,6 +7,7 @@ interface Message {
     id: string;
     direction: 'in' | 'out';
     text?: string;
+    mediaUrl?: string; // Add mediaUrl
     type: string;
     status: string;
     createdAt: string;
@@ -46,6 +47,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [showActions, setShowActions] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
 
     // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -57,6 +59,66 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !conversation) return;
+
+        // Validations
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('Arquivo muito grande (Max 10MB)');
+            return;
+        }
+
+        setIsSending(true);
+        const toastId = toast.loading('Enviando arquivo...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('to', conversation.lead.phone);
+
+        // Determine type
+        let type = 'document';
+        if (file.type.startsWith('image/')) type = 'image';
+        if (file.type.startsWith('audio/')) type = 'audio';
+        if (file.type.startsWith('video/')) type = 'video';
+
+        formData.append('type', type);
+        formData.append('leadId', conversation.lead.id);
+        if (newMessage.trim()) formData.append('caption', newMessage.trim());
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/whatsapp/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    // Content-Type is set automatically for FormData
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Falha no upload');
+            }
+
+            const data = await response.json();
+
+            // Note: Socket will handle the incoming message update
+            toast.dismiss(toastId);
+            toast.success('Arquivo enviado!');
+            setNewMessage(''); // Clear caption if any
+            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+
+        } catch (error: any) {
+            console.error('Upload failed:', error);
+            toast.dismiss(toastId);
+            toast.error(`Erro no envio: ${error.message}`);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     const fetchAvailableAgents = async () => {
         setIsLoadingAgents(true);
@@ -436,7 +498,13 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                         <div className={`max-w-[70%] px-5 py-3 ${msg.direction === 'out' ? 'chat-bubble-mine shadow-lg shadow-rose-500/10' : 'chat-bubble-theirs'}`}>
-                            <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                            {msg.type === 'image' && msg.mediaUrl && (
+                                <img src={msg.mediaUrl} alt="Imagem enviada" className="w-full rounded-lg mb-2 max-h-60 object-cover" />
+                            )}
+                            {msg.type === 'audio' && msg.mediaUrl && (
+                                <audio controls src={msg.mediaUrl} className="w-full mb-2" />
+                            )}
+                            {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
                             <p className={`text-[10px] mt-1 ${msg.direction === 'out' ? 'text-rose-200' : 'text-slate-400'}`}>
                                 {formatTime(msg.createdAt)}
                             </p>
@@ -450,10 +518,18 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             <div className="bg-white border-t border-slate-100 p-4">
                 <div className="flex items-center gap-3">
                     {/* Attach Button */}
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept="image/*,audio/*,application/pdf"
+                    />
                     <button
+                        onClick={() => fileInputRef.current?.click()}
                         className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                        title="Anexar arquivo (em breve)"
-                        disabled
+                        title="Anexar arquivo"
+                        disabled={isSending}
                     >
                         <Paperclip size={20} />
                     </button>

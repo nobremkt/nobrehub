@@ -1,6 +1,7 @@
 console.log('🚨 SERVER ENTRY POINT - server.ts loading... [RESTART]');
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
 import { initializeSocketService } from './services/socketService.js';
@@ -27,6 +28,14 @@ async function bootstrap() {
         console.log('🚀 Starting server bootstrap...');
         console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
         console.log(`🔌 PORT: ${process.env.PORT || 'undefined (using 3000)'}`);
+
+        // Register Multipart (File Uploads)
+        await server.register(multipart, {
+            limits: {
+                fileSize: 10 * 1024 * 1024, // 10MB limit
+            }
+        });
+        console.log('✅ Multipart registered');
 
         // CORS
         console.log('Starting CORS registration...');

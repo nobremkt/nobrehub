@@ -110,6 +110,33 @@ export class Dialog360Service {
         });
     }
 
+    // Send media message (Image, Audio, Video, Document)
+    // Uses "link" (URL) approach
+    async sendMedia({ to, link, type, caption }: { to: string, link: string, type: 'image' | 'audio' | 'video' | 'document', caption?: string }): Promise<MessageResponse> {
+        const formattedPhone = to.replace(/\D/g, '');
+
+        const mediaPayload: any = {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: formattedPhone,
+            type: type,
+            [type]: {
+                link: link,
+                caption: caption // Audio/Stickes don't support caption, but Image/Video/Doc do
+            }
+        };
+
+        // Remove caption for audio type (API strictness)
+        if (type === 'audio' && mediaPayload[type].caption) {
+            delete mediaPayload[type].caption;
+        }
+
+        return this.request<MessageResponse>('/messages', {
+            method: 'POST',
+            body: JSON.stringify(mediaPayload),
+        });
+    }
+
     // Get available templates
     async getTemplates(): Promise<TemplateMessage[]> {
         try {
