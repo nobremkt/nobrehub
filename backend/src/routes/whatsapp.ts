@@ -293,6 +293,15 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         const phoneKey = to.replace(/\D/g, '');
 
+        // Verify user exists before using as foreign key
+        let validUserId: string | undefined;
+        if (user?.id) {
+            const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
+            if (existingUser) {
+                validUserId = user.id;
+            }
+        }
+
         // Find lead by phone if not provided
         let resolvedLeadId = leadId;
         if (!resolvedLeadId) {
@@ -309,17 +318,27 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                 where: {
                     leadId: resolvedLeadId,
                     status: { not: 'closed' }
-                }
+                },
+                select: { id: true, assignedAgentId: true }
             });
             conversationId = conversation?.id;
-        }
 
-        // Verify user exists before using as foreign key
-        let validUserId: string | undefined;
-        if (user?.id) {
-            const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
-            if (existingUser) {
-                validUserId = user.id;
+            // Auto-assign logic if unassigned and valid user
+            if (conversation && !conversation.assignedAgentId && validUserId) {
+                const updatedConversation = await prisma.conversation.update({
+                    where: { id: conversation.id },
+                    data: {
+                        assignedAgentId: validUserId,
+                        status: 'active',
+                        lastMessageAt: new Date()
+                    },
+                    include: {
+                        lead: { select: { id: true, name: true, phone: true, company: true } },
+                        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                    }
+                });
+                // Emit update so it moves from Queue to Mine in real-time
+                emitConversationUpdated(updatedConversation);
             }
         }
 

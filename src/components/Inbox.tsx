@@ -125,7 +125,8 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
         const unsubscribe = subscribeToConversationUpdates((updatedConv) => {
             setConversations(prev => {
                 // If closed or transferred to someone else (unless admin), remove it
-                if (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId !== userId)) {
+                // FIX: Don't remove if unassigned (queue), only if assigned to another agent
+                if (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId && updatedConv.assignedAgentId !== userId)) {
                     return prev.filter(c => c.id !== updatedConv.id);
                 }
 
@@ -150,7 +151,8 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
             });
 
             // If selected was closed/transferred, deselect
-            if (selectedConversation === updatedConv.id && (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId !== userId))) {
+            // FIX: Don't deselect if unassigned (queue)
+            if (selectedConversation === updatedConv.id && (updatedConv.status === 'closed' || (!isAdmin && updatedConv.assignedAgentId && updatedConv.assignedAgentId !== userId))) {
                 setSelectedConversation(null);
             }
         });

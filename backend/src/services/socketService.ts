@@ -118,11 +118,33 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                     }
                 });
 
-                // Update conversation last message time
-                await prisma.conversation.update({
+                // Update conversation last message time AND auto-assign if needed
+                const updateData: any = { lastMessageAt: new Date() };
+
+                // Auto-assign if currently unassigned
+                if (!conversation.assignedAgentId) {
+                    updateData.assignedAgentId = userId;
+                    updateData.status = 'active';
+                }
+
+                const updatedConversation = await prisma.conversation.update({
                     where: { id: conversationId },
-                    data: { lastMessageAt: new Date() }
+                    data: updateData,
+                    include: {
+                        lead: { select: { id: true, name: true, phone: true, company: true } },
+                        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                    }
                 });
+
+                // Notify about assignment change if it happened
+                if (!conversation.assignedAgentId) {
+                    emitConversationUpdated(updatedConversation);
+                    // Also emit specific assignment event
+                    const agentSocket = connectedAgents.get(userId);
+                    if (agentSocket) {
+                        agentSocket.emit('conversation:assigned', updatedConversation);
+                    }
+                }
 
                 // Broadcast to conversation participants
                 getIo()?.emit(`conversation:${conversationId}:message`, message);
