@@ -1,5 +1,5 @@
 // WhatsApp Routes - Handles webhook and message sending
-import { emitNewMessage, emitNewLead, emitNewConversation, emitLeadUpdated } from '../services/socketService.js';
+import { emitNewMessage, emitNewLead, emitNewConversation, emitLeadUpdated, emitConversationUpdated } from '../services/socketService.js';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { dialog360 } from '../services/dialog360.js';
@@ -113,6 +113,14 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         // Efficient Logging (Avoid Rate Limits)
         console.log('📩 Webhook Hit');
+        // Simple append file local implementation since we can't easily share the function across files without exporting it differently
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const LOG_FILE = path.join(process.cwd(), 'debug_log.txt');
+            fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] 📩 [whatsapp.ts] Webhook Hit from 360Dialog\n`);
+        } catch (e) { }
+
         console.log('🔍 FULL PAYLOAD:', JSON.stringify(payload, null, 2));
 
         const incomingMessage = dialog360.parseIncomingMessage(payload);
@@ -244,6 +252,7 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             update: {} // Do nothing if already exists
         });
         console.log('💾 Msg Saved');
+        console.log(`📧 DEBUG: conversation = ${conversation ? conversation.id : 'NULL'}`);
 
         // 5. Update conversation lastMessageAt
         if (conversation) {
@@ -257,12 +266,15 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             });
 
             // Emit real-time event to update the conversation list (for all listening agents/admins)
-            const { emitConversationUpdated } = await import('../services/socketService.js');
+            // Emit real-time lead update
+            // emitConversationUpdated is already imported at the top
             emitConversationUpdated(updatedConversation);
 
             // Emit real-time message to the specific conversation room
             // Always emit, regardless of assignment, so admins/supervisors can see it
+            console.log(`📣 ABOUT TO EMIT - conversationId: ${conversation.id}, messageId: ${savedMessage.id}`);
             emitNewMessage(conversation.id, savedMessage);
+            console.log(`📣 EMIT DONE`);
         }
 
         return reply.code(200).send({ status: 'ok' });
@@ -290,16 +302,38 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             resolvedLeadId = lead?.id;
         }
 
+        // Find active conversation for this lead (CRITICAL for real-time)
+        let conversationId: string | undefined;
+        if (resolvedLeadId) {
+            const conversation = await prisma.conversation.findFirst({
+                where: {
+                    leadId: resolvedLeadId,
+                    status: { not: 'closed' }
+                }
+            });
+            conversationId = conversation?.id;
+        }
+
+        // Verify user exists before using as foreign key
+        let validUserId: string | undefined;
+        if (user?.id) {
+            const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
+            if (existingUser) {
+                validUserId = user.id;
+            }
+        }
+
         // Save message to database first (pending status)
         const savedMessage = await prisma.message.create({
             data: {
                 phone: phoneKey,
                 leadId: resolvedLeadId,
+                conversationId: conversationId,
                 direction: 'out',
                 type: 'text',
                 text: text,
                 status: 'pending',
-                sentByUserId: user?.id
+                sentByUserId: validUserId // Only set if user actually exists
             }
         });
 
@@ -328,6 +362,15 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                         lastMessageAt: new Date()
                     });
                 }
+            }
+
+            // Emit real-time message to conversation room (so sender and others get it)
+            if (savedMessage.conversationId) {
+                emitNewMessage(savedMessage.conversationId, {
+                    ...savedMessage,
+                    status: 'sent',
+                    waMessageId: result.messages[0]?.id
+                });
             }
 
             console.log('✅ Message sent to:', to);

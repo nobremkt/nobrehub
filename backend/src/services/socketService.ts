@@ -1,20 +1,29 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { Dialog360Service } from './dialog360.js';
 
-const prisma = new PrismaClient();
 const dialog360 = new Dialog360Service();
 
 let io: Server | null = null;
 
+// Global type definition for io
+declare global {
+    var ioInstance: Server | null;
+}
+
 // Connected agents mapped by their user ID
 const connectedAgents = new Map<string, Socket>();
 
+const INSTANCE_ID = Math.random().toString(36).substring(7);
+console.log(`🔌 [socketService] Module Loaded. Instance ID: ${INSTANCE_ID}`);
+
 export function initializeSocketService(httpServer: HttpServer): Server {
-    io = new Server(httpServer, {
+    console.log(`🔌 [socketService] Initializing on Instance: ${INSTANCE_ID}`);
+    const newIo = new Server(httpServer, {
         cors: {
-            origin: process.env.CORS_ORIGIN || '*',
+            origin: "*", // DEBUG: Allow all origins to rule out CORS issues
             methods: ['GET', 'POST'],
             credentials: true
         },
@@ -26,7 +35,10 @@ export function initializeSocketService(httpServer: HttpServer): Server {
         perMessageDeflate: false // Disable compression for faster processing
     });
 
-    io.on('connection', (socket: Socket) => {
+    global.ioInstance = newIo; // Store in global
+    io = newIo; // Keep local ref for compatibility
+
+    newIo.on('connection', (socket: Socket) => {
         console.log('🔌 Socket connected:', socket.id);
 
         // Agent joins with their user ID
@@ -44,7 +56,7 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                 console.log(`✅ Agent ${userId} is now online`);
 
                 // Notify others that agent is online
-                io?.emit('agent:status', { userId, isOnline: true });
+                getIo()?.emit('agent:status', { userId, isOnline: true });
             } catch (error) {
                 console.error('Error joining agent:', error);
             }
@@ -59,7 +71,13 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                 const conversations = await prisma.conversation.findMany({
                     where: user.role === 'admin'
                         ? { status: { not: 'closed' } }
-                        : { assignedAgentId: userId, status: { not: 'closed' } },
+                        : {
+                            OR: [
+                                { assignedAgentId: userId },
+                                { assignedAgentId: null }
+                            ],
+                            status: { not: 'closed' }
+                        },
                     include: {
                         lead: { select: { id: true, name: true, phone: true, company: true } },
                         messages: { orderBy: { createdAt: 'desc' }, take: 1 }
@@ -107,7 +125,7 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                 });
 
                 // Broadcast to conversation participants
-                io?.emit(`conversation:${conversationId}:message`, message);
+                getIo()?.emit(`conversation:${conversationId}:message`, message);
 
                 // Send via WhatsApp API
                 try {
@@ -148,7 +166,7 @@ export function initializeSocketService(httpServer: HttpServer): Server {
                         data: { isOnline: false }
                     });
                     connectedAgents.delete(userId);
-                    io?.emit('agent:status', { userId, isOnline: false });
+                    getIo()?.emit('agent:status', { userId, isOnline: false });
                     console.log(`❌ Agent ${userId} disconnected`);
                 } catch (error) {
                     console.error('Error on disconnect:', error);
@@ -157,12 +175,23 @@ export function initializeSocketService(httpServer: HttpServer): Server {
         });
     });
 
-    return io;
+    return newIo;
+}
+
+// Helper getter - Critical for Singleton
+function getIo(): Server | null {
+    return global.ioInstance || io;
 }
 
 // Emit a new message event to all connected clients in a conversation
 export function emitNewMessage(conversationId: string, message: any) {
-    io?.emit(`conversation:${conversationId}:message`, message);
+    const serverVar = getIo();
+    if (!serverVar) {
+        console.error(`❌ [socketService ${INSTANCE_ID}] Socket IO is not initialized during emitNewMessage`);
+    } else {
+        console.log(`📣 [socketService ${INSTANCE_ID}] Emitting message to conversation:${conversationId}:message`);
+        serverVar.emit(`conversation:${conversationId}:message`, message);
+    }
 }
 
 // Emit conversation assignment to the agent
@@ -173,36 +202,36 @@ export function emitConversationAssigned(agentId: string, conversation: any) {
     }
 }
 
-// NEW: Emit when a conversation is updated (status, assignment, etc.)
+// Emitting conversation updated event
 export function emitConversationUpdated(conversation: any) {
     console.log('📣 Emitting conversation:updated event');
-    io?.emit('conversation:updated', conversation);
+    getIo()?.emit('conversation:updated', conversation);
 }
 
 // Emit to all admins about new queued conversation
 export function emitQueueUpdate(queueItem: any) {
-    io?.emit('queue:update', queueItem);
+    getIo()?.emit('queue:update', queueItem);
 }
 
-// NEW: Emit when a new lead is created (for real-time lead list updates)
+// Emit when a new lead is created
 export function emitNewLead(lead: any) {
     console.log('📣 Emitting lead:new event for:', lead.name);
-    io?.emit('lead:new', lead);
+    getIo()?.emit('lead:new', lead);
 }
 
-// NEW: Emit when a lead is updated (status change, pipeline move, etc.)
+// Emit when a lead is updated
 export function emitLeadUpdated(lead: any) {
     console.log('📣 Emitting lead:updated event for:', lead.name);
-    io?.emit('lead:updated', lead);
+    getIo()?.emit('lead:updated', lead);
 }
 
-// NEW: Emit when a new conversation is created (for real-time inbox updates)
+// Emit when a new conversation is created
 export function emitNewConversation(conversation: any) {
     console.log('📣 Emitting conversation:new event');
-    io?.emit('conversation:new', conversation);
+    getIo()?.emit('conversation:new', conversation);
 }
 
 // Get the Socket.io server instance
 export function getSocketServer(): Server | null {
-    return io;
+    return getIo();
 }

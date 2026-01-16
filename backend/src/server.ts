@@ -1,9 +1,10 @@
-console.log('🚨 SERVER ENTRY POINT - server.ts loading...');
+console.log('🚨 SERVER ENTRY POINT - server.ts loading... [RESTART]');
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
 import { initializeSocketService } from './services/socketService.js';
+import prisma from './lib/prisma.js';
 
 // Load environment variables
 dotenv.config();
@@ -79,22 +80,24 @@ async function bootstrap() {
         // DEV ONLY: Public dev routes (no auth required)
         if (process.env.NODE_ENV !== 'production') {
             server.get('/users/dev-list', async () => {
-                const { PrismaClient } = await import('@prisma/client');
-                const prisma = new PrismaClient();
-                const users = await prisma.user.findMany({
-                    where: { isActive: true },
-                    select: {
-                        id: true,
-                        email: true,
-                        name: true,
-                        role: true,
-                        pipelineType: true,
-                        isOnline: true
-                    },
-                    orderBy: { name: 'asc' }
-                });
-                await prisma.$disconnect();
-                return users;
+                try {
+                    const users = await prisma.user.findMany({
+                        where: { isActive: true },
+                        select: {
+                            id: true,
+                            email: true,
+                            name: true,
+                            role: true,
+                            pipelineType: true,
+                            isOnline: true
+                        },
+                        orderBy: { name: 'asc' }
+                    });
+                    return users;
+                } catch (error: any) {
+                    console.error('❌ dev-list error:', error);
+                    return { error: error.message };
+                }
             });
             console.log('✅ Dev routes registered (dev-list)');
         }

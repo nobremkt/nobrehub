@@ -106,9 +106,11 @@ export interface Lead {
     phone: string;
     company?: string;
     source: string;
-    pipeline: 'high_ticket' | 'low_ticket';
+    pipeline: 'high_ticket' | 'low_ticket' | 'production' | 'post_sales';
     statusHT?: string;
     statusLT?: string;
+    statusProduction?: string;
+    statusPostSales?: string;
     assignedTo?: string;
     assignedUser?: { id: string; name: string };
     estimatedValue: number;
@@ -128,9 +130,11 @@ export interface CreateLeadData {
     phone: string;
     company?: string;
     source?: string;
-    pipeline: 'high_ticket' | 'low_ticket';
+    pipeline: 'high_ticket' | 'low_ticket' | 'production' | 'post_sales';
     statusHT?: string;
     statusLT?: string;
+    statusProduction?: string;
+    statusPostSales?: string;
     estimatedValue?: number;
     tags?: string[];
     notes?: string;

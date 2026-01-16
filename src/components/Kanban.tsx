@@ -168,6 +168,15 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   const [currentPipeline, setCurrentPipeline] = useState<'sales' | 'production' | 'post_sales'>('sales');
   const [salesSubPipeline, setSalesSubPipeline] = useState<'high_ticket' | 'low_ticket'>('high_ticket');
 
+  // Simple pipeline change handlers (CSS handles the animation)
+  const handlePipelineChange = (newPipeline: 'sales' | 'production' | 'post_sales') => {
+    if (newPipeline !== currentPipeline) setCurrentPipeline(newPipeline);
+  };
+
+  const handleSubPipelineChange = (sub: 'high_ticket' | 'low_ticket') => {
+    if (sub !== salesSubPipeline) setSalesSubPipeline(sub);
+  };
+
   // Se estiver monitorando, usa o board do usuário. Se não, usa o template do pipeline selecionado.
   const getInitialStages = () => {
     if (monitoredUser?.boardConfig) return monitoredUser.boardConfig;
@@ -421,54 +430,57 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
               </div>
             </div>
 
-            {/* SELETOR DE PIPELINE (Aparece apenas se não estiver em modo supervisão) */}
+            {/* SELETOR DE PIPELINE + SUBTABS - Container com transição de slide */}
             {!monitoredUser && (
-              <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full xl:w-auto overflow-x-auto no-scrollbar">
-                <button
-                  onClick={() => setCurrentPipeline('sales')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'sales' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                >
-                  <DollarSign size={14} /> Vendas
-                </button>
-                <button
-                  onClick={() => setCurrentPipeline('production')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'production' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                >
-                  <Factory size={14} /> Produção
-                </button>
-                <button
-                  onClick={() => setCurrentPipeline('post_sales')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'post_sales' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                >
-                  <HeartHandshake size={14} /> Pós-Venda
-                </button>
-              </div>
-            )}
+              <div className="flex items-center justify-center gap-3 transition-all duration-300 ease-out">
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar">
+                  <button
+                    onClick={() => handlePipelineChange('sales')}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'sales' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                  >
+                    <DollarSign size={14} /> Vendas
+                  </button>
+                  <button
+                    onClick={() => handlePipelineChange('production')}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'production' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                  >
+                    <Factory size={14} /> Produção
+                  </button>
+                  <button
+                    onClick={() => handlePipelineChange('post_sales')}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'post_sales' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                  >
+                    <HeartHandshake size={14} /> Pós-Venda
+                  </button>
+                </div>
 
-            {/* SUBTABS HT/LT - Aparece apenas quando 'sales' está selecionado */}
-            {!monitoredUser && currentPipeline === 'sales' && (
-              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 gap-1">
-                <button
-                  onClick={() => setSalesSubPipeline('high_ticket')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'high_ticket'
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                    : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
-                    }`}
-                >
-                  <Layers size={12} /> High Ticket
-                </button>
-                <button
-                  onClick={() => setSalesSubPipeline('low_ticket')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'low_ticket'
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                >
-                  <Layers size={12} /> Low Ticket
-                </button>
+                {/* SUBTABS HT/LT - Aparece com animação de slide quando 'sales' está selecionado */}
+                <div className={`flex bg-slate-50 p-1 rounded-xl border border-slate-200 gap-1 transition-all duration-300 ease-out origin-left ${currentPipeline === 'sales'
+                  ? 'opacity-100 scale-x-100 max-w-[280px]'
+                  : 'opacity-0 scale-x-0 max-w-0 overflow-hidden'
+                  }`}>
+                  <button
+                    onClick={() => handleSubPipelineChange('high_ticket')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'high_ticket'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                      : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+                      }`}
+                  >
+                    <Layers size={12} /> High Ticket
+                  </button>
+                  <button
+                    onClick={() => handleSubPipelineChange('low_ticket')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'low_ticket'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                      : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                  >
+                    <Layers size={12} /> Low Ticket
+                  </button>
+                </div>
               </div>
             )}
 

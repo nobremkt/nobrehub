@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
+import { SocketProvider } from './contexts/SocketContext';
 import Sidebar from './components/Sidebar';
 import Kanban from './components/Kanban';
 import LeadList from './components/LeadList';
@@ -108,7 +109,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <>
+    <SocketProvider>
       <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 overflow-hidden">
         {/* Esconde o sidebar se estiver monitorando para focar no workspace */}
         {!monitoredUser && (
@@ -127,7 +128,7 @@ const App: React.FC = () => {
         </main>
       </div>
       <Toaster richColors position="bottom-right" />
-    </>
+    </SocketProvider>
   );
 };
 

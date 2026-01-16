@@ -1,8 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { closeConversation, transferConversation, getQueueStatus } from '../services/queueManager.js';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma.js';
 
 interface ConversationParams {
     id: string;
@@ -63,9 +62,15 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
                 return reply.status(401).send({ error: 'Usuário não autenticado' });
             }
 
-            const whereClause = user.role === 'admin'
+            const whereClause: any = user.role === 'admin'
                 ? { status: { not: 'closed' as const } }
-                : { assignedAgentId: user.id, status: { not: 'closed' as const } };
+                : {
+                    OR: [
+                        { assignedAgentId: user.id },
+                        { assignedAgentId: null }
+                    ],
+                    status: { not: 'closed' as const }
+                };
 
             const conversations = await prisma.conversation.findMany({
                 where: whereClause,
@@ -84,27 +89,8 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
         }
     });
 
-    // Get a single conversation with all messages
-    fastify.get<{ Params: ConversationParams }>('/:id', async (request, reply) => {
-        const { id } = request.params;
-
-        const conversation = await prisma.conversation.findUnique({
-            where: { id },
-            include: {
-                lead: true,
-                assignedAgent: { select: { id: true, name: true } },
-                messages: { orderBy: { createdAt: 'asc' } }
-            }
-        });
-
-        if (!conversation) {
-            return reply.status(404).send({ error: 'Conversa não encontrada' });
-        }
-
-        return conversation;
-    });
-
     // Get conversation by lead ID (for WhatsApp button navigation)
+    // NOTE: Must be defined BEFORE /:id to avoid route conflicts
     fastify.get<{ Params: { leadId: string } }>('/by-lead/:leadId', async (request, reply) => {
         const { leadId } = request.params;
 
@@ -123,6 +109,26 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
         if (!conversation) {
             return reply.status(404).send({ error: 'Nenhuma conversa encontrada para este lead' });
+        }
+
+        return conversation;
+    });
+
+    // Get a single conversation with all messages
+    fastify.get<{ Params: ConversationParams }>('/:id', async (request, reply) => {
+        const { id } = request.params;
+
+        const conversation = await prisma.conversation.findUnique({
+            where: { id },
+            include: {
+                lead: true,
+                assignedAgent: { select: { id: true, name: true } },
+                messages: { orderBy: { createdAt: 'asc' } }
+            }
+        });
+
+        if (!conversation) {
+            return reply.status(404).send({ error: 'Conversa não encontrada' });
         }
 
         return conversation;

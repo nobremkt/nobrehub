@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma.js';
 import { z } from 'zod';
-import { emitNewLead, emitLeadUpdated } from '../services/socketService.js';
+import { emitNewLead, emitLeadUpdated, emitConversationUpdated, emitNewConversation } from '../services/socketService.js';
 
 // Validation schemas
 const createLeadSchema = z.object({
@@ -112,8 +112,23 @@ export default async function leadRoutes(server: FastifyInstance) {
                 data: { leadId: lead.id, userId: user.id, type: 'note', content: 'Lead criado' }
             });
 
-            // Emit Real-time Event
+            // Auto-create a conversation for manual leads so they appear in Inbox
+            const conversation = await prisma.conversation.create({
+                data: {
+                    leadId: lead.id,
+                    status: 'queued',
+                    pipeline: lead.pipeline,
+                    assignedAgentId: null  // Goes to queue for assignment
+                },
+                include: {
+                    lead: { select: { id: true, name: true, phone: true, company: true } },
+                    assignedAgent: { select: { id: true, name: true } }
+                }
+            });
+
+            // Emit Real-time Events
             emitNewLead(lead);
+            emitNewConversation(conversation);
 
             return reply.code(201).send(lead);
         } catch (error) {
@@ -130,6 +145,29 @@ export default async function leadRoutes(server: FastifyInstance) {
             const { id } = request.params as { id: string };
             const data = updateLeadSchema.parse(request.body);
             const lead = await prisma.lead.update({ where: { id }, data });
+
+            // Sync pipeline change to active conversation
+            if (data.pipeline) {
+                const activeConversation = await prisma.conversation.findFirst({
+                    where: { leadId: id, status: { not: 'closed' } }
+                });
+
+                if (activeConversation && activeConversation.pipeline !== data.pipeline) {
+                    console.log(`🔄 Syncing conversation pipeline: ${activeConversation.pipeline} -> ${data.pipeline}`);
+                    const updatedConversation = await prisma.conversation.update({
+                        where: { id: activeConversation.id },
+                        data: {
+                            pipeline: data.pipeline,
+                            assignedAgentId: null // Reset assignment to return to queue
+                        },
+                        include: {
+                            lead: { select: { id: true, name: true, phone: true, company: true } },
+                            assignedAgent: { select: { id: true, name: true } }
+                        }
+                    });
+                    emitConversationUpdated(updatedConversation);
+                }
+            }
 
             // Emit Real-time Event
             emitLeadUpdated(lead);

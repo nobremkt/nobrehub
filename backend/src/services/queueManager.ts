@@ -1,7 +1,7 @@
 import { PrismaClient, PipelineType, QueueStatus, ConversationStatus } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { emitConversationAssigned, emitQueueUpdate, emitConversationUpdated, emitLeadUpdated } from './socketService.js';
 
-const prisma = new PrismaClient();
 
 /**
  * Queue Manager Service
@@ -180,17 +180,70 @@ export async function transferConversation(
         throw new Error('Conversation not found');
     }
 
-    const oldAgentId = conversation.assignedAgentId;
+    const newAgent = await prisma.user.findUnique({
+        where: { id: newAgentId }
+    });
 
-    // Update conversation with new agent
+    if (!newAgent) {
+        throw new Error('New agent not found');
+    }
+
+    const oldAgentId = conversation.assignedAgentId;
+    let newPipeline = conversation.pipeline;
+
+    // Determine new pipeline based on agent's pipelineType or role
+    if (newAgent.pipelineType) {
+        newPipeline = newAgent.pipelineType;
+    } else if (newAgent.role === 'post_sales') {
+        newPipeline = 'post_sales';
+    } else if (newAgent.role === 'production' || newAgent.role === 'manager_production') {
+        newPipeline = 'production';
+    } else if (newAgent.role === 'closer_ht') {
+        newPipeline = 'high_ticket';
+    } else if (newAgent.role === 'closer_lt') {
+        newPipeline = 'low_ticket';
+    }
+
+    // Update conversation with new agent and potentially new pipeline
     const updated = await prisma.conversation.update({
         where: { id: conversationId },
-        data: { assignedAgentId: newAgentId },
+        data: {
+            assignedAgentId: newAgentId,
+            pipeline: newPipeline
+        },
         include: {
             lead: { select: { id: true, name: true, phone: true, company: true } },
             assignedAgent: { select: { id: true, name: true } }
         }
     });
+
+    // Update Lead pipeline if it changed
+    if (newPipeline !== conversation.pipeline) {
+        const leadUpdateData: any = { pipeline: newPipeline };
+
+        // Set initial status for the new pipeline
+        if (newPipeline === 'post_sales') {
+            leadUpdateData.statusPostSales = 'novo';
+            // Optional: clear other statuses if needed, or keep them as history
+            leadUpdateData.statusHT = null;
+            leadUpdateData.statusLT = null;
+        } else if (newPipeline === 'production') {
+            leadUpdateData.statusProduction = 'backlog';
+        } else if (newPipeline === 'high_ticket') {
+            leadUpdateData.statusHT = 'novo';
+        } else if (newPipeline === 'low_ticket') {
+            leadUpdateData.statusLT = 'novo';
+        }
+
+        await prisma.lead.update({
+            where: { id: conversation.leadId },
+            data: leadUpdateData
+        });
+
+        // Emit lead update to frontend
+        const fullLead = await prisma.lead.findUnique({ where: { id: conversation.leadId } });
+        if (fullLead) emitLeadUpdated(fullLead);
+    }
 
     // Update chat counts
     if (oldAgentId) {

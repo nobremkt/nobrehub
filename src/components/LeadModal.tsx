@@ -22,7 +22,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
     company: '',
     value: '',
     status: initialStage || 'novo',
-    pipeline: 'high_ticket' as 'high_ticket' | 'low_ticket',
+    pipeline: 'high_ticket' as 'high_ticket' | 'low_ticket' | 'production' | 'post_sales',
     source: ''
   });
 
@@ -35,8 +35,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
         phone: leadToEdit.phone || '',
         company: leadToEdit.company || '',
         value: leadToEdit.estimatedValue?.toString() || '',
-        status: leadToEdit.statusHT || leadToEdit.statusLT || 'novo',
-        pipeline: leadToEdit.pipeline || 'high_ticket',
+        status: leadToEdit.statusHT || leadToEdit.statusLT || leadToEdit.statusProduction || leadToEdit.statusPostSales || 'novo',
+        pipeline: (leadToEdit.pipeline as any) || 'high_ticket',
         source: leadToEdit.source || ''
       });
     } else if (isOpen && !leadToEdit) {
@@ -177,6 +177,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
               options={[
                 { value: 'high_ticket', label: 'High Ticket' },
                 { value: 'low_ticket', label: 'Low Ticket' },
+                { value: 'production', label: 'Produção' },
+                { value: 'post_sales', label: 'Pós-Venda' },
               ]}
               value={formData.pipeline}
               onChange={(val) => setFormData({ ...formData, pipeline: val as any })}

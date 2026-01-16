@@ -44,7 +44,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const response = await fetch(`${API_URL}/users/dev-list`);
       if (response.ok) {
         const users = await response.json();
-        setDevUsers(users);
+        if (Array.isArray(users)) {
+          setDevUsers(users);
+        } else {
+          console.error('dev-list returned non-array:', users);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch dev users:', err);

@@ -26,7 +26,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsOpen(false);
     };
-    
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -44,16 +44,15 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
   return (
     <div className={`relative space-y-2 ${className}`} ref={dropdownRef}>
       {label && (
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 block">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block">
           {label}
         </label>
       )}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-white border transition-all duration-300 px-6 py-4 rounded-3xl text-sm text-left gap-3 shadow-sm ${
-          isOpen ? 'border-rose-600 ring-4 ring-rose-600/5' : 'border-slate-200 hover:border-slate-300'
-        }`}
+        className={`w-full flex items-center justify-between bg-slate-50 border transition-all duration-300 px-6 py-4 rounded-2xl text-left gap-3 shadow-inner ${isOpen ? 'border-rose-600 ring-4 ring-rose-600/5' : 'border-slate-200 hover:border-slate-300'
+          }`}
       >
         <span className={`whitespace-nowrap truncate ${selectedOption ? 'text-slate-900 font-bold' : 'text-slate-300'}`}>
           {selectedOption ? selectedOption.label : placeholder || 'Selecionar...'}
@@ -72,11 +71,10 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, onChang
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-6 py-4 text-sm transition-all text-left group ${
-                  value === option.value 
-                    ? 'bg-rose-50 text-rose-600' 
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
+                className={`w-full flex items-center justify-between px-6 py-4 text-sm transition-all text-left group ${value === option.value
+                  ? 'bg-rose-50 text-rose-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
               >
                 <span className={`tracking-tight whitespace-nowrap ${value === option.value ? 'font-black' : 'font-bold'}`}>
                   {option.label}

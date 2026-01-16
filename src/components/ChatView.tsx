@@ -11,6 +11,8 @@ interface Message {
     status: string;
     createdAt: string;
     sentByUser?: { id: string; name: string };
+    waMessageId?: string;
+    timestamp?: string;
 }
 
 interface Conversation {
@@ -51,6 +53,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [isLoadingAgents, setIsLoadingAgents] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = useCallback(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
 
     const fetchAvailableAgents = async () => {
         setIsLoadingAgents(true);
@@ -94,7 +100,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         }
     };
 
-    const { subscribeToConversation, sendMessage } = useSocket({ userId });
+    const { subscribeToConversation, sendMessage, isConnected } = useSocket({ userId });
 
     // Fetch conversation details
     const fetchConversation = useCallback(async () => {
@@ -119,26 +125,175 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         fetchConversation();
     }, [fetchConversation]);
 
+    // POLLING FALLBACK: Refresh messages every 3 seconds to ensure real-time
+    // This guarantees messages appear even if socket events fail
+    useEffect(() => {
+        if (!conversationId || isLoading) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/conversations/${conversationId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const newMessages = data.messages || [];
+
+                    // Only update if there are NEW messages (compare length and last ID)
+                    setMessages(prev => {
+                        if (newMessages.length > prev.length) {
+                            console.log('📬 Polling: New messages detected!', newMessages.length - prev.length, 'new');
+                            return newMessages;
+                        }
+                        // Check if last message changed (in case of status updates)
+                        if (prev.length > 0 && newMessages.length > 0) {
+                            const lastPrev = prev[prev.length - 1];
+                            const lastNew = newMessages[newMessages.length - 1];
+                            if (lastPrev.id !== lastNew.id) {
+                                console.log('📬 Polling: Last message changed, updating');
+                                return newMessages;
+                            }
+                        }
+                        return prev; // No changes
+                    });
+                }
+            } catch (error) {
+                // Silent fail for polling - don't spam console
+            }
+        }, 5000); // Poll every 5 seconds as fallback (socket handles real-time)
+
+        return () => clearInterval(pollInterval);
+    }, [conversationId, isLoading]);
+
+    // Subscribe to new messages
     // Subscribe to new messages
     useEffect(() => {
-        const unsubscribe = subscribeToConversation(conversationId, (newMsg: Message) => {
-            setMessages(prev => [...prev, newMsg]);
+        if (!conversationId) return;
+
+        console.log(`🔌 ChatView: Subscribing to messages for ${conversationId}`);
+        const unsubscribe = subscribeToConversation(conversationId, (newMessage) => {
+            console.log('📨 ChatView: MESSAGE RECEIVED!', newMessage);
+            console.log('📨 newMessage.id:', newMessage.id);
+            console.log('📨 newMessage.waMessageId:', newMessage.waMessageId);
+
+            setMessages((prev) => {
+                console.log('🔄 setMessages called, prev length:', prev.length);
+                console.log('🔄 prev IDs:', prev.map(m => m.id).slice(-5)); // Last 5 IDs
+
+                // 1. Exact ID match check
+                const isDuplicate = prev.some(m => m.id === newMessage.id);
+                console.log('🔄 isDuplicate by ID?', isDuplicate);
+
+                if (isDuplicate) {
+                    console.log('⚠️ SKIPPING - Duplicate ID found');
+                    return prev;
+                }
+
+                // 2. Deduplication for Optimistic UI:
+                // If we find a 'pending' message with same text & direction, replace it.
+                // This prevents duplicating the message when the real event arrives.
+                if (newMessage.direction === 'out') {
+                    const pendingIndex = prev.findIndex(m =>
+                        m.status === 'pending' &&
+                        m.direction === 'out' &&
+                        m.text === newMessage.text
+                    );
+
+                    if (pendingIndex !== -1) {
+                        console.log('✅ Replacing pending message at index:', pendingIndex);
+                        const updated = [...prev];
+                        updated[pendingIndex] = newMessage;
+                        return updated;
+                    }
+                }
+
+                // Add and sort
+                console.log('✅ ADDING NEW MESSAGE to state');
+                const updated = [...prev, newMessage].sort((a, b) =>
+                    new Date(a.createdAt || a.timestamp || 0).getTime() - new Date(b.createdAt || b.timestamp || 0).getTime()
+                );
+                console.log('✅ New state length:', updated.length);
+                return updated;
+            });
+            // Force scroll to bottom on new message
+            scrollToBottom();
         });
-        return unsubscribe;
-    }, [conversationId, subscribeToConversation]);
+
+        return () => {
+            console.log(`🔌 ChatView: Unsubscribing from ${conversationId}`);
+            unsubscribe();
+        };
+    }, [conversationId, subscribeToConversation, scrollToBottom]);
 
     // Auto scroll to bottom
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        scrollToBottom();
+    }, [messages, scrollToBottom]);
 
     const handleSend = async () => {
-        if (!newMessage.trim() || isSending) return;
+        if (!newMessage.trim() || isSending || !conversation) return;
 
-        setIsSending(true);
-        sendMessage(conversationId, newMessage.trim(), userId);
+        const textToSend = newMessage.trim();
+        const tempId = `temp-${Date.now()}`;
+        const tempMessage: Message = {
+            id: tempId,
+            direction: 'out',
+            text: textToSend,
+            type: 'text',
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            sentByUser: { id: userId, name: 'You' }
+        };
+
+        // Optimistic Update
+        setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
-        setIsSending(false);
+        setIsSending(true);
+        scrollToBottom();
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/whatsapp/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    to: conversation.lead.phone,
+                    text: textToSend,
+                    leadId: conversation.lead.id
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to send');
+
+            const data = await response.json();
+
+            // On API success, update the temp message (id/status) if the socket hasn't replaced it yet
+            setMessages(prev => {
+                const index = prev.findIndex(m => m.id === tempId);
+                if (index !== -1) {
+                    const updated = [...prev];
+                    updated[index] = {
+                        ...updated[index],
+                        id: data.dbId || data.messageId, // Use DB ID if available
+                        status: 'sent',
+                        waMessageId: data.messageId
+                    };
+                    return updated;
+                }
+                return prev;
+            });
+
+        } catch (err) {
+            console.error('Failed to send message:', err);
+            toast.error('Erro ao enviar mensagem');
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+        } finally {
+            setIsSending(false);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -221,8 +376,16 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                         <ArrowLeft size={20} className="text-slate-600" />
                     </button>
 
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
-                        <User size={20} className="text-rose-600" />
+                    <div className="relative">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
+                            <User size={20} className="text-rose-600" />
+                        </div>
+                        {/* Status Dot */}
+                        <div
+                            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
+                                }`}
+                            title={isConnected ? `Conectado (Socket Real-time)` : 'Desconectado (Polling Backup)'}
+                        />
                     </div>
 
                     <div className="flex-1">

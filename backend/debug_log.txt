@@ -1,0 +1,8 @@
+[2026-01-16T19:38:36.868Z] 🔌 [socketService] Module Loaded. Instance ID: crgpd
+[2026-01-16T19:38:36.936Z] 🔌 [socketService] Initializing on Instance: crgpd
+[2026-01-16T19:38:39.715Z] 🔌 [socketService] Module Loaded. Instance ID: xcz8gz
+[2026-01-16T19:38:39.783Z] 🔌 [socketService] Initializing on Instance: xcz8gz
+[2026-01-16T19:38:41.708Z] 🔌 [socketService] Module Loaded. Instance ID: qwoda4
+[2026-01-16T19:38:41.838Z] 🔌 [socketService] Initializing on Instance: qwoda4
+[2026-01-16T19:40:40.343Z] 📩 [whatsapp.ts] Webhook Hit from 360Dialog
+[2026-01-16T19:40:40.344Z] 📣 [socketService qwoda4] Emitting debug event (io exists? true)
