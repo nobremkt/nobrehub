@@ -9,7 +9,7 @@ export interface Lead {
     phone: string;
     company: string;
     source: string;
-    pipeline: 'high_ticket' | 'low_ticket';
+    pipeline: 'high_ticket' | 'low_ticket' | 'post_sales' | 'production';
     status: string; // Normalized status field
     assignedTo: string;
     value: number; // Normalized from estimatedValue
