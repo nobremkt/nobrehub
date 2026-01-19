@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { SocketProvider } from './contexts/SocketContext';
 import { AppLayout } from './components/layout';
@@ -112,22 +112,20 @@ const App: React.FC = () => {
   };
 
   return (
-    <BrowserRouter>
-      <SocketProvider>
-        <NotificationHandler />
-        <Routes>
-          <Route path="/login" element={
-            isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
-          } />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <MainApp onLogout={handleLogout} />
-            </ProtectedRoute>
-          } />
-        </Routes>
-        <Toaster richColors position="bottom-right" />
-      </SocketProvider>
-    </BrowserRouter>
+    <SocketProvider>
+      <NotificationHandler />
+      <Routes>
+        <Route path="/login" element={
+          isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
+        } />
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <MainApp onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+      </Routes>
+      <Toaster richColors position="bottom-right" />
+    </SocketProvider>
   );
 };
 
