@@ -109,9 +109,18 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             }, 1000);
 
             toast.success('Gravando áudio...');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error starting recording:', error);
-            toast.error('Erro ao acessar microfone. Verifique as permissões.');
+
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                toast.error('Microfone não encontrado. Conecte um microfone e tente novamente.');
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                toast.error('Permissão de microfone negada. Permita o acesso nas configurações do navegador.');
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                toast.error('Microfone em uso por outro aplicativo. Feche outros apps e tente novamente.');
+            } else {
+                toast.error('Erro ao acessar microfone. Verifique as permissões.');
+            }
         }
     };
 
