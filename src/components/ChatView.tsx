@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import LeadContextSidebar from './LeadContextSidebar';
 import LeadDetailModal from './LeadDetailModal';
 import TemplateSelector from './TemplateSelector';
+import MessageBubble from './chat/MessageBubble';
 
 interface Message {
     id: string;
@@ -738,22 +739,20 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     </div>
                 </header>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto p-6 space-y-3">
                     {messages.map((msg) => (
-                        <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                            <div className={`max-w-[70%] px-5 py-3 ${msg.direction === 'out' ? 'chat-bubble-mine shadow-lg shadow-rose-500/10' : 'chat-bubble-theirs'}`}>
-                                {msg.type === 'image' && msg.mediaUrl && (
-                                    <img src={msg.mediaUrl} alt="Imagem enviada" className="w-full rounded-lg mb-2 max-h-60 object-cover" />
-                                )}
-                                {msg.type === 'audio' && msg.mediaUrl && (
-                                    <audio controls src={msg.mediaUrl} className="w-full mb-2" />
-                                )}
-                                {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
-                                <p className={`text-[10px] mt-1 ${msg.direction === 'out' ? 'text-rose-200' : 'text-slate-400'}`}>
-                                    {formatTime(msg.createdAt)}
-                                </p>
-                            </div>
-                        </div>
+                        <MessageBubble
+                            key={msg.id}
+                            id={msg.id}
+                            direction={msg.direction}
+                            text={msg.text}
+                            mediaUrl={msg.mediaUrl}
+                            type={msg.type as any}
+                            status={msg.status as any}
+                            createdAt={msg.createdAt}
+                            templateName={msg.templateName}
+                            sentByUser={msg.sentByUser}
+                        />
                     ))}
                     <div ref={messagesEndRef} />
                 </div>
