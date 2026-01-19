@@ -44,11 +44,12 @@ interface ChatViewProps {
     userId: string;
     onBack: () => void;
     onConversationClosed: () => void;
+    embedded?: boolean; // When true, don't use h-dvh and hide back button
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onConversationClosed }) => {
+const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onConversationClosed, embedded = false }) => {
     const [conversation, setConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -651,33 +652,35 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     if (isLoading) {
         return (
-            <div className="h-dvh flex items-center justify-center bg-[#f8fafc]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600" />
+            <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
         );
     }
 
     if (!conversation) {
         return (
-            <div className="h-dvh flex items-center justify-center bg-[#f8fafc]">
+            <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
                 <p className="text-slate-400">Conversa não encontrada</p>
             </div>
         );
     }
 
     return (
-        <div className="h-dvh flex bg-[#f8fafc]">
+        <div className={`${embedded ? 'h-full' : 'h-dvh'} flex bg-[#f8fafc]`}>
             {/* Main Chat Area */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Header */}
                 <header className="bg-white border-b border-slate-100 px-6 py-4">
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={onBack}
-                            className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
-                        >
-                            <ArrowLeft size={20} className="text-slate-600" />
-                        </button>
+                        {!embedded && (
+                            <button
+                                onClick={onBack}
+                                className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
+                            >
+                                <ArrowLeft size={20} className="text-slate-600" />
+                            </button>
+                        )}
 
                         <div className="relative">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
@@ -844,81 +847,87 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 </div>
 
                 {/* Transfer Modal */}
-                {showTransferModal && (
-                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
-                                <button
-                                    onClick={() => setShowTransferModal(false)}
-                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                                >
-                                    <XCircle size={20} />
-                                </button>
-                            </div>
+                {
+                    showTransferModal && (
+                        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                            <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                    <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
+                                    <button
+                                        onClick={() => setShowTransferModal(false)}
+                                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                    >
+                                        <XCircle size={20} />
+                                    </button>
+                                </div>
 
-                            <div className="p-4 max-h-[300px] overflow-y-auto">
-                                {availableAgents.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400">
-                                        <User size={32} className="mx-auto mb-2 opacity-50" />
-                                        <p className="text-sm">Nenhum outro agente online</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {availableAgents.map(agent => (
-                                            <button
-                                                key={agent.id}
-                                                onClick={() => handleTransfer(agent.id)}
-                                                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                                                    {agent.name.charAt(0)}
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
-                                                    <p className="text-xs text-emerald-500 font-bold">Online</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                                <div className="p-4 max-h-[300px] overflow-y-auto">
+                                    {availableAgents.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-400">
+                                            <User size={32} className="mx-auto mb-2 opacity-50" />
+                                            <p className="text-sm">Nenhum outro agente online</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {availableAgents.map(agent => (
+                                                <button
+                                                    key={agent.id}
+                                                    onClick={() => handleTransfer(agent.id)}
+                                                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                        {agent.name.charAt(0)}
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
+                                                        <p className="text-xs text-emerald-500 font-bold">Online</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
 
             {/* Context Sidebar - Hidden on mobile */}
-            <div className="hidden lg:block">
+            < div className="hidden lg:block" >
                 <LeadContextSidebar
                     lead={conversation.lead}
                     pipeline={conversation.pipeline}
                     onOpenDetails={() => setShowLeadModal(true)}
                     onMoveStage={handleMoveStage}
                 />
-            </div>
+            </div >
 
             {/* Lead Detail Modal */}
-            {showLeadModal && (
-                <LeadDetailModal
-                    isOpen={showLeadModal}
-                    lead={conversation.lead as any}
-                    onClose={() => setShowLeadModal(false)}
-                    onEdit={() => { }}
-                    onDelete={() => { }}
-                    onOpenChat={() => { }}
-                />
-            )}
+            {
+                showLeadModal && (
+                    <LeadDetailModal
+                        isOpen={showLeadModal}
+                        lead={conversation.lead as any}
+                        onClose={() => setShowLeadModal(false)}
+                        onEdit={() => { }}
+                        onDelete={() => { }}
+                        onOpenChat={() => { }}
+                    />
+                )
+            }
 
             {/* Template Selector Modal */}
-            {showTemplateSelector && (
-                <TemplateSelector
-                    onSend={handleSendTemplate}
-                    onClose={() => setShowTemplateSelector(false)}
-                    leadName={conversation.lead.name}
-                />
-            )}
-        </div>
+            {
+                showTemplateSelector && (
+                    <TemplateSelector
+                        onSend={handleSendTemplate}
+                        onClose={() => setShowTemplateSelector(false)}
+                        leadName={conversation.lead.name}
+                    />
+                )
+            }
+        </div >
     );
 };
 

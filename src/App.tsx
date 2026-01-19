@@ -8,7 +8,7 @@ import NotificationHandler from './components/NotificationHandler';
 // Existing Components (will be refactored in later phases)
 import Kanban from './components/Kanban';
 import LeadList from './components/LeadList';
-import Inbox from './components/Inbox';
+import { ChatLayout } from './components/chat-layout';
 import FlowBuilder from './components/FlowBuilder';
 import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
@@ -68,7 +68,7 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             : <Kanban />
         } />
         <Route path="/inbox" element={
-          <Inbox
+          <ChatLayout
             userId={currentUser?.id || ''}
             isAdmin={currentUser?.role === 'admin'}
             initialLeadId={pendingLeadId}
