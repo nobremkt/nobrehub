@@ -63,6 +63,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const audioMimeTypeRef = useRef<string>('audio/webm');
 
     // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -85,7 +86,21 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+            // WhatsApp prefers OGG/Opus. Try that first, fallback to webm.
+            let mimeType = 'audio/webm;codecs=opus';
+            if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                mimeType = 'audio/ogg;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                mimeType = 'audio/webm;codecs=opus';
+            } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                mimeType = 'audio/webm';
+            }
+
+            console.log('🎙️ Recording with mimeType:', mimeType);
+            audioMimeTypeRef.current = mimeType;
+
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
@@ -143,8 +158,11 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         // Wait a moment for the last chunk
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        // Use the actual mimeType that was used for recording
+        const mimeType = audioMimeTypeRef.current;
+        const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.${ext}`, { type: mimeType });
 
         setIsSending(true);
         const toastId = toast.loading('Enviando áudio...');
