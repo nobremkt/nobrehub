@@ -37,18 +37,17 @@ const NotificationHandler: React.FC = () => {
             notifyNewMessage(lead.name || 'Novo contato', lead.contactReason || 'Nova mensagem', lead.id);
         });
 
-        // Lead updated = new message on existing lead (check if incoming)
+        // Lead updated = new message on existing lead
         const unsubscribeLeadUpdated = subscribeToLeadUpdates((lead: any) => {
             console.log('🔔 LEAD UPDATED notification check:', lead);
 
-            // Only notify for incoming messages
-            if (lead.lastMessageFrom === 'in') {
-                notifyNewMessage(
-                    lead.name || 'Cliente',
-                    lead.lastMessage || 'Nova mensagem',
-                    lead.id
-                );
-            }
+            // Always notify on lead update (any activity means new message)
+            console.log('🔔 Triggering notification for:', lead.name, lead.lastMessage);
+            notifyNewMessage(
+                lead.name || 'Cliente',
+                lead.lastMessage || lead.contactReason || 'Nova mensagem',
+                lead.id
+            );
         });
 
         return () => {
