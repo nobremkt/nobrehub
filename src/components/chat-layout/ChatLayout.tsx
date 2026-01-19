@@ -225,7 +225,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 
             {/* Right: Lead Context Sidebar - only visible when conversation selected */}
             {selectedConversation && (
-                <div className="w-[320px] border-l border-slate-200 bg-white overflow-y-auto">
+                <div className="flex-shrink-0 border-l border-slate-200 bg-white overflow-y-auto">
                     <LeadContextSidebar
                         lead={selectedConversation.lead}
                         pipeline={selectedConversation.pipeline}
