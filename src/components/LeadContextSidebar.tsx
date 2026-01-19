@@ -190,13 +190,21 @@ const LeadContextSidebar: React.FC<LeadContextSidebarProps> = ({
                     )}
                 </div>
 
-                {/* Phone Card */}
+                {/* Phone Card - Clickable to open WhatsApp */}
                 <div className="bg-white rounded-xl p-3 border border-slate-100">
                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                         <Phone size={12} />
                         <span>Telefone</span>
                     </div>
-                    <p className="text-sm font-medium text-slate-700">{lead.phone}</p>
+                    <a
+                        href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-emerald-600 transition-colors group"
+                    >
+                        <span>{lead.phone}</span>
+                        <ExternalLink size={12} className="text-slate-400 group-hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </a>
                 </div>
 
                 {/* Tags */}
