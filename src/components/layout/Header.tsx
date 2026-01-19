@@ -60,7 +60,10 @@ const Header: React.FC<HeaderProps> = ({
             {/* Right Actions */}
             <div className="flex items-center gap-2">
                 {/* Notifications */}
-                <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                <button
+                    className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Notificações"
+                >
                     <Bell size={20} />
                     {notifications > 0 && (
                         <span className="absolute top-1 right-1 w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full flex items-center justify-center">

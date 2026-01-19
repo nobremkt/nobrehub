@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, unreadCount = 0, onLogout }) =>
     return (
         <aside
             className={`
-                fixed left-0 top-0 h-screen
+                fixed left-0 top-0 h-dvh
                 bg-white border-r border-slate-200
                 flex flex-col
                 transition-all duration-300 ease-in-out
@@ -76,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, unreadCount = 0, onLogout }) =>
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label={isCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
                 >
                     {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>

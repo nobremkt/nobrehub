@@ -23,7 +23,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     onLogout,
 }) => {
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-dvh bg-slate-50">
             {/* Sidebar */}
             <Sidebar user={user} unreadCount={unreadCount} onLogout={onLogout} />
 
@@ -31,7 +31,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             <Header user={user} notifications={notifications} onLogout={onLogout} />
 
             {/* Main Content */}
-            <main className="ml-60 pt-14 min-h-screen">
+            <main className="ml-60 pt-14 min-h-dvh">
                 <div className="p-6">
                     {children}
                 </div>
