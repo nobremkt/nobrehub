@@ -121,6 +121,8 @@ export interface Lead {
     assignedAgentId?: string;
     lastMessage?: string;     // Last message preview for Kanban cards
     lastMessageFrom?: 'in' | 'out';
+    lastMessageAt?: string;   // Timestamp of last message
+    statusChangedAt?: string; // When status was last changed (for time in stage)
     contactReason?: string;   // Reason for contact (motivo do contato)
 }
 
