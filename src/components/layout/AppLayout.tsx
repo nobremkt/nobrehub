@@ -1,6 +1,5 @@
 import React from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
+import TopNav from './TopNav';
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -15,6 +14,10 @@ interface AppLayoutProps {
     onLogout: () => void;
 }
 
+/**
+ * AppLayout - Horizontal navigation layout
+ * TopNav at top (h-14), content fills remaining space
+ */
 const AppLayout: React.FC<AppLayoutProps> = ({
     children,
     user,
@@ -24,18 +27,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
     return (
         <div className="h-dvh flex flex-col bg-slate-50 overflow-hidden">
-            {/* Header - Fixed at top */}
-            <Header user={user} notifications={notifications} onLogout={onLogout} />
+            {/* Top Navigation Bar */}
+            <TopNav
+                user={user}
+                unreadCount={unreadCount}
+                notifications={notifications}
+                onLogout={onLogout}
+            />
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar - Fixed width */}
-                <Sidebar user={user} unreadCount={unreadCount} onLogout={onLogout} />
-
-                {/* Main Content - Edge-to-edge, fills remaining space */}
-                <main className="flex-1 overflow-hidden">
-                    {children}
-                </main>
-            </div>
+            {/* Main Content - Edge-to-edge, fills remaining space */}
+            <main className="flex-1 overflow-hidden">
+                {children}
+            </main>
         </div>
     );
 };
