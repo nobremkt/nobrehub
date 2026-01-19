@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X } from 'lucide-react';
+import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X, FileText } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
 import LeadContextSidebar from './LeadContextSidebar';
 import LeadDetailModal from './LeadDetailModal';
+import TemplateSelector from './TemplateSelector';
 
 interface Message {
     id: string;
@@ -65,6 +66,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     // Lead Detail Modal State
     const [showLeadModal, setShowLeadModal] = useState(false);
+
+    // Template Selector State
+    const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -514,6 +518,39 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
     };
 
+    // Send template message
+    const handleSendTemplate = async (templateName: string, parameters: string[]) => {
+        if (!conversation) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_URL}/whatsapp/send-template`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    to: conversation.lead.phone,
+                    templateName,
+                    parameters,
+                    leadId: conversation.lead.id
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to send template');
+            }
+
+            toast.success(`Template "${templateName}" enviado com sucesso!`);
+        } catch (err: any) {
+            console.error('Failed to send template:', err);
+            toast.error(err.message || 'Erro ao enviar template');
+            throw err;
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="h-dvh flex items-center justify-center bg-[#f8fafc]">
@@ -640,6 +677,16 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                             <Paperclip size={20} />
                         </button>
 
+                        {/* Template Button */}
+                        <button
+                            onClick={() => setShowTemplateSelector(true)}
+                            className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                            title="Enviar template (HSM)"
+                            disabled={isSending}
+                        >
+                            <FileText size={20} />
+                        </button>
+
                         {/* Input */}
                         <input
                             type="text"
@@ -761,6 +808,15 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     onEdit={() => { }}
                     onDelete={() => { }}
                     onOpenChat={() => { }}
+                />
+            )}
+
+            {/* Template Selector Modal */}
+            {showTemplateSelector && (
+                <TemplateSelector
+                    onSend={handleSendTemplate}
+                    onClose={() => setShowTemplateSelector(false)}
+                    leadName={conversation.lead.name}
                 />
             )}
         </div>
