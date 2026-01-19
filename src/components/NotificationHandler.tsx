@@ -8,8 +8,8 @@ import { useNotifications } from '../hooks/useNotifications';
  * Should be placed inside SocketProvider but outside main content.
  */
 const NotificationHandler: React.FC = () => {
-    const { subscribeToNewConversations, subscribeToConversationUpdates, isConnected } = useSocket();
-    const { requestPermission, notifyNewMessage, isEnabled } = useNotifications();
+    const { subscribeToLeadUpdates, subscribeToNewLeads, isConnected } = useSocket();
+    const { requestPermission, notifyNewMessage } = useNotifications();
     const hasRequestedPermission = useRef(false);
 
     // Request notification permission on first render
@@ -22,40 +22,44 @@ const NotificationHandler: React.FC = () => {
         }
     }, [requestPermission]);
 
-    // Subscribe to new conversations (new incoming messages from unknown contacts)
+    // Subscribe to lead updates (fired when ANY message arrives for a lead)
     useEffect(() => {
-        if (!isConnected) return;
+        if (!isConnected) {
+            console.log('🔔 NotificationHandler: Not connected yet');
+            return;
+        }
 
-        const unsubscribeNew = subscribeToNewConversations((conversation: any) => {
-            console.log('🔔 New conversation notification trigger:', conversation);
+        console.log('🔔 NotificationHandler: Setting up listeners...');
 
-            const leadName = conversation.lead?.name || 'Novo contato';
-            const lastMessage = conversation.messages?.[0]?.text || 'Nova conversa iniciada';
-
-            notifyNewMessage(leadName, lastMessage, conversation.id);
+        // New lead = new conversation from unknown contact
+        const unsubscribeNewLead = subscribeToNewLeads((lead: any) => {
+            console.log('🔔 NEW LEAD notification:', lead);
+            notifyNewMessage(lead.name || 'Novo contato', lead.contactReason || 'Nova mensagem', lead.id);
         });
 
-        const unsubscribeUpdated = subscribeToConversationUpdates((conversation: any) => {
-            console.log('🔔 Conversation updated notification check:', conversation);
+        // Lead updated = new message on existing lead (check if incoming)
+        const unsubscribeLeadUpdated = subscribeToLeadUpdates((lead: any) => {
+            console.log('🔔 LEAD UPDATED notification check:', lead);
 
-            // Only notify for incoming messages (direction: 'in')
-            const lastMessage = conversation.messages?.[0];
-            if (lastMessage?.direction === 'in') {
-                const leadName = conversation.lead?.name || 'Cliente';
-                const messageText = lastMessage.text || '[Mídia]';
-
-                notifyNewMessage(leadName, messageText, conversation.id);
+            // Only notify for incoming messages
+            if (lead.lastMessageFrom === 'in') {
+                notifyNewMessage(
+                    lead.name || 'Cliente',
+                    lead.lastMessage || 'Nova mensagem',
+                    lead.id
+                );
             }
         });
 
         return () => {
-            unsubscribeNew();
-            unsubscribeUpdated();
+            unsubscribeNewLead();
+            unsubscribeLeadUpdated();
         };
-    }, [isConnected, subscribeToNewConversations, subscribeToConversationUpdates, notifyNewMessage]);
+    }, [isConnected, subscribeToNewLeads, subscribeToLeadUpdates, notifyNewMessage]);
 
     // This component doesn't render anything
     return null;
 };
 
 export default NotificationHandler;
+

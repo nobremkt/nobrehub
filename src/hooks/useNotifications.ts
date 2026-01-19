@@ -64,34 +64,39 @@ export function useNotifications() {
 
     // Show notification
     const showNotification = useCallback((options: NotificationOptions) => {
-        // Don't show if page is focused
-        if (document.hasFocus()) {
-            return;
-        }
+        console.log('🔔 showNotification called:', options);
 
-        // Play sound regardless of permission
+        // Play sound always (unless page is focused and we want silence)
         playSound();
 
         // Show browser notification if permitted
         if (isEnabled()) {
-            const notification = new Notification(options.title, {
-                body: options.body,
-                icon: options.icon || '/logo192.png',
-                tag: options.tag || 'nobre-hub-notification',
-                requireInteraction: false,
-                silent: true // We handle sound ourselves
-            });
+            console.log('🔔 Creating browser notification...');
+            try {
+                const notification = new Notification(options.title, {
+                    body: options.body,
+                    icon: options.icon || '/vite.svg',
+                    tag: options.tag || 'nobre-hub-notification',
+                    requireInteraction: false,
+                    silent: true // We handle sound ourselves
+                });
 
-            if (options.onClick) {
-                notification.onclick = () => {
-                    window.focus();
-                    options.onClick?.();
-                    notification.close();
-                };
+                if (options.onClick) {
+                    notification.onclick = () => {
+                        window.focus();
+                        options.onClick?.();
+                        notification.close();
+                    };
+                }
+
+                // Auto-close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+                console.log('🔔 Notification created successfully');
+            } catch (err) {
+                console.error('🔔 Failed to create notification:', err);
             }
-
-            // Auto-close after 5 seconds
-            setTimeout(() => notification.close(), 5000);
+        } else {
+            console.log('🔔 Notifications not enabled, skipping browser notification');
         }
     }, [isEnabled, playSound]);
 
