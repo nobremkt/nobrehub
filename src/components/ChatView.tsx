@@ -30,6 +30,10 @@ interface Conversation {
         phone: string;
         company?: string;
         estimatedValue: number;
+        statusHT?: string;
+        statusLT?: string;
+        tags?: string[];
+        notes?: string;
     };
     assignedAgent?: { id: string; name: string };
     messages: Message[];
@@ -527,6 +531,44 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
     };
 
+    // Move lead to different stage
+    const handleMoveStage = async (newStage: string) => {
+        if (!conversation) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_URL}/leads/${conversation.lead.id}/status`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStage })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update status');
+            }
+
+            const updatedLead = await response.json();
+            toast.success(`Lead movido para: ${newStage}`);
+
+            // Update local state
+            setConversation(prev => prev ? {
+                ...prev,
+                lead: {
+                    ...prev.lead,
+                    statusHT: updatedLead.statusHT,
+                    statusLT: updatedLead.statusLT
+                }
+            } : null);
+        } catch (error) {
+            console.error('Failed to move stage:', error);
+            toast.error('Erro ao mover lead de etapa');
+            throw error;
+        }
+    };
+
     // Send template message
     const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
         if (!conversation) return;
@@ -825,6 +867,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     lead={conversation.lead}
                     pipeline={conversation.pipeline}
                     onOpenDetails={() => setShowLeadModal(true)}
+                    onMoveStage={handleMoveStage}
                 />
             </div>
 
