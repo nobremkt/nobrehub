@@ -436,10 +436,17 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         preHandler: [(server as any).authenticate as any]
     }, async (request: FastifyRequest, reply: FastifyReply) => {
         try {
+            console.log('📋 Fetching templates from 360Dialog...');
             const templates = await dialog360.getTemplates();
-            // Filter only approved templates and format for frontend
+            console.log('📋 Raw templates response:', JSON.stringify(templates, null, 2));
+
+            // Filter approved templates (case-insensitive check)
             const approvedTemplates = templates
-                .filter((t: any) => t.status === 'APPROVED')
+                .filter((t: any) => {
+                    const status = (t.status || '').toUpperCase();
+                    console.log(`  Template: ${t.name}, Status: ${t.status} -> ${status === 'APPROVED' ? 'INCLUDED' : 'EXCLUDED'}`);
+                    return status === 'APPROVED';
+                })
                 .map((t: any) => ({
                     name: t.name,
                     language: t.language,
@@ -447,9 +454,11 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                     category: t.category,
                     components: t.components
                 }));
+
+            console.log(`📋 Approved templates: ${approvedTemplates.length}`);
             return reply.send({ templates: approvedTemplates });
         } catch (error: any) {
-            console.error('Error fetching templates:', error);
+            console.error('❌ Error fetching templates:', error);
             return reply.code(500).send({ error: 'Failed to fetch templates' });
         }
     });
