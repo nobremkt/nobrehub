@@ -17,6 +17,9 @@ interface Conversation {
         phone: string;
         company?: string;
         estimatedValue: number;
+        statusHT?: string;
+        statusLT?: string;
+        tags?: string[];
     };
     assignedAgent?: { id: string; name: string };
     messages: Array<{ text?: string; createdAt: string; direction?: 'in' | 'out' }>;
@@ -74,6 +77,45 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             setIsLoading(false);
         }
     }, []);
+
+    // Handle moving lead to different stage
+    const handleMoveStage = useCallback(async (newStatus: string) => {
+        if (!selectedConversationId) return;
+
+        // Find current conversation within the callback
+        const currentConv = conversations.find(c => c.id === selectedConversationId);
+        if (!currentConv) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/leads/${currentConv.lead.id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (response.ok) {
+                // Update local state immediately
+                setConversations(prev => prev.map(conv => {
+                    if (conv.id === selectedConversationId) {
+                        const updatedLead = { ...conv.lead };
+                        if (conv.pipeline === 'high_ticket') {
+                            updatedLead.statusHT = newStatus;
+                        } else {
+                            updatedLead.statusLT = newStatus;
+                        }
+                        return { ...conv, lead: updatedLead };
+                    }
+                    return conv;
+                }));
+            }
+        } catch (error) {
+            console.error('Error moving stage:', error);
+        }
+    }, [selectedConversationId, conversations]);
 
     useEffect(() => {
         fetchConversations();
@@ -230,6 +272,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         lead={selectedConversation.lead}
                         pipeline={selectedConversation.pipeline}
                         onOpenDetails={() => {/* TODO: Open modal */ }}
+                        onMoveStage={handleMoveStage}
                     />
                 </div>
             )}
