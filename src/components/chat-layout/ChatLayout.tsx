@@ -189,7 +189,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
     return (
-        <div className="h-dvh flex bg-slate-50">
+        <div className="h-full flex bg-slate-50 overflow-hidden">
             {/* Left: Conversation List */}
             <ConversationList
                 userId={userId}

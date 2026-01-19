@@ -893,15 +893,17 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 }
             </div >
 
-            {/* Context Sidebar - Hidden on mobile */}
-            < div className="hidden lg:block" >
-                <LeadContextSidebar
-                    lead={conversation.lead}
-                    pipeline={conversation.pipeline}
-                    onOpenDetails={() => setShowLeadModal(true)}
-                    onMoveStage={handleMoveStage}
-                />
-            </div >
+            {/* Context Sidebar - Only show when NOT embedded (ChatLayout renders its own) */}
+            {!embedded && (
+                <div className="hidden lg:block">
+                    <LeadContextSidebar
+                        lead={conversation.lead}
+                        pipeline={conversation.pipeline}
+                        onOpenDetails={() => setShowLeadModal(true)}
+                        onMoveStage={handleMoveStage}
+                    />
+                </div>
+            )}
 
             {/* Lead Detail Modal */}
             {
