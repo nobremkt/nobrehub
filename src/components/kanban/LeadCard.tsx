@@ -86,7 +86,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, agentName, agentAvat
             className={cn(
                 'group bg-white p-4 rounded-xl border border-slate-200 cursor-grab',
                 'hover:border-blue-300 hover:shadow-lg transition-all duration-200',
-                isDragging && 'opacity-80 ring-2 ring-blue-500 shadow-2xl scale-105'
+                isDragging && 'opacity-0'
             )}
         >
             {/* Top Row: Company + Value + Temperature */}

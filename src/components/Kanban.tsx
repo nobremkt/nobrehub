@@ -528,20 +528,32 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
       {/* DragOverlay renders the dragging card in a portal above everything */}
       <DragOverlay dropAnimation={null}>
         {activeLead ? (
-          <div className="bg-white p-4 rounded-xl shadow-2xl border-2 border-rose-500 cursor-grabbing scale-105 opacity-95">
+          <div className="bg-white p-4 rounded-xl shadow-2xl border-2 border-blue-500 cursor-grabbing scale-105">
+            {/* Company + Value */}
             <div className="flex justify-between items-start mb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activeLead.company || 'Sem Empresa'}</span>
-              {activeLead.estimatedValue && (
-                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                {activeLead.company || 'Sem empresa'}
+              </span>
+              {activeLead.estimatedValue && activeLead.estimatedValue > 0 && (
+                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(activeLead.estimatedValue)}
                 </span>
               )}
             </div>
-            <h3 className="font-bold text-slate-800 leading-tight mb-3">{activeLead.name}</h3>
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span>{new Date(activeLead.createdAt).toLocaleDateString('pt-BR')}</span>
-              {activeLead.source && <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px] uppercase">{activeLead.source}</span>}
-            </div>
+            {/* Name */}
+            <h3 className="font-semibold text-slate-900 text-sm leading-tight mb-2">{activeLead.name}</h3>
+            {/* Tags */}
+            {activeLead.tags && activeLead.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {activeLead.tags.slice(0, 2).map((tag, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{tag}</span>
+                ))}
+              </div>
+            )}
+            {/* Source */}
+            {activeLead.source && (
+              <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">{activeLead.source}</span>
+            )}
           </div>
         ) : null}
       </DragOverlay>
