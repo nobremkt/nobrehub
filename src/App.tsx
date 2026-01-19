@@ -11,6 +11,7 @@ import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
 import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
+import NotificationHandler from './components/NotificationHandler';
 import { ViewType, Agent } from './types';
 
 // Default view per role (first accessible view)
@@ -110,6 +111,7 @@ const App: React.FC = () => {
 
   return (
     <SocketProvider>
+      <NotificationHandler />
       <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 overflow-hidden">
         {/* Esconde o sidebar se estiver monitorando para focar no workspace */}
         {!monitoredUser && (
