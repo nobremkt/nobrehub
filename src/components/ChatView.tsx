@@ -342,31 +342,39 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    const serverMessages = data.messages || [];
+                    const serverMessages: Message[] = data.messages || [];
 
-                    // Merge server messages with local state to prevent losing optimistic updates
+                    // Smart merge: replace local state with server, but keep pending messages
                     setMessages(prev => {
-                        // Create a map of server messages by ID for quick lookup
-                        const serverMap = new Map(serverMessages.map((m: Message) => [m.id, m]));
+                        // Build lookup sets for deduplication
+                        const serverIds = new Set(serverMessages.map(m => m.id));
+                        const serverWaIds = new Set(serverMessages.filter(m => m.waMessageId).map(m => m.waMessageId));
 
-                        // Start with server messages
-                        const merged = [...serverMessages];
+                        // Keep only local pending messages that don't exist on server
+                        const pendingToKeep = prev.filter(localMsg => {
+                            // Skip if this local message ID exists on server
+                            if (serverIds.has(localMsg.id)) return false;
+                            // Skip if waMessageId matches (same message, different ID)
+                            if (localMsg.waMessageId && serverWaIds.has(localMsg.waMessageId)) return false;
+                            // Only keep if it's truly pending/local-only
+                            return localMsg.id.startsWith('temp-') || localMsg.status === 'pending';
+                        });
 
-                        // Add any local messages that don't exist on server yet (optimistic updates)
-                        const localOnlyMessages = prev.filter(localMsg => !serverMap.has(localMsg.id));
-
-                        if (localOnlyMessages.length > 0) {
-                            console.log('📬 Polling: Preserving', localOnlyMessages.length, 'local-only messages');
-                            merged.push(...localOnlyMessages);
-                            // Sort by createdAt to maintain order
-                            merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                        if (pendingToKeep.length > 0) {
+                            console.log('📬 Polling: Preserving', pendingToKeep.length, 'pending messages');
                         }
 
-                        // Only log if there are changes
-                        if (merged.length !== prev.length) {
-                            console.log('📬 Polling: Messages updated', prev.length, '->', merged.length);
+                        // Merge: server messages + pending local messages
+                        const merged = [...serverMessages, ...pendingToKeep].sort(
+                            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                        );
+
+                        // Only update if there's a real change (avoid re-renders)
+                        if (JSON.stringify(merged.map(m => m.id)) === JSON.stringify(prev.map(m => m.id))) {
+                            return prev;
                         }
 
+                        console.log('📬 Polling: Messages updated', prev.length, '->', merged.length);
                         return merged;
                     });
                 }
