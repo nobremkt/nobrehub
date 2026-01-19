@@ -120,6 +120,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   // Fetch Leads on Mount and when currentPipeline changes
   useEffect(() => {
     const loadLeads = async () => {
+      // Don't clear leads immediately - keep showing old ones during transition
       setIsLoading(true);
       try {
         const pipelineType = getApiPipelineType(currentPipeline);
@@ -132,6 +133,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
         }
       } catch (error) {
         console.error('Failed to load leads', error);
+        // On error, don't clear existing leads
       } finally {
         setIsLoading(false);
       }
@@ -231,15 +233,16 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
     const lead = leads.find(l => l.id === leadId);
 
     if (lead && (lead.statusHT !== newStatus && lead.statusLT !== newStatus)) {
-      // Optimistic Update
+      // Optimistic Update - properly clear old status and set new one
       setLeads(prev => prev.map(l => {
         if (l.id === leadId) {
-          // Determine which status field to update based on pipeline logic or existing data
-          const isHT = currentPipeline === 'sales'; // Simplified logic, ideally check lead type
+          // Determine which status field to update based on the current sub-pipeline
+          const isHighTicket = salesSubPipeline === 'high_ticket';
           return {
             ...l,
-            statusHT: isHT ? newStatus : l.statusHT,
-            statusLT: !isHT ? newStatus : l.statusLT
+            // Clear the OTHER status field to prevent appearing in multiple columns
+            statusHT: isHighTicket ? newStatus : undefined,
+            statusLT: !isHighTicket ? newStatus : undefined
           };
         }
         return l;

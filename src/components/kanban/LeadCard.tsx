@@ -86,6 +86,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, agentName, agentAvat
             className={cn(
                 'group bg-white p-4 rounded-xl border border-slate-200 cursor-grab',
                 'hover:border-blue-300 hover:shadow-lg transition-all duration-200',
+                'animate-in fade-in slide-in-from-bottom-2 duration-300',
                 isDragging && 'opacity-0'
             )}
         >
