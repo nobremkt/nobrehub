@@ -271,6 +271,16 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             // emitConversationUpdated is already imported at the top
             emitConversationUpdated(updatedConversation);
 
+            // Emit lead updated event for notifications (incoming message)
+            if (updatedConversation.lead) {
+                emitLeadUpdated({
+                    ...updatedConversation.lead,
+                    lastMessage: incomingMessage.text || '[Mídia]',
+                    lastMessageFrom: 'in',
+                    lastMessageAt: new Date()
+                });
+            }
+
             // Emit real-time message to the specific conversation room
             // Always emit, regardless of assignment, so admins/supervisors can see it
             console.log(`📣 ABOUT TO EMIT - conversationId: ${conversation.id}, messageId: ${savedMessage.id}`);
