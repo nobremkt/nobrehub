@@ -296,7 +296,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         fetchConversation();
     }, [fetchConversation]);
 
-    // POLLING FALLBACK: Refresh messages every 3 seconds to ensure real-time
+    // Backup polling for messages - only as fallback when socket fails
     // This guarantees messages appear even if socket events fail
     useEffect(() => {
         if (!conversationId || isLoading) return;
@@ -309,24 +309,32 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    const newMessages = data.messages || [];
+                    const serverMessages = data.messages || [];
 
-                    // Only update if there are NEW messages (compare length and last ID)
+                    // Merge server messages with local state to prevent losing optimistic updates
                     setMessages(prev => {
-                        if (newMessages.length > prev.length) {
-                            console.log('📬 Polling: New messages detected!', newMessages.length - prev.length, 'new');
-                            return newMessages;
+                        // Create a map of server messages by ID for quick lookup
+                        const serverMap = new Map(serverMessages.map((m: Message) => [m.id, m]));
+
+                        // Start with server messages
+                        const merged = [...serverMessages];
+
+                        // Add any local messages that don't exist on server yet (optimistic updates)
+                        const localOnlyMessages = prev.filter(localMsg => !serverMap.has(localMsg.id));
+
+                        if (localOnlyMessages.length > 0) {
+                            console.log('📬 Polling: Preserving', localOnlyMessages.length, 'local-only messages');
+                            merged.push(...localOnlyMessages);
+                            // Sort by createdAt to maintain order
+                            merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                         }
-                        // Check if last message changed (in case of status updates)
-                        if (prev.length > 0 && newMessages.length > 0) {
-                            const lastPrev = prev[prev.length - 1];
-                            const lastNew = newMessages[newMessages.length - 1];
-                            if (lastPrev.id !== lastNew.id) {
-                                console.log('📬 Polling: Last message changed, updating');
-                                return newMessages;
-                            }
+
+                        // Only log if there are changes
+                        if (merged.length !== prev.length) {
+                            console.log('📬 Polling: Messages updated', prev.length, '->', merged.length);
                         }
-                        return prev; // No changes
+
+                        return merged;
                     });
                 }
             } catch (error) {
