@@ -538,7 +538,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     to: conversation.lead.phone,
                     templateName,
                     parameters,
-                    leadId: conversation.lead.id
+                    leadId: conversation.lead.id,
+                    fullText
                 })
             });
 

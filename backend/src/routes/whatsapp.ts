@@ -23,6 +23,7 @@ interface SendTemplateBody {
     templateName: string;
     parameters?: string[];
     leadId?: string;
+    fullText?: string;
 }
 
 interface WebhookPayload {
@@ -467,7 +468,7 @@ export default async function whatsappRoutes(server: FastifyInstance) {
     server.post('/send-template', {
         preHandler: [(server as any).authenticate as any]
     }, async (request: FastifyRequest<{ Body: SendTemplateBody }>, reply: FastifyReply) => {
-        const { to, templateName, parameters = [], leadId } = request.body;
+        const { to, templateName, parameters = [], leadId, fullText } = request.body;
         const user = (request as any).user;
 
         if (!to || !templateName) {
@@ -493,7 +494,7 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                 direction: 'out',
                 type: 'template',
                 templateName: templateName,
-                text: `Template: ${templateName}`,
+                text: fullText || `Template: ${templateName}`,
                 status: 'pending',
                 sentByUserId: user?.id
             }
