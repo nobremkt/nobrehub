@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { dialog360 } from '../services/dialog360.js';
 import { addToQueue } from '../services/queueManager.js';
 import { PipelineType } from '@prisma/client';
+import { convertAudioToMp3, needsConversion } from '../services/audioConverter.js';
 
 // ... (lines omitted)
 
@@ -619,15 +620,32 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         console.log(`📤 Uploading media: ${fileName} (${type}) for ${to}`);
 
         try {
+            // 0. Convert audio if needed (WhatsApp doesn't accept webm)
+            let finalBuffer = fileBuffer;
+            let finalMimeType = fileType;
+            let finalExt = fileName.split('.').pop() || 'bin';
+
+            if (type === 'audio' && needsConversion(fileType)) {
+                console.log('🔄 Converting audio from webm to MP3...');
+                try {
+                    finalBuffer = await convertAudioToMp3(fileBuffer);
+                    finalMimeType = 'audio/mpeg';
+                    finalExt = 'mp3';
+                    console.log('✅ Audio converted to MP3, size:', finalBuffer.length);
+                } catch (convError: any) {
+                    console.error('❌ Audio conversion failed:', convError.message);
+                    // Fall back to original - might fail at WhatsApp but worth trying
+                }
+            }
+
             // 1. Upload to Supabase Storage
             const { supabase } = await import('../lib/supabase.js');
-            const fileExt = fileName.split('.').pop();
-            const storagePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const storagePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${finalExt}`;
 
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('chat-media')
-                .upload(storagePath, fileBuffer, {
-                    contentType: fileType,
+                .upload(storagePath, finalBuffer, {
+                    contentType: finalMimeType,
                     cacheControl: '3600',
                     upsert: false
                 });
