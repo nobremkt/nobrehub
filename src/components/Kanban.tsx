@@ -94,6 +94,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   const [activeStageForLead, setActiveStageForLead] = useState<string | undefined>(undefined);
   const editRef = useRef<HTMLDivElement>(null);
 
+  // Cache for all leads - enables instant HT/LT switching
+  const [allSalesLeads, setAllSalesLeads] = useState<Lead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
@@ -117,29 +119,52 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
     useSensor(KeyboardSensor)
   );
 
-  // Fetch Leads on Mount and when currentPipeline changes
+  // Fetch Leads on Mount and when main pipeline changes (not sub-pipeline)
   useEffect(() => {
     const loadLeads = async () => {
-      // Don't clear leads immediately - keep showing old ones during transition
       setIsLoading(true);
       try {
-        const pipelineType = getApiPipelineType(currentPipeline);
-        const data = await getLeads({ pipeline: pipelineType });
+        if (currentPipeline === 'sales') {
+          // For sales: fetch BOTH HT and LT at once for instant switching
+          const [htData, ltData] = await Promise.all([
+            getLeads({ pipeline: 'high_ticket' }),
+            getLeads({ pipeline: 'low_ticket' })
+          ]);
+          const allSales = [...htData, ...ltData];
 
-        if (monitoredUser) {
-          setLeads(data.filter(l => l.assignedAgentId === monitoredUser.id));
+          if (monitoredUser) {
+            setAllSalesLeads(allSales.filter(l => l.assignedAgentId === monitoredUser.id));
+          } else {
+            setAllSalesLeads(allSales);
+          }
         } else {
-          setLeads(data);
+          // For production/post_sales: just fetch that pipeline
+          const pipelineType = getApiPipelineType(currentPipeline);
+          const data = await getLeads({ pipeline: pipelineType });
+
+          if (monitoredUser) {
+            setLeads(data.filter(l => l.assignedAgentId === monitoredUser.id));
+          } else {
+            setLeads(data);
+          }
+          setAllSalesLeads([]); // Clear sales cache when on other pipelines
         }
       } catch (error) {
         console.error('Failed to load leads', error);
-        // On error, don't clear existing leads
       } finally {
         setIsLoading(false);
       }
     };
     loadLeads();
-  }, [currentPipeline, salesSubPipeline, monitoredUser]);
+  }, [currentPipeline, monitoredUser]); // Note: removed salesSubPipeline dependency
+
+  // Filter sales leads locally when HT/LT changes (instant!)
+  useEffect(() => {
+    if (currentPipeline === 'sales' && allSalesLeads.length > 0) {
+      const filtered = allSalesLeads.filter(l => l.pipeline === salesSubPipeline);
+      setLeads(filtered);
+    }
+  }, [currentPipeline, salesSubPipeline, allSalesLeads]);
 
   // Real-time Updates: New Leads
   useEffect(() => {
