@@ -1,6 +1,6 @@
 # 🦅 NOBRE HUB - DOCUMENTAÇÃO TÉCNICA COMPLETA
 
-**Versão:** 2.0 (16/01/2026)  
+**Versão:** 2.1 (19/01/2026)  
 **Repositório:** `nobremkt/nobrehub`  
 **Status:** 🟡 Em Desenvolvimento Ativo
 
@@ -517,7 +517,7 @@ Central de comunicação unificada.
 | Real-time Mensagens | ✅ | Socket.io Global Singleton + Polling Backup |
 | Mensagens de Áudio | ✅ | Playback no chat e envio |
 | Mensagens de Imagem | ✅ | Preview e envio |
-| Templates WhatsApp | ❌ | Não implementado |
+| Templates WhatsApp (HSM) | ✅ | Envio de templates aprovados com variáveis dinâmicas |
 
 ### MÓDULO EQUIPE (Workspace) ✅ Implementado
 Gestão de equipe e permissões.
@@ -561,7 +561,7 @@ Gatilhos e workflows automatizados.
 | Bot de Triagem | ❌ | Chatbot inicial para qualificar |
 | Gatilho Venda→Produção | ❌ | Automatizar criação de card |
 | Gatilho Produção→Pós-Venda | ❌ | Iniciar onboarding |
-| Templates de Mensagem | ❌ | Respostas rápidas |
+| Templates de Mensagem (HSM) | ✅ | Templates WhatsApp oficiais aprovados |
 | Agendamento de Follow-up | ❌ | Lembretes automáticos |
 
 ### MÓDULO GAMIFICAÇÃO 📅 Planejado
@@ -848,14 +848,14 @@ DIALOG360_API_KEY=your_key
 **Fase 2.1 - Estabilização (2 semanas)**
 - [x] Envio de mídia (imagem/áudio)
 - [x] Gravação de áudio no browser
-- [ ] Web Notifications API
+- [x] Web Notifications API (notificações de mensagens recebidas)
 - [ ] Sentry error tracking
 
 **Fase 2.2 - Funcionalidades Core (1 mês)**
-- [ ] Templates WhatsApp no UI (resolver 24h)
+- [x] Templates WhatsApp no UI (envio de HSM com variáveis)
 - [ ] Dashboard de métricas (SQL direto)
 - [ ] Histórico de auditoria (log de ações)
-- [ ] Sidebar de contexto do lead no chat
+- [x] Sidebar de contexto do lead no chat
 
 **Fase 3 - Escala (quando necessário)**
 - [ ] BullMQ para filas assíncronas
