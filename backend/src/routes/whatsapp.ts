@@ -701,12 +701,22 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             });
 
             // 5. Send via WhatsApp API
+            console.log('🔊 Sending media to WhatsApp:', {
+                to,
+                type,
+                publicUrl,
+                fileType,
+                fileName
+            });
+
             const result = await dialog360.sendMedia({
                 to,
                 link: publicUrl,
                 type: type as any,
                 caption
             });
+
+            console.log('✅ 360Dialog Response:', JSON.stringify(result, null, 2));
 
             // 6. Update Message (Sent)
             await prisma.message.update({
