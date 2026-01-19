@@ -49,6 +49,13 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [showActions, setShowActions] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
 
+    // Audio Recording State
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
     // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [availableAgents, setAvailableAgents] = useState<{ id: string; name: string }[]>([]);
@@ -59,6 +66,98 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
+
+    // Audio Recording Functions
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start(100); // Collect data every 100ms
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            // Start duration timer
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+            toast.success('Gravando áudio...');
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            toast.error('Erro ao acessar microfone. Verifique as permissões.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+                recordingIntervalRef.current = null;
+            }
+        }
+    };
+
+    const sendAudio = async () => {
+        if (!conversation || audioChunksRef.current.length === 0) return;
+
+        stopRecording(); // Ensure recording is stopped
+
+        // Wait a moment for the last chunk
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+
+        setIsSending(true);
+        const toastId = toast.loading('Enviando áudio...');
+
+        const formData = new FormData();
+        formData.append('file', audioFile);
+        formData.append('to', conversation.lead.phone);
+        formData.append('type', 'audio');
+        formData.append('leadId', conversation.lead.id);
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/whatsapp/upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Falha no envio do áudio');
+            }
+
+            toast.dismiss(toastId);
+            toast.success('Áudio enviado!');
+            audioChunksRef.current = [];
+            setRecordingDuration(0);
+
+        } catch (error: any) {
+            console.error('Audio upload failed:', error);
+            toast.dismiss(toastId);
+            toast.error(`Erro no envio: ${error.message}`);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -544,24 +643,51 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                         className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                     />
 
-                    {/* Audio Button */}
-                    <button
-                        className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                        title="Gravar áudio (em breve)"
-                        disabled
-                    >
-                        <Mic size={20} />
-                    </button>
+                    {/* Audio Button / Recording Controls */}
+                    {isRecording ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-rose-600 font-mono text-sm animate-pulse">
+                                {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:
+                                {(recordingDuration % 60).toString().padStart(2, '0')}
+                            </span>
+                            <button
+                                onClick={() => { stopRecording(); audioChunksRef.current = []; setRecordingDuration(0); }}
+                                className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                                title="Cancelar gravação"
+                            >
+                                <X size={20} />
+                            </button>
+                            <button
+                                onClick={sendAudio}
+                                disabled={isSending}
+                                className="p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20"
+                                title="Enviar áudio"
+                            >
+                                <Send size={20} />
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <button
+                                onClick={startRecording}
+                                className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                                title="Gravar áudio"
+                                disabled={isSending}
+                            >
+                                <Mic size={20} />
+                            </button>
 
-                    {/* Send Button */}
-                    <button
-                        onClick={handleSend}
-                        disabled={!newMessage.trim() || isSending}
-                        className={`p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-600/20 ${newMessage.trim() && !isSending ? 'animate-pulse-glow' : ''
-                            }`}
-                    >
-                        <Send size={20} />
-                    </button>
+                            {/* Send Button */}
+                            <button
+                                onClick={handleSend}
+                                disabled={!newMessage.trim() || isSending}
+                                className={`p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-600/20 ${newMessage.trim() && !isSending ? 'animate-pulse-glow' : ''
+                                    }`}
+                            >
+                                <Send size={20} />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
