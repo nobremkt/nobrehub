@@ -10,13 +10,14 @@ interface Message {
     id: string;
     direction: 'in' | 'out';
     text?: string;
-    mediaUrl?: string; // Add mediaUrl
+    mediaUrl?: string;
     type: string;
     status: string;
     createdAt: string;
     sentByUser?: { id: string; name: string };
     waMessageId?: string;
     timestamp?: string;
+    templateName?: string;
 }
 
 interface Conversation {
@@ -523,6 +524,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         if (!conversation) return;
 
         const token = localStorage.getItem('token');
+        const userName = localStorage.getItem('userName') || 'Você';
+        const userId = localStorage.getItem('userId');
+
         try {
             const response = await fetch(`${API_URL}/whatsapp/send-template`, {
                 method: 'POST',
@@ -543,6 +547,22 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 throw new Error(error.error || 'Failed to send template');
             }
 
+            const result = await response.json();
+
+            // Add template message to local state
+            const newMessage: Message = {
+                id: result.dbId || `temp-${Date.now()}`,
+                direction: 'out',
+                text: `📋 Template: ${templateName}`,
+                type: 'template',
+                templateName: templateName,
+                status: 'sent',
+                createdAt: new Date().toISOString(),
+                sentByUser: userId ? { id: userId, name: userName } : undefined,
+                waMessageId: result.messageId
+            };
+
+            setMessages(prev => [...prev, newMessage]);
             toast.success(`Template "${templateName}" enviado com sucesso!`);
         } catch (err: any) {
             console.error('Failed to send template:', err);
