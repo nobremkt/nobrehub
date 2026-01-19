@@ -140,7 +140,7 @@ export class Dialog360Service {
     // Get available templates
     async getTemplates(): Promise<TemplateMessage[]> {
         try {
-            const response = await this.request<{ waba_templates: TemplateMessage[] }>('/configs/templates');
+            const response = await this.request<{ waba_templates: TemplateMessage[] }>('/v1/configs/templates');
             return response.waba_templates || [];
         } catch (error) {
             console.error('Error fetching templates:', error);
