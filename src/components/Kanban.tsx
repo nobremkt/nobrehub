@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Settings, DollarSign, Factory, HeartHandshake, Layers, Headphones, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import { getLeads, Lead, updateLeadStatus } from '../services/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
+import LeadCard from './kanban/LeadCard';
+import KanbanColumn from './kanban/KanbanColumn';
 import {
   DndContext,
   closestCenter,
@@ -15,8 +17,6 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
-  useDraggable,
-  useDroppable,
 } from '@dnd-kit/core';
 
 interface KanbanProps {
@@ -66,102 +66,7 @@ const COLORS = [
   { name: 'indigo', bg: 'bg-indigo-500' },
 ];
 
-const DraggableLeadCard = ({ lead, onClick }: { lead: Lead; onClick: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: lead.id,
-    data: { lead },
-  });
-
-  const style: React.CSSProperties = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: 9999,
-    position: 'relative',
-    pointerEvents: 'none',
-  } : {};
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      onClick={onClick}
-      className={`bg-white p-4 rounded-xl shadow-sm border border-slate-100 cursor-grab active:cursor-grabbing hover:border-rose-200 hover:shadow-md ${isDragging ? 'opacity-80 ring-2 ring-rose-500 shadow-2xl scale-105' : 'transition-all'
-        }`}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lead.company || 'Sem Empresa'}</span>
-        {lead.estimatedValue && (
-          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(lead.estimatedValue)}
-          </span>
-        )}
-      </div>
-      <h3 className="font-bold text-slate-800 leading-tight mb-2">{lead.name}</h3>
-
-      {/* Last Message Preview */}
-      {/* Last Message Preview */}
-      {lead.lastMessage && (
-        <div className={`text-[11px] px-3 py-2 rounded-lg mb-3 line-clamp-2 italic border-l-2 flex gap-2 items-start ${lead.lastMessageFrom === 'out' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-slate-50 text-slate-500 border-slate-300'}`}>
-          <span className="shrink-0 mt-0.5 opacity-70">
-            {lead.lastMessageFrom === 'out' ? <Headphones size={12} /> : <User size={12} />}
-          </span>
-          <span className="leading-tight">"{lead.lastMessage}"</span>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between text-[11px] text-slate-400">
-        <span>{new Date(lead.createdAt).toLocaleDateString('pt-BR')}</span>
-        {lead.source && <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px] uppercase">{lead.source}</span>}
-      </div>
-    </div>
-  );
-};
-
-// Componente Droppable Column interno para usar o hook
-const DroppableColumn = ({ stage, children, count, onAddLead, buttons, editor }: any) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: stage.id,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`min-w-[320px] w-[320px] flex flex-col h-full gap-5 relative group/column ${isOver ? 'bg-slate-100/50 rounded-[2.5rem]' : ''}`}
-    >
-      {/* Header de Coluna */}
-      <div className="flex items-center justify-between px-2 relative min-h-[40px]">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full bg-${stage.color}-500 shadow-lg shadow-${stage.color}-500/20`}></div>
-          <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em]">{stage.name}</h2>
-          <span className="bg-slate-200/60 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md">{count}</span>
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
-          {buttons}
-        </div>
-
-        {/* Editor Popover */}
-        {editor}
-      </div>
-
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-20 mt-4 px-1">
-        {children}
-
-        <div
-          onClick={() => onAddLead(stage.id)}
-          className="bg-white/40 border-2 border-dashed border-slate-200 rounded-[2.5rem] py-8 flex flex-col items-center justify-center text-slate-300 gap-4 group/card hover:border-rose-600/30 hover:bg-white transition-all cursor-pointer shadow-sm opacity-60 hover:opacity-100"
-        >
-          <div className="p-3 bg-slate-100/50 rounded-full group-hover/card:bg-rose-50 group-hover/card:text-rose-600 transition-all">
-            <Plus size={24} strokeWidth={1.5} />
-          </div>
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover/card:text-rose-600/60">Adicionar Card</span>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Old inline components removed - now using LeadCard and KanbanColumn from ./kanban/
 
 
 const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWorkspace = false }) => {
@@ -508,20 +413,24 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
         <div className="flex-1 overflow-x-auto p-10 flex gap-8 items-start no-scrollbar bg-slate-50/50">
           {boardStages.map((stage) => {
             const stageLeads = leads.filter(l => l.statusHT === stage.id || l.statusLT === stage.id);
+            const totalValue = stageLeads.reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
 
             return (
-              <DroppableColumn
+              <KanbanColumn
                 key={stage.id}
-                stage={stage}
+                id={stage.id}
+                name={stage.name}
+                color={stage.color}
                 count={stageLeads.length}
-                onAddLead={handleOpenLeadModal}
-                buttons={
+                totalValue={totalValue}
+                onAddLead={() => handleOpenLeadModal(stage.id)}
+                actionButtons={
                   <>
                     <button
                       type="button"
                       onClick={() => setEditingStageId(stage.id)}
                       className="p-2 text-slate-400 hover:text-slate-900 transition-all rounded-xl hover:bg-slate-100"
-                      title="Editar Etapa"
+                      aria-label="Editar Etapa"
                     >
                       <Edit2 size={16} strokeWidth={2.5} />
                     </button>
@@ -529,64 +438,66 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
                       type="button"
                       onClick={(e) => removeStage(e, stage.id)}
                       className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all rounded-xl shadow-sm border border-rose-100/50"
-                      title="Excluir Coluna"
+                      aria-label="Excluir Coluna"
                     >
                       <Trash2 size={16} strokeWidth={2.5} />
                     </button>
                   </>
                 }
-                editor={editingStageId === stage.id && (
+                editorPanel={editingStageId === stage.id && (
                   <div
                     ref={editRef}
-                    className="absolute top-12 right-0 w-72 bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl z-[80] p-8 animate-in zoom-in-95 duration-200"
+                    className="absolute top-14 right-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-[80] p-6"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Nome da Etapa</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Nome da Etapa</label>
                         <input
                           autoFocus
                           type="text"
                           value={stage.name}
                           onChange={(e) => updateStage(stage.id, { name: e.target.value })}
-                          className="w-full bg-white border-2 border-rose-500 rounded-2xl px-5 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-rose-500/5 transition-all"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                       </div>
-
                       <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Personalizar Cor</label>
-                        <div className="flex flex-wrap gap-2.5">
+                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Cor</label>
+                        <div className="flex flex-wrap gap-2">
                           {COLORS.map((c) => (
                             <button
                               key={c.name}
                               onClick={() => updateStage(stage.id, { color: c.name as any })}
-                              className={`w-8 h-8 rounded-full transition-all relative border-2 ${stage.color === c.name
+                              className={`w-7 h-7 rounded-full transition-all relative border-2 ${stage.color === c.name
                                 ? 'border-slate-900 scale-110 shadow-lg'
                                 : 'border-transparent hover:scale-110'
                                 } ${c.bg}`}
+                              aria-label={`Cor ${c.name}`}
                             >
-                              {stage.color === c.name && <div className="absolute inset-0 flex items-center justify-center text-white"><Plus size={12} strokeWidth={4} /></div>}
+                              {stage.color === c.name && <div className="absolute inset-0 flex items-center justify-center text-white"><Plus size={10} strokeWidth={4} /></div>}
                             </button>
                           ))}
                         </div>
                       </div>
-
-                      <div className="pt-2 border-t border-slate-50">
-                        <button
-                          onClick={() => setEditingStageId(null)}
-                          className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:bg-rose-700 active:scale-95 shadow-xl shadow-rose-600/20"
-                        >
-                          Pronto
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setEditingStageId(null)}
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold transition-all hover:bg-blue-700"
+                      >
+                        Pronto
+                      </button>
                     </div>
                   </div>
                 )}
               >
                 {stageLeads.map(lead => (
-                  <DraggableLeadCard key={lead.id} lead={lead} onClick={() => toast.info('Detalhes do lead em breve!')} />
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onClick={() => toast.info('Detalhes do lead em breve!')}
+                    agentName={lead.assignedUser?.name}
+                  />
                 ))}
-              </DroppableColumn>
+              </KanbanColumn>
             );
           })}
 
