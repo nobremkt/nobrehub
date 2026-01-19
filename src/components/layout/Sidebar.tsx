@@ -55,11 +55,10 @@ const Sidebar: React.FC<SidebarProps> = ({ user, unreadCount = 0, onLogout }) =>
     return (
         <aside
             className={`
-                fixed left-0 top-0 h-dvh
+                h-full flex-shrink-0
                 bg-white border-r border-slate-200
                 flex flex-col
                 transition-all duration-300 ease-in-out
-                z-[300]
                 ${isCollapsed ? 'w-16' : 'w-60'}
             `}
         >

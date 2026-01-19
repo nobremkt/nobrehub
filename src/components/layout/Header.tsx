@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
     };
 
     return (
-        <header className="fixed top-0 right-0 left-60 h-14 bg-white border-b border-slate-200 z-[200] flex items-center justify-between px-6">
+        <header className="h-14 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6">
             {/* Search Bar */}
             <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md">
                 <div className="relative">

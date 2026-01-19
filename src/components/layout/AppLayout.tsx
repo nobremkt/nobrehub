@@ -23,19 +23,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     onLogout,
 }) => {
     return (
-        <div className="min-h-dvh bg-slate-50">
-            {/* Sidebar */}
-            <Sidebar user={user} unreadCount={unreadCount} onLogout={onLogout} />
-
-            {/* Header */}
+        <div className="h-dvh flex flex-col bg-slate-50 overflow-hidden">
+            {/* Header - Fixed at top */}
             <Header user={user} notifications={notifications} onLogout={onLogout} />
 
-            {/* Main Content */}
-            <main className="ml-60 pt-14 min-h-dvh">
-                <div className="p-6">
+            <div className="flex flex-1 overflow-hidden">
+                {/* Sidebar - Fixed width */}
+                <Sidebar user={user} unreadCount={unreadCount} onLogout={onLogout} />
+
+                {/* Main Content - Edge-to-edge, fills remaining space */}
+                <main className="flex-1 overflow-hidden">
                     {children}
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     );
 };
