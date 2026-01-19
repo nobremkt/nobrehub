@@ -533,22 +533,6 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         }
     });
 
-    // Get available templates
-    server.get('/templates', {
-        preHandler: [(server as any).authenticate as any]
-    }, async (request: FastifyRequest, reply: FastifyReply) => {
-        try {
-            const templates = await dialog360.getTemplates();
-            return reply.send({ templates });
-        } catch (error: any) {
-            console.error('❌ Failed to fetch templates:', error.message);
-            return reply.code(500).send({
-                error: 'Failed to fetch templates',
-                details: error.message
-            });
-        }
-    });
-
     // Get conversation history for a phone number (from database)
     server.get('/messages/:phone', {
         preHandler: [(server as any).authenticate as any]
