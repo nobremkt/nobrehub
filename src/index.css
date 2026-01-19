@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+/* Design System Tokens */
+@import './styles/tokens.css';
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -10,21 +13,21 @@
   --bg-secondary: #FFFFFF;
   --bg-chat-mine: #E11D48;
   --bg-chat-theirs: #F1F5F9;
-  
+
   /* Text */
   --text-primary: #0F172A;
   --text-secondary: #64748B;
   --text-inverse: #FFFFFF;
-  
+
   /* Accent */
   --accent-primary: #E11D48;
   --accent-hover: #BE123C;
   --accent-soft: #FEE2E2;
-  
+
   /* Borders */
   --border-light: #E2E8F0;
   --border-focus: #E11D48;
-  
+
   /* Legacy compatibility */
   --bg: #f8fafc;
   --card: #ffffff;
@@ -42,7 +45,7 @@
   --text-primary: #f5f5f7;
   --text-secondary: #a0a0b2;
   --border-light: rgba(255, 255, 255, 0.1);
-  
+
   /* Legacy */
   --bg: #0b0b0e;
   --card: #12121a;
@@ -99,8 +102,13 @@ body {
 
 /* Animation utilities */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
@@ -108,6 +116,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -119,6 +128,7 @@ body {
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -130,6 +140,7 @@ body {
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -137,17 +148,25 @@ body {
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(225, 29, 72, 0);
   }
 }
 
 @keyframes slideUnderline {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .animate-in {
@@ -171,11 +190,25 @@ body {
 }
 
 /* Staggered animation delays */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
 
 /* Chat bubble styles */
 .chat-bubble-mine {
