@@ -48,8 +48,8 @@ const TopNav: React.FC<TopNavProps> = ({
 
     const navItems: NavItem[] = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
-        { id: 'kanban', label: 'Kanban', icon: <Columns size={18} />, path: '/kanban' },
         { id: 'inbox', label: 'Inbox', icon: <MessageSquare size={18} />, path: '/inbox', badge: unreadCount },
+        { id: 'kanban', label: 'Kanban', icon: <Columns size={18} />, path: '/kanban' },
         { id: 'producao', label: 'Produção', icon: <CheckSquare size={18} />, path: '/producao' },
         { id: 'equipe', label: 'Equipe', icon: <Users size={18} />, path: '/equipe' },
         { id: 'automacoes', label: 'Automações', icon: <Zap size={18} />, path: '/automacoes' },
