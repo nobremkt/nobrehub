@@ -520,7 +520,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     };
 
     // Send template message
-    const handleSendTemplate = async (templateName: string, parameters: string[], renderedText: string) => {
+    const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
         if (!conversation) return;
 
         const token = localStorage.getItem('token');
@@ -549,11 +549,11 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
             const result = await response.json();
 
-            // Add template message to local state with full rendered text
+            // Add template message to local state
             const newMessage: Message = {
                 id: result.dbId || `temp-${Date.now()}`,
                 direction: 'out',
-                text: renderedText,
+                text: fullText || `📋 Template: ${templateName}`,
                 type: 'template',
                 templateName: templateName,
                 status: 'sent',

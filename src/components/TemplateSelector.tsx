@@ -12,7 +12,7 @@ interface Template {
 }
 
 interface TemplateSelectorProps {
-    onSend: (templateName: string, parameters: string[], renderedText: string) => Promise<void>;
+    onSend: (templateName: string, parameters: string[], fullText?: string) => Promise<void>;
     onClose: () => void;
     leadName?: string;
 }
@@ -86,33 +86,6 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onSend, onClose, le
         }
     };
 
-    // Render template text with parameters substituted
-    const renderTemplateText = (template: Template, params: Record<string, string>): string => {
-        if (!template.components) return `Template: ${template.name}`;
-
-        let fullText = '';
-        const templateVars = getTemplateVariables(template);
-
-        template.components.forEach((comp: any) => {
-            if (comp.type === 'HEADER' && comp.text) {
-                fullText += comp.text + '\n\n';
-            }
-            if (comp.type === 'BODY' && comp.text) {
-                let bodyText = comp.text;
-                // Replace {{1}}, {{2}}, etc. with actual values
-                templateVars.forEach((varName, index) => {
-                    bodyText = bodyText.replace(`{{${index + 1}}}`, params[varName] || `{{${index + 1}}}`);
-                });
-                fullText += bodyText;
-            }
-            if (comp.type === 'FOOTER' && comp.text) {
-                fullText += '\n\n' + comp.text;
-            }
-        });
-
-        return fullText.trim() || `Template: ${template.name}`;
-    };
-
     const handleSend = async () => {
         if (!selectedTemplate) return;
 
@@ -120,8 +93,17 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onSend, onClose, le
         try {
             const templateVars = getTemplateVariables(selectedTemplate);
             const params = templateVars.map(v => variables[v] || '');
-            const renderedText = renderTemplateText(selectedTemplate, variables);
-            await onSend(selectedTemplate.name, params, renderedText);
+
+            // Reconstruct full message text
+            const bodyComp = selectedTemplate.components?.find((c: any) => c.type === 'BODY');
+            let fullText = bodyComp?.text || '';
+            // Replace {{1}}, {{2}} with actual values
+            fullText = fullText.replace(/\{\{(\d+)\}\}/g, (match: string, number: string) => {
+                const varIndex = parseInt(number) - 1;
+                return params[varIndex] || match;
+            });
+
+            await onSend(selectedTemplate.name, params, fullText);
             onClose();
         } catch (error) {
             console.error('Failed to send template:', error);
