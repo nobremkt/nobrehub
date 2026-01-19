@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
+import LeadContextSidebar from './LeadContextSidebar';
+import LeadDetailModal from './LeadDetailModal';
 
 interface Message {
     id: string;
@@ -60,6 +62,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [availableAgents, setAvailableAgents] = useState<{ id: string; name: string }[]>([]);
     const [isLoadingAgents, setIsLoadingAgents] = useState(false);
+
+    // Lead Detail Modal State
+    const [showLeadModal, setShowLeadModal] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -526,213 +531,237 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     }
 
     return (
-        <div className="h-dvh flex flex-col bg-[#f8fafc]">
-            {/* Header */}
-            <header className="bg-white border-b border-slate-100 px-6 py-4">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
-                    >
-                        <ArrowLeft size={20} className="text-slate-600" />
-                    </button>
+        <div className="h-dvh flex bg-[#f8fafc]">
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Header */}
+                <header className="bg-white border-b border-slate-100 px-6 py-4">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onBack}
+                            className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
+                            <ArrowLeft size={20} className="text-slate-600" />
+                        </button>
 
-                    <div className="relative">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
-                            <User size={20} className="text-rose-600" />
-                        </div>
-                        {/* Status Dot */}
-                        <div
-                            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
-                                }`}
-                            title={isConnected ? `Conectado (Socket Real-time)` : 'Desconectado (Polling Backup)'}
-                        />
-                    </div>
-
-                    <div className="flex-1">
-                        <h2 className="font-bold text-slate-900">{conversation.lead.name}</h2>
-                        <div className="flex items-center gap-3 text-xs text-slate-400">
-                            <div className="flex items-center gap-1">
-                                <Phone size={10} />
-                                <span>{conversation.lead.phone}</span>
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
+                                <User size={20} className="text-rose-600" />
                             </div>
-                            <div className="flex items-center gap-1">
-                                <DollarSign size={10} />
-                                <span>{formatCurrency(conversation.lead.estimatedValue)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons - Visible */}
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={fetchAvailableAgents}
-                            disabled={isLoadingAgents}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-700 transition-colors"
-                            title="Transferir conversa"
-                        >
-                            <ArrowRightLeft size={16} />
-                            <span className="hidden sm:inline">Transferir</span>
-                        </button>
-                        <button
-                            onClick={handlePaymentSignal}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-100 hover:bg-emerald-200 rounded-xl text-sm font-medium text-emerald-700 transition-colors"
-                            title="Marcar sinal pago"
-                        >
-                            <CreditCard size={16} />
-                            <span className="hidden sm:inline">Sinal</span>
-                        </button>
-                        <button
-                            onClick={handleNoInterest}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-rose-100 hover:bg-rose-200 rounded-xl text-sm font-medium text-rose-700 transition-colors"
-                            title="Encerrar sem interesse"
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                </div>
-            </header>
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {messages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                        <div className={`max-w-[70%] px-5 py-3 ${msg.direction === 'out' ? 'chat-bubble-mine shadow-lg shadow-rose-500/10' : 'chat-bubble-theirs'}`}>
-                            {msg.type === 'image' && msg.mediaUrl && (
-                                <img src={msg.mediaUrl} alt="Imagem enviada" className="w-full rounded-lg mb-2 max-h-60 object-cover" />
-                            )}
-                            {msg.type === 'audio' && msg.mediaUrl && (
-                                <audio controls src={msg.mediaUrl} className="w-full mb-2" />
-                            )}
-                            {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
-                            <p className={`text-[10px] mt-1 ${msg.direction === 'out' ? 'text-rose-200' : 'text-slate-400'}`}>
-                                {formatTime(msg.createdAt)}
-                            </p>
-                        </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Bar - WhatsApp Style */}
-            <div className="bg-white border-t border-slate-100 p-4">
-                <div className="flex items-center gap-3">
-                    {/* Attach Button */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileUpload}
-                        accept="image/*,audio/*,application/pdf"
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                        title="Anexar arquivo"
-                        disabled={isSending}
-                    >
-                        <Paperclip size={20} />
-                    </button>
-
-                    {/* Input */}
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Digite sua mensagem..."
-                        className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
-                    />
-
-                    {/* Audio Button / Recording Controls */}
-                    {isRecording ? (
-                        <div className="flex items-center gap-2">
-                            <span className="text-rose-600 font-mono text-sm animate-pulse">
-                                {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:
-                                {(recordingDuration % 60).toString().padStart(2, '0')}
-                            </span>
-                            <button
-                                onClick={() => { stopRecording(); audioChunksRef.current = []; setRecordingDuration(0); }}
-                                className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
-                                title="Cancelar gravação"
-                            >
-                                <X size={20} />
-                            </button>
-                            <button
-                                onClick={sendAudio}
-                                disabled={isSending}
-                                className="p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20"
-                                title="Enviar áudio"
-                            >
-                                <Send size={20} />
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <button
-                                onClick={startRecording}
-                                className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
-                                title="Gravar áudio"
-                                disabled={isSending}
-                            >
-                                <Mic size={20} />
-                            </button>
-
-                            {/* Send Button */}
-                            <button
-                                onClick={handleSend}
-                                disabled={!newMessage.trim() || isSending}
-                                className={`p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-600/20 ${newMessage.trim() && !isSending ? 'animate-pulse-glow' : ''
+                            {/* Status Dot */}
+                            <div
+                                className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
                                     }`}
-                            >
-                                <Send size={20} />
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Transfer Modal */}
-            {showTransferModal && (
-                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
-                            <button
-                                onClick={() => setShowTransferModal(false)}
-                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                            >
-                                <XCircle size={20} />
-                            </button>
+                                title={isConnected ? `Conectado (Socket Real-time)` : 'Desconectado (Polling Backup)'}
+                            />
                         </div>
 
-                        <div className="p-4 max-h-[300px] overflow-y-auto">
-                            {availableAgents.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">
-                                    <User size={32} className="mx-auto mb-2 opacity-50" />
-                                    <p className="text-sm">Nenhum outro agente online</p>
+                        <div className="flex-1">
+                            <h2 className="font-bold text-slate-900">{conversation.lead.name}</h2>
+                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                                <div className="flex items-center gap-1">
+                                    <Phone size={10} />
+                                    <span>{conversation.lead.phone}</span>
                                 </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {availableAgents.map(agent => (
-                                        <button
-                                            key={agent.id}
-                                            onClick={() => handleTransfer(agent.id)}
-                                            className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
-                                        >
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                                                {agent.name.charAt(0)}
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
-                                                <p className="text-xs text-emerald-500 font-bold">Online</p>
-                                            </div>
-                                        </button>
-                                    ))}
+                                <div className="flex items-center gap-1">
+                                    <DollarSign size={10} />
+                                    <span>{formatCurrency(conversation.lead.estimatedValue)}</span>
                                 </div>
-                            )}
+                            </div>
+                        </div>
+
+                        {/* Action Buttons - Visible */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={fetchAvailableAgents}
+                                disabled={isLoadingAgents}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-700 transition-colors"
+                                title="Transferir conversa"
+                            >
+                                <ArrowRightLeft size={16} />
+                                <span className="hidden sm:inline">Transferir</span>
+                            </button>
+                            <button
+                                onClick={handlePaymentSignal}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-100 hover:bg-emerald-200 rounded-xl text-sm font-medium text-emerald-700 transition-colors"
+                                title="Marcar sinal pago"
+                            >
+                                <CreditCard size={16} />
+                                <span className="hidden sm:inline">Sinal</span>
+                            </button>
+                            <button
+                                onClick={handleNoInterest}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-rose-100 hover:bg-rose-200 rounded-xl text-sm font-medium text-rose-700 transition-colors"
+                                title="Encerrar sem interesse"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
                     </div>
+                </header>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {messages.map((msg) => (
+                        <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
+                            <div className={`max-w-[70%] px-5 py-3 ${msg.direction === 'out' ? 'chat-bubble-mine shadow-lg shadow-rose-500/10' : 'chat-bubble-theirs'}`}>
+                                {msg.type === 'image' && msg.mediaUrl && (
+                                    <img src={msg.mediaUrl} alt="Imagem enviada" className="w-full rounded-lg mb-2 max-h-60 object-cover" />
+                                )}
+                                {msg.type === 'audio' && msg.mediaUrl && (
+                                    <audio controls src={msg.mediaUrl} className="w-full mb-2" />
+                                )}
+                                {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
+                                <p className={`text-[10px] mt-1 ${msg.direction === 'out' ? 'text-rose-200' : 'text-slate-400'}`}>
+                                    {formatTime(msg.createdAt)}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
                 </div>
+
+                {/* Input Bar - WhatsApp Style */}
+                <div className="bg-white border-t border-slate-100 p-4">
+                    <div className="flex items-center gap-3">
+                        {/* Attach Button */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileUpload}
+                            accept="image/*,audio/*,application/pdf"
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                            title="Anexar arquivo"
+                            disabled={isSending}
+                        >
+                            <Paperclip size={20} />
+                        </button>
+
+                        {/* Input */}
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Digite sua mensagem..."
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
+                        />
+
+                        {/* Audio Button / Recording Controls */}
+                        {isRecording ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-rose-600 font-mono text-sm animate-pulse">
+                                    {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:
+                                    {(recordingDuration % 60).toString().padStart(2, '0')}
+                                </span>
+                                <button
+                                    onClick={() => { stopRecording(); audioChunksRef.current = []; setRecordingDuration(0); }}
+                                    className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                                    title="Cancelar gravação"
+                                >
+                                    <X size={20} />
+                                </button>
+                                <button
+                                    onClick={sendAudio}
+                                    disabled={isSending}
+                                    className="p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20"
+                                    title="Enviar áudio"
+                                >
+                                    <Send size={20} />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={startRecording}
+                                    className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                                    title="Gravar áudio"
+                                    disabled={isSending}
+                                >
+                                    <Mic size={20} />
+                                </button>
+
+                                {/* Send Button */}
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!newMessage.trim() || isSending}
+                                    className={`p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-600/20 ${newMessage.trim() && !isSending ? 'animate-pulse-glow' : ''
+                                        }`}
+                                >
+                                    <Send size={20} />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Transfer Modal */}
+                {showTransferModal && (
+                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
+                                <button
+                                    onClick={() => setShowTransferModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                >
+                                    <XCircle size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 max-h-[300px] overflow-y-auto">
+                                {availableAgents.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <User size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">Nenhum outro agente online</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {availableAgents.map(agent => (
+                                            <button
+                                                key={agent.id}
+                                                onClick={() => handleTransfer(agent.id)}
+                                                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                    {agent.name.charAt(0)}
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
+                                                    <p className="text-xs text-emerald-500 font-bold">Online</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Context Sidebar - Hidden on mobile */}
+            <div className="hidden lg:block">
+                <LeadContextSidebar
+                    lead={conversation.lead}
+                    pipeline={conversation.pipeline}
+                    onOpenDetails={() => setShowLeadModal(true)}
+                />
+            </div>
+
+            {/* Lead Detail Modal */}
+            {showLeadModal && (
+                <LeadDetailModal
+                    isOpen={showLeadModal}
+                    lead={conversation.lead as any}
+                    onClose={() => setShowLeadModal(false)}
+                    onEdit={() => { }}
+                    onDelete={() => { }}
+                    onOpenChat={() => { }}
+                />
             )}
         </div>
     );
