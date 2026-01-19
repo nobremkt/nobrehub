@@ -329,8 +329,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         fetchConversation();
     }, [fetchConversation]);
 
-    // Backup polling for messages - only as fallback when socket fails
-    // This guarantees messages appear even if socket events fail
+    // Backup polling - ONLY syncs status updates and adds missing messages
+    // Does NOT replace existing messages to avoid race conditions with socket
     useEffect(() => {
         if (!conversationId || isLoading) return;
 
@@ -344,99 +344,122 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     const data = await response.json();
                     const serverMessages: Message[] = data.messages || [];
 
-                    // Smart merge: replace local state with server, but keep pending messages
                     setMessages(prev => {
-                        // Build lookup sets for deduplication
-                        const serverIds = new Set(serverMessages.map(m => m.id));
-                        const serverWaIds = new Set(serverMessages.filter(m => m.waMessageId).map(m => m.waMessageId));
-
-                        // Keep only local pending messages that don't exist on server
-                        const pendingToKeep = prev.filter(localMsg => {
-                            // Skip if this local message ID exists on server
-                            if (serverIds.has(localMsg.id)) return false;
-                            // Skip if waMessageId matches (same message, different ID)
-                            if (localMsg.waMessageId && serverWaIds.has(localMsg.waMessageId)) return false;
-                            // Only keep if it's truly pending/local-only
-                            return localMsg.id.startsWith('temp-') || localMsg.status === 'pending';
+                        // Build lookup maps by waMessageId (primary) and id (fallback)
+                        const localByWaId = new Map<string, number>();
+                        const localById = new Map<string, number>();
+                        prev.forEach((m, idx) => {
+                            if (m.waMessageId) localByWaId.set(m.waMessageId, idx);
+                            localById.set(m.id, idx);
                         });
 
-                        if (pendingToKeep.length > 0) {
-                            console.log('📬 Polling: Preserving', pendingToKeep.length, 'pending messages');
-                        }
+                        let hasChanges = false;
+                        const updated = [...prev];
 
-                        // Merge: server messages + pending local messages
-                        const merged = [...serverMessages, ...pendingToKeep].sort(
-                            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                        // Process each server message
+                        serverMessages.forEach(serverMsg => {
+                            // Try to find local message by waMessageId first, then by id
+                            let localIdx = -1;
+                            if (serverMsg.waMessageId && localByWaId.has(serverMsg.waMessageId)) {
+                                localIdx = localByWaId.get(serverMsg.waMessageId)!;
+                            } else if (localById.has(serverMsg.id)) {
+                                localIdx = localById.get(serverMsg.id)!;
+                            }
+
+                            if (localIdx !== -1) {
+                                // Message exists locally - only update if status changed
+                                const localMsg = updated[localIdx];
+                                if (localMsg.status !== serverMsg.status) {
+                                    updated[localIdx] = { ...localMsg, status: serverMsg.status };
+                                    hasChanges = true;
+                                }
+                            } else {
+                                // Message doesn't exist locally - add it
+                                // But skip if we have a pending message with same text (optimistic UI)
+                                const hasPendingMatch = prev.some(m =>
+                                    m.status === 'pending' &&
+                                    m.direction === serverMsg.direction &&
+                                    m.text === serverMsg.text
+                                );
+                                if (!hasPendingMatch) {
+                                    updated.push(serverMsg);
+                                    hasChanges = true;
+                                }
+                            }
+                        });
+
+                        if (!hasChanges) return prev;
+
+                        // Sort and return
+                        updated.sort((a, b) =>
+                            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
                         );
-
-                        // Only update if there's a real change (avoid re-renders)
-                        if (JSON.stringify(merged.map(m => m.id)) === JSON.stringify(prev.map(m => m.id))) {
-                            return prev;
-                        }
-
-                        console.log('📬 Polling: Messages updated', prev.length, '->', merged.length);
-                        return merged;
+                        return updated;
                     });
                 }
             } catch (error) {
-                // Silent fail for polling - don't spam console
+                // Silent fail for polling
             }
-        }, 5000); // Poll every 5 seconds as fallback (socket handles real-time)
+        }, 5000);
 
         return () => clearInterval(pollInterval);
     }, [conversationId, isLoading]);
 
-    // Subscribe to new messages
-    // Subscribe to new messages
+    // Subscribe to new messages via socket
     useEffect(() => {
         if (!conversationId) return;
 
         console.log(`🔌 ChatView: Subscribing to messages for ${conversationId}`);
         const unsubscribe = subscribeToConversation(conversationId, (newMessage) => {
             console.log('📨 ChatView: MESSAGE RECEIVED!', newMessage);
-            console.log('📨 newMessage.id:', newMessage.id);
-            console.log('📨 newMessage.waMessageId:', newMessage.waMessageId);
 
             setMessages((prev) => {
-                console.log('🔄 setMessages called, prev length:', prev.length);
-                console.log('🔄 prev IDs:', prev.map(m => m.id).slice(-5)); // Last 5 IDs
+                // Find existing message by waMessageId (primary) or id (fallback)
+                let existingIdx = -1;
+                if (newMessage.waMessageId) {
+                    existingIdx = prev.findIndex(m => m.waMessageId === newMessage.waMessageId);
+                }
+                if (existingIdx === -1) {
+                    existingIdx = prev.findIndex(m => m.id === newMessage.id);
+                }
 
-                // 1. Exact ID match check
-                const isDuplicate = prev.some(m => m.id === newMessage.id);
-                console.log('🔄 isDuplicate by ID?', isDuplicate);
-
-                if (isDuplicate) {
-                    console.log('⚠️ SKIPPING - Duplicate ID found');
+                // If message exists, update it (status may have changed)
+                if (existingIdx !== -1) {
+                    const existing = prev[existingIdx];
+                    // Only update if there's a meaningful change
+                    if (existing.status !== newMessage.status || existing.id !== newMessage.id) {
+                        console.log('🔄 Updating existing message at index:', existingIdx);
+                        const updated = [...prev];
+                        updated[existingIdx] = { ...existing, ...newMessage };
+                        return updated;
+                    }
+                    console.log('⚠️ SKIPPING - No changes to existing message');
                     return prev;
                 }
 
-                // 2. Deduplication for Optimistic UI:
-                // If we find a 'pending' message with same text & direction, replace it.
-                // This prevents duplicating the message when the real event arrives.
+                // Check for pending message with same text (optimistic UI replacement)
                 if (newMessage.direction === 'out') {
-                    const pendingIndex = prev.findIndex(m =>
-                        m.status === 'pending' &&
+                    const pendingIdx = prev.findIndex(m =>
+                        (m.status === 'pending' || m.id.startsWith('temp-')) &&
                         m.direction === 'out' &&
                         m.text === newMessage.text
                     );
 
-                    if (pendingIndex !== -1) {
-                        console.log('✅ Replacing pending message at index:', pendingIndex);
+                    if (pendingIdx !== -1) {
+                        console.log('✅ Replacing pending message at index:', pendingIdx);
                         const updated = [...prev];
-                        updated[pendingIndex] = newMessage;
+                        updated[pendingIdx] = newMessage;
                         return updated;
                     }
                 }
 
-                // Add and sort
+                // Add new message
                 console.log('✅ ADDING NEW MESSAGE to state');
                 const updated = [...prev, newMessage].sort((a, b) =>
                     new Date(a.createdAt || a.timestamp || 0).getTime() - new Date(b.createdAt || b.timestamp || 0).getTime()
                 );
-                console.log('✅ New state length:', updated.length);
                 return updated;
             });
-            // Force scroll to bottom on new message
             scrollToBottom();
         });
 
