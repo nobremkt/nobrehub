@@ -431,6 +431,29 @@ export default async function whatsappRoutes(server: FastifyInstance) {
         }
     });
 
+    // Get available message templates
+    server.get('/templates', {
+        preHandler: [(server as any).authenticate as any]
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            const templates = await dialog360.getTemplates();
+            // Filter only approved templates and format for frontend
+            const approvedTemplates = templates
+                .filter((t: any) => t.status === 'APPROVED')
+                .map((t: any) => ({
+                    name: t.name,
+                    language: t.language,
+                    status: t.status,
+                    category: t.category,
+                    components: t.components
+                }));
+            return reply.send({ templates: approvedTemplates });
+        } catch (error: any) {
+            console.error('Error fetching templates:', error);
+            return reply.code(500).send({ error: 'Failed to fetch templates' });
+        }
+    });
+
     // Send template message (HSM)
     server.post('/send-template', {
         preHandler: [(server as any).authenticate as any]
