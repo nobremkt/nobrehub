@@ -30,20 +30,22 @@ const StatusIcon: React.FC<{ status: string; direction: 'in' | 'out' }> = ({ sta
     if (direction === 'in') return null; // Incoming messages don't show status
 
     const baseClass = "ml-1 inline-flex flex-shrink-0";
+    // Use white tones on outgoing (rose) bubbles for contrast
+    const isOut = direction === 'out';
 
     switch (status) {
         case 'pending':
-            return <Clock size={12} className={`${baseClass} text-slate-400`} />;
+            return <Clock size={12} className={`${baseClass} ${isOut ? 'text-white/70' : 'text-slate-400'}`} />;
         case 'sent':
-            return <Check size={14} className={`${baseClass} text-slate-400`} />;
+            return <Check size={14} className={`${baseClass} ${isOut ? 'text-white/80' : 'text-slate-400'}`} />;
         case 'delivered':
-            return <CheckCheck size={14} className={`${baseClass} text-slate-400`} />;
+            return <CheckCheck size={14} className={`${baseClass} ${isOut ? 'text-white/80' : 'text-slate-400'}`} />;
         case 'read':
-            return <CheckCheck size={14} className={`${baseClass} text-blue-500`} />;
+            return <CheckCheck size={14} className={`${baseClass} ${isOut ? 'text-cyan-200' : 'text-blue-500'}`} />;
         case 'failed':
-            return <AlertCircle size={14} className={`${baseClass} text-red-500`} />;
+            return <AlertCircle size={14} className={`${baseClass} text-red-400`} />;
         default:
-            return <Check size={14} className={`${baseClass} text-slate-400`} />;
+            return <Check size={14} className={`${baseClass} ${isOut ? 'text-white/80' : 'text-slate-400'}`} />;
     }
 };
 
@@ -106,8 +108,8 @@ const AudioPlayer: React.FC<{ src: string; direction: 'in' | 'out' }> = ({ src, 
             <button
                 onClick={togglePlay}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${isOut
-                        ? 'bg-white/20 hover:bg-white/30 text-white'
-                        : 'bg-slate-200 hover:bg-slate-300 text-slate-600'
+                    ? 'bg-white/20 hover:bg-white/30 text-white'
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-600'
                     }`}
             >
                 {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}

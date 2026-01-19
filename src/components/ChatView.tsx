@@ -794,7 +794,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                             onChange={(e) => setNewMessage(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="Digite sua mensagem..."
-                            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm text-slate-900 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
                         />
 
                         {/* Audio Button / Recording Controls */}
