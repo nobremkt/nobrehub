@@ -810,6 +810,59 @@ DIALOG360_API_KEY=your_key
     └─────────────┴────────────┴────────────────┴─────────────────┘
 ```
 
+### 16.6 Análise Crítica da Arquitetura (Revisão Jan/2026)
+
+> Revisão pragmática considerando o tamanho atual da equipe (~10-15 usuários) e recursos disponíveis.
+
+#### ✅ Componentes Adequados (Manter)
+| Componente | Justificativa |
+|------------|---------------|
+| PostgreSQL (Supabase) | Escalável, RLS nativo, backups automáticos |
+| Supabase Storage | Já implementado para mídia WhatsApp |
+| Socket.io integrado | Suficiente para volume atual |
+| RBAC (9 roles) | Completo para todos os casos de uso |
+| 360Dialog Cloud API v2 | Moderna, estável, bem documentada |
+
+#### 🟡 Componentes Adiáveis (Overkill para o momento)
+| Sugestão Original | Recomendação |
+|-------------------|--------------|
+| Kubernetes/AWS EC2 | Railway suficiente até ~100 usuários simultâneos |
+| Redis para cache | PostgreSQL com índices adequados resolve |
+| Apache Kafka | BullMQ ou Supabase Edge Functions para filas simples |
+| BigQuery/Redshift | SQL no Supabase resolve analytics atuais |
+| HashiCorp Vault | Env vars do Railway/Vercel são seguras |
+
+#### 🔴 Componentes Faltantes (Adicionar)
+| Componente | Prioridade | Justificativa |
+|------------|------------|---------------|
+| **Notificações Push (Browser)** | Alta | Alertar vendedor de novas mensagens |
+| **Sentry (Error Tracking)** | Alta | Debug em produção é cego atualmente |
+| **Rate Limiting** | Média | Proteção contra abuso de API |
+| **Webhook Retry/DLQ** | Média | Resiliência quando servidor offline |
+| **Logs Estruturados (JSON)** | Média | Facilita debugging e analytics |
+| **Backup Exportável** | Baixa | Exportar histórico de lead específico |
+| **API de Webhooks Outbound** | Baixa | Integração com Zapier/Make/N8N |
+
+#### 📊 Roadmap Revisado e Priorizado
+
+**Fase 2.1 - Estabilização (2 semanas)**
+- [x] Envio de mídia (imagem/áudio)
+- [x] Gravação de áudio no browser
+- [ ] Web Notifications API
+- [ ] Sentry error tracking
+
+**Fase 2.2 - Funcionalidades Core (1 mês)**
+- [ ] Templates WhatsApp no UI (resolver 24h)
+- [ ] Dashboard de métricas (SQL direto)
+- [ ] Histórico de auditoria (log de ações)
+- [ ] Sidebar de contexto do lead no chat
+
+**Fase 3 - Escala (quando necessário)**
+- [ ] BullMQ para filas assíncronas
+- [ ] Cloud Run para auto-scaling
+- [ ] Instagram Direct
+- [ ] Transcrição de áudio (Whisper)
+
 ---
 
 ## 📞 CONTATOS E REFERÊNCIAS
