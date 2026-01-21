@@ -5,6 +5,7 @@ import {
     Briefcase, MapPin, FileText, History, TrendingUp, Star, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ActivitiesTab } from './lead360/ActivitiesTab';
 
 interface Deal {
     id: string;
@@ -371,6 +372,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                             {/* Atividades Tab */}
                             {activeTab === 'atividades' && (
                                 <div className="space-y-6">
+                                    {/* Summary cards */}
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="p-4 bg-emerald-50 rounded-xl">
                                             <p className="text-xs text-emerald-600 font-medium">Valor Estimado</p>
@@ -386,46 +388,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-50 rounded-xl p-4">
-                                        <h3 className="font-semibold text-slate-800 mb-3">Resumo do Lead</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Pipeline:</span>
-                                                <span className="font-medium">{lead.pipeline === 'high_ticket' ? 'High Ticket' : 'Low Ticket'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Origem:</span>
-                                                <span className="font-medium">{lead.source || 'Não informada'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Criado em:</span>
-                                                <span className="font-medium">{lead.createdAt ? formatDate(lead.createdAt) : '-'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Recent Activity */}
-                                    <div>
-                                        <h3 className="font-semibold text-slate-800 mb-3">Atividade Recente</h3>
-                                        <div className="space-y-2">
-                                            {history.slice(0, 5).map((item) => {
-                                                const formattedDesc = formatHistoryDescription(item.action, item.description);
-                                                return (
-                                                    <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                                                        <div className="p-2 bg-white rounded-lg">{getActionIcon(item.action)}</div>
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-medium text-slate-700">{getActionLabel(item.action)}</p>
-                                                            {formattedDesc && <p className="text-xs text-slate-500">{formattedDesc}</p>}
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                            {history.length === 0 && (
-                                                <p className="text-sm text-slate-400 italic">Nenhuma atividade recente</p>
-                                            )}
-                                        </div>
-                                    </div>
+                                    {/* Activities Component */}
+                                    <ActivitiesTab leadId={lead.id} />
                                 </div>
                             )}
 

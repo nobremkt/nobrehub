@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User, Filter, X, ChevronDown } from 'lucide-react';
+import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User, Filter, X, ChevronDown, XCircle, Tag } from 'lucide-react';
 import LeadModal from './LeadModal';
 import Lead360Modal from './Lead360Modal';
-import { getLeads, Lead, deleteLead, createLead, updateLead } from '../services/api';
+import LossReasonModal from './LossReasonModal';
+import { TagsDisplay } from './TagsEditor';
+import { getLeads, Lead, deleteLead, createLead, updateLead, markLeadAsLost, getAllTags } from '../services/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 
@@ -20,6 +22,8 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [lossModalLead, setLossModalLead] = useState<Lead | null>(null);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // Advanced filters
   const [showFilters, setShowFilters] = useState(false);
@@ -28,7 +32,9 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
     status: '',
     source: '',
     hasConversation: '' as '' | 'yes' | 'no',
-    dateRange: '' as '' | '7d' | '30d' | '90d'
+    dateRange: '' as '' | '7d' | '30d' | '90d',
+    tags: [] as string[],
+    lostOnly: false,
   });
 
   const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
@@ -113,10 +119,10 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   }, [leads]);
 
   // Count active filters
-  const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
+  const activeFilterCount = Object.values(filters).filter(v => v !== '' && v !== false && !(Array.isArray(v) && v.length === 0)).length;
 
   const clearFilters = () => {
-    setFilters({ pipeline: '', status: '', source: '', hasConversation: '', dateRange: '' });
+    setFilters({ pipeline: '', status: '', source: '', hasConversation: '', dateRange: '', tags: [], lostOnly: false });
   };
 
   const formatCurrency = (value: number) => {
@@ -435,7 +441,8 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pipeline</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Origem</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo</th>
+                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tags</th>
+                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo/Perda</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
@@ -497,9 +504,18 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                         {lead.statusHT || lead.statusLT || 'Novo'}
                       </span>
                     </td>
+                    <td className="px-4 py-5">
+                      <TagsDisplay tags={lead.tags || []} maxDisplay={2} size="xs" />
+                    </td>
                     <td className="px-4 py-5 max-w-[180px]">
                       <div className="flex flex-col gap-1">
-                        {lead.contactReason && (
+                        {lead.lossReason && (
+                          <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                            <XCircle size={10} />
+                            {lead.lossReason.name}
+                          </span>
+                        )}
+                        {!lead.lossReason && lead.contactReason && (
                           <span className="text-xs text-slate-600 line-clamp-1" title={lead.contactReason}>
                             {lead.contactReason}
                           </span>
@@ -544,6 +560,15 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                         >
                           <Edit2 size={16} />
                         </button>
+                        {!lead.lossReason && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setLossModalLead(lead); }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Marcar como Perdido"
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
                           className="p-2 text-slate-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all"
@@ -584,6 +609,23 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
           if (!detailLead) return;
           await updateLead(detailLead.id, updates as any);
           setLeads(prev => prev.map(l => l.id === detailLead.id ? { ...l, ...updates } as Lead : l));
+        }}
+      />
+
+      <LossReasonModal
+        isOpen={!!lossModalLead}
+        onClose={() => setLossModalLead(null)}
+        leadName={lossModalLead?.name || ''}
+        onConfirm={async (lossReasonId, notes) => {
+          if (!lossModalLead) return;
+          try {
+            const updated = await markLeadAsLost(lossModalLead.id, lossReasonId, notes);
+            setLeads(prev => prev.map(l => l.id === lossModalLead.id ? updated : l));
+            toast.success('Lead marcado como perdido');
+            setLossModalLead(null);
+          } catch (error) {
+            toast.error('Erro ao marcar lead como perdido');
+          }
         }}
       />
 

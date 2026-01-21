@@ -113,6 +113,8 @@ enum LeadHistoryAction {
   tag_removed
   note_added
   contact_updated
+  marked_lost
+  tags_updated
 }
 
 // ============ MODELS ============
@@ -173,6 +175,10 @@ model Lead {
   tags         String[]     @default([])
   notes        String?      @db.Text
   contactReason String?     @map("contact_reason")  // Reason for contact / "Qual seu maior desafio hoje"
+  
+  // Loss tracking
+  lostAt       DateTime?    @map("lost_at")
+  lossReasonId String?      @map("loss_reason_id")
   
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
@@ -448,3 +454,190 @@ model LeadHistory {
   @@index([createdAt])
   @@map("lead_history")
 }
+
+// ============ CUSTOM FIELDS (Dynamic fields for Contact/Company/Deal) ============
+
+enum CustomFieldType {
+  text
+  number
+  date
+  select
+  multiselect
+  url
+  email
+  phone
+}
+
+enum CustomFieldEntity {
+  contact
+  company
+  deal
+}
+
+model CustomField {
+  id          String            @id @default(uuid())
+  
+  name        String            // Display name: "Instagram", "CNPJ", etc.
+  key         String            // Internal key: "instagram", "cnpj"
+  type        CustomFieldType   @default(text)
+  entity      CustomFieldEntity // Which entity this field belongs to
+  
+  // For select/multiselect types
+  options     Json?             // ["Option 1", "Option 2"]
+  
+  // Display settings
+  order       Int               @default(0)
+  isVisible   Boolean           @default(true) @map("is_visible")
+  isRequired  Boolean           @default(false) @map("is_required")
+  placeholder String?
+  
+  // Tenant isolation (for multi-tenant)
+  tenantId    String?           @map("tenant_id")
+  
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  
+  // Values stored per lead
+  values      CustomFieldValue[]
+  
+  @@unique([key, entity, tenantId])
+  @@index([entity])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id            String       @id @default(uuid())
+  
+  // Related custom field
+  customFieldId String       @map("custom_field_id")
+  customField   CustomField  @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  
+  // Related lead
+  leadId        String       @map("lead_id")
+  
+  // The value (stored as string, parsed based on field type)
+  value         String?      @db.Text
+  
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  
+  @@unique([customFieldId, leadId])
+  @@index([leadId])
+  @@map("custom_field_values")
+}
+
+// ============ PLAYBOOKS & ACTIVITIES ============
+
+enum ActivityType {
+  call
+  whatsapp
+  email
+  meeting
+  task
+  follow_up
+}
+
+enum ActivityStatus {
+  pending
+  completed
+  skipped
+  overdue
+}
+
+model Playbook {
+  id          String     @id @default(uuid())
+  
+  name        String     // "Playbook Prospecção SDR"
+  description String?
+  
+  // Optional: Link to specific stage
+  stageKey    String?    @map("stage_key")
+  pipeline    PipelineType?
+  
+  isActive    Boolean    @default(true) @map("is_active")
+  tenantId    String?    @map("tenant_id")
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  
+  // Template activities for this playbook
+  templates   ActivityTemplate[]
+  
+  @@map("playbooks")
+}
+
+model ActivityTemplate {
+  id          String       @id @default(uuid())
+  
+  // Parent playbook
+  playbookId  String       @map("playbook_id")
+  playbook    Playbook     @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+  
+  // Activity details
+  type        ActivityType
+  title       String       // "Tentativa de contato 1"
+  description String?
+  
+  // Scheduling
+  daysFromStart Int        @default(1) @map("days_from_start") // Days after lead enters stage
+  order         Int        @default(0)
+  
+  // Optional message template
+  messageTemplate String?  @map("message_template") @db.Text
+  
+  createdAt   DateTime     @default(now()) @map("created_at")
+  
+  @@index([playbookId])
+  @@map("activity_templates")
+}
+
+model Activity {
+  id          String         @id @default(uuid())
+  
+  // Related lead
+  leadId      String         @map("lead_id")
+  
+  // Activity details
+  type        ActivityType
+  title       String
+  description String?
+  
+  // Schedule and status
+  dueDate     DateTime       @map("due_date")
+  status      ActivityStatus @default(pending)
+  completedAt DateTime?      @map("completed_at")
+  
+  // Assigned user
+  assignedTo  String?        @map("assigned_to")
+  
+  // Source template (if from playbook)
+  templateId  String?        @map("template_id")
+  
+  // Notes when completed
+  notes       String?        @db.Text
+  
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  
+  @@index([leadId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([assignedTo])
+  @@map("activities")
+}
+
+// ============ LOSS REASONS ============
+
+model LossReason {
+  id        String   @id @default(uuid())
+  
+  name      String   // "Sem dinheiro", "Comprou concorrente", etc.
+  order     Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  tenantId  String?  @map("tenant_id")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@map("loss_reasons")
+}
+

@@ -453,4 +453,142 @@ export default async function leadRoutes(server: FastifyInstance) {
 
         return { success: true, deleted: ids.length };
     });
+
+    // POST /leads/:id/lost - Mark lead as lost with reason
+    server.post<{ Params: { id: string } }>('/:id/lost', async (request, reply) => {
+        const { id } = request.params;
+        const { lossReasonId, notes } = request.body as { lossReasonId: string; notes?: string };
+        const user = (request as any).user;
+
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        // Update lead status to 'perdido' and record loss reason
+        const updateData: any = {
+            lostAt: new Date(),
+            lossReasonId: lossReasonId,
+            notes: notes ? (lead.notes ? `${lead.notes}\n\n[Perda] ${notes}` : `[Perda] ${notes}`) : lead.notes,
+        };
+
+        // Set status to 'perdido' based on pipeline
+        if (lead.pipeline === 'high_ticket') {
+            updateData.statusHT = 'perdido';
+        } else if (lead.pipeline === 'low_ticket') {
+            updateData.statusLT = 'perdido';
+        }
+
+        const updatedLead = await prisma.lead.update({
+            where: { id },
+            data: updateData,
+            include: {
+                assignedUser: { select: { id: true, name: true } }
+            }
+        });
+
+        // Create history entry
+        await prisma.leadHistory.create({
+            data: {
+                leadId: id,
+                action: 'marked_lost',
+                details: {
+                    lossReasonId,
+                    notes,
+                    previousStatus: lead.pipeline === 'high_ticket' ? lead.statusHT : lead.statusLT
+                },
+                userId: user.id
+            }
+        });
+
+        console.log(`❌ Lead marked as lost: ${lead.name} - Reason: ${lossReasonId}`);
+        emitLeadUpdated(updatedLead);
+
+        return updatedLead;
+    });
+
+    // GET /leads/tags/all - Get all unique tags used in the system
+    server.get('/tags/all', async () => {
+        const leads = await prisma.lead.findMany({
+            where: { tags: { isEmpty: false } },
+            select: { tags: true }
+        });
+
+        const allTags = new Set<string>();
+        leads.forEach(lead => {
+            (lead.tags as string[]).forEach(tag => allTags.add(tag));
+        });
+
+        return Array.from(allTags).sort();
+    });
+
+    // PUT /leads/:id/tags - Update lead tags
+    server.put<{ Params: { id: string } }>('/:id/tags', async (request, reply) => {
+        const { id } = request.params;
+        const { tags } = request.body as { tags: string[] };
+        const user = (request as any).user;
+
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        const updatedLead = await prisma.lead.update({
+            where: { id },
+            data: { tags },
+            include: { assignedUser: { select: { id: true, name: true } } }
+        });
+
+        await prisma.leadHistory.create({
+            data: {
+                leadId: id,
+                action: 'tags_updated',
+                details: { oldTags: lead.tags, newTags: tags },
+                userId: user.id
+            }
+        });
+
+        emitLeadUpdated(updatedLead);
+        return updatedLead;
+    });
+
+    // POST /leads/:id/tags/add - Add a single tag to lead
+    server.post<{ Params: { id: string } }>('/:id/tags/add', async (request, reply) => {
+        const { id } = request.params;
+        const { tag } = request.body as { tag: string };
+
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        const currentTags = (lead.tags as string[]) || [];
+        if (currentTags.includes(tag)) {
+            return lead; // Tag already exists
+        }
+
+        const updatedLead = await prisma.lead.update({
+            where: { id },
+            data: { tags: [...currentTags, tag] },
+            include: { assignedUser: { select: { id: true, name: true } } }
+        });
+
+        emitLeadUpdated(updatedLead);
+        return updatedLead;
+    });
+
+    // POST /leads/:id/tags/remove - Remove a single tag from lead
+    server.post<{ Params: { id: string } }>('/:id/tags/remove', async (request, reply) => {
+        const { id } = request.params;
+        const { tag } = request.body as { tag: string };
+
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        const currentTags = (lead.tags as string[]) || [];
+        const newTags = currentTags.filter(t => t !== tag);
+
+        const updatedLead = await prisma.lead.update({
+            where: { id },
+            data: { tags: newTags },
+            include: { assignedUser: { select: { id: true, name: true } } }
+        });
+
+        emitLeadUpdated(updatedLead);
+        return updatedLead;
+    });
 }

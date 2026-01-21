@@ -124,6 +124,9 @@ export interface Lead {
     lastMessageAt?: string;   // Timestamp of last message
     statusChangedAt?: string; // When status was last changed (for time in stage)
     contactReason?: string;   // Reason for contact (motivo do contato)
+    lossReasonId?: string;    // ID of the loss reason
+    lossReason?: { id: string; name: string; description?: string };
+    lostAt?: string;          // When the lead was marked as lost
 }
 
 export interface CreateLeadData {
@@ -524,3 +527,251 @@ export async function getCloserStats(): Promise<CloserStat[]> {
     }
 }
 
+// ============ CUSTOM FIELDS API ============
+
+export interface CustomField {
+    id: string;
+    name: string;
+    key: string;
+    type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'url' | 'email' | 'phone';
+    entity: 'contact' | 'company' | 'deal';
+    options?: string[];
+    order: number;
+    isVisible: boolean;
+    isRequired: boolean;
+    placeholder?: string;
+    value?: string | null; // Current value for a specific lead
+}
+
+// Get all custom fields (optionally filter by entity)
+export async function getCustomFields(entity?: 'contact' | 'company' | 'deal'): Promise<CustomField[]> {
+    try {
+        const query = entity ? `?entity=${entity}` : '';
+        return await request<CustomField[]>(`/custom-fields${query}`);
+    } catch (error) {
+        console.error('Failed to fetch custom fields:', error);
+        return [];
+    }
+}
+
+// Get custom field values for a specific lead
+export async function getCustomFieldValues(leadId: string): Promise<CustomField[]> {
+    try {
+        return await request<CustomField[]>(`/custom-fields/values/${leadId}`);
+    } catch (error) {
+        console.error('Failed to fetch custom field values:', error);
+        return [];
+    }
+}
+
+// Set a single custom field value
+export async function setCustomFieldValue(leadId: string, customFieldId: string, value: string): Promise<void> {
+    await request('/custom-fields/values', {
+        method: 'POST',
+        body: JSON.stringify({ leadId, customFieldId, value }),
+    });
+}
+
+// Bulk set custom field values
+export async function setCustomFieldValues(leadId: string, values: { customFieldId: string; value: string }[]): Promise<CustomField[]> {
+    return await request<CustomField[]>('/custom-fields/values/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ leadId, values }),
+    });
+}
+
+// Create a custom field (admin)
+export async function createCustomField(data: Omit<CustomField, 'id' | 'value'>): Promise<CustomField> {
+    return await request<CustomField>('/custom-fields', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+// ============ ACTIVITIES API ============
+
+export interface Activity {
+    id: string;
+    leadId: string;
+    type: 'call' | 'whatsapp' | 'email' | 'meeting' | 'task' | 'follow_up';
+    title: string;
+    description?: string;
+    dueDate: string;
+    status: 'pending' | 'completed' | 'skipped' | 'overdue';
+    completedAt?: string;
+    assignedTo?: string;
+    templateId?: string;
+    notes?: string;
+    createdAt: string;
+}
+
+export interface Playbook {
+    id: string;
+    name: string;
+    description?: string;
+    stageKey?: string;
+    pipeline?: string;
+    isActive: boolean;
+    templates: ActivityTemplate[];
+}
+
+export interface ActivityTemplate {
+    id: string;
+    playbookId: string;
+    type: 'call' | 'whatsapp' | 'email' | 'meeting' | 'task' | 'follow_up';
+    title: string;
+    description?: string;
+    daysFromStart: number;
+    order: number;
+    messageTemplate?: string;
+}
+
+// Get activities for a lead
+export async function getLeadActivities(leadId: string, status?: string): Promise<Activity[]> {
+    try {
+        const query = status ? `?status=${status}` : '';
+        return await request<Activity[]>(`/activities/lead/${leadId}${query}`);
+    } catch (error) {
+        console.error('Failed to fetch activities:', error);
+        return [];
+    }
+}
+
+// Get my pending activities
+export async function getMyPendingActivities(): Promise<Activity[]> {
+    try {
+        return await request<Activity[]>('/activities/my-pending');
+    } catch (error) {
+        console.error('Failed to fetch my activities:', error);
+        return [];
+    }
+}
+
+// Get overdue activities count
+export async function getOverdueCount(): Promise<number> {
+    try {
+        const result = await request<{ count: number }>('/activities/overdue-count');
+        return result.count;
+    } catch (error) {
+        return 0;
+    }
+}
+
+// Create an activity
+export async function createActivity(data: {
+    leadId: string;
+    type: Activity['type'];
+    title: string;
+    description?: string;
+    dueDate: string;
+    assignedTo?: string;
+}): Promise<Activity> {
+    return await request<Activity>('/activities', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+// Complete an activity
+export async function completeActivity(id: string, notes?: string): Promise<Activity> {
+    return await request<Activity>(`/activities/${id}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ notes }),
+    });
+}
+
+// Skip an activity
+export async function skipActivity(id: string): Promise<Activity> {
+    return await request<Activity>(`/activities/${id}/skip`, {
+        method: 'POST',
+    });
+}
+
+// Get all playbooks
+export async function getPlaybooks(): Promise<Playbook[]> {
+    try {
+        return await request<Playbook[]>('/activities/playbooks');
+    } catch (error) {
+        console.error('Failed to fetch playbooks:', error);
+        return [];
+    }
+}
+
+// Apply a playbook to a lead
+export async function applyPlaybook(playbookId: string, leadId: string): Promise<{ activities: Activity[] }> {
+    return await request<{ activities: Activity[] }>(`/activities/playbooks/${playbookId}/apply`, {
+        method: 'POST',
+        body: JSON.stringify({ leadId }),
+    });
+}
+
+// ============ LOSS REASONS API ============
+
+export interface LossReason {
+    id: string;
+    name: string;
+    description?: string;
+    isActive: boolean;
+}
+
+// Get all loss reasons
+export async function getLossReasons(): Promise<LossReason[]> {
+    try {
+        return await request<LossReason[]>('/loss-reasons');
+    } catch (error) {
+        console.error('Failed to fetch loss reasons:', error);
+        // Return default reasons for now
+        return [
+            { id: '1', name: 'Sem interesse', isActive: true },
+            { id: '2', name: 'Sem orçamento', isActive: true },
+            { id: '3', name: 'Escolheu concorrente', isActive: true },
+            { id: '4', name: 'Timing errado', isActive: true },
+            { id: '5', name: 'Não respondeu', isActive: true },
+            { id: '6', name: 'Outro', isActive: true },
+        ];
+    }
+}
+
+// Mark a lead as lost with a reason
+export async function markLeadAsLost(leadId: string, lossReasonId: string, notes?: string): Promise<Lead> {
+    return await request<Lead>(`/leads/${leadId}/lost`, {
+        method: 'POST',
+        body: JSON.stringify({ lossReasonId, notes }),
+    });
+}
+
+// ============ TAGS API ============
+
+// Update lead tags
+export async function updateLeadTags(leadId: string, tags: string[]): Promise<Lead> {
+    return await request<Lead>(`/leads/${leadId}/tags`, {
+        method: 'PUT',
+        body: JSON.stringify({ tags }),
+    });
+}
+
+// Get all unique tags used in the system
+export async function getAllTags(): Promise<string[]> {
+    try {
+        return await request<string[]>('/leads/tags/all');
+    } catch (error) {
+        console.error('Failed to fetch tags:', error);
+        return ['quente', 'frio', 'decisor', 'indicação', 'urgente', 'novo', 'vip'];
+    }
+}
+
+// Add a tag to a lead
+export async function addTagToLead(leadId: string, tag: string): Promise<Lead> {
+    return await request<Lead>(`/leads/${leadId}/tags/add`, {
+        method: 'POST',
+        body: JSON.stringify({ tag }),
+    });
+}
+
+// Remove a tag from a lead
+export async function removeTagFromLead(leadId: string, tag: string): Promise<Lead> {
+    return await request<Lead>(`/leads/${leadId}/tags/remove`, {
+        method: 'POST',
+        body: JSON.stringify({ tag }),
+    });
+}
