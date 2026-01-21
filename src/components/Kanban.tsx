@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers, Filter, X } from 'lucide-react';
+import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import Lead360Modal from './Lead360Modal';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 import LeadCard from './kanban/LeadCard';
 import KanbanColumn from './kanban/KanbanColumn';
+import KanbanSidebar from './kanban/KanbanSidebar';
 import {
   DndContext,
   closestCenter,
@@ -171,10 +172,30 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
       });
   }, [leads, searchTerm, kanbanFilters]);
 
-  // Get unique sources for filter dropdown
+  // Get unique sources for filter dropdown with counts
+  const sourceFiltersWithCounts = useMemo(() => {
+    const sourceCounts: Record<string, number> = {};
+    leads.forEach(l => {
+      if (l.source) {
+        sourceCounts[l.source] = (sourceCounts[l.source] || 0) + 1;
+      }
+    });
+    return Object.entries(sourceCounts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [leads]);
+
   const uniqueSources = useMemo(() => {
     return [...new Set(leads.filter(l => l.source).map(l => l.source as string))];
   }, [leads]);
+
+  // Pipeline counts for sidebar
+  const pipelineCounts = useMemo(() => ({
+    high_ticket: allSalesLeads.filter(l => l.pipeline === 'high_ticket').length,
+    low_ticket: allSalesLeads.filter(l => l.pipeline === 'low_ticket').length,
+    production: currentPipeline === 'production' ? leads.length : 0,
+    post_sales: currentPipeline === 'post_sales' ? leads.length : 0,
+  }), [allSalesLeads, leads, currentPipeline]);
 
   // Count active filters
   const activeFilterCount = Object.values(kanbanFilters).filter(v => v !== '').length;
@@ -450,60 +471,6 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
               </div>
             </div>
 
-            {/* SELETOR DE PIPELINE + SUBTABS - Container com transição de slide */}
-            {!monitoredUser && (
-              <div className="flex items-center justify-center gap-3 transition-all duration-300 ease-out">
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar">
-                  <button
-                    onClick={() => handlePipelineChange('sales')}
-                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'sales' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                  >
-                    <DollarSign size={14} /> Vendas
-                  </button>
-                  <button
-                    onClick={() => handlePipelineChange('production')}
-                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'production' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                  >
-                    <Factory size={14} /> Produção
-                  </button>
-                  <button
-                    onClick={() => handlePipelineChange('post_sales')}
-                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${currentPipeline === 'post_sales' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                  >
-                    <HeartHandshake size={14} /> Pós-Venda
-                  </button>
-                </div>
-
-                {/* SUBTABS HT/LT - Aparece com animação de slide quando 'sales' está selecionado */}
-                <div className={`flex bg-slate-50 p-1 rounded-xl border border-slate-200 gap-1 transition-all duration-300 ease-out origin-left ${currentPipeline === 'sales'
-                  ? 'opacity-100 scale-x-100 max-w-[280px]'
-                  : 'opacity-0 scale-x-0 max-w-0 overflow-hidden'
-                  }`}>
-                  <button
-                    onClick={() => handleSubPipelineChange('high_ticket')}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'high_ticket'
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                      : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
-                      }`}
-                  >
-                    <Layers size={12} /> High Ticket
-                  </button>
-                  <button
-                    onClick={() => handleSubPipelineChange('low_ticket')}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${salesSubPipeline === 'low_ticket'
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                      : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                      }`}
-                  >
-                    <Layers size={12} /> Low Ticket
-                  </button>
-                </div>
-              </div>
-            )}
-
             <div className="flex items-center gap-3 w-full xl:w-auto">
               <div className="relative flex-1 xl:w-64">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
@@ -621,114 +588,131 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
           )}
         </header>
 
-        {/* BOARD CANVAS */}
-        <div className="flex-1 overflow-x-auto p-10 flex gap-8 items-start no-scrollbar bg-slate-50/50">
-          {boardStages.map((stage) => {
-            const stageLeads = displayLeads.filter(l => l.statusHT === stage.id || l.statusLT === stage.id);
-            const totalValue = stageLeads.reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
+        {/* MAIN CONTENT: Sidebar + Board */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Pipeline Sidebar */}
+          {!monitoredUser && (
+            <KanbanSidebar
+              currentPipeline={currentPipeline}
+              salesSubPipeline={salesSubPipeline}
+              onPipelineChange={handlePipelineChange}
+              onSubPipelineChange={handleSubPipelineChange}
+              pipelineCounts={pipelineCounts}
+              sourceFilters={sourceFiltersWithCounts}
+              activeSourceFilter={kanbanFilters.source}
+              onSourceFilterChange={(source) => setKanbanFilters(prev => ({ ...prev, source }))}
+            />
+          )}
 
-            return (
-              <KanbanColumn
-                key={stage.id}
-                id={stage.id}
-                name={stage.name}
-                color={stage.color}
-                count={stageLeads.length}
-                totalValue={totalValue}
-                onAddLead={() => handleOpenLeadModal(stage.id)}
-                actionButtons={
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setEditingStageId(stage.id)}
-                      className="p-2 text-slate-400 hover:text-slate-900 transition-all rounded-xl hover:bg-slate-100"
-                      aria-label="Editar Etapa"
-                    >
-                      <Edit2 size={16} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => removeStage(e, stage.id)}
-                      className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all rounded-xl shadow-sm border border-rose-100/50"
-                      aria-label="Excluir Coluna"
-                    >
-                      <Trash2 size={16} strokeWidth={2.5} />
-                    </button>
-                  </>
-                }
-                editorPanel={editingStageId === stage.id && (
-                  <div
-                    ref={editRef}
-                    className="absolute top-14 right-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-[80] p-6"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Nome da Etapa</label>
-                        <input
-                          autoFocus
-                          type="text"
-                          value={stage.name}
-                          onChange={(e) => updateStage(stage.id, { name: e.target.value })}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-500 mb-2 block">Cor</label>
-                        <div className="flex flex-wrap gap-2">
-                          {COLORS.map((c) => (
-                            <button
-                              key={c.name}
-                              onClick={() => updateStage(stage.id, { color: c.name as any })}
-                              className={`w-7 h-7 rounded-full transition-all relative border-2 ${stage.color === c.name
-                                ? 'border-slate-900 scale-110 shadow-lg'
-                                : 'border-transparent hover:scale-110'
-                                } ${c.bg}`}
-                              aria-label={`Cor ${c.name}`}
-                            >
-                              {stage.color === c.name && <div className="absolute inset-0 flex items-center justify-center text-white"><Plus size={10} strokeWidth={4} /></div>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+          {/* BOARD CANVAS */}
+          <div className="flex-1 overflow-x-auto p-10 flex gap-8 items-start no-scrollbar bg-slate-50/50">
+            {boardStages.map((stage) => {
+              const stageLeads = displayLeads.filter(l => l.statusHT === stage.id || l.statusLT === stage.id);
+              const totalValue = stageLeads.reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
+
+              return (
+                <KanbanColumn
+                  key={stage.id}
+                  id={stage.id}
+                  name={stage.name}
+                  color={stage.color}
+                  count={stageLeads.length}
+                  totalValue={totalValue}
+                  onAddLead={() => handleOpenLeadModal(stage.id)}
+                  actionButtons={
+                    <>
                       <button
-                        onClick={() => setEditingStageId(null)}
-                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold transition-all hover:bg-blue-700"
+                        type="button"
+                        onClick={() => setEditingStageId(stage.id)}
+                        className="p-2 text-slate-400 hover:text-slate-900 transition-all rounded-xl hover:bg-slate-100"
+                        aria-label="Editar Etapa"
                       >
-                        Pronto
+                        <Edit2 size={16} strokeWidth={2.5} />
                       </button>
+                      <button
+                        type="button"
+                        onClick={(e) => removeStage(e, stage.id)}
+                        className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all rounded-xl shadow-sm border border-rose-100/50"
+                        aria-label="Excluir Coluna"
+                      >
+                        <Trash2 size={16} strokeWidth={2.5} />
+                      </button>
+                    </>
+                  }
+                  editorPanel={editingStageId === stage.id && (
+                    <div
+                      ref={editRef}
+                      className="absolute top-14 right-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-[80] p-6"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 mb-2 block">Nome da Etapa</label>
+                          <input
+                            autoFocus
+                            type="text"
+                            value={stage.name}
+                            onChange={(e) => updateStage(stage.id, { name: e.target.value })}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 mb-2 block">Cor</label>
+                          <div className="flex flex-wrap gap-2">
+                            {COLORS.map((c) => (
+                              <button
+                                key={c.name}
+                                onClick={() => updateStage(stage.id, { color: c.name as any })}
+                                className={`w-7 h-7 rounded-full transition-all relative border-2 ${stage.color === c.name
+                                  ? 'border-slate-900 scale-110 shadow-lg'
+                                  : 'border-transparent hover:scale-110'
+                                  } ${c.bg}`}
+                                aria-label={`Cor ${c.name}`}
+                              >
+                                {stage.color === c.name && <div className="absolute inset-0 flex items-center justify-center text-white"><Plus size={10} strokeWidth={4} /></div>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setEditingStageId(null)}
+                          className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold transition-all hover:bg-blue-700"
+                        >
+                          Pronto
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              >
-                {stageLeads.map(lead => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    onClick={() => { setSelectedLead(lead); setIsLead360Open(true); }}
-                    onOpenChat={handleOpenChat}
-                    onSchedule={handleScheduleTask}
-                    onMoreOptions={handleMoreOptions}
-                    agentName={lead.assignedUser?.name}
-                  />
-                ))}
-              </KanbanColumn>
-            );
-          })}
+                  )}
+                >
+                  {stageLeads.map(lead => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onClick={() => { setSelectedLead(lead); setIsLead360Open(true); }}
+                      onOpenChat={handleOpenChat}
+                      onSchedule={handleScheduleTask}
+                      onMoreOptions={handleMoreOptions}
+                      agentName={lead.assignedUser?.name}
+                    />
+                  ))}
+                </KanbanColumn>
+              );
+            })}
 
-          {/* Botão Nova Coluna */}
-          <div className="min-w-[280px] w-[280px] flex flex-col gap-5">
-            {/* Spacer to align with column header (40px) + gap (16px) = 56px */}
-            <div className="h-[56px]" />
-            <button
-              onClick={addStage}
-              className="w-full h-[140px] border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300 hover:text-rose-600 hover:border-rose-200 hover:bg-white transition-all gap-3 group shadow-sm shrink-0"
-            >
-              <div className="p-3 rounded-2xl bg-slate-100 group-hover:bg-rose-50 group-hover:text-rose-600 transition-all">
-                <Plus size={24} strokeWidth={2.5} />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Nova Coluna</span>
-            </button>
+            {/* Botão Nova Coluna */}
+            <div className="min-w-[280px] w-[280px] flex flex-col gap-5">
+              {/* Spacer to align with column header (40px) + gap (16px) = 56px */}
+              <div className="h-[56px]" />
+              <button
+                onClick={addStage}
+                className="w-full h-[140px] border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300 hover:text-rose-600 hover:border-rose-200 hover:bg-white transition-all gap-3 group shadow-sm shrink-0"
+              >
+                <div className="p-3 rounded-2xl bg-slate-100 group-hover:bg-rose-50 group-hover:text-rose-600 transition-all">
+                  <Plus size={24} strokeWidth={2.5} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest">Nova Coluna</span>
+              </button>
+            </div>
           </div>
         </div>
 
