@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
@@ -104,6 +105,26 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   // Lead 360 Modal State
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLead360Open, setIsLead360Open] = useState(false);
+  const navigate = useNavigate();
+
+  // Quick Action Handlers for LeadCard
+  const handleOpenChat = (lead: Lead) => {
+    // Navigate to atendimento with lead ID to open their conversation
+    navigate(`/atendimento?leadId=${lead.id}`);
+  };
+
+  const handleScheduleTask = (lead: Lead) => {
+    // Open the lead in Lead360Modal on tasks/activities tab
+    setSelectedLead(lead);
+    setIsLead360Open(true);
+    toast.info(`Agendar tarefa para ${lead.name}`);
+  };
+
+  const handleMoreOptions = (lead: Lead) => {
+    // For now, open the Lead360Modal - can be expanded to dropdown menu later
+    setSelectedLead(lead);
+    setIsLead360Open(true);
+  };
 
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -685,6 +706,9 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
                     key={lead.id}
                     lead={lead}
                     onClick={() => { setSelectedLead(lead); setIsLead360Open(true); }}
+                    onOpenChat={handleOpenChat}
+                    onSchedule={handleScheduleTask}
+                    onMoreOptions={handleMoreOptions}
                     agentName={lead.assignedUser?.name}
                   />
                 ))}

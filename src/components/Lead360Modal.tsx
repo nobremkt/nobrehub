@@ -85,6 +85,48 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
         notes: ''
     });
 
+    // Deal form states
+    const [isAddingDeal, setIsAddingDeal] = useState(false);
+    const [newDeal, setNewDeal] = useState({
+        value: '',
+        product: '',
+        origin: ''
+    });
+
+    // Handle adding new deal
+    const handleAddDeal = async () => {
+        if (!lead) return;
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/deals`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    leadId: lead.id,
+                    value: parseFloat(newDeal.value) || 0,
+                    product: newDeal.product || undefined,
+                    origin: newDeal.origin || undefined,
+                    pipeline: lead.pipeline || 'high_ticket',
+                    status: 'open'
+                })
+            });
+            if (response.ok) {
+                const createdDeal = await response.json();
+                setDeals(prev => [...prev, createdDeal]);
+                setNewDeal({ value: '', product: '', origin: '' });
+                setIsAddingDeal(false);
+                toast.success('Negócio criado com sucesso!');
+            } else {
+                toast.error('Erro ao criar negócio');
+            }
+        } catch (error) {
+            toast.error('Erro ao criar negócio');
+        }
+    };
+
     useEffect(() => {
         if (lead) {
             setEditedLead({
@@ -489,10 +531,57 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-semibold text-slate-800">Negócios ({deals.length})</h3>
-                                        <button className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm">
-                                            <Plus size={14} /> Novo Negócio
+                                        <button
+                                            onClick={() => setIsAddingDeal(!isAddingDeal)}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm hover:bg-violet-700 transition-colors"
+                                        >
+                                            <Plus size={14} /> {isAddingDeal ? 'Cancelar' : 'Novo Negócio'}
                                         </button>
                                     </div>
+
+                                    {/* Add Deal Form */}
+                                    {isAddingDeal && (
+                                        <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl space-y-3">
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Valor (R$)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newDeal.value}
+                                                        onChange={(e) => setNewDeal(prev => ({ ...prev, value: e.target.value }))}
+                                                        placeholder="0,00"
+                                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Produto</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newDeal.product}
+                                                        onChange={(e) => setNewDeal(prev => ({ ...prev, product: e.target.value }))}
+                                                        placeholder="Nome do produto"
+                                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Origem</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newDeal.origin}
+                                                        onChange={(e) => setNewDeal(prev => ({ ...prev, origin: e.target.value }))}
+                                                        placeholder="Ex: Inbound, Indicação"
+                                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleAddDeal}
+                                                className="w-full py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
+                                            >
+                                                Criar Negócio
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {deals.map((deal) => (
                                         <div key={deal.id} className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group">

@@ -110,7 +110,16 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     const [newTagInput, setNewTagInput] = useState('');
 
     const stages = STAGES[pipeline as keyof typeof STAGES] || STAGES.high_ticket;
-    const currentStatus = pipeline === 'high_ticket' ? lead.statusHT : lead.statusLT;
+
+    // Get current status based on pipeline, fallback to first stage if not set
+    const rawStatus = pipeline === 'high_ticket' ? lead.statusHT : lead.statusLT;
+    const currentStatus = rawStatus || stages[0]?.value || 'novo';
+
+    // Ensure currentStatus exists in stages array
+    const currentStageLabel = stages.find(s => s.value === currentStatus)?.label
+        || stages.find(s => s.value === rawStatus)?.label
+        || stages[0]?.label
+        || 'Novo';
 
     // Fetch deals for this lead
     useEffect(() => {
@@ -295,10 +304,30 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                 <div className="flex items-center justify-between">
                     <h3 className="font-bold text-slate-800 text-sm">PRÓXIMO NEGÓCIO</h3>
                     <div className="flex items-center gap-1">
-                        <button className="p-1.5 hover:bg-slate-100 rounded-lg">
+                        <button
+                            onClick={() => {
+                                if (deals.length <= 1) return;
+                                const currentIdx = deals.findIndex(d => d.id === selectedDeal?.id);
+                                const prevIdx = (currentIdx - 1 + deals.length) % deals.length;
+                                setSelectedDeal(deals[prevIdx]);
+                            }}
+                            disabled={deals.length <= 1}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Negócio anterior"
+                        >
                             <ChevronRight size={16} className="text-slate-400 rotate-180" />
                         </button>
-                        <button className="p-1.5 hover:bg-slate-100 rounded-lg">
+                        <button
+                            onClick={() => {
+                                if (deals.length <= 1) return;
+                                const currentIdx = deals.findIndex(d => d.id === selectedDeal?.id);
+                                const nextIdx = (currentIdx + 1) % deals.length;
+                                setSelectedDeal(deals[nextIdx]);
+                            }}
+                            disabled={deals.length <= 1}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Próximo negócio"
+                        >
                             <ChevronRight size={16} className="text-slate-400" />
                         </button>
                     </div>
@@ -325,16 +354,32 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
 
                 {/* Quick Actions */}
                 <div className="flex items-center gap-2 mt-3">
-                    <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Ligar">
+                    <button
+                        onClick={() => window.open(`tel:${lead.phone}`, '_blank')}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Ligar"
+                    >
                         <Phone size={16} className="text-slate-500" />
                     </button>
-                    <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Email">
+                    <button
+                        onClick={() => lead.email && window.open(`mailto:${lead.email}`, '_blank')}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Email"
+                    >
                         <Mail size={16} className="text-slate-500" />
                     </button>
-                    <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Agendar">
+                    <button
+                        onClick={() => toggleSection('notes')}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Agendar"
+                    >
                         <Clock size={16} className="text-slate-500" />
                     </button>
-                    <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Notas">
+                    <button
+                        onClick={() => toggleSection('notes')}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        title="Notas"
+                    >
                         <FileText size={16} className="text-slate-500" />
                     </button>
                 </div>
@@ -415,7 +460,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                                     className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                                 >
                                     <span className="text-sm text-slate-700">
-                                        {isChangingStage ? 'Movendo...' : (stages.find(s => s.value === currentStatus)?.label || 'Selecione')}
+                                        {isChangingStage ? 'Movendo...' : currentStageLabel}
                                     </span>
                                     <ChevronDown size={16} className={`text-slate-400 transition-transform ${showStageDropdown ? 'rotate-180' : ''}`} />
                                 </button>

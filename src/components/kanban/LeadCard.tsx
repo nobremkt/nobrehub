@@ -9,6 +9,9 @@ import { cn } from '../../lib/utils';
 interface LeadCardProps {
     lead: Lead;
     onClick: () => void;
+    onOpenChat?: (lead: Lead) => void;
+    onSchedule?: (lead: Lead) => void;
+    onMoreOptions?: (lead: Lead) => void;
     agentName?: string;
     agentAvatar?: string;
 }
@@ -59,7 +62,7 @@ const getLeadTemperature = (lead: Lead): 'hot' | 'cold' | 'neutral' => {
     return 'neutral';
 };
 
-const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, agentName, agentAvatar }) => {
+const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onOpenChat, onSchedule, onMoreOptions, agentName, agentAvatar }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: lead.id,
         data: { lead },
@@ -162,30 +165,33 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, agentName, agentAvat
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Open chat
+                            onOpenChat?.(lead);
                         }}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         aria-label="Abrir chat"
+                        title="Abrir conversa"
                     >
                         <MessageSquare size={14} />
                     </button>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Schedule task
+                            onSchedule?.(lead);
                         }}
                         className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                         aria-label="Agendar tarefa"
+                        title="Agendar tarefa"
                     >
                         <Calendar size={14} />
                     </button>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: More options
+                            onMoreOptions?.(lead);
                         }}
                         className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                         aria-label="Mais opções"
+                        title="Mais opções"
                     >
                         <MoreHorizontal size={14} />
                     </button>

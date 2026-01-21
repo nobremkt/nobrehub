@@ -73,8 +73,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
         >
             {/* Column Header */}
             <div className={cn(
-                'flex items-center justify-between px-3 py-3 rounded-xl mb-4',
-                colorClasses.headerBg
+                'flex items-center justify-between px-3 py-3 rounded-xl mb-4 bg-white border border-slate-100'
             )}>
                 <div className="flex items-center gap-3">
                     <div className={cn('w-3 h-3 rounded-full shadow-sm', colorClasses.dot)} />
