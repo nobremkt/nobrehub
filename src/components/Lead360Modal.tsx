@@ -97,53 +97,41 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
         }
     }, [lead]);
 
-    // Fetch data when tab changes
+    // Fetch all data at once using unified endpoint
     useEffect(() => {
         if (!lead || !isOpen) return;
 
-        const fetchData = async () => {
+        const fetchAllData = async () => {
             setIsLoading(true);
             const token = localStorage.getItem('token');
 
             try {
-                if (activeTab === 'negocios' && deals.length === 0) {
-                    const res = await fetch(`${API_URL}/leads/${lead.id}/deals`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setDeals(data);
-                    }
-                }
+                const res = await fetch(`${API_URL}/leads/${lead.id}/details`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
 
-                if (activeTab === 'historico' && history.length === 0) {
-                    const res = await fetch(`${API_URL}/leads/${lead.id}/history`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setHistory(data);
-                    }
-                }
-
-                if (activeTab === 'conversas' && conversations.length === 0) {
-                    const res = await fetch(`${API_URL}/conversations?leadId=${lead.id}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setConversations(Array.isArray(data) ? data : []);
-                    }
+                if (res.ok) {
+                    const data = await res.json();
+                    setDeals(data.deals || []);
+                    setConversations(data.conversations || []);
+                    // Map history items to expected format
+                    setHistory((data.history || []).map((h: any) => ({
+                        id: h.id,
+                        action: h.action,
+                        description: h.details ? JSON.stringify(h.details) : undefined,
+                        createdAt: h.createdAt,
+                        createdBy: h.user
+                    })));
                 }
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Error fetching lead details:', error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchData();
-    }, [activeTab, lead, isOpen]);
+        fetchAllData();
+    }, [lead?.id, isOpen]);
 
     if (!isOpen || !lead) return null;
 
@@ -256,8 +244,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.id
-                                        ? 'border-violet-600 text-violet-600'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                    ? 'border-violet-600 text-violet-600'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 {tab.icon}
@@ -475,8 +463,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                         <div key={deal.id} className="p-4 bg-slate-50 rounded-xl">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className={`px-2 py-1 text-xs font-medium rounded ${deal.status === 'won' ? 'bg-emerald-100 text-emerald-700' :
-                                                        deal.status === 'lost' ? 'bg-rose-100 text-rose-700' :
-                                                            'bg-blue-100 text-blue-700'
+                                                    deal.status === 'lost' ? 'bg-rose-100 text-rose-700' :
+                                                        'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {deal.status === 'won' ? 'Ganho' : deal.status === 'lost' ? 'Perdido' : 'Aberto'}
                                                 </span>
@@ -504,8 +492,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                     {conversations.map((conv) => (
                                         <div key={conv.id} className="p-4 bg-slate-50 rounded-xl flex items-center gap-4">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${conv.status === 'active' ? 'bg-emerald-100' :
-                                                    conv.status === 'closed' ? 'bg-slate-200' :
-                                                        'bg-amber-100'
+                                                conv.status === 'closed' ? 'bg-slate-200' :
+                                                    'bg-amber-100'
                                                 }`}>
                                                 <MessageCircle size={18} className={
                                                     conv.status === 'active' ? 'text-emerald-600' :
@@ -517,8 +505,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium text-slate-800">{conv.channel}</span>
                                                     <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${conv.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                                                            conv.status === 'closed' ? 'bg-slate-200 text-slate-600' :
-                                                                'bg-amber-100 text-amber-700'
+                                                        conv.status === 'closed' ? 'bg-slate-200 text-slate-600' :
+                                                            'bg-amber-100 text-amber-700'
                                                         }`}>
                                                         {conv.status === 'active' ? 'Ativa' : conv.status === 'closed' ? 'Encerrada' : conv.status}
                                                     </span>

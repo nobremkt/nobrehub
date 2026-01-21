@@ -93,6 +93,79 @@ export default async function leadRoutes(server: FastifyInstance) {
         return lead;
     });
 
+    // GET /leads/:id/details - Unified 360° View (all data in one call)
+    server.get('/:id/details', async (request, reply) => {
+        const { id } = request.params as { id: string };
+
+        // Fetch lead with all related data in parallel
+        const [lead, deals, conversations, history] = await Promise.all([
+            // Lead with basic relations
+            prisma.lead.findUnique({
+                where: { id },
+                include: {
+                    assignedUser: { select: { id: true, name: true } },
+                }
+            }),
+
+            // All deals for this lead
+            prisma.deal.findMany({
+                where: { leadId: id },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    owner: { select: { id: true, name: true } }
+                }
+            }),
+
+            // All conversations with last messages
+            prisma.conversation.findMany({
+                where: { leadId: id },
+                orderBy: { lastMessageAt: 'desc' },
+                include: {
+                    assignedAgent: { select: { id: true, name: true } },
+                    messages: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 5,
+                        select: { id: true, text: true, direction: true, createdAt: true, type: true }
+                    }
+                }
+            }),
+
+            // Lead history/audit log
+            prisma.leadHistory.findMany({
+                where: { leadId: id },
+                orderBy: { createdAt: 'desc' },
+                take: 50,
+                include: {
+                    user: { select: { id: true, name: true } }
+                }
+            })
+        ]);
+
+        if (!lead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        // Calculate summary stats (handle Decimal type)
+        const totalDealValue = deals.reduce((sum, d) => sum + Number(d.value || 0), 0);
+        const openDeals = deals.filter(d => d.status === 'open').length;
+        const wonDeals = deals.filter(d => d.status === 'won').length;
+        const activeConversations = conversations.filter(c => c.status === 'active').length;
+
+        return {
+            lead,
+            deals,
+            conversations,
+            history,
+            summary: {
+                totalDealValue,
+                openDeals,
+                wonDeals,
+                lostDeals: deals.filter(d => d.status === 'lost').length,
+                totalConversations: conversations.length,
+                activeConversations,
+                lastActivity: history[0]?.createdAt || lead.updatedAt
+            }
+        };
+    });
+
     // POST /leads
     server.post('/', async (request, reply) => {
         try {
