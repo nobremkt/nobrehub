@@ -4,6 +4,7 @@ import { useSocket } from '../../hooks/useSocket';
 import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
 import LeadContextSidebar from '../LeadContextSidebar';
+import LeadDetailModal from '../LeadDetailModal';
 
 interface Conversation {
     id: string;
@@ -50,6 +51,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'mine' | 'queue'>('mine');
+    const [showLeadModal, setShowLeadModal] = useState(false);
 
     const {
         isConnected,
@@ -271,10 +273,36 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                     <LeadContextSidebar
                         lead={selectedConversation.lead}
                         pipeline={selectedConversation.pipeline}
-                        onOpenDetails={() => {/* TODO: Open modal */ }}
+                        onOpenDetails={() => setShowLeadModal(true)}
                         onMoveStage={handleMoveStage}
                     />
                 </div>
+            )}
+
+            {/* Lead Detail Modal */}
+            {selectedConversation && (
+                <LeadDetailModal
+                    isOpen={showLeadModal}
+                    lead={{
+                        id: selectedConversation.lead.id,
+                        name: selectedConversation.lead.name,
+                        phone: selectedConversation.lead.phone,
+                        email: '',
+                        company: selectedConversation.lead.company,
+                        estimatedValue: selectedConversation.lead.estimatedValue,
+                        pipeline: selectedConversation.pipeline as 'high_ticket' | 'low_ticket' | 'production' | 'post_sales',
+                        statusHT: selectedConversation.lead.statusHT,
+                        statusLT: selectedConversation.lead.statusLT,
+                        source: 'whatsapp',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        tags: selectedConversation.lead.tags || []
+                    }}
+                    onClose={() => setShowLeadModal(false)}
+                    onEdit={() => { /* TODO: Implement edit */ }}
+                    onDelete={() => { /* TODO: Implement delete */ }}
+                    onOpenChat={() => setShowLeadModal(false)}
+                />
             )}
         </div>
     );
