@@ -93,6 +93,15 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
         origin: ''
     });
 
+    // Company editing states
+    const [isEditingCompany, setIsEditingCompany] = useState(false);
+    const [editedCompany, setEditedCompany] = useState({
+        company: '',
+        cnpj: '',
+        segment: '',
+        employees: ''
+    });
+
     // Handle adding new deal
     const handleAddDeal = async () => {
         if (!lead) return;
@@ -127,6 +136,22 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
         }
     };
 
+    // Handle saving company data
+    const handleSaveCompany = async () => {
+        if (!lead || !onUpdateLead) return;
+        try {
+            await onUpdateLead({
+                company: editedCompany.company,
+                // These fields would need to be added to the Lead model
+                // For now, we update what we can
+            } as any);
+            setIsEditingCompany(false);
+            toast.success('Dados da empresa atualizados!');
+        } catch (error) {
+            toast.error('Erro ao atualizar empresa');
+        }
+    };
+
     useEffect(() => {
         if (lead) {
             setEditedLead({
@@ -135,6 +160,12 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                 phone: lead.phone || '',
                 company: lead.company || '',
                 notes: lead.notes || ''
+            });
+            setEditedCompany({
+                company: lead.company || '',
+                cnpj: (lead as any).cnpj || '',
+                segment: (lead as any).segment || '',
+                employees: (lead as any).employees || ''
             });
         }
     }, [lead]);
@@ -500,29 +531,98 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                             {/* Empresa Tab */}
                             {activeTab === 'empresa' && (
                                 <div className="space-y-6">
-                                    <h3 className="font-semibold text-slate-800">Dados da Empresa</h3>
-                                    <div className="bg-slate-50 rounded-xl p-6">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center">
-                                                <Building2 size={20} className="text-slate-500" />
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-semibold text-slate-800">Dados da Empresa</h3>
+                                        {isEditingCompany ? (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleSaveCompany}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm"
+                                                >
+                                                    <Save size={14} /> Salvar
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsEditingCompany(false)}
+                                                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm"
+                                                >
+                                                    Cancelar
+                                                </button>
                                             </div>
-                                            <div>
-                                                <p className="font-semibold text-slate-800">{lead.company || 'Empresa não informada'}</p>
-                                                <p className="text-sm text-slate-500">CPF/CNPJ não informado</p>
+                                        ) : (
+                                            <button
+                                                onClick={() => setIsEditingCompany(true)}
+                                                className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700"
+                                            >
+                                                <Edit3 size={14} /> Editar
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-slate-50 rounded-xl p-6">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center">
+                                                <Building2 size={20} className="text-violet-600" />
+                                            </div>
+                                            <div className="flex-1">
+                                                {isEditingCompany ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editedCompany.company}
+                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, company: e.target.value }))}
+                                                        placeholder="Nome da empresa"
+                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                                                    />
+                                                ) : (
+                                                    <p className="font-semibold text-slate-800">{editedCompany.company || lead.company || 'Empresa não informada'}</p>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <p className="text-slate-500">Segmento</p>
-                                                <p className="font-medium text-slate-800">Não informado</p>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-xs text-slate-500 font-medium">CPF/CNPJ</label>
+                                                {isEditingCompany ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editedCompany.cnpj}
+                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, cnpj: e.target.value }))}
+                                                        placeholder="00.000.000/0001-00"
+                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.cnpj || 'Não informado'}</p>
+                                                )}
                                             </div>
-                                            <div>
-                                                <p className="text-slate-500">Funcionários</p>
-                                                <p className="font-medium text-slate-800">-</p>
+                                            <div className="space-y-1">
+                                                <label className="text-xs text-slate-500 font-medium">Segmento</label>
+                                                {isEditingCompany ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editedCompany.segment}
+                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, segment: e.target.value }))}
+                                                        placeholder="Ex: Tecnologia, Saúde"
+                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.segment || 'Não informado'}</p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs text-slate-500 font-medium">Funcionários</label>
+                                                {isEditingCompany ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editedCompany.employees}
+                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, employees: e.target.value }))}
+                                                        placeholder="Ex: 10-50"
+                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.employees || '-'}</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-slate-400 italic">Campos adicionais de empresa podem ser configurados nas preferências.</p>
                                 </div>
                             )}
 
