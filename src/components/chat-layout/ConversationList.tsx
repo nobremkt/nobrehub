@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, Search, Phone, Building, User, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
+import { MessageCircle, Search, Phone, Building, User, ChevronRight, Inbox as InboxIcon, Filter, ChevronDown, Clock, Check } from 'lucide-react';
 import { useSocket } from '../../hooks/useSocket';
 import { cn } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
 
 interface Conversation {
     id: string;
-    status: 'queued' | 'active' | 'closed';
+    status: 'queued' | 'active' | 'on_hold' | 'closed';
     pipeline: string;
     lastMessageAt: string | null;
     unreadCount?: number;
@@ -32,6 +32,13 @@ interface ConversationListProps {
     onTabChange: (tab: 'mine' | 'queue') => void;
 }
 
+interface FilterOptions {
+    status: 'all' | 'active' | 'on_hold' | 'queued';
+    pipeline: 'all' | 'high_ticket' | 'low_ticket';
+    window24h: 'all' | 'inside' | 'outside';
+    hasResponse: 'all' | 'responded' | 'awaiting';
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /**
@@ -47,6 +54,15 @@ const formatTime = (dateStr: string | null): string => {
     if (diff < 3600000) return `${Math.floor(diff / 60000)}min`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
     return date.toLocaleDateString('pt-BR');
+};
+
+/**
+ * Check if conversation is within 24h WhatsApp window
+ */
+const isWithin24hWindow = (lastMessageAt: string | null): boolean => {
+    if (!lastMessageAt) return false;
+    const diff = Date.now() - new Date(lastMessageAt).getTime();
+    return diff < 24 * 60 * 60 * 1000;
 };
 
 /**
@@ -72,7 +88,17 @@ const ConversationList: React.FC<ConversationListProps> = ({
     onTabChange
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState<FilterOptions>({
+        status: 'all',
+        pipeline: 'all',
+        window24h: 'all',
+        hasResponse: 'all'
+    });
     const { isConnected } = useSocket({ userId });
+
+    // Count active filters
+    const activeFilterCount = Object.values(filters).filter(v => v !== 'all').length;
 
     // Filter by tab
     const tabFilteredConversations = conversations.filter(conv => {
@@ -83,13 +109,40 @@ const ConversationList: React.FC<ConversationListProps> = ({
         }
     });
 
+    // Apply advanced filters
+    const advancedFilteredConversations = tabFilteredConversations.filter(conv => {
+        // Status filter
+        if (filters.status !== 'all' && conv.status !== filters.status) return false;
+
+        // Pipeline filter
+        if (filters.pipeline !== 'all' && conv.pipeline !== filters.pipeline) return false;
+
+        // 24h window filter
+        if (filters.window24h !== 'all') {
+            const within = isWithin24hWindow(conv.lastMessageAt);
+            if (filters.window24h === 'inside' && !within) return false;
+            if (filters.window24h === 'outside' && within) return false;
+        }
+
+        // Has response filter (check if last message is from agent)
+        if (filters.hasResponse !== 'all') {
+            const lastMsg = conv.messages?.[0];
+            const hasAgentResponse = lastMsg?.direction === 'out';
+            if (filters.hasResponse === 'responded' && !hasAgentResponse) return false;
+            if (filters.hasResponse === 'awaiting' && hasAgentResponse) return false;
+        }
+
+        return true;
+    });
+
     // Filter by search
-    const filteredConversations = tabFilteredConversations.filter(conv =>
+    const filteredConversations = advancedFilteredConversations.filter(conv =>
         conv.lead?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
         conv.lead?.phone?.includes(searchTerm)
     );
 
     const queueCount = conversations.filter(c => !c.assignedAgent || c.status === 'queued').length;
+    const onHoldCount = conversations.filter(c => c.status === 'on_hold').length;
 
     return (
         <div className="w-[340px] border-r border-slate-200 bg-white flex flex-col h-full">
@@ -133,17 +186,152 @@ const ConversationList: React.FC<ConversationListProps> = ({
                     </button>
                 </div>
 
-                {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Pesquisar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
+                {/* Search & Filter */}
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Pesquisar..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            'p-2.5 rounded-lg border transition-all relative',
+                            showFilters || activeFilterCount > 0
+                                ? 'bg-violet-50 border-violet-200 text-violet-600'
+                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                        )}
+                        title="Filtros avançados"
+                    >
+                        <Filter size={16} />
+                        {activeFilterCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </button>
                 </div>
+
+                {/* Filter Panel */}
+                {showFilters && (
+                    <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                        {/* Status Filter */}
+                        <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Status</label>
+                            <div className="flex gap-1 flex-wrap">
+                                {[
+                                    { value: 'all', label: 'Todos' },
+                                    { value: 'active', label: 'Ativos' },
+                                    { value: 'on_hold', label: 'Em espera' },
+                                    { value: 'queued', label: 'Na fila' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilters(prev => ({ ...prev, status: opt.value as any }))}
+                                        className={cn(
+                                            'px-2 py-1 text-[11px] rounded-md font-medium transition-colors',
+                                            filters.status === opt.value
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        )}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Pipeline Filter */}
+                        <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Pipeline</label>
+                            <div className="flex gap-1 flex-wrap">
+                                {[
+                                    { value: 'all', label: 'Todos' },
+                                    { value: 'high_ticket', label: 'High Ticket' },
+                                    { value: 'low_ticket', label: 'Low Ticket' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilters(prev => ({ ...prev, pipeline: opt.value as any }))}
+                                        className={cn(
+                                            'px-2 py-1 text-[11px] rounded-md font-medium transition-colors',
+                                            filters.pipeline === opt.value
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        )}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 24h Window Filter */}
+                        <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Janela 24h</label>
+                            <div className="flex gap-1 flex-wrap">
+                                {[
+                                    { value: 'all', label: 'Todas' },
+                                    { value: 'inside', label: 'Dentro' },
+                                    { value: 'outside', label: 'Fora' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilters(prev => ({ ...prev, window24h: opt.value as any }))}
+                                        className={cn(
+                                            'px-2 py-1 text-[11px] rounded-md font-medium transition-colors',
+                                            filters.window24h === opt.value
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        )}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Has Response Filter */}
+                        <div>
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Resposta</label>
+                            <div className="flex gap-1 flex-wrap">
+                                {[
+                                    { value: 'all', label: 'Todas' },
+                                    { value: 'responded', label: 'Respondido' },
+                                    { value: 'awaiting', label: 'Aguardando' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilters(prev => ({ ...prev, hasResponse: opt.value as any }))}
+                                        className={cn(
+                                            'px-2 py-1 text-[11px] rounded-md font-medium transition-colors',
+                                            filters.hasResponse === opt.value
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                        )}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Clear Filters */}
+                        {activeFilterCount > 0 && (
+                            <button
+                                onClick={() => setFilters({ status: 'all', pipeline: 'all', window24h: 'all', hasResponse: 'all' })}
+                                className="w-full text-xs text-violet-600 hover:text-violet-700 font-medium py-1"
+                            >
+                                Limpar filtros
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Conversations */}

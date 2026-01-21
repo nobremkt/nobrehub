@@ -19,6 +19,7 @@ import roundRobinRoutes from './routes/roundRobin.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import publicRoutes from './routes/public.js';
 import conversationsRoutes from './routes/conversations.js';
+import { dealsRoutes } from './routes/deals.js';
 
 const server = Fastify({ logger: true });
 
@@ -116,6 +117,7 @@ async function bootstrap() {
         await server.register(roundRobinRoutes, { prefix: '/round-robin' });
         await server.register(whatsappRoutes, { prefix: '/whatsapp' });
         await server.register(conversationsRoutes, { prefix: '/conversations' });
+        await server.register(dealsRoutes, { prefix: '/deals' });
         console.log('✅ All routes registered');
 
         // Start Fastify server

@@ -3,7 +3,7 @@ import { MessageCircle } from 'lucide-react';
 import { useSocket } from '../../hooks/useSocket';
 import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
-import LeadContextSidebar from '../LeadContextSidebar';
+import CRMSidebar from '../chat/CRMSidebar';
 import LeadDetailModal from '../LeadDetailModal';
 
 interface Conversation {
@@ -270,9 +270,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             {/* Right: Lead Context Sidebar - only visible when conversation selected */}
             {selectedConversation && (
                 <div className="flex-shrink-0 border-l border-slate-200 bg-white overflow-y-auto">
-                    <LeadContextSidebar
-                        lead={selectedConversation.lead}
+                    <CRMSidebar
+                        lead={selectedConversation.lead as any}
                         pipeline={selectedConversation.pipeline}
+                        conversationId={selectedConversation.id}
                         onOpenDetails={() => setShowLeadModal(true)}
                         onMoveStage={handleMoveStage}
                     />

@@ -147,6 +147,46 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
         return messages;
     });
 
+    // Put conversation on hold (Pause atendimento)
+    fastify.post<{ Params: ConversationParams }>('/:id/hold', async (request, reply) => {
+        const { id } = request.params;
+
+        try {
+            const conversation = await prisma.conversation.update({
+                where: { id },
+                data: { status: 'on_hold' },
+                include: {
+                    lead: { select: { id: true, name: true } },
+                    assignedAgent: { select: { id: true, name: true } }
+                }
+            });
+            return conversation;
+        } catch (error: any) {
+            console.error('Error putting conversation on hold:', error);
+            return reply.status(400).send({ error: error.message });
+        }
+    });
+
+    // Resume conversation from hold
+    fastify.post<{ Params: ConversationParams }>('/:id/resume', async (request, reply) => {
+        const { id } = request.params;
+
+        try {
+            const conversation = await prisma.conversation.update({
+                where: { id },
+                data: { status: 'active' },
+                include: {
+                    lead: { select: { id: true, name: true } },
+                    assignedAgent: { select: { id: true, name: true } }
+                }
+            });
+            return conversation;
+        } catch (error: any) {
+            console.error('Error resuming conversation:', error);
+            return reply.status(400).send({ error: error.message });
+        }
+    });
+
     // Close a conversation (Quick Action)
     fastify.post<{ Params: ConversationParams; Body: CloseBody }>('/:id/close', async (request, reply) => {
         const { id } = request.params;

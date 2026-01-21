@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X, FileText } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
-import LeadContextSidebar from './LeadContextSidebar';
+import CRMSidebar from './chat/CRMSidebar';
 import LeadDetailModal from './LeadDetailModal';
 import TemplateSelector from './TemplateSelector';
 import MessageBubble from './chat/MessageBubble';
+import ChatHeader from './chat/ChatHeader';
 
 interface Message {
     id: string;
@@ -565,6 +566,65 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         }
     };
 
+    // Hold conversation (pause atendimento)
+    const handleHold = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/conversations/${conversationId}/hold`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) {
+                setConversation(prev => prev ? { ...prev, status: 'on_hold' } : null);
+                toast.info('Conversa colocada em espera');
+            }
+        } catch (error) {
+            toast.error('Erro ao colocar conversa em espera');
+        }
+    };
+
+    // Resume conversation from hold
+    const handleResume = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/conversations/${conversationId}/resume`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) {
+                setConversation(prev => prev ? { ...prev, status: 'active' } : null);
+                toast.success('Atendimento retomado');
+            }
+        } catch (error) {
+            toast.error('Erro ao retomar conversa');
+        }
+    };
+
+    // Close conversation with reason modal
+    const handleCloseConversation = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_URL}/conversations/${conversationId}/close`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: 'resolved' })
+            });
+            toast.success('Atendimento encerrado');
+            onConversationClosed();
+        } catch (error) {
+            toast.error('Erro ao encerrar conversa');
+        }
+    };
+
     const handleNoInterest = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -702,73 +762,22 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         <div className={`${embedded ? 'h-full' : 'h-dvh'} flex bg-[#f8fafc]`}>
             {/* Main Chat Area */}
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Header */}
-                <header className="bg-white border-b border-slate-100 px-6 py-4">
-                    <div className="flex items-center gap-4">
-                        {!embedded && (
-                            <button
-                                onClick={onBack}
-                                className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
-                            >
-                                <ArrowLeft size={20} className="text-slate-600" />
-                            </button>
-                        )}
-
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center">
-                                <User size={20} className="text-rose-600" />
-                            </div>
-                            {/* Status Dot */}
-                            <div
-                                className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
-                                    }`}
-                                title={isConnected ? `Conectado (Socket Real-time)` : 'Desconectado (Polling Backup)'}
-                            />
-                        </div>
-
-                        <div className="flex-1">
-                            <h2 className="font-bold text-slate-900">{conversation.lead.name}</h2>
-                            <div className="flex items-center gap-3 text-xs text-slate-400">
-                                <div className="flex items-center gap-1">
-                                    <Phone size={10} />
-                                    <span>{conversation.lead.phone}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <DollarSign size={10} />
-                                    <span>{formatCurrency(conversation.lead.estimatedValue)}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons - Visible */}
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={fetchAvailableAgents}
-                                disabled={isLoadingAgents}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-700 transition-colors"
-                                title="Transferir conversa"
-                            >
-                                <ArrowRightLeft size={16} />
-                                <span className="hidden sm:inline">Transferir</span>
-                            </button>
-                            <button
-                                onClick={handlePaymentSignal}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-100 hover:bg-emerald-200 rounded-xl text-sm font-medium text-emerald-700 transition-colors"
-                                title="Marcar sinal pago"
-                            >
-                                <CreditCard size={16} />
-                                <span className="hidden sm:inline">Sinal</span>
-                            </button>
-                            <button
-                                onClick={handleNoInterest}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-rose-100 hover:bg-rose-200 rounded-xl text-sm font-medium text-rose-700 transition-colors"
-                                title="Encerrar sem interesse"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </header>
+                {/* Header - Using new ChatHeader component */}
+                <ChatHeader
+                    leadName={conversation.lead.name}
+                    leadPhone={conversation.lead.phone}
+                    channel="WhatsApp"
+                    lastMessageAt={conversation.messages?.[conversation.messages.length - 1]?.createdAt || null}
+                    conversationStatus={conversation.status as any}
+                    assignedAgent={conversation.assignedAgent}
+                    isConnected={isConnected}
+                    onHold={handleHold}
+                    onResume={handleResume}
+                    onClose={handleCloseConversation}
+                    onTransfer={fetchAvailableAgents}
+                    onBack={!embedded ? onBack : undefined}
+                    embedded={embedded}
+                />
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-3">
                     {messages.map((msg) => (
@@ -926,9 +935,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             {/* Context Sidebar - Only show when NOT embedded (ChatLayout renders its own) */}
             {!embedded && (
                 <div className="hidden lg:block">
-                    <LeadContextSidebar
-                        lead={conversation.lead}
+                    <CRMSidebar
+                        lead={conversation.lead as any}
                         pipeline={conversation.pipeline}
+                        conversationId={conversationId}
                         onOpenDetails={() => setShowLeadModal(true)}
                         onMoveStage={handleMoveStage}
                     />

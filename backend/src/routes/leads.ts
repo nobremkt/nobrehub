@@ -256,6 +256,42 @@ export default async function leadRoutes(server: FastifyInstance) {
         return { success: true };
     });
 
+    // GET /leads/:id/history - Get lead activity history
+    server.get<{ Params: { id: string } }>('/:id/history', async (request, reply) => {
+        const { id } = request.params;
+
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) {
+            return reply.code(404).send({ error: 'Lead não encontrado' });
+        }
+
+        const history = await prisma.leadHistory.findMany({
+            where: { leadId: id },
+            include: {
+                user: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        });
+
+        return history;
+    });
+
+    // GET /leads/:id/deals - Get all deals for a lead
+    server.get<{ Params: { id: string } }>('/:id/deals', async (request, reply) => {
+        const { id } = request.params;
+
+        const deals = await prisma.deal.findMany({
+            where: { leadId: id },
+            include: {
+                owner: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return deals;
+    });
+
     // DELETE /leads/bulk - Bulk delete
     server.delete('/bulk', async (request, reply) => {
         const { ids } = request.body as { ids: string[] };

@@ -478,6 +478,15 @@ export default async function whatsappRoutes(server: FastifyInstance) {
 
         const phoneKey = to.replace(/\D/g, '');
 
+        // Verify user exists before using as foreign key
+        let validUserId: string | undefined;
+        if (user?.id) {
+            const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
+            if (existingUser) {
+                validUserId = user.id;
+            }
+        }
+
         // Find lead by phone if not provided
         let resolvedLeadId = leadId;
         if (!resolvedLeadId) {
@@ -487,17 +496,49 @@ export default async function whatsappRoutes(server: FastifyInstance) {
             resolvedLeadId = lead?.id;
         }
 
-        // Save template message to database
+        // Find active conversation for this lead (CRITICAL for message history)
+        let conversationId: string | undefined;
+        if (resolvedLeadId) {
+            const conversation = await prisma.conversation.findFirst({
+                where: {
+                    leadId: resolvedLeadId,
+                    status: { not: 'closed' }
+                },
+                select: { id: true, assignedAgentId: true }
+            });
+            conversationId = conversation?.id;
+
+            // Auto-assign logic if unassigned and valid user
+            if (conversation && !conversation.assignedAgentId && validUserId) {
+                const updatedConversation = await prisma.conversation.update({
+                    where: { id: conversation.id },
+                    data: {
+                        assignedAgentId: validUserId,
+                        status: 'active',
+                        lastMessageAt: new Date()
+                    },
+                    include: {
+                        lead: { select: { id: true, name: true, phone: true, company: true } },
+                        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                    }
+                });
+                // Emit update so it moves from Queue to Mine in real-time
+                emitConversationUpdated(updatedConversation);
+            }
+        }
+
+        // Save template message to database WITH conversationId
         const savedMessage = await prisma.message.create({
             data: {
                 phone: phoneKey,
                 leadId: resolvedLeadId,
+                conversationId: conversationId, // FIXED: Now links to conversation
                 direction: 'out',
                 type: 'template',
                 templateName: templateName,
                 text: fullText || `Template: ${templateName}`,
                 status: 'pending',
-                sentByUserId: user?.id
+                sentByUserId: validUserId
             }
         });
 
@@ -522,6 +563,30 @@ export default async function whatsappRoutes(server: FastifyInstance) {
                     status: 'sent'
                 }
             });
+
+            // Emit real-time lead update with new lastMessage
+            if (resolvedLeadId) {
+                const updatedLead = await prisma.lead.findUnique({
+                    where: { id: resolvedLeadId },
+                });
+                if (updatedLead) {
+                    emitLeadUpdated({
+                        ...updatedLead,
+                        lastMessage: fullText || `Template: ${templateName}`,
+                        lastMessageFrom: 'out',
+                        lastMessageAt: new Date()
+                    });
+                }
+            }
+
+            // Emit real-time message to conversation room (FIXED: Now emits)
+            if (savedMessage.conversationId) {
+                emitNewMessage(savedMessage.conversationId, {
+                    ...savedMessage,
+                    status: 'sent',
+                    waMessageId: result.messages[0]?.id
+                });
+            }
 
             console.log('✅ Template sent to:', to);
             return reply.send({
