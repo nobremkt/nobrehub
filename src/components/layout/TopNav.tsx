@@ -11,6 +11,7 @@ import {
     Bell,
     LogOut,
     ChevronDown,
+    Contact,
 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
@@ -50,6 +51,7 @@ const TopNav: React.FC<TopNavProps> = ({
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
         { id: 'inbox', label: 'Inbox', icon: <MessageSquare size={18} />, path: '/inbox', badge: unreadCount },
         { id: 'kanban', label: 'Kanban', icon: <Columns size={18} />, path: '/kanban' },
+        { id: 'contatos', label: 'Contatos', icon: <Contact size={18} />, path: '/contatos' },
         { id: 'producao', label: 'Produção', icon: <CheckSquare size={18} />, path: '/producao' },
         { id: 'equipe', label: 'Equipe', icon: <Users size={18} />, path: '/equipe' },
         { id: 'automacoes', label: 'Automações', icon: <Zap size={18} />, path: '/automacoes' },

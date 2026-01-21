@@ -80,6 +80,11 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             setPendingLeadId(leadId || null);
           }} />
         } />
+        <Route path="/contatos" element={
+          <LeadList onNavigateToChat={(leadId) => {
+            setPendingLeadId(leadId || null);
+          }} />
+        } />
         <Route path="/producao" element={<div className="p-6 text-slate-500">Módulo em desenvolvimento...</div>} />
         <Route path="/equipe" element={<TeamManagement onMonitor={setMonitoredUser} />} />
         <Route path="/automacoes" element={<FlowBuilder />} />

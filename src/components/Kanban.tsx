@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
-import { getLeads, Lead, updateLeadStage } from '../services/api';
+import Lead360Modal from './Lead360Modal';
+import { getLeads, Lead, updateLeadStage, updateLead } from '../services/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 import LeadCard from './kanban/LeadCard';
@@ -99,6 +100,10 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  // Lead 360 Modal State
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isLead360Open, setIsLead360Open] = useState(false);
 
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -679,7 +684,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
                   <LeadCard
                     key={lead.id}
                     lead={lead}
-                    onClick={() => toast.info('Detalhes do lead em breve!')}
+                    onClick={() => { setSelectedLead(lead); setIsLead360Open(true); }}
                     agentName={lead.assignedUser?.name}
                   />
                 ))}
@@ -708,6 +713,18 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
           onClose={() => setIsLeadModalOpen(false)}
           initialStage={activeStageForLead}
           onSave={handleSaveLead}
+        />
+
+        {/* Lead 360 Modal */}
+        <Lead360Modal
+          isOpen={isLead360Open}
+          lead={selectedLead}
+          onClose={() => { setIsLead360Open(false); setSelectedLead(null); }}
+          onUpdateLead={async (updates) => {
+            if (!selectedLead) return;
+            await updateLead(selectedLead.id, updates as any);
+            setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, ...updates } as Lead : l));
+          }}
         />
       </div>
 
