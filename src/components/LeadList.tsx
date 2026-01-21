@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User } from 'lucide-react';
+import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User, Filter, X, ChevronDown } from 'lucide-react';
 import LeadModal from './LeadModal';
-import LeadDetailModal from './LeadDetailModal';
+import Lead360Modal from './Lead360Modal';
 import { getLeads, Lead, deleteLead, createLead, updateLead } from '../services/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
@@ -20,6 +20,16 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  // Advanced filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    pipeline: '' as '' | 'high_ticket' | 'low_ticket',
+    status: '',
+    source: '',
+    hasConversation: '' as '' | 'yes' | 'no',
+    dateRange: '' as '' | '7d' | '30d' | '90d'
+  });
 
   const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
 
@@ -57,14 +67,57 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
 
   // Filtra leads - exclui leads sem pipeline (não qualificados)
   const filteredLeads = useMemo(() => {
+    const now = new Date();
     return leads
       .filter(l => l.pipeline) // Só mostra leads com pipeline definido
+      // Text search
       .filter(l =>
         l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         l.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         l.company?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [leads, searchTerm]);
+      )
+      // Pipeline filter
+      .filter(l => !filters.pipeline || l.pipeline === filters.pipeline)
+      // Status filter
+      .filter(l => {
+        if (!filters.status) return true;
+        return l.statusHT === filters.status || l.statusLT === filters.status;
+      })
+      // Source filter
+      .filter(l => !filters.source || l.source === filters.source)
+      // Date range filter
+      .filter(l => {
+        if (!filters.dateRange) return true;
+        const createdAt = new Date(l.createdAt);
+        const diffDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+        if (filters.dateRange === '7d') return diffDays <= 7;
+        if (filters.dateRange === '30d') return diffDays <= 30;
+        if (filters.dateRange === '90d') return diffDays <= 90;
+        return true;
+      });
+  }, [leads, searchTerm, filters]);
+
+  // Get unique sources for filter dropdown
+  const uniqueSources = useMemo(() => {
+    return [...new Set(leads.filter(l => l.source).map(l => l.source as string))];
+  }, [leads]);
+
+  // Get unique statuses for filter dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    leads.forEach(l => {
+      if (l.statusHT) statuses.add(l.statusHT);
+      if (l.statusLT) statuses.add(l.statusLT);
+    });
+    return [...statuses];
+  }, [leads]);
+
+  // Count active filters
+  const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
+
+  const clearFilters = () => {
+    setFilters({ pipeline: '', status: '', source: '', hasConversation: '', dateRange: '' });
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
@@ -251,10 +304,112 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
               className="w-full bg-white border border-slate-200 rounded-[2rem] py-5 pl-16 pr-8 text-sm focus:outline-none focus:border-rose-600/50 shadow-sm transition-all text-slate-900"
             />
           </div>
+
+          {/* Filter Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative p-5 rounded-[2rem] border shadow-sm transition-all ${activeFilterCount > 0
+              ? 'bg-violet-100 border-violet-300 text-violet-700'
+              : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600'
+              }`}
+          >
+            <Filter size={20} />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-violet-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
           <button className="p-5 rounded-[2rem] bg-white border border-slate-200 text-slate-400 hover:text-rose-600 shadow-sm transition-all">
             <Download size={20} />
           </button>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 mt-4 shadow-lg animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-bold text-slate-700">Filtros Avançados</span>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-rose-600 hover:underline"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Pipeline */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Pipeline</label>
+                <select
+                  value={filters.pipeline}
+                  onChange={(e) => setFilters(prev => ({ ...prev, pipeline: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">Todos</option>
+                  <option value="high_ticket">High Ticket</option>
+                  <option value="low_ticket">Low Ticket</option>
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">Todos</option>
+                  {uniqueStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Source */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Origem</label>
+                <select
+                  value={filters.source}
+                  onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">Todas</option>
+                  {uniqueSources.map(source => (
+                    <option key={source} value={source}>{source}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Range */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Período</label>
+                <select
+                  value={filters.dateRange}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">Todos</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="90d">Últimos 90 dias</option>
+                </select>
+              </div>
+
+              {/* Results Count */}
+              <div className="flex items-end">
+                <div className="px-4 py-2 bg-slate-100 rounded-lg text-sm">
+                  <span className="font-bold text-slate-700">{filteredLeads.length}</span>
+                  <span className="text-slate-400 ml-1">leads</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto p-10 no-scrollbar pb-32">
@@ -420,12 +575,10 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
         leadToEdit={editingLead}
       />
 
-      <LeadDetailModal
+      <Lead360Modal
         isOpen={isDetailModalOpen}
         lead={detailLead}
         onClose={() => setIsDetailModalOpen(false)}
-        onEdit={handleEditLead}
-        onDelete={handleDeleteLead}
         onOpenChat={handleOpenChat}
       />
 
