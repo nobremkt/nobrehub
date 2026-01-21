@@ -257,9 +257,9 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   };
 
   const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead);
-    setIsDetailModalOpen(false);
-    setIsLeadModalOpen(true);
+    // Open Lead360Modal for editing (shows full context with edit capability)
+    setDetailLead(lead);
+    setIsDetailModalOpen(true);
   };
 
   const handleOpenChat = (lead: Lead) => {
@@ -580,6 +580,11 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
         lead={detailLead}
         onClose={() => setIsDetailModalOpen(false)}
         onOpenChat={handleOpenChat}
+        onUpdateLead={async (updates) => {
+          if (!detailLead) return;
+          await updateLead(detailLead.id, updates as any);
+          setLeads(prev => prev.map(l => l.id === detailLead.id ? { ...l, ...updates } as Lead : l));
+        }}
       />
 
       {/* Bulk Actions Bar - Fixed at bottom */}
