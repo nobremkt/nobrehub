@@ -7,6 +7,7 @@ import LeadDetailModal from './LeadDetailModal';
 import TemplateSelector from './TemplateSelector';
 import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
+import ScheduleMessageModal from './chat/ScheduleMessageModal';
 
 interface Message {
     id: string;
@@ -78,6 +79,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     // Template Selector State
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+
+    // Schedule Message Modal State
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -775,6 +779,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     onResume={handleResume}
                     onClose={handleCloseConversation}
                     onTransfer={fetchAvailableAgents}
+                    onSchedule={() => setShowScheduleModal(true)}
                     onBack={!embedded ? onBack : undefined}
                     embedded={embedded}
                 />
@@ -969,6 +974,14 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     />
                 )
             }
+
+            {/* Schedule Message Modal */}
+            <ScheduleMessageModal
+                isOpen={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                conversationId={conversationId}
+                leadName={conversation.lead.name}
+            />
         </div >
     );
 };

@@ -83,6 +83,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     const [expandedSections, setExpandedSections] = useState({
         contact: true,
         deal: false,
+        tags: false,
         notes: false,
         history: false
     });
@@ -103,6 +104,10 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
         origin: '',
         product: ''
     });
+
+    // Tags inline editing
+    const [editedTags, setEditedTags] = useState<string[]>(lead.tags || []);
+    const [newTagInput, setNewTagInput] = useState('');
 
     const stages = STAGES[pipeline as keyof typeof STAGES] || STAGES.high_ticket;
     const currentStatus = pipeline === 'high_ticket' ? lead.statusHT : lead.statusLT;
@@ -252,6 +257,35 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
             currency: 'BRL',
             minimumFractionDigits: 0
         }).format(value);
+    };
+
+    // Tag functions
+    const handleAddTag = () => {
+        const trimmedTag = newTagInput.trim().toLowerCase();
+        if (trimmedTag && !editedTags.includes(trimmedTag)) {
+            const newTags = [...editedTags, trimmedTag];
+            setEditedTags(newTags);
+            setNewTagInput('');
+            // Auto-save tags
+            handleSaveTags(newTags);
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        const newTags = editedTags.filter(tag => tag !== tagToRemove);
+        setEditedTags(newTags);
+        // Auto-save tags
+        handleSaveTags(newTags);
+    };
+
+    const handleSaveTags = async (tags: string[]) => {
+        if (!onUpdateLead) return;
+        try {
+            await onUpdateLead({ tags } as any);
+            toast.success('Tags atualizadas');
+        } catch (error) {
+            toast.error('Erro ao atualizar tags');
+        }
     };
 
     return (
@@ -615,6 +649,74 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                                     </div>
                                 </>
                             )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Tags Section */}
+                <div className="border-b border-slate-200">
+                    <button
+                        onClick={() => toggleSection('tags')}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-100 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Tag size={14} className="text-slate-500" />
+                            <span className="text-sm font-medium text-slate-700">Tags</span>
+                            {editedTags.length > 0 && (
+                                <span className="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[10px] rounded-full font-medium">
+                                    {editedTags.length}
+                                </span>
+                            )}
+                        </div>
+                        <ChevronDown size={16} className={`text-slate-400 transition-transform ${expandedSections.tags ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {expandedSections.tags && (
+                        <div className="px-4 pb-4 space-y-3">
+                            {/* Existing Tags */}
+                            <div className="flex flex-wrap gap-2">
+                                {editedTags.map((tag, i) => (
+                                    <span
+                                        key={i}
+                                        className="group inline-flex items-center gap-1 px-2 py-1 bg-violet-100 text-violet-700 text-xs rounded-full font-medium"
+                                    >
+                                        {tag}
+                                        <button
+                                            onClick={() => handleRemoveTag(tag)}
+                                            className="hover:bg-violet-200 rounded-full p-0.5 transition-colors"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </span>
+                                ))}
+                                {editedTags.length === 0 && (
+                                    <p className="text-xs text-slate-400 italic">Nenhuma tag</p>
+                                )}
+                            </div>
+
+                            {/* Add New Tag */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newTagInput}
+                                    onChange={(e) => setNewTagInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddTag();
+                                        }
+                                    }}
+                                    placeholder="Nova tag..."
+                                    className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                />
+                                <button
+                                    onClick={handleAddTag}
+                                    disabled={!newTagInput.trim()}
+                                    className="px-3 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

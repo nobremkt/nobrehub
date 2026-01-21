@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     User, Phone, Clock, Pause, Play, X,
-    ArrowRightLeft, MoreVertical, UserPlus
+    ArrowRightLeft, MoreVertical, UserPlus, CalendarClock
 } from 'lucide-react';
 
 interface ChatHeaderProps {
@@ -16,6 +16,7 @@ interface ChatHeaderProps {
     onResume: () => void;
     onClose: () => void;
     onTransfer: () => void;
+    onSchedule?: () => void;
     onBack?: () => void;
     embedded?: boolean;
 }
@@ -32,6 +33,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     onResume,
     onClose,
     onTransfer,
+    onSchedule,
     onBack,
     embedded = false
 }) => {
@@ -133,8 +135,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                 {timeRemaining && (
                     <div
                         className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${isWithinWindow
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-rose-50 text-rose-700'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-rose-50 text-rose-700'
                             }`}
                         title="Tempo restante para enviar mensagens livres (janela 24h WhatsApp)"
                     >
@@ -175,6 +177,18 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                         <ArrowRightLeft size={16} />
                         <span className="hidden sm:inline">Transferir</span>
                     </button>
+
+                    {/* Schedule Button */}
+                    {onSchedule && (
+                        <button
+                            onClick={onSchedule}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-violet-100 hover:bg-violet-200 rounded-xl text-sm font-medium text-violet-700 transition-colors"
+                            title="Agendar mensagem"
+                        >
+                            <CalendarClock size={16} />
+                            <span className="hidden sm:inline">Agendar</span>
+                        </button>
+                    )}
 
                     {/* Close Button */}
                     <button
