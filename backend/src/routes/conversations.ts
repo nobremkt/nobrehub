@@ -91,24 +91,59 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
 
     // Get conversation by lead ID (for WhatsApp button navigation)
     // NOTE: Must be defined BEFORE /:id to avoid route conflicts
-    fastify.get<{ Params: { leadId: string } }>('/by-lead/:leadId', async (request, reply) => {
+    // Now also creates a conversation if none exists (for leads without WhatsApp history)
+    fastify.get<{ Params: { leadId: string }; Querystring: { create?: string } }>('/by-lead/:leadId', async (request, reply) => {
         const { leadId } = request.params;
+        const { create } = request.query;
+        const user = (request as any).user;
 
-        const conversation = await prisma.conversation.findFirst({
+        // First, try to find an existing conversation
+        let conversation = await prisma.conversation.findFirst({
             where: {
                 leadId,
                 status: { not: 'closed' }
             },
             include: {
-                lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true } },
+                lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true, statusHT: true, statusLT: true, tags: true } },
                 assignedAgent: { select: { id: true, name: true } },
                 messages: { orderBy: { createdAt: 'desc' }, take: 1 }
             },
             orderBy: { lastMessageAt: 'desc' }
         });
 
+        // If no conversation exists and create=true, create one
+        if (!conversation && (create === 'true' || create === '1')) {
+            // Get lead info to determine pipeline
+            const lead = await prisma.lead.findUnique({
+                where: { id: leadId },
+                select: { id: true, name: true, phone: true, company: true, estimatedValue: true, pipeline: true, statusHT: true, statusLT: true, tags: true }
+            });
+
+            if (!lead) {
+                return reply.status(404).send({ error: 'Lead não encontrado' });
+            }
+
+            // Create a new conversation for this lead
+            conversation = await prisma.conversation.create({
+                data: {
+                    leadId: lead.id,
+                    status: 'active',
+                    pipeline: lead.pipeline || 'low_ticket',
+                    assignedAgentId: user?.id || null, // Assign to current user if logged in
+                    lastMessageAt: new Date()
+                },
+                include: {
+                    lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true, statusHT: true, statusLT: true, tags: true } },
+                    assignedAgent: { select: { id: true, name: true } },
+                    messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                }
+            });
+
+            console.log(`[Conversations] Created new conversation for lead ${lead.name}: ${conversation.id}`);
+        }
+
         if (!conversation) {
-            return reply.status(404).send({ error: 'Nenhuma conversa encontrada para este lead' });
+            return reply.status(404).send({ error: 'Nenhuma conversa encontrada para este lead', canCreate: true });
         }
 
         return conversation;

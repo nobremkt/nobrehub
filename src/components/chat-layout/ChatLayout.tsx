@@ -136,7 +136,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}`, {
+                // Use create=true to automatically create a conversation if none exists
+                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}?create=true`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 

@@ -110,8 +110,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
 
   // Quick Action Handlers for LeadCard
   const handleOpenChat = (lead: Lead) => {
-    // Navigate to atendimento with lead ID to open their conversation
-    navigate(`/atendimento?leadId=${lead.id}`);
+    // Navigate to inbox with lead ID to open their conversation
+    navigate(`/inbox?leadId=${lead.id}`);
   };
 
   const handleScheduleTask = (lead: Lead) => {
