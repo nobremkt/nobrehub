@@ -3,7 +3,7 @@ import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshC
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
 import CRMSidebar from './chat/CRMSidebar';
-import LeadDetailModal from './LeadDetailModal';
+import Lead360Modal from './Lead360Modal';
 import TemplateSelector from './TemplateSelector';
 import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
@@ -950,15 +950,13 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 </div>
             )}
 
-            {/* Lead Detail Modal */}
+            {/* Lead 360° Modal */}
             {
                 showLeadModal && (
-                    <LeadDetailModal
+                    <Lead360Modal
                         isOpen={showLeadModal}
                         lead={conversation.lead as any}
                         onClose={() => setShowLeadModal(false)}
-                        onEdit={() => { }}
-                        onDelete={() => { }}
                         onOpenChat={() => { }}
                     />
                 )

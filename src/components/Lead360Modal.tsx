@@ -1,0 +1,580 @@
+import React, { useState, useEffect } from 'react';
+import {
+    X, Phone, Mail, Building2, User, Calendar, MessageCircle,
+    DollarSign, Tag, Clock, ChevronRight, Plus, Edit3, Save,
+    Briefcase, MapPin, FileText, History, TrendingUp, Star
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Deal {
+    id: string;
+    value: number;
+    product?: string;
+    origin?: string;
+    status: 'open' | 'won' | 'lost';
+    pipeline: string;
+    createdAt: string;
+}
+
+interface LeadHistoryItem {
+    id: string;
+    action: string;
+    description?: string;
+    createdAt: string;
+    createdBy?: { name: string };
+}
+
+interface Conversation {
+    id: string;
+    status: string;
+    channel: string;
+    lastMessageAt?: string;
+    assignedAgent?: { name: string };
+    messages?: { text?: string; createdAt: string }[];
+}
+
+interface Lead {
+    id: string;
+    name: string;
+    phone: string;
+    email?: string;
+    company?: string;
+    estimatedValue: number;
+    tags?: string[];
+    notes?: string;
+    source?: string;
+    pipeline?: string;
+    statusHT?: string;
+    statusLT?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+interface Lead360ModalProps {
+    isOpen: boolean;
+    lead: Lead | null;
+    onClose: () => void;
+    onOpenChat?: (lead: Lead) => void;
+    onUpdateLead?: (updates: Partial<Lead>) => Promise<void>;
+}
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+type TabType = 'atividades' | 'contato' | 'empresa' | 'negocios' | 'conversas' | 'historico';
+
+const Lead360Modal: React.FC<Lead360ModalProps> = ({
+    isOpen,
+    lead,
+    onClose,
+    onOpenChat,
+    onUpdateLead
+}) => {
+    const [activeTab, setActiveTab] = useState<TabType>('atividades');
+    const [deals, setDeals] = useState<Deal[]>([]);
+    const [history, setHistory] = useState<LeadHistoryItem[]>([]);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Editable fields
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedLead, setEditedLead] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        notes: ''
+    });
+
+    useEffect(() => {
+        if (lead) {
+            setEditedLead({
+                name: lead.name || '',
+                email: lead.email || '',
+                phone: lead.phone || '',
+                company: lead.company || '',
+                notes: lead.notes || ''
+            });
+        }
+    }, [lead]);
+
+    // Fetch data when tab changes
+    useEffect(() => {
+        if (!lead || !isOpen) return;
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            const token = localStorage.getItem('token');
+
+            try {
+                if (activeTab === 'negocios' && deals.length === 0) {
+                    const res = await fetch(`${API_URL}/leads/${lead.id}/deals`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setDeals(data);
+                    }
+                }
+
+                if (activeTab === 'historico' && history.length === 0) {
+                    const res = await fetch(`${API_URL}/leads/${lead.id}/history`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setHistory(data);
+                    }
+                }
+
+                if (activeTab === 'conversas' && conversations.length === 0) {
+                    const res = await fetch(`${API_URL}/conversations?leadId=${lead.id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setConversations(Array.isArray(data) ? data : []);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [activeTab, lead, isOpen]);
+
+    if (!isOpen || !lead) return null;
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
+    };
+
+    const formatDate = (date: string) => {
+        return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const formatDateTime = (date: string) => {
+        return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleSave = async () => {
+        if (!onUpdateLead) return;
+        try {
+            await onUpdateLead(editedLead);
+            setIsEditing(false);
+            toast.success('Lead atualizado');
+        } catch (error) {
+            toast.error('Erro ao atualizar');
+        }
+    };
+
+    const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
+        { id: 'atividades', label: 'Atividades', icon: <Clock size={16} /> },
+        { id: 'contato', label: 'Contato', icon: <User size={16} /> },
+        { id: 'empresa', label: 'Empresa', icon: <Building2 size={16} /> },
+        { id: 'negocios', label: 'Negócios', icon: <DollarSign size={16} /> },
+        { id: 'conversas', label: 'Conversas', icon: <MessageCircle size={16} /> },
+        { id: 'historico', label: 'Histórico', icon: <History size={16} /> },
+    ];
+
+    const getActionIcon = (action: string) => {
+        switch (action) {
+            case 'stage_changed': return <TrendingUp size={14} className="text-violet-600" />;
+            case 'deal_created': return <DollarSign size={14} className="text-emerald-600" />;
+            case 'deal_won': return <Star size={14} className="text-amber-500" />;
+            case 'deal_lost': return <X size={14} className="text-rose-500" />;
+            case 'note_added': return <FileText size={14} className="text-blue-500" />;
+            default: return <Clock size={14} className="text-slate-400" />;
+        }
+    };
+
+    const getActionLabel = (action: string) => {
+        switch (action) {
+            case 'stage_changed': return 'Etapa alterada';
+            case 'deal_created': return 'Negócio criado';
+            case 'deal_won': return 'Negócio ganho';
+            case 'deal_lost': return 'Negócio perdido';
+            case 'note_added': return 'Nota adicionada';
+            case 'lead_created': return 'Lead criado';
+            default: return action;
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <header className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-violet-50 to-slate-50">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                            <User size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">{lead.name}</h2>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-sm text-slate-500">{lead.company || 'Sem empresa'}</span>
+                                {lead.tags && lead.tags.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full">
+                                        {lead.tags[0]}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {onOpenChat && (
+                            <button
+                                onClick={() => onOpenChat(lead)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+                            >
+                                <MessageCircle size={16} />
+                                Conversar
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
+                            <X size={20} className="text-slate-400" />
+                        </button>
+                    </div>
+                </header>
+
+                {/* Tabs */}
+                <div className="border-b border-slate-100 px-6">
+                    <div className="flex gap-1">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.id
+                                        ? 'border-violet-600 text-violet-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-32">
+                            <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                        <>
+                            {/* Atividades Tab */}
+                            {activeTab === 'atividades' && (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="p-4 bg-emerald-50 rounded-xl">
+                                            <p className="text-xs text-emerald-600 font-medium">Valor Estimado</p>
+                                            <p className="text-2xl font-bold text-emerald-700">{formatCurrency(lead.estimatedValue || 0)}</p>
+                                        </div>
+                                        <div className="p-4 bg-violet-50 rounded-xl">
+                                            <p className="text-xs text-violet-600 font-medium">Negócios Ativos</p>
+                                            <p className="text-2xl font-bold text-violet-700">{deals.filter(d => d.status === 'open').length}</p>
+                                        </div>
+                                        <div className="p-4 bg-blue-50 rounded-xl">
+                                            <p className="text-xs text-blue-600 font-medium">Conversas</p>
+                                            <p className="text-2xl font-bold text-blue-700">{conversations.length}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 rounded-xl p-4">
+                                        <h3 className="font-semibold text-slate-800 mb-3">Resumo do Lead</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Pipeline:</span>
+                                                <span className="font-medium">{lead.pipeline === 'high_ticket' ? 'High Ticket' : 'Low Ticket'}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Origem:</span>
+                                                <span className="font-medium">{lead.source || 'Não informada'}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Criado em:</span>
+                                                <span className="font-medium">{lead.createdAt ? formatDate(lead.createdAt) : '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Activity */}
+                                    <div>
+                                        <h3 className="font-semibold text-slate-800 mb-3">Atividade Recente</h3>
+                                        <div className="space-y-2">
+                                            {history.slice(0, 5).map((item) => (
+                                                <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                                    <div className="p-2 bg-white rounded-lg">{getActionIcon(item.action)}</div>
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-medium text-slate-700">{getActionLabel(item.action)}</p>
+                                                        {item.description && <p className="text-xs text-slate-500">{item.description}</p>}
+                                                    </div>
+                                                    <span className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
+                                                </div>
+                                            ))}
+                                            {history.length === 0 && (
+                                                <p className="text-sm text-slate-400 italic">Nenhuma atividade recente</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Contato Tab */}
+                            {activeTab === 'contato' && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-semibold text-slate-800">Informações de Contato</h3>
+                                        {isEditing ? (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleSave}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm"
+                                                >
+                                                    <Save size={14} /> Salvar
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsEditing(false)}
+                                                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setIsEditing(true)}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm hover:bg-slate-200"
+                                            >
+                                                <Edit3 size={14} /> Editar
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs text-slate-500 block mb-1">Nome</label>
+                                            {isEditing ? (
+                                                <input
+                                                    value={editedLead.name}
+                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, name: e.target.value }))}
+                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-medium text-slate-800">{lead.name}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 block mb-1">Telefone</label>
+                                            {isEditing ? (
+                                                <input
+                                                    value={editedLead.phone}
+                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, phone: e.target.value }))}
+                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                                />
+                                            ) : (
+                                                <a href={`https://wa.me/${lead.phone}`} target="_blank" className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1">
+                                                    <Phone size={14} /> {lead.phone}
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 block mb-1">Email</label>
+                                            {isEditing ? (
+                                                <input
+                                                    value={editedLead.email}
+                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, email: e.target.value }))}
+                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-medium text-slate-800">{lead.email || '-'}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 block mb-1">Empresa</label>
+                                            {isEditing ? (
+                                                <input
+                                                    value={editedLead.company}
+                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, company: e.target.value }))}
+                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                                />
+                                            ) : (
+                                                <p className="text-sm font-medium text-slate-800">{lead.company || '-'}</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs text-slate-500 block mb-1">Notas</label>
+                                        {isEditing ? (
+                                            <textarea
+                                                value={editedLead.notes}
+                                                onChange={(e) => setEditedLead(prev => ({ ...prev, notes: e.target.value }))}
+                                                rows={4}
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg resize-none"
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-slate-600">{lead.notes || 'Nenhuma nota'}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Empresa Tab */}
+                            {activeTab === 'empresa' && (
+                                <div className="space-y-6">
+                                    <h3 className="font-semibold text-slate-800">Dados da Empresa</h3>
+                                    <div className="bg-slate-50 rounded-xl p-6">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center">
+                                                <Building2 size={20} className="text-slate-500" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-slate-800">{lead.company || 'Empresa não informada'}</p>
+                                                <p className="text-sm text-slate-500">CPF/CNPJ não informado</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <p className="text-slate-500">Segmento</p>
+                                                <p className="font-medium text-slate-800">Não informado</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-500">Funcionários</p>
+                                                <p className="font-medium text-slate-800">-</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-slate-400 italic">Campos adicionais de empresa podem ser configurados nas preferências.</p>
+                                </div>
+                            )}
+
+                            {/* Negócios Tab */}
+                            {activeTab === 'negocios' && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-semibold text-slate-800">Negócios ({deals.length})</h3>
+                                        <button className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm">
+                                            <Plus size={14} /> Novo Negócio
+                                        </button>
+                                    </div>
+
+                                    {deals.map((deal) => (
+                                        <div key={deal.id} className="p-4 bg-slate-50 rounded-xl">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded ${deal.status === 'won' ? 'bg-emerald-100 text-emerald-700' :
+                                                        deal.status === 'lost' ? 'bg-rose-100 text-rose-700' :
+                                                            'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                    {deal.status === 'won' ? 'Ganho' : deal.status === 'lost' ? 'Perdido' : 'Aberto'}
+                                                </span>
+                                                <span className="text-lg font-bold text-emerald-600">{formatCurrency(deal.value)}</span>
+                                            </div>
+                                            <div className="text-sm text-slate-500">
+                                                <p>Produto: {deal.product || 'Não definido'}</p>
+                                                <p>Origem: {deal.origin || 'Não definida'}</p>
+                                                <p>Criado: {formatDate(deal.createdAt)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {deals.length === 0 && (
+                                        <p className="text-sm text-slate-400 italic text-center py-8">Nenhum negócio encontrado</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Conversas Tab */}
+                            {activeTab === 'conversas' && (
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-slate-800">Conversas ({conversations.length})</h3>
+
+                                    {conversations.map((conv) => (
+                                        <div key={conv.id} className="p-4 bg-slate-50 rounded-xl flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${conv.status === 'active' ? 'bg-emerald-100' :
+                                                    conv.status === 'closed' ? 'bg-slate-200' :
+                                                        'bg-amber-100'
+                                                }`}>
+                                                <MessageCircle size={18} className={
+                                                    conv.status === 'active' ? 'text-emerald-600' :
+                                                        conv.status === 'closed' ? 'text-slate-500' :
+                                                            'text-amber-600'
+                                                } />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-slate-800">{conv.channel}</span>
+                                                    <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${conv.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                                                            conv.status === 'closed' ? 'bg-slate-200 text-slate-600' :
+                                                                'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                        {conv.status === 'active' ? 'Ativa' : conv.status === 'closed' ? 'Encerrada' : conv.status}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-500">
+                                                    {conv.assignedAgent?.name || 'Não atribuída'} • {conv.lastMessageAt ? formatDateTime(conv.lastMessageAt) : '-'}
+                                                </p>
+                                            </div>
+                                            <ChevronRight size={16} className="text-slate-400" />
+                                        </div>
+                                    ))}
+
+                                    {conversations.length === 0 && (
+                                        <p className="text-sm text-slate-400 italic text-center py-8">Nenhuma conversa encontrada</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Histórico Tab */}
+                            {activeTab === 'historico' && (
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-slate-800">Histórico de Atividades</h3>
+
+                                    <div className="relative">
+                                        <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-200" />
+
+                                        {history.map((item, index) => (
+                                            <div key={item.id} className="relative flex gap-4 pb-4">
+                                                <div className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
+                                                    {getActionIcon(item.action)}
+                                                </div>
+                                                <div className="flex-1 pt-1">
+                                                    <p className="text-sm font-medium text-slate-800">{getActionLabel(item.action)}</p>
+                                                    {item.description && (
+                                                        <p className="text-sm text-slate-500">{item.description}</p>
+                                                    )}
+                                                    <p className="text-xs text-slate-400 mt-1">
+                                                        {formatDateTime(item.createdAt)}
+                                                        {item.createdBy && ` • ${item.createdBy.name}`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {history.length === 0 && (
+                                            <p className="text-sm text-slate-400 italic text-center py-8">Nenhum histórico encontrado</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Lead360Modal;
