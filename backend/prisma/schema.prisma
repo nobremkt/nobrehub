@@ -119,14 +119,35 @@ enum LeadHistoryAction {
 
 // ============ MODELS ============
 
+// Sector model for team department management
+model Sector {
+  id          String   @id @default(uuid())
+  name        String   @unique  // e.g., "Vendas HT", "Vendas LT", "Produção", "Pós-Venda"
+  description String?
+  color       String   @default("#6366f1") // Hex color for UI
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  users       User[]
+  
+  @@map("sectors")
+}
+
 model User {
   id           String       @id @default(uuid())
+  supabaseId   String?      @unique @map("supabase_id") // Link to Supabase Auth user
   email        String       @unique
   passwordHash String       @map("password_hash")
   name         String
   role         UserRole
   pipelineType PipelineType? @map("pipeline_type")
   isActive     Boolean      @default(true) @map("is_active")
+  
+  // Sector relationship
+  sectorId     String?      @map("sector_id")
+  sector       Sector?      @relation(fields: [sectorId], references: [id])
   
   // Chat/Atendimento fields
   maxConcurrentChats Int     @default(5) @map("max_concurrent_chats")

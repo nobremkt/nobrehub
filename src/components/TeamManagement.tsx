@@ -1,52 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Target, Briefcase, Search, Plus, Eye, Monitor, ArrowUpRight } from 'lucide-react';
-import { Agent, TeamRole } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Shield, Target, Briefcase, Search, Plus, Monitor, Building2, Users, RefreshCw } from 'lucide-react';
 import { getUsers } from '../services/api';
+import AddMemberModal from './AddMemberModal';
+
+// Types
+interface Sector {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  _count?: {
+    users: number;
+  };
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  sector: Sector | null;
+  sectorId: string | null;
+  isActive: boolean;
+  pipelineType: string | null;
+  _count?: {
+    assignedLeads: number;
+  };
+}
+
+type TeamRole = 'Administracao' | 'Vendas' | 'Producao' | 'Pos-Venda' | 'Outros';
 
 interface TeamManagementProps {
-  onMonitor: (user: Agent) => void;
+  onMonitor: (user: any) => void;
 }
 
 const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   const [filter, setFilter] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const data = await getUsers();
-        // Map API users to Agent interface
-        const mappedAgents: Agent[] = (data as any[]).map(u => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role === 'admin' ? 'Administracao' :
-            u.role === 'closer_ht' || u.role === 'closer_lt' || u.role === 'manager_sales' ? 'Vendas' :
-              u.role === 'production' || u.role === 'manager_production' ? 'Producao' :
-                u.role === 'post_sales' ? 'Pos-Venda' : 'Outros',
-          status: 'offline', // Default status for now
-          activeLeads: 0, // Placeholder
-          boardConfig: []
-        }));
-        setAgents(mappedAgents);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-      } finally {
-        setLoading(false);
+  // Fetch team members and sectors
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+      // Fetch users
+      const usersResponse = await fetch(`${baseUrl}/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        setMembers(usersData);
       }
-    };
 
-    fetchUsers();
+      // Fetch sectors
+      const sectorsResponse = await fetch(`${baseUrl}/users/sectors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (sectorsResponse.ok) {
+        const sectorsData = await sectorsResponse.json();
+        setSectors(sectorsData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch team data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Definição das categorias e sua ordem de exibição
-  const CATEGORIES: TeamRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  // Determina quais categorias exibir com base no filtro
+  // Seed default sectors if none exist
+  const seedSectors = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+      await fetch(`${baseUrl}/users/sectors/seed`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Failed to seed sectors:', error);
+    }
+  };
+
+  // Map role to category
+  const getRoleCategory = (role: string): TeamRole => {
+    switch (role) {
+      case 'admin':
+      case 'strategic':
+        return 'Administracao';
+      case 'sdr':
+      case 'closer_ht':
+      case 'closer_lt':
+      case 'manager_sales':
+        return 'Vendas';
+      case 'production':
+      case 'manager_production':
+        return 'Producao';
+      case 'post_sales':
+        return 'Pos-Venda';
+      default:
+        return 'Outros';
+    }
+  };
+
+  // Categories definition
+  const CATEGORIES: TeamRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
   const visibleCategories = filter === 'Todos' ? CATEGORIES : [filter as TeamRole];
 
+  // Style helpers
   const getRoleStyle = (role: TeamRole) => {
     switch (role) {
       case 'Administracao': return 'bg-purple-50 text-purple-600 border-purple-100';
@@ -67,17 +142,52 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
     }
   };
 
+  const getRoleName = (role: string): string => {
+    const roleNames: Record<string, string> = {
+      admin: 'Admin',
+      sdr: 'SDR',
+      closer_ht: 'Closer HT',
+      closer_lt: 'Closer LT',
+      production: 'Produção',
+      post_sales: 'Pós-Venda',
+      manager_sales: 'Ger. Vendas',
+      manager_production: 'Ger. Produção',
+      strategic: 'Estratégico'
+    };
+    return roleNames[role] || role;
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] animate-in fade-in duration-700">
+    <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in fade-in duration-700">
       <header className="px-10 pt-10 pb-8 bg-white border-b border-slate-200">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Team Launchpad</h1>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Centro de Comando da Equipe</p>
           </div>
-          <button className="bg-rose-600 text-white px-8 py-4 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-600/20 active:scale-95 transition-all hover:bg-rose-700">
-            <Plus size={16} /> Adicionar Membro
-          </button>
+          <div className="flex items-center gap-3">
+            {sectors.length === 0 && !loading && (
+              <button
+                onClick={seedSectors}
+                className="bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+              >
+                <Building2 size={16} /> Criar Setores
+              </button>
+            )}
+            <button
+              onClick={() => fetchData()}
+              className="bg-slate-100 text-slate-600 p-4 rounded-2xl hover:bg-slate-200 transition-all"
+              title="Atualizar"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-rose-600 text-white px-8 py-4 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-600/20 active:scale-95 transition-all hover:bg-rose-700"
+            >
+              <Plus size={16} /> Adicionar Membro
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-6">
@@ -108,80 +218,118 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12">
-        {visibleCategories.map((category) => {
-          // Filtra e Ordena os agentes para esta categoria
-          const categoryAgents = agents
-            .filter(agent => agent.role === category)
-            .filter(agent => agent.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .sort((a, b) => a.name.localeCompare(b.name)); // Ordem Alfabética
-
-          if (categoryAgents.length === 0) return null;
-
-          return (
-            <div key={category} className="animate-in slide-in-from-bottom-4 duration-500">
-              {/* Cabeçalho da Seção */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className={`w-1.5 h-8 rounded-full ${getSectionHeaderColor(category)}`}></div>
-                <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{category}</h2>
-                <span className="bg-slate-100 text-slate-400 text-[10px] font-black px-2 py-1 rounded-lg border border-slate-200">
-                  {categoryAgents.length.toString().padStart(2, '0')}
-                </span>
-                <div className="h-px bg-slate-100 flex-1"></div>
-              </div>
-
-              {/* Grid de Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {categoryAgents.map((agent) => (
-                  <div
-                    key={agent.id}
-                    className="group bg-white border border-slate-100 rounded-[3rem] p-8 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:border-rose-600/20 hover:-translate-y-2 transition-all duration-500 relative overflow-hidden"
-                  >
-                    {/* Avatar e Status */}
-                    <div className="flex flex-col items-center mb-6">
-                      <div className="relative mb-4">
-                        <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-rose-600 text-3xl group-hover:scale-105 transition-transform duration-500">
-                          {agent.name.charAt(0)}
-                        </div>
-                        <div className={`absolute bottom-0 right-0 w-6 h-6 rounded-full border-4 border-white shadow-md ${agent.status === 'online' ? 'bg-emerald-500' : agent.status === 'busy' ? 'bg-rose-500' : 'bg-slate-300'
-                          }`}></div>
-                      </div>
-
-                      <h3 className="text-xl font-black text-slate-900 tracking-tighter text-center uppercase">{agent.name}</h3>
-                      <div className={`mt-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getRoleStyle(agent.role)}`}>
-                        {agent.role}
-                      </div>
-                    </div>
-
-                    {/* KPI */}
-                    <div className="bg-slate-50 rounded-3xl p-6 mb-8 flex flex-col items-center">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Leads Ativos</span>
-                      <div className="text-3xl font-black text-slate-900 tracking-tighter">
-                        {agent.activeLeads}
-                      </div>
-                    </div>
-
-                    {/* Ação */}
-                    <button
-                      onClick={() => onMonitor(agent)}
-                      className="w-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 group-hover:shadow-xl group-hover:shadow-rose-600/20"
-                    >
-                      <Monitor size={16} /> Monitorar Workspace
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Estado Vazio (Caso a busca não retorne nada) */}
-        {agents.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (!loading) && (
+        {loading ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-            <Search size={48} className="mb-4 opacity-20" />
-            <p className="text-sm font-bold uppercase tracking-widest">Nenhum membro encontrado</p>
+            <RefreshCw size={48} className="mb-4 animate-spin opacity-20" />
+            <p className="text-sm font-bold uppercase tracking-widest">Carregando equipe...</p>
           </div>
+        ) : (
+          <>
+            {visibleCategories.map((category) => {
+              // Filter members by category and search
+              const categoryMembers = members
+                .filter(member => member.isActive && getRoleCategory(member.role) === category)
+                .filter(member =>
+                  member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  member.email.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+              if (categoryMembers.length === 0) return null;
+
+              return (
+                <div key={category} className="animate-in slide-in-from-bottom-4 duration-500">
+                  {/* Section Header */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className={`w-1.5 h-8 rounded-full ${getSectionHeaderColor(category)}`}></div>
+                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{category}</h2>
+                    <span className="bg-slate-100 text-slate-400 text-[10px] font-black px-2 py-1 rounded-lg border border-slate-200">
+                      {categoryMembers.length.toString().padStart(2, '0')}
+                    </span>
+                    <div className="h-px bg-slate-100 flex-1"></div>
+                  </div>
+
+                  {/* Member Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    {categoryMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="group bg-white border border-slate-100 rounded-[3rem] p-8 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:border-rose-600/20 hover:-translate-y-2 transition-all duration-500 relative overflow-hidden"
+                      >
+                        {/* Avatar and Status */}
+                        <div className="flex flex-col items-center mb-6">
+                          <div className="relative mb-4">
+                            <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-rose-600 text-3xl group-hover:scale-105 transition-transform duration-500">
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+
+                          <h3 className="text-xl font-black text-slate-900 tracking-tighter text-center uppercase">
+                            {member.name}
+                          </h3>
+
+                          {/* Role Badge */}
+                          <div className={`mt-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getRoleStyle(getRoleCategory(member.role))}`}>
+                            {getRoleName(member.role)}
+                          </div>
+
+                          {/* Sector Badge */}
+                          {member.sector && (
+                            <div
+                              className="mt-2 px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center gap-1"
+                              style={{
+                                backgroundColor: `${member.sector.color}15`,
+                                color: member.sector.color,
+                                border: `1px solid ${member.sector.color}30`
+                              }}
+                            >
+                              <Building2 size={10} />
+                              {member.sector.name}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* KPI */}
+                        <div className="bg-slate-50 rounded-3xl p-6 mb-8 flex flex-col items-center">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Leads Ativos</span>
+                          <div className="text-3xl font-black text-slate-900 tracking-tighter">
+                            {member._count?.assignedLeads || 0}
+                          </div>
+                        </div>
+
+                        {/* Action */}
+                        <button
+                          onClick={() => onMonitor(member)}
+                          className="w-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 group-hover:shadow-xl group-hover:shadow-rose-600/20"
+                        >
+                          <Monitor size={16} /> Monitorar Workspace
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empty State */}
+            {members.filter(m => m.isActive && m.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+              <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                <Users size={48} className="mb-4 opacity-20" />
+                <p className="text-sm font-bold uppercase tracking-widest mb-2">Nenhum membro encontrado</p>
+                <p className="text-xs text-slate-300">Clique em "Adicionar Membro" para começar</p>
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Add Member Modal */}
+      <AddMemberModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={fetchData}
+        sectors={sectors}
+      />
     </div>
   );
 };
