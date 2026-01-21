@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers } from 'lucide-react';
+import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import { getLeads, Lead, updateLeadStatus } from '../services/api';
@@ -99,6 +99,63 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  // Search and Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [kanbanFilters, setKanbanFilters] = useState({
+    source: '',
+    valueMin: '',
+    valueMax: '',
+    dateRange: '' as '' | '7d' | '30d' | '90d',
+    hasNotes: '' as '' | 'yes' | 'no'
+  });
+
+  // Filtered leads based on search and filters
+  const displayLeads = useMemo(() => {
+    const now = new Date();
+    return leads
+      .filter(l => {
+        // Text search
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          const matchesSearch = l.name.toLowerCase().includes(term) ||
+            l.email?.toLowerCase().includes(term) ||
+            l.company?.toLowerCase().includes(term) ||
+            l.phone?.includes(term);
+          if (!matchesSearch) return false;
+        }
+        // Source filter
+        if (kanbanFilters.source && l.source !== kanbanFilters.source) return false;
+        // Value filters
+        if (kanbanFilters.valueMin && (l.estimatedValue || 0) < parseFloat(kanbanFilters.valueMin)) return false;
+        if (kanbanFilters.valueMax && (l.estimatedValue || 0) > parseFloat(kanbanFilters.valueMax)) return false;
+        // Date range filter
+        if (kanbanFilters.dateRange) {
+          const createdAt = new Date(l.createdAt);
+          const diffDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+          if (kanbanFilters.dateRange === '7d' && diffDays > 7) return false;
+          if (kanbanFilters.dateRange === '30d' && diffDays > 30) return false;
+          if (kanbanFilters.dateRange === '90d' && diffDays > 90) return false;
+        }
+        // Has notes filter
+        if (kanbanFilters.hasNotes === 'yes' && !l.notes) return false;
+        if (kanbanFilters.hasNotes === 'no' && l.notes) return false;
+        return true;
+      });
+  }, [leads, searchTerm, kanbanFilters]);
+
+  // Get unique sources for filter dropdown
+  const uniqueSources = useMemo(() => {
+    return [...new Set(leads.filter(l => l.source).map(l => l.source as string))];
+  }, [leads]);
+
+  // Count active filters
+  const activeFilterCount = Object.values(kanbanFilters).filter(v => v !== '').length;
+
+  const clearKanbanFilters = () => {
+    setKanbanFilters({ source: '', valueMin: '', valueMax: '', dateRange: '', hasNotes: '' });
+  };
 
   // Map internal pipeline names to API pipeline types
   const getApiPipelineType = (pipeline: string) => {
@@ -422,10 +479,28 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                 <input
                   type="text"
-                  placeholder="Pesquisar..."
+                  placeholder="Pesquisar leads..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-rose-600/50 transition-all shadow-inner"
                 />
               </div>
+
+              {/* Filter Button */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`relative p-3.5 rounded-2xl border transition-all ${activeFilterCount > 0
+                    ? 'bg-violet-100 border-violet-300 text-violet-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                  }`}
+              >
+                <Filter size={18} />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-violet-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
 
               <button
                 onClick={() => handleOpenLeadModal()}
@@ -435,12 +510,91 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
               </button>
             </div>
           </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-4 animate-in slide-in-from-top duration-200">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-bold text-slate-700">Filtros</span>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={clearKanbanFilters}
+                    className="text-xs text-rose-600 hover:underline flex items-center gap-1"
+                  >
+                    <X size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {/* Source */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Origem</label>
+                  <select
+                    value={kanbanFilters.source}
+                    onChange={(e) => setKanbanFilters(prev => ({ ...prev, source: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  >
+                    <option value="">Todas</option>
+                    {uniqueSources.map(source => (
+                      <option key={source} value={source}>{source}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Value Range */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Valor Mín</label>
+                  <input
+                    type="number"
+                    placeholder="R$ 0"
+                    value={kanbanFilters.valueMin}
+                    onChange={(e) => setKanbanFilters(prev => ({ ...prev, valueMin: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Valor Máx</label>
+                  <input
+                    type="number"
+                    placeholder="R$ ∞"
+                    value={kanbanFilters.valueMax}
+                    onChange={(e) => setKanbanFilters(prev => ({ ...prev, valueMax: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+
+                {/* Date Range */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Período</label>
+                  <select
+                    value={kanbanFilters.dateRange}
+                    onChange={(e) => setKanbanFilters(prev => ({ ...prev, dateRange: e.target.value as any }))}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  >
+                    <option value="">Todos</option>
+                    <option value="7d">7 dias</option>
+                    <option value="30d">30 dias</option>
+                    <option value="90d">90 dias</option>
+                  </select>
+                </div>
+
+                {/* Results */}
+                <div className="flex items-end">
+                  <div className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm">
+                    <span className="font-bold text-slate-700">{displayLeads.length}</span>
+                    <span className="text-slate-400 ml-1">/ {leads.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* BOARD CANVAS */}
         <div className="flex-1 overflow-x-auto p-10 flex gap-8 items-start no-scrollbar bg-slate-50/50">
           {boardStages.map((stage) => {
-            const stageLeads = leads.filter(l => l.statusHT === stage.id || l.statusLT === stage.id);
+            const stageLeads = displayLeads.filter(l => l.statusHT === stage.id || l.statusLT === stage.id);
             const totalValue = stageLeads.reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
 
             return (
