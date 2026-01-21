@@ -285,6 +285,79 @@ export default async function leadRoutes(server: FastifyInstance) {
         return updatedLead;
     });
 
+    // PUT /leads/:id/stage - Transactional Stage Change with Audit Log
+    server.put('/:id/stage', async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const { stage, pipeline } = request.body as { stage: string; pipeline?: 'high_ticket' | 'low_ticket' };
+        const user = (request as any).user;
+
+        // Get current lead state
+        const currentLead = await prisma.lead.findUnique({ where: { id } });
+        if (!currentLead) return reply.code(404).send({ error: 'Lead não encontrado' });
+
+        const currentPipeline = pipeline || currentLead.pipeline || 'high_ticket';
+        const oldStage = currentPipeline === 'high_ticket' ? currentLead.statusHT : currentLead.statusLT;
+
+        // Transactional update: Lead + LeadHistory in one atomic operation
+        const result = await prisma.$transaction(async (tx) => {
+            // Update lead stage
+            const updateData: any = {};
+            if (currentPipeline === 'high_ticket') {
+                updateData.statusHT = stage;
+            } else {
+                updateData.statusLT = stage;
+            }
+
+            const updatedLead = await tx.lead.update({
+                where: { id },
+                data: updateData
+            });
+
+            // Create audit log entry
+            await tx.leadHistory.create({
+                data: {
+                    leadId: id,
+                    action: 'stage_changed',
+                    details: {
+                        from: oldStage || 'novo',
+                        to: stage,
+                        pipeline: currentPipeline
+                    },
+                    userId: user.id
+                }
+            });
+
+            // Also create interaction for backward compatibility
+            await tx.interaction.create({
+                data: {
+                    leadId: id,
+                    userId: user.id,
+                    type: 'status_change',
+                    content: `Etapa alterada: ${oldStage || 'novo'} → ${stage}`,
+                    metadata: { from: oldStage, to: stage, pipeline: currentPipeline }
+                }
+            });
+
+            return updatedLead;
+        });
+
+        console.log(`📊 Stage change: ${currentLead.name} [${oldStage} → ${stage}] by ${user.name}`);
+
+        // Emit Real-time Event
+        emitLeadUpdated(result);
+
+        return {
+            lead: result,
+            stageChange: {
+                from: oldStage,
+                to: stage,
+                pipeline: currentPipeline,
+                changedBy: user.name,
+                changedAt: new Date().toISOString()
+            }
+        };
+    });
+
     // PUT /leads/:id/assign
     server.put('/:id/assign', async (request, reply) => {
         const { id } = request.params as { id: string };

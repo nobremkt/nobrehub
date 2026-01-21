@@ -280,6 +280,28 @@ export async function updateLeadStatus(id: string, status: string): Promise<Lead
     }).catch(() => MOCK_LEADS[0]);
 }
 
+// Update lead stage with transactional audit log
+export interface StageChangeResult {
+    lead: Lead;
+    stageChange: {
+        from: string;
+        to: string;
+        pipeline: string;
+        changedBy: string;
+        changedAt: string;
+    };
+}
+
+export async function updateLeadStage(id: string, stage: string, pipeline?: 'high_ticket' | 'low_ticket'): Promise<StageChangeResult> {
+    return request<StageChangeResult>(`/leads/${id}/stage`, {
+        method: 'PUT',
+        body: JSON.stringify({ stage, pipeline }),
+    }).catch(() => ({
+        lead: MOCK_LEADS[0],
+        stageChange: { from: 'novo', to: stage, pipeline: pipeline || 'high_ticket', changedBy: 'mock', changedAt: new Date().toISOString() }
+    }));
+}
+
 export async function assignLead(id: string, userId: string): Promise<Lead> {
     return request<Lead>(`/leads/${id}/assign`, {
         method: 'PUT',

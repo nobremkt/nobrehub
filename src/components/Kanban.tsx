@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, DollarSign, Factory, HeartHandshake, Layers, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
-import { getLeads, Lead, updateLeadStatus } from '../services/api';
+import { getLeads, Lead, updateLeadStage } from '../services/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 import LeadCard from './kanban/LeadCard';
@@ -331,9 +331,13 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
       }));
 
       try {
-        await updateLeadStatus(leadId, newStatus);
+        // Use transactional endpoint with audit log
+        const pipelineType = currentPipeline === 'sales' ? salesSubPipeline : currentPipeline as any;
+        await updateLeadStage(leadId, newStatus, pipelineType);
+        toast.success('Etapa atualizada');
       } catch (error) {
-        console.error('Failed to update status', error);
+        console.error('Failed to update stage', error);
+        toast.error('Erro ao atualizar etapa');
       }
     }
   };
@@ -490,8 +494,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`relative p-3.5 rounded-2xl border transition-all ${activeFilterCount > 0
-                    ? 'bg-violet-100 border-violet-300 text-violet-700'
-                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                  ? 'bg-violet-100 border-violet-300 text-violet-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
                   }`}
               >
                 <Filter size={18} />
