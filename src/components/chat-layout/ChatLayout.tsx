@@ -4,7 +4,7 @@ import { useSocket } from '../../hooks/useSocket';
 import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
 import CRMSidebar from '../chat/CRMSidebar';
-import LeadDetailModal from '../LeadDetailModal';
+import Lead360Modal from '../Lead360Modal';
 
 interface Conversation {
     id: string;
@@ -282,7 +282,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 
             {/* Lead Detail Modal */}
             {selectedConversation && (
-                <LeadDetailModal
+                <Lead360Modal
                     isOpen={showLeadModal}
                     lead={{
                         id: selectedConversation.lead.id,
@@ -300,8 +300,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         tags: selectedConversation.lead.tags || []
                     }}
                     onClose={() => setShowLeadModal(false)}
-                    onEdit={() => { /* TODO: Implement edit */ }}
-                    onDelete={() => { /* TODO: Implement delete */ }}
                     onOpenChat={() => setShowLeadModal(false)}
                 />
             )}

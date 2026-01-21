@@ -289,7 +289,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     };
 
     return (
-        <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col overflow-hidden">
+        <div className="w-80 flex-shrink-0 bg-slate-50 border-l border-slate-200 flex flex-col overflow-hidden">
             {/* Header with title */}
             <div className="p-4 border-b border-slate-200 bg-white">
                 <div className="flex items-center justify-between">

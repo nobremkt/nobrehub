@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Phone, Mail, Building2, User, Calendar, MessageCircle,
     DollarSign, Tag, Clock, ChevronRight, Plus, Edit3, Save,
-    Briefcase, MapPin, FileText, History, TrendingUp, Star
+    Briefcase, MapPin, FileText, History, TrendingUp, Star, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -114,11 +114,11 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                     const data = await res.json();
                     setDeals(data.deals || []);
                     setConversations(data.conversations || []);
-                    // Map history items to expected format
+                    // Map history items to expected format with readable descriptions
                     setHistory((data.history || []).map((h: any) => ({
                         id: h.id,
                         action: h.action,
-                        description: h.details ? JSON.stringify(h.details) : undefined,
+                        description: h.details, // Keep raw for formatting function
                         createdAt: h.createdAt,
                         createdBy: h.user
                     })));
@@ -187,6 +187,38 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
             case 'note_added': return 'Nota adicionada';
             case 'lead_created': return 'Lead criado';
             default: return action;
+        }
+    };
+
+    // Format history description from JSON to human-readable
+    const formatHistoryDescription = (action: string, details: any): string => {
+        if (!details) return '';
+
+        try {
+            const data = typeof details === 'string' ? JSON.parse(details) : details;
+
+            switch (action) {
+                case 'stage_changed':
+                    return `${data.from || 'Início'} → ${data.to || 'Nova etapa'}`;
+                case 'deal_created':
+                    return data.value ? `Valor: R$ ${data.value.toLocaleString('pt-BR')}` : 'Novo negócio adicionado';
+                case 'deal_won':
+                    return data.value ? `Valor ganho: R$ ${data.value.toLocaleString('pt-BR')}` : 'Negócio fechado com sucesso';
+                case 'deal_lost':
+                    return data.reason || 'Negócio não convertido';
+                case 'note_added':
+                    return data.content || data.note || 'Nota adicionada';
+                case 'lead_created':
+                    return data.source ? `Origem: ${data.source}` : 'Novo lead cadastrado';
+                default:
+                    // For unknown actions, try to extract meaningful info
+                    if (data.description) return data.description;
+                    if (data.content) return data.content;
+                    if (data.note) return data.note;
+                    return '';
+            }
+        } catch {
+            return '';
         }
     };
 
@@ -303,16 +335,19 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                     <div>
                                         <h3 className="font-semibold text-slate-800 mb-3">Atividade Recente</h3>
                                         <div className="space-y-2">
-                                            {history.slice(0, 5).map((item) => (
-                                                <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                                                    <div className="p-2 bg-white rounded-lg">{getActionIcon(item.action)}</div>
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-medium text-slate-700">{getActionLabel(item.action)}</p>
-                                                        {item.description && <p className="text-xs text-slate-500">{item.description}</p>}
+                                            {history.slice(0, 5).map((item) => {
+                                                const formattedDesc = formatHistoryDescription(item.action, item.description);
+                                                return (
+                                                    <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                                        <div className="p-2 bg-white rounded-lg">{getActionIcon(item.action)}</div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-medium text-slate-700">{getActionLabel(item.action)}</p>
+                                                            {formattedDesc && <p className="text-xs text-slate-500">{formattedDesc}</p>}
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
                                                     </div>
-                                                    <span className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</span>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                             {history.length === 0 && (
                                                 <p className="text-sm text-slate-400 italic">Nenhuma atividade recente</p>
                                             )}
@@ -460,7 +495,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                     </div>
 
                                     {deals.map((deal) => (
-                                        <div key={deal.id} className="p-4 bg-slate-50 rounded-xl">
+                                        <div key={deal.id} className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className={`px-2 py-1 text-xs font-medium rounded ${deal.status === 'won' ? 'bg-emerald-100 text-emerald-700' :
                                                     deal.status === 'lost' ? 'bg-rose-100 text-rose-700' :
@@ -468,7 +503,31 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                                     }`}>
                                                     {deal.status === 'won' ? 'Ganho' : deal.status === 'lost' ? 'Perdido' : 'Aberto'}
                                                 </span>
-                                                <span className="text-lg font-bold text-emerald-600">{formatCurrency(deal.value)}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg font-bold text-emerald-600">{formatCurrency(deal.value)}</span>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!confirm('Deseja excluir este negócio?')) return;
+                                                            try {
+                                                                const token = localStorage.getItem('token');
+                                                                const res = await fetch(`${API_URL}/deals/${deal.id}`, {
+                                                                    method: 'DELETE',
+                                                                    headers: { Authorization: `Bearer ${token}` }
+                                                                });
+                                                                if (res.ok) {
+                                                                    setDeals(prev => prev.filter(d => d.id !== deal.id));
+                                                                    toast.success('Negócio excluído');
+                                                                }
+                                                            } catch {
+                                                                toast.error('Erro ao excluir');
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                                        title="Excluir negócio"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="text-sm text-slate-500">
                                                 <p>Produto: {deal.product || 'Não definido'}</p>
@@ -533,23 +592,26 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                     <div className="relative">
                                         <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-200" />
 
-                                        {history.map((item, index) => (
-                                            <div key={item.id} className="relative flex gap-4 pb-4">
-                                                <div className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
-                                                    {getActionIcon(item.action)}
+                                        {history.map((item) => {
+                                            const formattedDesc = formatHistoryDescription(item.action, item.description);
+                                            return (
+                                                <div key={item.id} className="relative flex gap-4 pb-4">
+                                                    <div className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
+                                                        {getActionIcon(item.action)}
+                                                    </div>
+                                                    <div className="flex-1 pt-1">
+                                                        <p className="text-sm font-medium text-slate-800">{getActionLabel(item.action)}</p>
+                                                        {formattedDesc && (
+                                                            <p className="text-sm text-slate-500">{formattedDesc}</p>
+                                                        )}
+                                                        <p className="text-xs text-slate-400 mt-1">
+                                                            {formatDateTime(item.createdAt)}
+                                                            {item.createdBy && ` • ${item.createdBy.name}`}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1 pt-1">
-                                                    <p className="text-sm font-medium text-slate-800">{getActionLabel(item.action)}</p>
-                                                    {item.description && (
-                                                        <p className="text-sm text-slate-500">{item.description}</p>
-                                                    )}
-                                                    <p className="text-xs text-slate-400 mt-1">
-                                                        {formatDateTime(item.createdAt)}
-                                                        {item.createdBy && ` • ${item.createdBy.name}`}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
 
                                         {history.length === 0 && (
                                             <p className="text-sm text-slate-400 italic text-center py-8">Nenhum histórico encontrado</p>
