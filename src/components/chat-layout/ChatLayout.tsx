@@ -50,7 +50,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'mine' | 'queue'>('mine');
     const [showLeadModal, setShowLeadModal] = useState(false);
 
     const {
@@ -242,8 +241,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 onSelect={setSelectedConversationId}
                 conversations={conversations}
                 isLoading={isLoading}
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
             />
 
             {/* Center: Chat Area */}

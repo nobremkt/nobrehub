@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, Search, Phone, Building, User, ChevronRight, Inbox as InboxIcon, Filter, ChevronDown, Clock, Check } from 'lucide-react';
+import { MessageCircle, Search, Phone, Building, User, ChevronRight, Inbox as InboxIcon, Filter, ChevronDown, Clock, Check, UserCircle2 } from 'lucide-react';
 import { useSocket } from '../../hooks/useSocket';
 import { cn } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
@@ -29,8 +29,6 @@ interface ConversationListProps {
     onSelect: (id: string) => void;
     conversations: Conversation[];
     isLoading: boolean;
-    activeTab: 'mine' | 'queue';
-    onTabChange: (tab: 'mine' | 'queue') => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -70,6 +68,7 @@ const getPipelineColor = (pipeline: string): string => {
 
 /**
  * Conversation List - Left sidebar of the chat layout
+ * Now shows all conversations in a single list with "Minhas" as default filter
  */
 const ConversationList: React.FC<ConversationListProps> = ({
     userId,
@@ -77,20 +76,26 @@ const ConversationList: React.FC<ConversationListProps> = ({
     selectedId,
     onSelect,
     conversations,
-    isLoading,
-    activeTab,
-    onTabChange
+    isLoading
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
-    const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>(defaultFilters);
+    // Default to "mine" filter - showing only user's assigned conversations
+    const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({
+        ...defaultFilters,
+        conversations: {
+            ...defaultFilters.conversations,
+            assignment: 'mine' // Default to "Minhas"
+        }
+    });
     const { isConnected } = useSocket({ userId });
 
-    // Count active filters
+    // Count active filters (excluding the default "mine" filter)
     const countActiveFilters = (): number => {
         let count = 0;
         if (advancedFilters.conversations.status !== 'all') count++;
-        if (advancedFilters.conversations.assignment !== 'all') count++;
+        // Don't count "mine" as an active filter since it's the default
+        if (advancedFilters.conversations.assignment !== 'all' && advancedFilters.conversations.assignment !== 'mine') count++;
         if (advancedFilters.conversations.window24h !== 'all') count++;
         if (advancedFilters.conversations.response !== 'all') count++;
         if (advancedFilters.deals.hasDeal !== 'all') count++;
@@ -102,22 +107,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
     };
     const activeFilterCount = countActiveFilters();
 
-    // Filter by tab
-    const tabFilteredConversations = conversations.filter(conv => {
-        if (activeTab === 'mine') {
-            return conv.assignedAgent?.id === userId || conv.status === 'active';
-        } else {
-            return !conv.assignedAgent || conv.status === 'queued';
-        }
-    });
-
-    // Apply advanced filters
-    const advancedFilteredConversations = tabFilteredConversations.filter(conv => {
+    // Apply advanced filters - no more tab filtering
+    const filteredByAdvanced = conversations.filter(conv => {
         const f = advancedFilters;
 
         // Conversations filters
         if (f.conversations.status !== 'all' && conv.status !== f.conversations.status) return false;
 
+        // Assignment filter
         if (f.conversations.assignment === 'mine' && conv.assignedAgent?.id !== userId) return false;
         if (f.conversations.assignment === 'unassigned' && conv.assignedAgent) return false;
 
@@ -134,30 +131,40 @@ const ConversationList: React.FC<ConversationListProps> = ({
             if (f.conversations.response === 'awaiting' && hasAgentResponse) return false;
         }
 
-        // Deals filters (would need deal info in conversation - skip for now if not available)
-        // Contacts filters
-        if (f.contacts.source !== 'all') {
-            // This would need source info on the lead
-        }
-
         return true;
     });
 
     // Filter by search
-    const filteredConversations = advancedFilteredConversations.filter(conv =>
+    const filteredConversations = filteredByAdvanced.filter(conv =>
         conv.lead?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
         conv.lead?.phone?.includes(searchTerm)
     );
 
-    const queueCount = conversations.filter(c => !c.assignedAgent || c.status === 'queued').length;
-    const onHoldCount = conversations.filter(c => c.status === 'on_hold').length;
+    // Count unread conversations for badge
+    const unreadCount = conversations.filter(c =>
+        c.unreadCount && c.unreadCount > 0 && c.assignedAgent?.id === userId
+    ).length;
+
+    // Current filter label for display
+    const getCurrentFilterLabel = () => {
+        switch (advancedFilters.conversations.assignment) {
+            case 'mine': return 'Minhas Conversas';
+            case 'unassigned': return 'Não Atribuídas';
+            default: return 'Todas as Conversas';
+        }
+    };
 
     return (
         <div className="w-[340px] border-r border-slate-200 bg-white flex flex-col h-full">
             {/* Header */}
             <div className="p-4 border-b border-slate-100">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-slate-900">Atendimento</h2>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900">Atendimento</h2>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                            {getCurrentFilterLabel()} ({filteredConversations.length})
+                        </p>
+                    </div>
                     <div className={cn(
                         'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold',
                         isConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
@@ -167,34 +174,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex bg-slate-100 rounded-lg p-1 mb-3">
-                    <button
-                        onClick={() => onTabChange('mine')}
-                        className={cn(
-                            'flex-1 py-2 px-3 rounded-md text-xs font-semibold transition-all',
-                            activeTab === 'mine' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        Meus
-                    </button>
-                    <button
-                        onClick={() => onTabChange('queue')}
-                        className={cn(
-                            'flex-1 py-2 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
-                            activeTab === 'queue' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                        )}
-                    >
-                        Fila
-                        {queueCount > 0 && (
-                            <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px]">
-                                {queueCount}
-                            </span>
-                        )}
-                    </button>
-                </div>
-
-                {/* Search & Filter */}
+                {/* Search & Filter - No more tabs */}
                 <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -245,12 +225,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400">
                         <InboxIcon size={32} className="mb-2 opacity-30" />
                         <p className="text-xs font-medium">Nenhuma conversa</p>
+                        <p className="text-[10px] mt-1">
+                            {advancedFilters.conversations.assignment === 'mine'
+                                ? 'Use os filtros para ver todas as conversas'
+                                : 'Nenhuma conversa encontrada'}
+                        </p>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
                         {filteredConversations.map((conv) => {
                             const isSelected = selectedId === conv.id;
                             const lastMessage = conv.messages?.[0];
+                            const hasAssignedAgent = !!conv.assignedAgent;
+                            const isAssignedToMe = conv.assignedAgent?.id === userId;
 
                             return (
                                 <button
@@ -306,12 +293,35 @@ const ConversationList: React.FC<ConversationListProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Unread badge */}
-                                        {conv.unreadCount && conv.unreadCount > 0 && (
-                                            <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
-                                                {conv.unreadCount}
-                                            </span>
-                                        )}
+                                        {/* Right side: Agent avatar and/or unread badge */}
+                                        <div className="flex flex-col items-end gap-1.5">
+                                            {/* Assigned agent avatar - show when viewing "Todas" */}
+                                            {hasAssignedAgent && !isAssignedToMe && (
+                                                <div
+                                                    className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600"
+                                                    title={`Atribuído: ${conv.assignedAgent?.name}`}
+                                                >
+                                                    {conv.assignedAgent?.name?.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+
+                                            {/* Unassigned indicator */}
+                                            {!hasAssignedAgent && (
+                                                <div
+                                                    className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center"
+                                                    title="Não atribuído - Na fila"
+                                                >
+                                                    <UserCircle2 size={14} className="text-amber-600" />
+                                                </div>
+                                            )}
+
+                                            {/* Unread badge */}
+                                            {conv.unreadCount && conv.unreadCount > 0 && (
+                                                <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+                                                    {conv.unreadCount}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </button>
                             );

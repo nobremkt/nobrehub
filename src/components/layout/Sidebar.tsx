@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, unreadCount = 0, onLogout }) =>
     const navItems: NavItem[] = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
         { id: 'kanban', label: 'Kanban', icon: <Columns size={20} />, path: '/kanban' },
-        { id: 'inbox', label: 'Inbox', icon: <MessageSquare size={20} />, path: '/inbox', badge: unreadCount },
+        { id: 'inbox', label: 'Inbox', icon: <MessageSquare size={20} />, path: '/inbox', badge: unreadCount > 0 ? unreadCount : undefined },
         { id: 'producao', label: 'Produção', icon: <CheckSquare size={20} />, path: '/producao' },
         { id: 'equipe', label: 'Equipe', icon: <Users size={20} />, path: '/equipe', adminOnly: true },
         { id: 'automacoes', label: 'Automações', icon: <Zap size={20} />, path: '/automacoes', adminOnly: true },
