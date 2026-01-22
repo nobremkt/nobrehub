@@ -58,7 +58,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
 
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
+        console.log('[TeamManagement] Users loaded:', usersData.length, usersData);
         setMembers(usersData);
+      } else {
+        console.error('[TeamManagement] Error loading users:', usersResponse.status, await usersResponse.text());
       }
 
       // Fetch sectors
@@ -106,7 +109,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   };
 
   // Categories definition
-  const CATEGORIES: TeamRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda'];
+  const CATEGORIES: TeamRole[] = ['Administracao', 'Vendas', 'Producao', 'Pos-Venda', 'Outros'];
   const visibleCategories = filter === 'Todos' ? CATEGORIES : [filter as TeamRole];
 
   // Style helpers
