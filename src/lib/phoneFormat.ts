@@ -3,18 +3,33 @@
  * Supports Brazilian phone numbers with country code selection
  */
 
-// Country codes with flags
+// Country codes with ISO codes for flag images
 export const COUNTRY_CODES = [
-    { code: '+55', country: 'BR', flag: '🇧🇷', label: 'Brasil', format: '## ##### ####' },
-    { code: '+1', country: 'US', flag: '🇺🇸', label: 'EUA', format: '### ### ####' },
-    { code: '+351', country: 'PT', flag: '🇵🇹', label: 'Portugal', format: '### ### ###' },
-    { code: '+54', country: 'AR', flag: '🇦🇷', label: 'Argentina', format: '## #### ####' },
-    { code: '+52', country: 'MX', flag: '🇲🇽', label: 'México', format: '## #### ####' },
-    { code: '+34', country: 'ES', flag: '🇪🇸', label: 'Espanha', format: '### ## ## ##' },
-    { code: '+44', country: 'GB', flag: '🇬🇧', label: 'Reino Unido', format: '#### ### ###' },
+    { code: '+55', country: 'BR', iso: 'br', label: 'Brasil', format: '## ##### ####' },
+    { code: '+1', country: 'US', iso: 'us', label: 'Estados Unidos', format: '### ### ####' },
+    { code: '+351', country: 'PT', iso: 'pt', label: 'Portugal', format: '### ### ###' },
+    { code: '+54', country: 'AR', iso: 'ar', label: 'Argentina', format: '## #### ####' },
+    { code: '+52', country: 'MX', iso: 'mx', label: 'México', format: '## #### ####' },
+    { code: '+34', country: 'ES', iso: 'es', label: 'Espanha', format: '### ## ## ##' },
+    { code: '+44', country: 'GB', iso: 'gb', label: 'Reino Unido', format: '#### ### ###' },
+    { code: '+49', country: 'DE', iso: 'de', label: 'Alemanha', format: '### ### ####' },
+    { code: '+33', country: 'FR', iso: 'fr', label: 'França', format: '# ## ## ## ##' },
+    { code: '+39', country: 'IT', iso: 'it', label: 'Itália', format: '### ### ####' },
+    { code: '+81', country: 'JP', iso: 'jp', label: 'Japão', format: '## #### ####' },
+    { code: '+86', country: 'CN', iso: 'cn', label: 'China', format: '### #### ####' },
+    { code: '+91', country: 'IN', iso: 'in', label: 'Índia', format: '##### #####' },
+    { code: '+7', country: 'RU', iso: 'ru', label: 'Rússia', format: '### ### ## ##' },
+    { code: '+971', country: 'AE', iso: 'ae', label: 'Emirados Árabes', format: '## ### ####' },
 ] as const;
 
 export type CountryCode = typeof COUNTRY_CODES[number];
+
+/**
+ * Get flag image URL from flagcdn.com
+ */
+export const getFlagUrl = (iso: string, size: 'w20' | 'w40' | 'w80' = 'w20'): string => {
+    return `https://flagcdn.com/${size}/${iso.toLowerCase()}.png`;
+};
 
 /**
  * Format a raw phone number (digits only) with the Brazilian format: XX XXXXX XXXX
