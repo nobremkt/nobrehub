@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     X, Phone, Mail, Building2, User, Calendar, MessageCircle,
     DollarSign, Tag, Clock, ChevronRight, Plus, Edit3, Save,
@@ -58,20 +59,22 @@ interface Lead360ModalProps {
     onClose: () => void;
     onOpenChat?: (lead: Lead) => void;
     onUpdateLead?: (updates: Partial<Lead>) => Promise<void>;
+    initialTab?: TabType;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-type TabType = 'atividades' | 'contato' | 'empresa' | 'negocios' | 'conversas' | 'historico';
+export type TabType = 'atividades' | 'contato' | 'empresa' | 'negocios' | 'conversas' | 'historico';
 
 const Lead360Modal: React.FC<Lead360ModalProps> = ({
     isOpen,
     lead,
     onClose,
     onOpenChat,
-    onUpdateLead
+    onUpdateLead,
+    initialTab = 'atividades'
 }) => {
-    const [activeTab, setActiveTab] = useState<TabType>('atividades');
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [deals, setDeals] = useState<Deal[]>([]);
     const [history, setHistory] = useState<LeadHistoryItem[]>([]);
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -171,6 +174,16 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
             });
         }
     }, [lead]);
+
+    // Reset tab and editing states when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setActiveTab(initialTab);
+            setIsEditing(false);
+            setIsEditingCompany(false);
+            setIsAddingDeal(false);
+        }
+    }, [isOpen, initialTab]);
 
     // Fetch all data at once using unified endpoint
     useEffect(() => {
@@ -325,15 +338,20 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {onOpenChat && (
-                            <button
-                                onClick={() => onOpenChat(lead)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
-                            >
-                                <MessageCircle size={16} />
-                                Conversar
-                            </button>
-                        )}
+                        <button
+                            onClick={() => {
+                                if (onOpenChat) {
+                                    onOpenChat(lead);
+                                }
+                                // Always close modal and navigate to inbox
+                                onClose();
+                                window.location.href = `/inbox?leadId=${lead.id}`;
+                            }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+                        >
+                            <MessageCircle size={16} />
+                            Conversar
+                        </button>
                         <button
                             onClick={onClose}
                             className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors"
