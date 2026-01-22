@@ -95,7 +95,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
             // If not found locally, try to fetch from API (might be assigned to another agent or in queue)
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}`, {
+                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}?create=true`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 

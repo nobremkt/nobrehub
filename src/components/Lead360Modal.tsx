@@ -82,6 +82,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
     onUpdateLead,
     initialTab = 'atividades'
 }) => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [deals, setDeals] = useState<Deal[]>([]);
     const [history, setHistory] = useState<LeadHistoryItem[]>([]);
@@ -353,7 +354,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                 }
                                 // Always close modal and navigate to inbox
                                 onClose();
-                                window.location.href = `/inbox?leadId=${lead.id}`;
+                                navigate(`/inbox?leadId=${lead.id}`);
                             }}
                             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
                         >

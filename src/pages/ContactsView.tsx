@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trash2, Mail, Download, Phone, Plus, Edit2, Calendar, Check, MessageCircle, Globe, Target, Headphones, User, Filter, X, ChevronDown, XCircle, Tag, Briefcase } from 'lucide-react';
 import LeadModal from '../components/LeadModal';
@@ -19,8 +18,11 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
     const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
     const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [detailLead, setDetailLead] = useState<Lead | null>(null);
+
+    // Reformatted for Detail View - using ID for real-time updates
+    const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
     const [editingLead, setEditingLead] = useState<Lead | null>(null);
     const [lossModalLead, setLossModalLead] = useState<Lead | null>(null);
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -38,6 +40,16 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
     });
 
     const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
+
+    // Derived detail lead to ensure real-time updates
+    const detailLead = useMemo(() =>
+        leads.find(l => l.id === detailLeadId) || null,
+        [leads, detailLeadId]);
+
+    const openDetailModal = (lead: Lead) => {
+        setDetailLeadId(lead.id);
+        setIsDetailModalOpen(true);
+    };
 
     useEffect(() => {
         fetchLeads();
@@ -108,12 +120,9 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                 if (!filters.lossReason) return true;
                 return l.lossReason?.name === filters.lossReason;
             })
-            // Has Deals filter (Simplified logic: check if pipeline is set basically implies a deal/opportunity context in this system, 
-            // ideally we'd check l.deals.length if populated, currently assuming active pipeline means deal)
+            // Has Deals filter (Simplified logic placeholder)
             .filter(l => {
                 if (!filters.hasDeals) return true;
-                // Logic placeholder: currently all leads have pipeline. 
-                // In a real scenario we would check `l.deals && l.deals.length > 0`
                 return true;
             })
             // Date range
@@ -148,8 +157,6 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
         setFilters({ pipeline: '', status: '', source: '', tags: [], lossReason: '', hasDeals: '', dateRange: '' });
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
-    const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
     const formatPhone = (phone: string | undefined) => {
         if (!phone) return '-';
         return phone.length > 11 ? phone.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4') : phone;
@@ -371,7 +378,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                                     <tr
                                         key={lead.id}
                                         className={`group transition-colors cursor-pointer ${isSelected ? 'bg-violet-50/50' : 'hover:bg-slate-50'}`}
-                                        onClick={() => { setDetailLead(lead); setIsDetailModalOpen(true); }}
+                                        onClick={() => openDetailModal(lead)}
                                     >
                                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-center">
@@ -440,7 +447,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                                                     <MessageCircle size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleBulkDelete(); }} // Should be single delete really
+                                                    onClick={(e) => { e.stopPropagation(); handleBulkDelete(); }}
                                                     className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 >
                                                     <Trash2 size={16} />
@@ -478,8 +485,6 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                         <Trash2 size={14} /> Excluir
                     </button>
 
-                    {/* Add more bulk actions here if needed */}
-
                     <button
                         onClick={() => setSelectedLeads([])}
                         className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white ml-2"
@@ -503,9 +508,9 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                 onClose={() => setIsDetailModalOpen(false)}
                 onOpenChat={(lead) => onNavigateToChat && onNavigateToChat(lead.id)}
                 onUpdateLead={async (updates) => {
-                    if (!detailLead) return;
-                    await updateLead(detailLead.id, updates as any);
-                    setLeads(prev => prev.map(l => l.id === detailLead.id ? { ...l, ...updates } as Lead : l));
+                    if (!detailLeadId) return;
+                    await updateLead(detailLeadId, updates as any);
+                    setLeads(prev => prev.map(l => l.id === detailLeadId ? { ...l, ...updates } as Lead : l));
                 }}
             />
         </div>

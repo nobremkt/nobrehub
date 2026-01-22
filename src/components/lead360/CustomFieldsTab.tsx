@@ -244,6 +244,11 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
                                                             setEditingField(null);
                                                         }
                                                     }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.currentTarget.blur();
+                                                        }
+                                                    }}
                                                     placeholder={(field as any).placeholder || 'Clique para adicionar...'}
                                                     className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-violet-300 rounded-lg text-sm transition-colors outline-none text-slate-900 placeholder:text-slate-400"
                                                 />

@@ -123,21 +123,44 @@ export default async function conversationsRoutes(fastify: FastifyInstance) {
                 return reply.status(404).send({ error: 'Lead não encontrado' });
             }
 
-            // Create a new conversation for this lead
-            conversation = await prisma.conversation.create({
-                data: {
-                    leadId: lead.id,
-                    status: 'active',
-                    pipeline: lead.pipeline || 'low_ticket',
-                    assignedAgentId: user?.id || null, // Assign to current user if logged in
-                    lastMessageAt: new Date()
-                },
-                include: {
-                    lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true, statusHT: true, statusLT: true, tags: true } },
-                    assignedAgent: { select: { id: true, name: true } },
-                    messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+            try {
+                // Create a new conversation for this lead
+                conversation = await prisma.conversation.create({
+                    data: {
+                        leadId: lead.id,
+                        status: 'active',
+                        pipeline: lead.pipeline || 'low_ticket',
+                        assignedAgentId: user?.id || null, // Assign to current user if logged in
+                        lastMessageAt: new Date()
+                    },
+                    include: {
+                        lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true, statusHT: true, statusLT: true, tags: true } },
+                        assignedAgent: { select: { id: true, name: true } },
+                        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                    }
+                });
+            } catch (error: any) {
+                // Handle case where assignedAgentId (user.id) is invalid (e.g. deleted user with valid token)
+                if (error.code === 'P2003') {
+                    console.warn(`⚠️ Creating conversation without assignment due to invalid agent ID: ${user?.id}`);
+                    conversation = await prisma.conversation.create({
+                        data: {
+                            leadId: lead.id,
+                            status: 'active',
+                            pipeline: lead.pipeline || 'low_ticket',
+                            assignedAgentId: null,
+                            lastMessageAt: new Date()
+                        },
+                        include: {
+                            lead: { select: { id: true, name: true, phone: true, company: true, estimatedValue: true, statusHT: true, statusLT: true, tags: true } },
+                            assignedAgent: { select: { id: true, name: true } },
+                            messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                        }
+                    });
+                } else {
+                    throw error;
                 }
-            });
+            }
 
             console.log(`[Conversations] Created new conversation for lead ${lead.name}: ${conversation.id}`);
         }

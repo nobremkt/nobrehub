@@ -57,8 +57,12 @@ export function initializeSocketService(httpServer: HttpServer): Server {
 
                 // Notify others that agent is online
                 getIo()?.emit('agent:status', { userId, isOnline: true });
-            } catch (error) {
-                console.error('Error joining agent:', error);
+            } catch (error: any) {
+                if (error.code === 'P2025') {
+                    console.warn(`⚠️ Agent joined with ID ${userId} but user record not found in DB. Ignoring.`);
+                } else {
+                    console.error('Error joining agent:', error);
+                }
             }
         });
 
