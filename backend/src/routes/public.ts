@@ -4,6 +4,17 @@ import prisma from '../lib/prisma.js';
 // Public routes that don't require authentication
 export default async function publicRoutes(server: FastifyInstance) {
 
+    // GET /health - Health check for Uptime Robot
+    server.get('/health', async () => {
+        // Optional: Check DB connection
+        try {
+            await prisma.$queryRaw`SELECT 1`;
+            return { status: 'ok', uptime: process.uptime(), timestamp: new Date(), db: 'connected' };
+        } catch (error) {
+            return { status: 'degraded', uptime: process.uptime(), timestamp: new Date(), db: 'disconnected' };
+        }
+    });
+
     // POST /public/lead - Create lead from landing page (no auth required)
     server.post('/lead', async (request, reply) => {
         try {
