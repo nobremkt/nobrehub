@@ -43,6 +43,54 @@ async function request<T>(
     return response.json();
 }
 
+// ============ CHANNELS ============
+
+export interface Channel {
+    id: string;
+    name: string;
+    type: 'whatsapp_official' | 'whatsapp_api' | 'instagram' | 'email';
+    isEnabled: boolean;
+    status: 'connected' | 'disconnected' | 'error';
+    number?: string;
+    accountName?: string;
+    config?: any;
+}
+
+export const getChannels = async () => {
+    const response = await request<Channel[]>('/channels');
+    return response;
+};
+
+export const createChannel = async (data: Partial<Channel>) => {
+    const response = await request<Channel>('/channels', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+    return response;
+};
+
+export const updateChannel = async (id: string, data: Partial<Channel>) => {
+    const response = await request<Channel>(`/channels/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+    return response;
+};
+
+export const toggleChannel = async (id: string, isEnabled: boolean) => {
+    const response = await request<Channel>(`/channels/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isEnabled }),
+    });
+    return response;
+};
+
+export const deleteChannel = async (id: string) => {
+    await request(`/channels/${id}`, {
+        method: 'DELETE',
+    });
+};
+
 // ============ AUTH API ============
 
 export interface LoginResponse {
@@ -585,6 +633,13 @@ export async function createCustomField(data: Omit<CustomField, 'id' | 'value'>)
     return await request<CustomField>('/custom-fields', {
         method: 'POST',
         body: JSON.stringify(data),
+    });
+}
+
+// Delete a custom field
+export async function deleteCustomField(id: string): Promise<void> {
+    await request(`/custom-fields/${id}`, {
+        method: 'DELETE',
     });
 }
 

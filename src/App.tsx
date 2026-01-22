@@ -14,7 +14,9 @@ import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
 import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
+import ChannelConfig from './pages/ChannelConfig';
 
+import ContactsView from './pages/ContactsView';
 import { Agent } from './types';
 
 // Wrapper component to extract leadId from URL params
@@ -106,20 +108,17 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             onConversationOpened={() => setPendingLeadId(null)}
           />
         } />
-        <Route path="/leads" element={
-          <LeadList onNavigateToChat={(leadId) => {
-            setPendingLeadId(leadId || null);
-          }} />
-        } />
+        <Route path="/leads" element={<Navigate to="/contatos" replace />} />
         <Route path="/contatos" element={
-          <LeadList onNavigateToChat={(leadId) => {
+          <ContactsView onNavigateToChat={(leadId) => {
             setPendingLeadId(leadId || null);
           }} />
         } />
         <Route path="/producao" element={<div className="p-6 text-slate-500">Módulo em desenvolvimento...</div>} />
         <Route path="/equipe" element={<TeamManagement onMonitor={setMonitoredUser} />} />
         <Route path="/automacoes" element={<FlowBuilder />} />
-        <Route path="/configuracoes" element={<div className="p-6 text-slate-500">Configurações em desenvolvimento...</div>} />
+        <Route path="/config/channels" element={<ChannelConfig />} />
+        <Route path="/configuracoes" element={<Navigate to="/config/channels" replace />} />
         <Route path="/personal" element={<PersonalWorkspace />} />
         <Route path="/" element={<Navigate to="/kanban" replace />} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />

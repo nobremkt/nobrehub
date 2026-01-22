@@ -662,3 +662,41 @@ model LossReason {
   @@map("loss_reasons")
 }
 
+
+// ============ CHANNELS ============
+
+enum ChannelType {
+  whatsapp_official
+  whatsapp_api
+  instagram
+  email
+}
+
+enum ChannelStatus {
+  connected
+  disconnected
+  error
+}
+
+model Channel {
+  id          String        @id @default(uuid())
+  name        String
+  type        ChannelType
+  
+  // Configurações e Credenciais (criptografadas se possível, ou JSON seguro)
+  config      Json?         
+  
+  isEnabled   Boolean       @default(true) @map("is_enabled")
+  status      ChannelStatus @default(disconnected)
+  
+  // Metadados visuais
+  number      String?       // Para WhatsApp
+  accountName String?       @map("account_name") // Para Instagram/Email
+  
+  tenantId    String?       @map("tenant_id")
+  
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("channels")
+}

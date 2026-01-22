@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import * as api from '../../services/api';
+import ManageFieldsModal from './ManageFieldsModal';
 
 interface CustomFieldsTabProps {
     leadId: string;
@@ -28,6 +29,7 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
     const [customFields, setCustomFields] = useState<api.CustomField[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hideEmpty, setHideEmpty] = useState(false);
+    const [isManaging, setIsManaging] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         'general': true
     });
@@ -135,21 +137,30 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
                     <button
                         onClick={() => setHideEmpty(!hideEmpty)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${hideEmpty
-                                ? 'bg-violet-100 text-violet-700'
-                                : 'text-slate-500 hover:bg-slate-100'
+                            ? 'bg-violet-100 text-violet-700'
+                            : 'text-slate-500 hover:bg-slate-100'
                             }`}
                     >
                         {hideEmpty ? <EyeOff size={12} /> : <Eye size={12} />}
                         {hideEmpty ? 'Mostrando preenchidos' : 'Ocultar vazios'}
                     </button>
                     <button
-                        className="flex items-center gap-1 px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg"
+                        onClick={() => setIsManaging(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                         title="Gerenciar campos"
                     >
                         <Settings size={12} />
+                        <span className="hidden sm:inline">Gerenciar</span>
                     </button>
                 </div>
             </div>
+
+            <ManageFieldsModal
+                isOpen={isManaging}
+                onClose={() => setIsManaging(false)}
+                entity={entity}
+                onFieldsChanged={loadCustomFields}
+            />
 
             {/* Section: Informações Gerais */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">

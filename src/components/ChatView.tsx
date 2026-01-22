@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X, FileText } from 'lucide-react';
+import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X, FileText, Clock, Smile, Tag } from 'lucide-react';
+import { MessageToolbar } from './chat-layout/MessageToolbar';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
 import CRMSidebar from './chat/CRMSidebar';
 import Lead360Modal, { TabType } from './Lead360Modal';
 import TemplateSelector from './TemplateSelector';
+
 import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
 import ScheduleMessageModal from './chat/ScheduleMessageModal';
+import { TagsEditor } from './TagsEditor';
+import { updateLeadTags, getAllTags } from '../services/api';
 
 interface Message {
     id: string;
@@ -83,6 +87,48 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     // Schedule Message Modal State
     const [showScheduleModal, setShowScheduleModal] = useState(false);
+
+    // Tags Popover State
+    const [showTagsPopover, setShowTagsPopover] = useState(false);
+    const tagsButtonRef = useRef<HTMLButtonElement>(null);
+    const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (showTagsPopover) {
+            getAllTags().then(setAvailableTags);
+        }
+    }, [showTagsPopover]);
+
+    // Close tags popover on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showTagsPopover && tagsButtonRef.current && !tagsButtonRef.current.contains(event.target as Node)) {
+                // Check if click is inside the popover (which is not a child of button in DOM usually, but we will render it relatively)
+                const popover = document.getElementById('tags-popover');
+                if (popover && !popover.contains(event.target as Node)) {
+                    setShowTagsPopover(false);
+                }
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showTagsPopover]);
+
+    const handleUpdateTags = async (newTags: string[]) => {
+        if (!conversation) return;
+        try {
+            // Optimistic update
+            setConversation(prev => prev ? {
+                ...prev,
+                lead: { ...prev.lead, tags: newTags }
+            } : null);
+
+            await updateLeadTags(conversation.lead.id, newTags);
+            toast.success('Tags atualizadas');
+        } catch (error) {
+            toast.error('Erro ao atualizar tags');
+        }
+    };
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -803,93 +849,26 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Bar - WhatsApp Style */}
-                <div className="bg-white border-t border-slate-100 p-4">
-                    <div className="flex items-center gap-3">
-                        {/* Attach Button */}
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            onChange={handleFileUpload}
-                            accept="image/*,audio/*,application/pdf"
-                        />
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                            title="Anexar arquivo"
-                            disabled={isSending}
-                        >
-                            <Paperclip size={20} />
-                        </button>
-
-                        {/* Template Button */}
-                        <button
-                            onClick={() => setShowTemplateSelector(true)}
-                            className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
-                            title="Enviar template (HSM)"
-                            disabled={isSending}
-                        >
-                            <FileText size={20} />
-                        </button>
-
-                        {/* Input */}
-                        <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Digite sua mensagem..."
-                            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-sm text-slate-900 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all placeholder:text-slate-400"
-                        />
-
-                        {/* Audio Button / Recording Controls */}
-                        {isRecording ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-rose-600 font-mono text-sm animate-pulse">
-                                    {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:
-                                    {(recordingDuration % 60).toString().padStart(2, '0')}
-                                </span>
-                                <button
-                                    onClick={() => { stopRecording(); audioChunksRef.current = []; setRecordingDuration(0); }}
-                                    className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
-                                    title="Cancelar gravação"
-                                >
-                                    <X size={20} />
-                                </button>
-                                <button
-                                    onClick={sendAudio}
-                                    disabled={isSending}
-                                    className="p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20"
-                                    title="Enviar áudio"
-                                >
-                                    <Send size={20} />
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={startRecording}
-                                    className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
-                                    title="Gravar áudio"
-                                    disabled={isSending}
-                                >
-                                    <Mic size={20} />
-                                </button>
-
-                                {/* Send Button */}
-                                <button
-                                    onClick={handleSend}
-                                    disabled={!newMessage.trim() || isSending}
-                                    className={`p-3.5 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-600/20 ${newMessage.trim() && !isSending ? 'animate-pulse-glow' : ''
-                                        }`}
-                                >
-                                    <Send size={20} />
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
+                {/* Input Bar (New Toolbar) */}
+                <MessageToolbar
+                    newMessage={newMessage}
+                    setNewMessage={setNewMessage}
+                    handleSend={handleSend}
+                    isSending={isSending}
+                    isRecording={isRecording}
+                    recordingDuration={recordingDuration}
+                    startRecording={startRecording}
+                    stopRecording={stopRecording}
+                    sendAudio={sendAudio}
+                    handleFileUpload={handleFileUpload}
+                    setShowTemplateSelector={setShowTemplateSelector}
+                    setShowScheduleModal={setShowScheduleModal}
+                    showTagsPopover={showTagsPopover}
+                    setShowTagsPopover={setShowTagsPopover}
+                    availableTags={availableTags}
+                    handleUpdateTags={handleUpdateTags}
+                    currentTags={conversation?.lead.tags || []}
+                />
 
                 {/* Transfer Modal */}
                 {

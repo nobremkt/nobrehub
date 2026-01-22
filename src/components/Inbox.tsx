@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, Clock, User, Search, Phone, Building, DollarSign, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
+import { MessageCircle, Clock, User, Search, Phone, Building, DollarSign, ChevronRight, Inbox as InboxIcon, Filter as FilterIcon } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import ChatView from './ChatView';
+import InboxFilter, { InboxFilters } from './chat/InboxFilter';
 
 interface Conversation {
     id: string;
@@ -14,6 +15,9 @@ interface Conversation {
         phone: string;
         company?: string;
         estimatedValue: number;
+        statusHT?: string;
+        statusLT?: string;
+        tags?: string[];
     };
     assignedAgent?: { id: string; name: string };
     messages: Array<{ text?: string; createdAt: string }>;
@@ -34,6 +38,15 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'mine' | 'queue'>('mine');
+
+    // Filter State
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [filters, setFilters] = useState<InboxFilters>({
+        pipeline: 'all',
+        stage: null,
+        tags: [],
+        channel: 'all'
+    });
 
     const {
         isConnected,
@@ -186,20 +199,54 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
         return unsubscribe;
     }, [isConnected, subscribeToConversationsData, requestConversations, userId]);
 
-    // Filter by tab first, then by search
-    const tabFilteredConversations = conversations.filter(conv => {
+    // Filter Logic
+    const activeFiltersCount =
+        (filters.pipeline !== 'all' ? 1 : 0) +
+        (filters.stage ? 1 : 0) +
+        (filters.tags.length > 0 ? 1 : 0) +
+        (filters.channel !== 'all' ? 1 : 0);
+
+    const filteredConversations = conversations.filter(conv => {
+        // 1. Tab Filter
         if (activeTab === 'mine') {
-            return conv.assignedAgent?.id === userId || conv.status === 'active';
+            if (!(conv.assignedAgent?.id === userId || conv.status === 'active')) return false;
         } else {
             // Queue: unassigned or queued status
-            return !conv.assignedAgent || conv.status === 'queued';
+            if (!(!conv.assignedAgent || conv.status === 'queued')) return false;
         }
-    });
 
-    const filteredConversations = tabFilteredConversations.filter(conv =>
-        conv.lead?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
-        conv.lead?.phone?.includes(searchTerm)
-    );
+        // 2. Search
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch =
+            conv.lead?.name?.toLowerCase()?.includes(searchLower) ||
+            conv.lead?.phone?.includes(searchTerm);
+        if (!matchesSearch) return false;
+
+        // 3. Pipeline
+        if (filters.pipeline !== 'all' && conv.pipeline !== filters.pipeline) return false;
+
+        // 4. Stage
+        if (filters.stage) {
+            const currentStage = conv.pipeline === 'high_ticket'
+                ? (conv.lead.statusHT || 'novo')
+                : (conv.lead.statusLT || 'novo');
+            if (currentStage !== filters.stage) return false;
+        }
+
+        // 5. Tags
+        if (filters.tags.length > 0) {
+            const leadTags = conv.lead.tags || []; // Assuming tags are array of strings
+            // Check if ANY of the selected tags matches
+            const hasTag = filters.tags.some(tag => leadTags.includes(tag));
+            if (!hasTag) return false;
+        }
+
+        // 6. Channel
+        // Note: Channel is not currently on lead object reliably in fetch, skipping check if 'all'
+        // If we want to implement this, we need 'source' or 'channel' on lead/conv.
+
+        return true;
+    });
 
     const queueCount = conversations.filter(c => !c.assignedAgent || c.status === 'queued').length;
 
@@ -239,7 +286,15 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
     }
 
     return (
-        <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in fade-in duration-700">
+        <div className="h-dvh flex flex-col bg-[#f8fafc] animate-in fade-in duration-700 relative overflow-hidden">
+            {/* Filter Sidebar */}
+            <InboxFilter
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                currentFilters={filters}
+                onApply={setFilters}
+            />
+
             {/* Header */}
             <header className="px-10 pt-10 pb-6 flex flex-col gap-5">
                 <div className="flex items-center justify-between">
@@ -284,16 +339,33 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
                     </button>
                 </div>
 
-                {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Pesquisar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 shadow-sm transition-all text-slate-900 placeholder:text-slate-400"
-                    />
+                {/* Search & Filter */}
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Pesquisar..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 shadow-sm transition-all text-slate-900 placeholder:text-slate-400"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setIsFilterOpen(true)}
+                        className={`px-4 rounded-2xl border transition-all flex items-center gap-2 ${activeFiltersCount > 0
+                            ? 'bg-violet-50 border-violet-200 text-violet-600'
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                            }`}
+                        title="Filtros Avançados"
+                    >
+                        <FilterIcon size={20} />
+                        {activeFiltersCount > 0 && (
+                            <span className="bg-violet-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold">
+                                {activeFiltersCount}
+                            </span>
+                        )}
+                    </button>
                 </div>
             </header>
 
@@ -306,8 +378,8 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
                 ) : filteredConversations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                         <InboxIcon size={48} className="mb-4 opacity-30" />
-                        <p className="text-xs font-black uppercase tracking-widest">Nenhuma conversa ativa</p>
-                        <p className="text-[10px] mt-2">Novas mensagens aparecerão aqui</p>
+                        <p className="text-xs font-black uppercase tracking-widest">Nenhuma conversa encontrada</p>
+                        <p className="text-[10px] mt-2">Tente mudar os filtros de pesquisa</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -327,6 +399,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
                                     </div>
 
                                     {/* Info */}
+                                    {/* ... rest of item ... */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="font-bold text-slate-900 group-hover:text-rose-600 transition-colors truncate">

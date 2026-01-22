@@ -23,6 +23,8 @@ import { dealsRoutes } from './routes/deals.js';
 import scheduledMessagesRoutes from './routes/scheduledMessages.js';
 import { customFieldsRoutes } from './routes/customFields.js';
 import { activitiesRoutes } from './routes/activities.js';
+import { lossReasonsRoutes } from './routes/lossReasons.js';
+import { channelRoutes } from './routes/channels.js';
 
 const server = Fastify({ logger: true });
 
@@ -124,6 +126,8 @@ async function bootstrap() {
         await server.register(scheduledMessagesRoutes, { prefix: '/scheduled-messages' });
         await server.register(customFieldsRoutes, { prefix: '/custom-fields' });
         await server.register(activitiesRoutes, { prefix: '/activities' });
+        await server.register(lossReasonsRoutes, { prefix: '/loss-reasons' });
+        await server.register(channelRoutes, { prefix: '' });
         console.log('✅ All routes registered');
 
         // Start Fastify server
@@ -150,4 +154,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

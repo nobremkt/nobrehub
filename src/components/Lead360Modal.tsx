@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ActivitiesTab } from './lead360/ActivitiesTab';
 import { formatPhoneDisplay, getFullPhoneNumber } from '../lib/phoneFormat';
 import PhoneInput from './ui/PhoneInput';
+import CustomFieldsTab from './lead360/CustomFieldsTab';
 
 interface Deal {
     id: string;
@@ -52,6 +53,12 @@ interface Lead {
     statusLT?: string;
     createdAt?: string;
     updatedAt?: string;
+    lossReasonId?: string;
+}
+
+interface LossReason {
+    id: string;
+    name: string;
 }
 
 interface Lead360ModalProps {
@@ -415,199 +422,93 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
 
                             {/* Contato Tab */}
                             {activeTab === 'contato' && (
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold text-slate-800">Informações de Contato</h3>
-                                        {isEditing ? (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={handleSave}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm"
-                                                >
-                                                    <Save size={14} /> Salvar
-                                                </button>
-                                                <button
-                                                    onClick={() => setIsEditing(false)}
-                                                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => setIsEditing(true)}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm hover:bg-slate-200"
-                                            >
-                                                <Edit3 size={14} /> Editar
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Nome</label>
-                                            {isEditing ? (
-                                                <input
-                                                    value={editedLead.name}
-                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, name: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                                                />
-                                            ) : (
-                                                <p className="text-sm font-medium text-slate-800">{lead.name}</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Telefone</label>
-                                            {isEditing ? (
-                                                <PhoneInput
-                                                    value={editedLead.phone}
-                                                    onChange={(value) => setEditedLead(prev => ({ ...prev, phone: value }))}
-                                                    placeholder="Telefone"
-                                                />
-                                            ) : (
-                                                <a href={`https://wa.me/${lead.phone}`} target="_blank" className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1">
-                                                    <Phone size={14} /> {formatPhoneDisplay(lead.phone)}
-                                                </a>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Email</label>
-                                            {isEditing ? (
-                                                <input
-                                                    value={editedLead.email}
-                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, email: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                                                />
-                                            ) : (
-                                                <p className="text-sm font-medium text-slate-800">{lead.email || '-'}</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Empresa</label>
-                                            {isEditing ? (
-                                                <input
-                                                    value={editedLead.company}
-                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, company: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                                                />
-                                            ) : (
-                                                <p className="text-sm font-medium text-slate-800">{lead.company || '-'}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs text-slate-500 block mb-1">Notas</label>
-                                        {isEditing ? (
-                                            <textarea
-                                                value={editedLead.notes}
-                                                onChange={(e) => setEditedLead(prev => ({ ...prev, notes: e.target.value }))}
-                                                rows={4}
-                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg resize-none"
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-slate-600">{lead.notes || 'Nenhuma nota'}</p>
-                                        )}
-                                    </div>
-                                </div>
+                                <CustomFieldsTab
+                                    leadId={lead.id}
+                                    entity="contact"
+                                    title="Informações de Contato"
+                                    onSave={() => {
+                                        toast.success('Lead atualizado');
+                                    }}
+                                    baseFields={[
+                                        {
+                                            key: 'name',
+                                            label: 'Nome',
+                                            value: lead.name,
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ name: val })
+                                        },
+                                        {
+                                            key: 'phone',
+                                            label: 'Telefone',
+                                            value: lead.phone,
+                                            type: 'phone',
+                                            onChange: (val) => onUpdateLead?.({ phone: val })
+                                        },
+                                        {
+                                            key: 'email',
+                                            label: 'Email',
+                                            value: lead.email || '',
+                                            type: 'email',
+                                            onChange: (val) => onUpdateLead?.({ email: val })
+                                        },
+                                        {
+                                            key: 'company',
+                                            label: 'Empresa',
+                                            value: lead.company || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ company: val })
+                                        },
+                                        {
+                                            key: 'notes',
+                                            label: 'Notas',
+                                            value: lead.notes || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ notes: val })
+                                        }
+                                    ]}
+                                />
                             )}
 
                             {/* Empresa Tab */}
                             {activeTab === 'empresa' && (
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold text-slate-800">Dados da Empresa</h3>
-                                        {isEditingCompany ? (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={handleSaveCompany}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm"
-                                                >
-                                                    <Save size={14} /> Salvar
-                                                </button>
-                                                <button
-                                                    onClick={() => setIsEditingCompany(false)}
-                                                    className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => setIsEditingCompany(true)}
-                                                className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700"
-                                            >
-                                                <Edit3 size={14} /> Editar
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    <div className="bg-slate-50 rounded-xl p-6">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center">
-                                                <Building2 size={20} className="text-violet-600" />
-                                            </div>
-                                            <div className="flex-1">
-                                                {isEditingCompany ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editedCompany.company}
-                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, company: e.target.value }))}
-                                                        placeholder="Nome da empresa"
-                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                                                    />
-                                                ) : (
-                                                    <p className="font-semibold text-slate-800">{editedCompany.company || lead.company || 'Empresa não informada'}</p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-500 font-medium">CPF/CNPJ</label>
-                                                {isEditingCompany ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editedCompany.cnpj}
-                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, cnpj: e.target.value }))}
-                                                        placeholder="00.000.000/0001-00"
-                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.cnpj || 'Não informado'}</p>
-                                                )}
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-500 font-medium">Segmento</label>
-                                                {isEditingCompany ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editedCompany.segment}
-                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, segment: e.target.value }))}
-                                                        placeholder="Ex: Tecnologia, Saúde"
-                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.segment || 'Não informado'}</p>
-                                                )}
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-slate-500 font-medium">Funcionários</label>
-                                                {isEditingCompany ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editedCompany.employees}
-                                                        onChange={(e) => setEditedCompany(prev => ({ ...prev, employees: e.target.value }))}
-                                                        placeholder="Ex: 10-50"
-                                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                                                    />
-                                                ) : (
-                                                    <p className="text-sm font-medium text-slate-800">{editedCompany.employees || '-'}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <CustomFieldsTab
+                                    leadId={lead.id}
+                                    entity="company"
+                                    title="Dados da Empresa"
+                                    onSave={() => {
+                                        toast.success('Empresa atualizada');
+                                    }}
+                                    baseFields={[
+                                        {
+                                            key: 'company',
+                                            label: 'Nome da Empresa',
+                                            value: lead.company || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ company: val })
+                                        },
+                                        {
+                                            key: 'cnpj',
+                                            label: 'CNPJ',
+                                            value: (lead as any).cnpj || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ cnpj: val } as any)
+                                        },
+                                        {
+                                            key: 'segment',
+                                            label: 'Segmento',
+                                            value: (lead as any).segment || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ segment: val } as any)
+                                        },
+                                        {
+                                            key: 'employees',
+                                            label: 'Funcionários',
+                                            value: (lead as any).employees || '',
+                                            type: 'text',
+                                            onChange: (val) => onUpdateLead?.({ employees: val } as any)
+                                        }
+                                    ]}
+                                />
                             )}
 
                             {/* Negócios Tab */}

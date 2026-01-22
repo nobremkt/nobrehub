@@ -1,147 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
-import { TrendingUp, Users, MessageSquare, DollarSign, Sparkles, Filter, Calendar } from 'lucide-react';
-import { getAnalyticsSummary } from '../services/geminiService';
 
-const DATA = [
-  { name: 'Jan', leads: 400, deals: 24, revenue: 2400 },
-  { name: 'Fev', leads: 300, deals: 13, revenue: 2210 },
-  { name: 'Mar', leads: 200, deals: 98, revenue: 2290 },
-  { name: 'Abr', leads: 278, deals: 39, revenue: 2000 },
-  { name: 'Mai', leads: 189, deals: 48, revenue: 2181 },
-  { name: 'Jun', leads: 239, deals: 38, revenue: 2500 },
-];
+import React, { useEffect, useState } from 'react';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell
+} from 'recharts';
+import {
+    Users,
+    DollarSign,
+    TrendingUp,
+    Activity,
+    ArrowUpRight,
+    ArrowDownRight,
+    Loader2
+} from 'lucide-react';
+import { getDashboardStats, DashboardStats } from '../services/api';
+import { useSocket } from '../hooks/useSocket';
+import { toast } from 'sonner';
 
 const Analytics: React.FC = () => {
-  const [summary, setSummary] = useState("Analisando tendências globais com Nobre IA...");
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const { socket } = useSocket({ userId: 'dashboard-viewer' });
 
-  useEffect(() => {
-    getAnalyticsSummary(DATA).then(setSummary);
-  }, []);
+    const loadStats = async () => {
+        try {
+            const data = await getDashboardStats();
+            setStats(data);
+        } catch (error) {
+            console.error('Failed to load stats:', error);
+            toast.error('Erro ao carregar dados do dashboard');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-  const stats = [
-    { label: 'Total Leads', value: '1,284', change: '+12.5%', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    { label: 'Mensagens', value: '45.2k', change: '+5.2%', icon: MessageSquare, color: 'text-rose-600', bgColor: 'bg-rose-50' },
-    { label: 'Conversão', value: '18.4%', change: '+2.1%', icon: TrendingUp, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-    { label: 'Receita Est.', value: 'R$ 84k', change: '+14.8%', icon: DollarSign, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-  ];
+    useEffect(() => {
+        loadStats();
 
-  return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden animate-in fade-in duration-700">
-      <header className="px-10 py-8 border-b border-slate-200 bg-white z-20 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Performance & Insights</h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Inteligência analítica da sua operação</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-5 py-3 rounded-2xl text-slate-500 hover:text-slate-900 transition-all">
-            <Calendar size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Junho 2024</span>
-          </button>
-          <button className="p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-rose-600 transition-all">
-            <Filter size={20} />
-          </button>
-        </div>
-      </header>
+        // Realtime updates: Refetch when leads change
+        if (socket) {
+            const handleUpdate = () => {
+                console.log('🔄 Lead change detected, refreshing dashboard...');
+                loadStats();
+            };
 
-      <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
-        {/* AI Insight Bar */}
-        <div className="bg-white border border-rose-100 rounded-[40px] p-10 flex flex-col md:flex-row items-center gap-8 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-10 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity text-rose-600">
-            <Sparkles size={200} />
-          </div>
-          <div className="bg-rose-600 w-20 h-20 rounded-[30px] flex items-center justify-center text-white shadow-xl shadow-rose-600/30 shrink-0">
-            <Sparkles size={40} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.4em] mb-3">Relatório Executivo da Nobre IA</h3>
-            <p className="text-xl font-bold text-slate-900 leading-relaxed max-w-4xl italic">"{summary}"</p>
-          </div>
-          <button className="px-8 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all whitespace-nowrap shadow-xl shadow-rose-600/20">Exportar PDF</button>
-        </div>
+            socket.on('lead:new', handleUpdate);
+            socket.on('lead:updated', handleUpdate);
+            socket.on('lead:deleted', handleUpdate);
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {stats.map((stat, i) => (
-            <div key={i} className="bg-white border border-slate-100 p-10 rounded-[40px] relative overflow-hidden group hover:border-rose-600/20 shadow-lg shadow-slate-200/50 transition-all">
-              <div className="flex justify-between items-start mb-8">
-                <div className={`p-4 rounded-[24px] ${stat.bgColor} ${stat.color} shadow-inner`}>
-                  <stat.icon size={28} />
+            // Also listen for explicit dashboard updates if backend implements it later
+            socket.on('dashboard:update', (newStats: DashboardStats) => {
+                setStats(newStats);
+            });
+
+            return () => {
+                socket.off('lead:new', handleUpdate);
+                socket.off('lead:updated', handleUpdate);
+                socket.off('lead:deleted', handleUpdate);
+                socket.off('dashboard:update');
+            };
+        }
+    }, [socket]);
+
+    if (isLoading) {
+        return (
+            <div className="h-full flex items-center justify-center bg-slate-50">
+                <Loader2 className="animate-spin text-indigo-600" size={32} />
+            </div>
+        );
+    }
+
+    if (!stats) return null;
+
+    // Data transformation for charts
+    const pipelineData = [
+        ...stats.highTicket.map(s => ({ name: `HT: ${s.status}`, value: s.count, type: 'High Ticket' })),
+        ...stats.lowTicket.map(s => ({ name: `LT: ${s.status}`, value: s.count, type: 'Low Ticket' }))
+    ];
+
+    const revenueData = [
+        { name: 'High Ticket', value: stats.highTicket.reduce((acc, curr) => acc + curr.value, 0) },
+        { name: 'Low Ticket', value: stats.lowTicket.reduce((acc, curr) => acc + curr.value, 0) }
+    ];
+
+    const COLORS = ['#4f46e5', '#ec4899', '#10b981', '#f59e0b'];
+
+    return (
+        <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 min-h-screen overflow-y-auto">
+            <div className="mb-8">
+                <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Dashboard</h1>
+                <p className="text-slate-500 font-medium mt-1">Visão geral de performance e leads</p>
+            </div>
+
+            {/* Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard
+                    title="Total de Leads"
+                    value={stats.totalLeads}
+                    icon={<Users size={24} className="text-white" />}
+                    color="bg-indigo-500"
+                    trend="+12%"
+                />
+                <StatCard
+                    title="Vendas (Hoje)"
+                    value={stats.closedLeads}
+                    icon={<Activity size={24} className="text-white" />}
+                    color="bg-emerald-500"
+                    trend="+5%"
+                />
+                <StatCard
+                    title="Receita Total"
+                    value={`R$ ${stats.totalValue.toLocaleString('pt-BR')}`}
+                    icon={<DollarSign size={24} className="text-white" />}
+                    color="bg-rose-500"
+                    trend="+8%"
+                />
+                <StatCard
+                    title="Taxa de Conversão"
+                    value={`${((stats.closedLeads / (stats.totalLeads || 1)) * 100).toFixed(1)}%`}
+                    icon={<TrendingUp size={24} className="text-white" />}
+                    color="bg-amber-500"
+                    trend="-2%"
+                    trendDown
+                />
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Pipeline Distribution */}
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-lg text-slate-800 mb-6">Distribuição de Pipeline</h3>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={pipelineData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    cursor={{ fill: '#f8fafc' }}
+                                />
+                                <Bar dataKey="value" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 uppercase tracking-widest">
-                    {stat.change}
-                  </span>
+
+                {/* Revenue Breakdown */}
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-lg text-slate-800 mb-6">Receita por Produto</h3>
+                    <div className="h-[300px] flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={revenueData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={80}
+                                    outerRadius={110}
+                                    fill="#8884d8"
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {revenueData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex justify-center gap-6 mt-4">
+                        {revenueData.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                                <span className="text-sm font-medium text-slate-600">
+                                    {entry.name} ({((entry.value / stats.totalValue) * 100).toFixed(0)}%)
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-              </div>
-              <div className="text-4xl font-black text-slate-900 mb-2 tracking-tighter">{stat.value}</div>
-              <div className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">{stat.label}</div>
             </div>
-          ))}
-        </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-          <div className="bg-white border border-slate-100 p-12 rounded-[48px] h-[500px] flex flex-col shadow-xl shadow-slate-200/50">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Fluxo de Aquisição</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Leads gerados por período</p>
-              </div>
-              <div className="flex gap-2 items-center">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-600"></div>
-                <span className="text-[10px] font-black text-slate-400 uppercase">Geração Mensal</span>
-              </div>
+            {/* Recent Activity Mock (To be implemented real API later) */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-bold text-lg text-slate-800">Atividade Recente</h3>
+                    <button className="text-sm text-indigo-600 font-bold hover:text-indigo-700">Ver tudo</button>
+                </div>
+                <div className="space-y-4">
+                    {[1, 2, 3].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                    <DollarSign size={20} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800">Nova venda realizada</p>
+                                    <p className="text-xs text-slate-500">Lead High Ticket finalizado com sucesso</p>
+                                </div>
+                            </div>
+                            <span className="text-xs font-bold text-slate-400">Há 2h</span>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div className="flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={DATA}>
-                  <defs>
-                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.05)' }}
-                    itemStyle={{ color: '#0f172a', fontSize: '12px', fontWeight: 900 }}
-                    labelStyle={{ color: '#94a3b8', marginBottom: '10px', fontSize: '10px', textTransform: 'uppercase' }}
-                  />
-                  <Area type="monotone" dataKey="leads" stroke="#e11d48" strokeWidth={4} fillOpacity={1} fill="url(#colorLeads)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-100 p-12 rounded-[48px] h-[500px] flex flex-col shadow-xl shadow-slate-200/50">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Faturamento & Conversão</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Rentabilidade vs Volume de Negócios</p>
-              </div>
-            </div>
-            <div className="flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={DATA}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '20px' }}
-                  />
-                  <Bar dataKey="deals" fill="#e2e8f0" radius={[10, 10, 0, 0]} barSize={30} />
-                  <Bar dataKey="revenue" fill="#e11d48" radius={[10, 10, 0, 0]} barSize={30} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
+
+// Sub-component for Cards
+const StatCard = ({ title, value, icon, color, trend, trendDown = false }: any) => (
+    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-all">
+        <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color.replace('bg-', 'text-')}`}>
+            {icon}
+        </div>
+        <div className="flex items-center gap-4 mb-4">
+            <div className={`p-3 rounded-2xl shadow-lg shadow-indigo-500/20 ${color}`}>
+                {icon}
+            </div>
+            {trend && (
+                <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${trendDown ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {trendDown ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+                    {trend}
+                </div>
+            )}
+        </div>
+        <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
+            <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+        </div>
+    </div>
+);
 
 export default Analytics;
