@@ -5,6 +5,7 @@ import {
     Instagram, Edit3, Save, X, FileText, History
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPhoneDisplay } from '../../lib/phoneFormat';
 
 interface Deal {
     id: string;
@@ -576,7 +577,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                                             href={`tel:${lead.phone}`}
                                             className="text-sm text-violet-600 hover:underline"
                                         >
-                                            {lead.phone}
+                                            {formatPhoneDisplay(lead.phone)}
                                         </a>
                                     </div>
                                     {lead.company && (

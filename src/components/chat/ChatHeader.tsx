@@ -3,6 +3,7 @@ import {
     User, Phone, Clock, Pause, Play, X,
     ArrowRightLeft, MoreVertical, UserPlus, CalendarClock
 } from 'lucide-react';
+import { formatPhoneDisplay } from '../../lib/phoneFormat';
 
 interface ChatHeaderProps {
     leadName: string;
@@ -115,7 +116,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                     <div className="flex items-center gap-3 text-xs text-slate-400">
                         <div className="flex items-center gap-1">
                             <Phone size={10} />
-                            <span>{leadPhone}</span>
+                            <span>{formatPhoneDisplay(leadPhone)}</span>
                         </div>
                         <span>•</span>
                         <span>{channel}</span>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ActivitiesTab } from './lead360/ActivitiesTab';
+import { formatPhoneDisplay } from '../lib/phoneFormat';
 
 interface Deal {
     id: string;
@@ -446,7 +447,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                                 />
                                             ) : (
                                                 <a href={`https://wa.me/${lead.phone}`} target="_blank" className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1">
-                                                    <Phone size={14} /> {lead.phone}
+                                                    <Phone size={14} /> {formatPhoneDisplay(lead.phone)}
                                                 </a>
                                             )}
                                         </div>

@@ -4,6 +4,7 @@ import { useSocket } from '../../hooks/useSocket';
 import { cn } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
 import AdvancedFilters, { AdvancedFilterState, defaultFilters } from './AdvancedFilters';
+import { formatPhoneDisplay } from '../../lib/phoneFormat';
 
 interface Conversation {
     id: string;
@@ -277,7 +278,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                                                 {conv.lead.company ? (
                                                     <span className="truncate">{conv.lead.company}</span>
                                                 ) : (
-                                                    <span>{conv.lead.phone}</span>
+                                                    <span>{formatPhoneDisplay(conv.lead.phone)}</span>
                                                 )}
                                             </div>
 
