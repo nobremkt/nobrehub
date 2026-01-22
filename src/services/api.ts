@@ -830,3 +830,27 @@ export async function removeTagFromLead(leadId: string, tag: string): Promise<Le
         body: JSON.stringify({ tag }),
     });
 }
+
+// ============ PERMISSIONS API ============
+
+export interface RoleAccess {
+    id: string;
+    role: string;
+    permissions: string[];
+}
+
+export const getPermissions = async (): Promise<RoleAccess[]> => {
+    try {
+        return await request<RoleAccess[]>('/permissions');
+    } catch (error) {
+        console.error('Failed to fetch permissions:', error);
+        return [];
+    }
+};
+
+export const updatePermissions = async (role: string, permissions: string[]): Promise<RoleAccess> => {
+    return await request<RoleAccess>(`/permissions/${role}`, {
+        method: 'PUT',
+        body: JSON.stringify({ permissions }),
+    });
+};

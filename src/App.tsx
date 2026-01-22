@@ -14,7 +14,7 @@ import Analytics from './components/Analytics';
 import TeamManagement from './components/TeamManagement';
 import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
-import ChannelConfig from './pages/ChannelConfig';
+import SettingsPage from './pages/SettingsPage';
 
 import ContactsView from './pages/ContactsView';
 import { Agent } from './types';
@@ -117,8 +117,8 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         <Route path="/producao" element={<div className="p-6 text-slate-500">Módulo em desenvolvimento...</div>} />
         <Route path="/equipe" element={<TeamManagement onMonitor={setMonitoredUser} />} />
         <Route path="/automacoes" element={<FlowBuilder />} />
-        <Route path="/config/channels" element={<ChannelConfig />} />
-        <Route path="/configuracoes" element={<Navigate to="/config/channels" replace />} />
+        <Route path="/config/*" element={<SettingsPage />} />
+        <Route path="/configuracoes" element={<SettingsPage />} />
         <Route path="/personal" element={<PersonalWorkspace />} />
         <Route path="/" element={<Navigate to="/kanban" replace />} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />

@@ -700,3 +700,15 @@ model Channel {
 
   @@map("channels")
 }
+
+// ============ PERMISSIONS ============
+
+model RoleAccess {
+  id          String   @id @default(uuid())
+  role        UserRole @unique
+  permissions String[] @default([]) // List of access keys: "view_kanban", "manage_team", etc.
+  
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("role_access")
+}
