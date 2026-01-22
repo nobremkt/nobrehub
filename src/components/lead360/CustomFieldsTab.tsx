@@ -3,6 +3,7 @@ import { Settings, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import * as api from '../../services/api';
 import ManageFieldsModal from './ManageFieldsModal';
+import PhoneInput from '../ui/PhoneInput';
 
 interface CustomFieldsTabProps {
     leadId: string;
@@ -76,6 +77,22 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
             onSave?.();
         } catch (error) {
             toast.error('Erro ao salvar campo');
+        }
+    };
+
+    // Handle saving base fields (Name, Phone, etc)
+    const handleSaveBaseField = (fieldKey: string, value: string, fieldOnChange: (val: string) => void) => {
+        if (value === undefined) return;
+
+        try {
+            fieldOnChange(value);
+            setPendingChanges(prev => {
+                const { [fieldKey]: _, ...rest } = prev;
+                return rest;
+            });
+            setEditingField(null);
+        } catch (error) {
+            console.error('Error saving base field:', error);
         }
     };
 
@@ -178,45 +195,69 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
 
                 {expandedSections['general'] && (
                     <div className="p-4 space-y-3 bg-white">
-                        {visibleFields.map(field => (
-                            <div key={field.id} className="group">
-                                <label className="text-xs text-slate-500 block mb-1">{field.name}</label>
-                                {'isBase' in field && field.isBase ? (
-                                    // Base field - controlled by parent
-                                    <input
-                                        type={getInputType(field.type as any)}
-                                        value={field.value}
-                                        onChange={(e) => (field as any).onChange(e.target.value)}
-                                        placeholder={`Clique para adicionar...`}
-                                        className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-violet-300 rounded-lg text-sm transition-colors outline-none"
-                                    />
-                                ) : (
-                                    // Custom field - managed internally
+                        {visibleFields.map(field => {
+                            const isBase = 'isBase' in field && field.isBase;
+                            const currentValue = pendingChanges[field.id] ?? field.value;
+
+                            return (
+                                <div key={field.id} className="group">
+                                    <label className="text-xs text-slate-500 block mb-1 font-medium">{field.name}</label>
                                     <div className="relative">
-                                        <input
-                                            type={getInputType(field.type as any)}
-                                            value={pendingChanges[field.id] ?? field.value}
-                                            onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                                            onFocus={() => setEditingField(field.id)}
-                                            onBlur={() => {
-                                                if (pendingChanges[field.id] !== undefined && pendingChanges[field.id] !== field.value) {
-                                                    handleSaveField(field.id);
+                                        {field.type === 'phone' ? (
+                                            /* Phone Input Logic */
+                                            <div onBlur={() => {
+                                                const val = pendingChanges[field.id];
+                                                // Only save if defined and changed
+                                                if (val !== undefined && val !== field.value) {
+                                                    if (isBase) {
+                                                        handleSaveBaseField(field.id, val, (field as any).onChange);
+                                                    } else {
+                                                        handleSaveField(field.id);
+                                                    }
                                                 } else {
                                                     setEditingField(null);
                                                 }
-                                            }}
-                                            placeholder={(field as any).placeholder || 'Clique para adicionar...'}
-                                            className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-violet-300 rounded-lg text-sm transition-colors outline-none"
-                                        />
-                                        {pendingChanges[field.id] !== undefined && pendingChanges[field.id] !== field.value && (
-                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-violet-500">
-                                                Salvando...
-                                            </span>
+                                            }}>
+                                                <PhoneInput
+                                                    value={currentValue}
+                                                    onChange={(val) => handleFieldChange(field.id, val)}
+                                                    className="w-full text-slate-900" // Ensure text color is dark
+                                                />
+                                            </div>
+                                        ) : (
+                                            /* Standard Input Logic */
+                                            <div className="relative">
+                                                <input
+                                                    type={getInputType(field.type as any)}
+                                                    value={currentValue}
+                                                    onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                                                    onFocus={() => setEditingField(field.id)}
+                                                    onBlur={() => {
+                                                        const val = pendingChanges[field.id];
+                                                        if (val !== undefined && val !== field.value) {
+                                                            if (isBase) {
+                                                                handleSaveBaseField(field.id, val, (field as any).onChange);
+                                                            } else {
+                                                                handleSaveField(field.id);
+                                                            }
+                                                        } else {
+                                                            setEditingField(null);
+                                                        }
+                                                    }}
+                                                    placeholder={(field as any).placeholder || 'Clique para adicionar...'}
+                                                    className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-violet-300 rounded-lg text-sm transition-colors outline-none text-slate-900 placeholder:text-slate-400"
+                                                />
+                                                {pendingChanges[field.id] !== undefined && pendingChanges[field.id] !== field.value && (
+                                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-violet-500">
+                                                        Salvando...
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        ))}
+                                </div>
+                            );
+                        })}
 
                         {visibleFields.length === 0 && (
                             <p className="text-sm text-slate-400 italic py-4 text-center">
