@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Target, Briefcase, Search, Plus, Monitor, Building2, Users, RefreshCw } from 'lucide-react';
+import { Shield, Target, Briefcase, Search, Plus, Monitor, Building2, Users, RefreshCw, Settings2 } from 'lucide-react';
 import { getUsers } from '../services/api';
 import AddMemberModal from './AddMemberModal';
+import SectorManagementModal from './SectorManagementModal';
 
 // Types
 interface Sector {
@@ -41,6 +42,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSectorModal, setShowSectorModal] = useState(false);
 
   // Fetch team members and sectors
   const fetchData = useCallback(async () => {
@@ -66,7 +68,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
 
       if (sectorsResponse.ok) {
         const sectorsData = await sectorsResponse.json();
+        console.log('[TeamManagement] Setores carregados:', sectorsData.length, sectorsData);
         setSectors(sectorsData);
+      } else {
+        console.error('[TeamManagement] Erro ao buscar setores:', sectorsResponse.status, await sectorsResponse.text());
       }
     } catch (error) {
       console.error('Failed to fetch team data:', error);
@@ -78,23 +83,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // Seed default sectors if none exist
-  const seedSectors = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-      await fetch(`${baseUrl}/users/sectors/seed`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      fetchData();
-    } catch (error) {
-      console.error('Failed to seed sectors:', error);
-    }
-  };
 
   // Map role to category
   const getRoleCategory = (role: string): TeamRole => {
@@ -166,14 +154,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Centro de Comando da Equipe</p>
           </div>
           <div className="flex items-center gap-3">
-            {sectors.length === 0 && !loading && (
-              <button
-                onClick={seedSectors}
-                className="bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
-              >
-                <Building2 size={16} /> Criar Setores
-              </button>
-            )}
+            <button
+              onClick={() => setShowSectorModal(true)}
+              className="bg-violet-50 text-violet-600 px-6 py-4 rounded-2xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest hover:bg-violet-100 transition-all border border-violet-200"
+              title="Gerenciar Setores"
+            >
+              <Settings2 size={16} /> Setores
+            </button>
             <button
               onClick={() => fetchData()}
               className="bg-slate-100 text-slate-600 p-4 rounded-2xl hover:bg-slate-200 transition-all"
@@ -329,6 +316,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
         onClose={() => setShowAddModal(false)}
         onSuccess={fetchData}
         sectors={sectors}
+      />
+
+      {/* Sector Management Modal */}
+      <SectorManagementModal
+        isOpen={showSectorModal}
+        onClose={() => setShowSectorModal(false)}
+        onUpdate={fetchData}
       />
     </div>
   );

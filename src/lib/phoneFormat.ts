@@ -87,14 +87,15 @@ export const formatPhoneInput = (value: string, countryCode: string = '+55'): st
 
     if (countryCode === '+55') {
         // Brazilian format: XX XXXXX XXXX
+        // Brazilian format: (XX) XXXXX-XXXX
         if (digits.length <= 2) {
             return digits;
-        } else if (digits.length <= 7) {
-            return `${digits.slice(0, 2)} ${digits.slice(2)}`;
-        } else if (digits.length <= 11) {
-            return `${digits.slice(0, 2)} ${digits.slice(2, 7)} ${digits.slice(7)}`;
+        } else if (digits.length <= 6) {
+            return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+        } else if (digits.length <= 10) {
+            return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
         } else {
-            return `${digits.slice(0, 2)} ${digits.slice(2, 7)} ${digits.slice(7, 11)}`;
+            return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
         }
     }
 

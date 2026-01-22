@@ -200,7 +200,7 @@ export async function transferConversation(
         newPipeline = 'production';
     } else if (newAgent.role === 'closer_ht') {
         newPipeline = 'high_ticket';
-    } else if (newAgent.role === 'closer_lt') {
+    } else if (newAgent.role === 'closer_lt' || newAgent.role === 'manager_sales') {
         newPipeline = 'low_ticket';
     }
 

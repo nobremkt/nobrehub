@@ -87,13 +87,15 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             }
         }
         const formatted = formatPhoneInput(nationalNumber, country.code);
-        onChange(formatted);
+        // Return full number with country code
+        onChange(`${country.code} ${formatted}`);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
         const formatted = formatPhoneInput(rawValue, selectedCountry.code);
-        onChange(formatted);
+        // Return full number with country code
+        onChange(`${selectedCountry.code} ${formatted}`);
     };
 
     // Get display value (without country code, just the formatted number)
