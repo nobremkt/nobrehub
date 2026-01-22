@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { SocketProvider } from './contexts/SocketContext';
 import { AppLayout } from './components/layout';
@@ -16,6 +16,37 @@ import PersonalWorkspace from './components/PersonalWorkspace';
 import Login from './components/Login';
 
 import { Agent } from './types';
+
+// Wrapper component to extract leadId from URL params
+const InboxPage: React.FC<{
+  userId: string;
+  isAdmin: boolean;
+  pendingLeadId: string | null;
+  onConversationOpened: () => void;
+}> = ({ userId, isAdmin, pendingLeadId, onConversationOpened }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const leadIdFromUrl = searchParams.get('leadId');
+
+  // Use URL param if available, otherwise use pendingLeadId from state
+  const initialLeadId = leadIdFromUrl || pendingLeadId;
+
+  // Clear URL param after conversation is opened
+  const handleConversationOpened = () => {
+    if (leadIdFromUrl) {
+      setSearchParams({});
+    }
+    onConversationOpened();
+  };
+
+  return (
+    <ChatLayout
+      userId={userId}
+      isAdmin={isAdmin}
+      initialLeadId={initialLeadId}
+      onConversationOpened={handleConversationOpened}
+    />
+  );
+};
 
 // Helper to get current user from localStorage
 const getCurrentUser = () => {
@@ -68,10 +99,10 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             : <Kanban />
         } />
         <Route path="/inbox" element={
-          <ChatLayout
+          <InboxPage
             userId={currentUser?.id || ''}
-            isAdmin={currentUser?.role === 'admin'}
-            initialLeadId={pendingLeadId}
+            isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'strategic'}
+            pendingLeadId={pendingLeadId}
             onConversationOpened={() => setPendingLeadId(null)}
           />
         } />
