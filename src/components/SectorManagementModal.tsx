@@ -208,8 +208,8 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
                                 <div
                                     key={sector.id}
                                     className={`p-4 rounded-2xl border transition-all ${editingId === sector.id
-                                            ? 'border-violet-300 bg-violet-50'
-                                            : 'border-slate-100 bg-white hover:border-slate-200'
+                                        ? 'border-violet-300 bg-violet-50'
+                                        : 'border-slate-100 bg-white hover:border-slate-200'
                                         }`}
                                 >
                                     {editingId === sector.id ? (
@@ -221,14 +221,14 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
                                                     value={formData.name}
                                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                                     placeholder="Nome do setor"
-                                                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                                                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
                                                 />
                                                 <input
                                                     type="text"
                                                     value={formData.description}
                                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                                     placeholder="Descrição (opcional)"
-                                                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                                                    className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
                                                 />
                                             </div>
 
@@ -318,7 +318,7 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                             placeholder="Nome do novo setor"
-                                            className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                                            className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                             autoFocus
                                         />
                                         <input
@@ -326,7 +326,7 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             placeholder="Descrição (opcional)"
-                                            className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                                            className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                         />
                                     </div>
 
