@@ -3,7 +3,7 @@ import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshC
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
 import CRMSidebar from './chat/CRMSidebar';
-import Lead360Modal from './Lead360Modal';
+import Lead360Modal, { TabType } from './Lead360Modal';
 import TemplateSelector from './TemplateSelector';
 import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
@@ -76,6 +76,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     // Lead Detail Modal State
     const [showLeadModal, setShowLeadModal] = useState(false);
+    const [modalInitialTab, setModalInitialTab] = useState<TabType>('atividades');
 
     // Template Selector State
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
@@ -944,13 +945,19 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                         lead={conversation.lead as any}
                         pipeline={conversation.pipeline}
                         conversationId={conversationId}
-                        onOpenDetails={() => setShowLeadModal(true)}
+                        onOpenDetails={() => {
+                            setModalInitialTab('atividades');
+                            setShowLeadModal(true);
+                        }}
+                        onOpenConversations={() => {
+                            setModalInitialTab('conversas');
+                            setShowLeadModal(true);
+                        }}
                         onMoveStage={handleMoveStage}
                     />
                 </div>
             )}
 
-            {/* Lead 360° Modal */}
             {
                 showLeadModal && (
                     <Lead360Modal
@@ -958,6 +965,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                         lead={conversation.lead as any}
                         onClose={() => setShowLeadModal(false)}
                         onOpenChat={() => { }}
+                        initialTab={modalInitialTab}
                     />
                 )
             }

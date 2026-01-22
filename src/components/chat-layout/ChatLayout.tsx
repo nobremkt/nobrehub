@@ -4,7 +4,7 @@ import { useSocket } from '../../hooks/useSocket';
 import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
 import CRMSidebar from '../chat/CRMSidebar';
-import Lead360Modal from '../Lead360Modal';
+import Lead360Modal, { TabType } from '../Lead360Modal';
 
 interface Conversation {
     id: string;
@@ -51,6 +51,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showLeadModal, setShowLeadModal] = useState(false);
+    const [modalInitialTab, setModalInitialTab] = useState<TabType>('atividades');
 
     const {
         isConnected,
@@ -272,7 +273,14 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         lead={selectedConversation.lead as any}
                         pipeline={selectedConversation.pipeline}
                         conversationId={selectedConversation.id}
-                        onOpenDetails={() => setShowLeadModal(true)}
+                        onOpenDetails={() => {
+                            setModalInitialTab('atividades');
+                            setShowLeadModal(true);
+                        }}
+                        onOpenConversations={() => {
+                            setModalInitialTab('conversas');
+                            setShowLeadModal(true);
+                        }}
                         onMoveStage={handleMoveStage}
                     />
                 </div>
@@ -299,6 +307,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                     }}
                     onClose={() => setShowLeadModal(false)}
                     onOpenChat={() => setShowLeadModal(false)}
+                    initialTab={modalInitialTab}
                 />
             )}
         </div>

@@ -39,6 +39,7 @@ interface CRMSidebarProps {
     pipeline: string;
     conversationId: string;
     onOpenDetails: () => void;
+    onOpenConversations?: () => void;
     onMoveStage?: (newStage: string) => void;
     onUpdateLead?: (updates: Partial<Lead>) => Promise<void>;
     onDealStatusChange?: (dealId: string, status: 'won' | 'lost') => Promise<void>;
@@ -71,6 +72,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     pipeline,
     conversationId,
     onOpenDetails,
+    onOpenConversations,
     onMoveStage,
     onUpdateLead,
     onDealStatusChange
@@ -807,7 +809,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                 {/* Conversations count */}
                 <div className="border-b border-slate-200">
                     <button
-                        onClick={onOpenDetails}
+                        onClick={onOpenConversations || onOpenDetails}
                         className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-100 transition-colors"
                     >
                         <span className="text-sm font-medium text-slate-700">Conversas</span>
