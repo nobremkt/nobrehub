@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '../../lib/phoneFormat';
+import PhoneInput from '../ui/PhoneInput';
 
 interface Deal {
     id: string;
@@ -523,12 +524,10 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                                         placeholder="Email"
                                         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                                     />
-                                    <input
-                                        type="tel"
+                                    <PhoneInput
                                         value={editedContact.phone}
-                                        onChange={(e) => setEditedContact(prev => ({ ...prev, phone: e.target.value }))}
+                                        onChange={(value) => setEditedContact(prev => ({ ...prev, phone: value }))}
                                         placeholder="Telefone"
-                                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                                     />
                                     <input
                                         type="text"

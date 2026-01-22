@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ActivitiesTab } from './lead360/ActivitiesTab';
-import { formatPhoneDisplay } from '../lib/phoneFormat';
+import { formatPhoneDisplay, getFullPhoneNumber } from '../lib/phoneFormat';
+import PhoneInput from './ui/PhoneInput';
 
 interface Deal {
     id: string;
@@ -458,10 +459,10 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                         <div>
                                             <label className="text-xs text-slate-500 block mb-1">Telefone</label>
                                             {isEditing ? (
-                                                <input
+                                                <PhoneInput
                                                     value={editedLead.phone}
-                                                    onChange={(e) => setEditedLead(prev => ({ ...prev, phone: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                                    onChange={(value) => setEditedLead(prev => ({ ...prev, phone: value }))}
+                                                    placeholder="Telefone"
                                                 />
                                             ) : (
                                                 <a href={`https://wa.me/${lead.phone}`} target="_blank" className="text-sm font-medium text-emerald-600 hover:underline flex items-center gap-1">
