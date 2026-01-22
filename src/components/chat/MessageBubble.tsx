@@ -148,7 +148,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     // Bubble container classes
     const bubbleClasses = isOut
         ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl rounded-br-md shadow-lg shadow-rose-500/20'
-        : 'bg-white text-slate-800 rounded-2xl rounded-bl-md shadow-md border border-slate-100';
+        : 'bg-white !text-slate-800 rounded-2xl rounded-bl-md shadow-md border border-slate-100';
 
     // Template indicator
     const isTemplate = type === 'template' || type === 'hsm';
@@ -201,7 +201,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
                 {/* Text */}
                 {text && (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{text}</p>
+                    <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isOut ? 'text-white' : '!text-slate-800'}`}>{text}</p>
                 )}
 
                 {/* Footer: Time + Status */}

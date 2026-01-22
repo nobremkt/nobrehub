@@ -729,8 +729,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 ...prev,
                 lead: {
                     ...prev.lead,
-                    statusHT: updatedLead.statusHT,
-                    statusLT: updatedLead.statusLT
+                    statusHT: updatedLead.statusHT || updatedLead.status_ht || (conversation.pipeline === 'high_ticket' ? newStage : prev.lead.statusHT),
+                    statusLT: updatedLead.statusLT || updatedLead.status_lt || (conversation.pipeline === 'low_ticket' ? newStage : prev.lead.statusLT)
                 }
             } : null);
         } catch (error) {

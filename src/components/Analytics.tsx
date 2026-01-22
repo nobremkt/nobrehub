@@ -94,7 +94,7 @@ const Analytics: React.FC = () => {
     const COLORS = ['#4f46e5', '#ec4899', '#10b981', '#f59e0b'];
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 min-h-screen overflow-y-auto">
+        <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 h-full overflow-y-auto">
             <div className="mb-8">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Dashboard</h1>
                 <p className="text-slate-500 font-medium mt-1">Visão geral de performance e leads</p>
@@ -125,7 +125,7 @@ const Analytics: React.FC = () => {
                 />
                 <StatCard
                     title="Taxa de Conversão"
-                    value={`${((stats.closedLeads / (stats.totalLeads || 1)) * 100).toFixed(1)}%`}
+                    value={`${(((stats.closedLeads || 0) / (stats.totalLeads || 1)) * 100).toFixed(1)}%`}
                     icon={<TrendingUp size={24} className="text-white" />}
                     color="bg-amber-500"
                     trend="-2%"

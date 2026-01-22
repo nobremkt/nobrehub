@@ -201,7 +201,8 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
                 const newDeal = await response.json();
                 setDeals(prev => [newDeal, ...prev]);
                 setSelectedDeal(newDeal);
-                toast.success('Negócio criado');
+                setIsEditingDeal(true);
+                toast.success('Negócio criado. Preencha os detalhes.');
             }
         } catch (error) {
             toast.error('Erro ao criar negócio');

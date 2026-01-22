@@ -215,12 +215,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
             {visibleCategories.map((category) => {
               // Filter members by category and search
               const categoryMembers = members
-                .filter(member => member.isActive && getRoleCategory(member.role) === category)
+                .filter(member => (member.isActive !== false) && getRoleCategory(member.role) === category)
                 .filter(member =>
-                  member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  member.email.toLowerCase().includes(searchTerm.toLowerCase())
+                  member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  member.email?.toLowerCase().includes(searchTerm.toLowerCase())
                 )
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
               if (categoryMembers.length === 0) return null;
 
