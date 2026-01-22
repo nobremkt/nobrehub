@@ -86,7 +86,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         ...defaultFilters,
         conversations: {
             ...defaultFilters.conversations,
-            assignment: 'mine' // Default to "Minhas"
+            assignment: 'all' // Default to "Todas"
         }
     });
     const { isConnected } = useSocket({ userId });
