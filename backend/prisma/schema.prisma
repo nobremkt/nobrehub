@@ -400,6 +400,10 @@ model Deal {
   stage         String?     // Current stage in funnel
   pipeline      PipelineType @default(high_ticket)
   
+  // Product Relation
+  productId     String?      @map("product_id")
+  productRef    Product?     @relation(fields: [productId], references: [id])
+  
   // Owner
   ownerId       String?     @map("owner_id")
   owner         User?       @relation("OwnedDeals", fields: [ownerId], references: [id])
@@ -711,4 +715,21 @@ model RoleAccess {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("role_access")
+}
+
+// ============ PRODUCTS ============
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @default(0) @db.Decimal(10,2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  deals       Deal[]
+
+  @@map("products")
 }

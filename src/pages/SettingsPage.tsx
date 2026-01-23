@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Building2, MessageSquare, Bell, Palette, Shield, ChevronRight, Globe, Lock } from 'lucide-react';
+import { Building2, MessageSquare, Bell, Palette, Shield, ChevronRight, Globe, Lock, Package } from 'lucide-react';
 import ChannelSettings from '../components/settings/ChannelSettings';
 import PermissionsManager from '../components/settings/PermissionsManager';
+import ProductsManager from '../components/settings/ProductsManager';
 
 const SettingsPage: React.FC = () => {
     const [activeSection, setActiveSection] = useState('channels'); // Default to channels as requested
@@ -9,6 +10,7 @@ const SettingsPage: React.FC = () => {
     const sections = [
         { id: 'channels', label: 'Canais', icon: MessageSquare, description: 'WhatsApp, Instagram, Email' },
         { id: 'permissions', label: 'Acessos', icon: Shield, description: 'Cargos e Permissões' },
+        { id: 'products', label: 'Produtos', icon: Package, description: 'Catálogo de serviços' },
         { id: 'company', label: 'Empresa', icon: Building2, description: 'Dados organizacionais' },
         { id: 'notifications', label: 'Notificações', icon: Bell, description: 'Alertas e preferências' },
         { id: 'pipeline', label: 'Pipeline', icon: Palette, description: 'Personalização do funil' },
@@ -35,8 +37,8 @@ const SettingsPage: React.FC = () => {
                                 key={section.id}
                                 onClick={() => setActiveSection(section.id)}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${activeSection === section.id
-                                        ? 'bg-rose-50 text-rose-600 border border-rose-100 shadow-sm'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
+                                    ? 'bg-rose-50 text-rose-600 border border-rose-100 shadow-sm'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
                                     }`}
                             >
                                 <div className={`p-2 rounded-lg ${activeSection === section.id ? 'bg-rose-100' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
@@ -68,6 +70,8 @@ const SettingsPage: React.FC = () => {
                         {activeSection === 'channels' && <ChannelSettings />}
 
                         {activeSection === 'permissions' && <PermissionsManager />}
+
+                        {activeSection === 'products' && <ProductsManager />}
 
                         {activeSection === 'company' && (
                             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">

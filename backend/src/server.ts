@@ -26,6 +26,7 @@ import { activitiesRoutes } from './routes/activities.js';
 import { lossReasonsRoutes } from './routes/lossReasons.js';
 import { channelRoutes } from './routes/channels.js';
 import { permissionsRoutes } from './routes/permissions.js';
+import productsRoutes from './routes/products.js';
 
 const server = Fastify({ logger: true });
 
@@ -130,6 +131,7 @@ async function bootstrap() {
         await server.register(lossReasonsRoutes, { prefix: '/loss-reasons' });
         await server.register(channelRoutes, { prefix: '' });
         await server.register(permissionsRoutes, { prefix: '/permissions' });
+        await server.register(productsRoutes, { prefix: '/products' });
         console.log('✅ All routes registered');
 
         // Start Fastify server

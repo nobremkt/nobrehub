@@ -10,6 +10,7 @@ import { ActivitiesTab } from './lead360/ActivitiesTab';
 import { formatPhoneDisplay, getFullPhoneNumber } from '../lib/phoneFormat';
 import PhoneInput from './ui/PhoneInput';
 import CustomFieldsTab from './lead360/CustomFieldsTab';
+import ProductSelect from './ui/ProductSelect';
 
 interface Deal {
     id: string;
@@ -104,7 +105,8 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
     const [newDeal, setNewDeal] = useState({
         value: '',
         product: '',
-        origin: ''
+        origin: '',
+        productId: ''
     });
 
     // Company editing states
@@ -139,7 +141,7 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
             if (response.ok) {
                 const createdDeal = await response.json();
                 setDeals(prev => [...prev, createdDeal]);
-                setNewDeal({ value: '', product: '', origin: '' });
+                setNewDeal({ value: '', product: '', origin: '', productId: '' });
                 setIsAddingDeal(false);
                 toast.success('Negócio criado com sucesso!');
             } else {
@@ -541,12 +543,16 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-500 block mb-1">Produto</label>
-                                                    <input
-                                                        type="text"
-                                                        value={newDeal.product}
-                                                        onChange={(e) => setNewDeal(prev => ({ ...prev, product: e.target.value }))}
-                                                        placeholder="Nome do produto"
-                                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                    <ProductSelect
+                                                        value={newDeal.productId}
+                                                        onChange={(productId, price) => {
+                                                            setNewDeal(prev => ({
+                                                                ...prev,
+                                                                productId,
+                                                                value: price ? price.toString() : prev.value
+                                                            }));
+                                                        }}
+                                                        className="!space-y-0"
                                                     />
                                                 </div>
                                                 <div>

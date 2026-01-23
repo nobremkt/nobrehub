@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, User, Briefcase, DollarSign, Target, Check, Mail, Phone, Globe } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
 import { Lead } from '../services/api';
+import ProductSelect from './ui/ProductSelect';
 
 interface LeadModalProps {
   isOpen: boolean;
@@ -23,7 +23,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
     value: '',
     status: initialStage || 'novo',
     pipeline: 'high_ticket' as 'high_ticket' | 'low_ticket' | 'production' | 'post_sales',
-    source: ''
+    source: '',
+    productId: '' // New field
   });
 
   // Reset form when modal opens/closes or leadToEdit changes
@@ -37,7 +38,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
         value: leadToEdit.estimatedValue?.toString() || '',
         status: leadToEdit.statusHT || leadToEdit.statusLT || leadToEdit.statusProduction || leadToEdit.statusPostSales || 'novo',
         pipeline: (leadToEdit.pipeline as any) || 'high_ticket',
-        source: leadToEdit.source || ''
+        source: leadToEdit.source || '',
+        productId: (leadToEdit as any).productId || ''
       });
     } else if (isOpen && !leadToEdit) {
       setFormData({
@@ -48,7 +50,8 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
         value: '',
         status: initialStage || 'novo',
         pipeline: 'high_ticket',
-        source: ''
+        source: '',
+        productId: ''
       });
     }
   }, [isOpen, leadToEdit, initialStage]);
@@ -172,6 +175,20 @@ const LeadModal: React.FC<LeadModalProps> = ({ isOpen, onClose, initialStage, on
               </div>
             </div>
 
+            <ProductSelect
+              value={formData.productId}
+              className="mt-0"
+              onChange={(product, price) => {
+                setFormData(prev => ({
+                  ...prev,
+                  productId: product,
+                  value: price ? price.toString() : prev.value
+                }));
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
             <CustomDropdown
               label="Pipeline"
               options={[
