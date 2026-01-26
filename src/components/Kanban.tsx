@@ -316,14 +316,37 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
 
   // Atualiza colunas quando o usuário monitorado muda ou o pipeline selecionado muda
   useEffect(() => {
-    if (monitoredUser) {
-      setBoardStages(monitoredUser.boardConfig || PIPELINE_TEMPLATES.high_ticket);
-    } else if (currentPipeline === 'sales') {
-      // Use separate templates for HT and LT
-      setBoardStages(PIPELINE_TEMPLATES[salesSubPipeline]);
-    } else {
-      setBoardStages(PIPELINE_TEMPLATES[currentPipeline]);
-    }
+    const fetchStages = async () => {
+      if (monitoredUser) {
+        setBoardStages(monitoredUser.boardConfig || PIPELINE_TEMPLATES.high_ticket);
+        return;
+      }
+
+      try {
+        const pipelineType = currentPipeline === 'sales' ? salesSubPipeline : currentPipeline;
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages?pipeline=${pipelineType}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            setBoardStages(data);
+          } else {
+            // Fallback to static if no dynamic stages found (e.g. before seed)
+            setBoardStages(PIPELINE_TEMPLATES[pipelineType as keyof typeof PIPELINE_TEMPLATES]);
+          }
+        } else {
+          setBoardStages(PIPELINE_TEMPLATES[pipelineType as keyof typeof PIPELINE_TEMPLATES]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stages", error);
+        setBoardStages(PIPELINE_TEMPLATES[currentPipeline === 'sales' ? salesSubPipeline : currentPipeline as keyof typeof PIPELINE_TEMPLATES]);
+      }
+    };
+
+    fetchStages();
   }, [monitoredUser, currentPipeline, salesSubPipeline]);
 
   // Handler para fechar ao clicar fora e pressionar ESC

@@ -29,6 +29,7 @@ import { permissionsRoutes } from './routes/permissions.js';
 import productsRoutes from './routes/products.js';
 import organizationRoutes from './routes/organization.js';
 import notificationRoutes from './routes/notifications.js';
+import { pipelineRoutes } from './routes/pipelines.js';
 
 const server = Fastify({ logger: true });
 
@@ -136,6 +137,7 @@ async function bootstrap() {
         await server.register(productsRoutes, { prefix: '/products' });
         await server.register(organizationRoutes, { prefix: '/organization' });
         await server.register(notificationRoutes, { prefix: '/notifications' });
+        await server.register(pipelineRoutes, { prefix: '/pipelines' });
         console.log('✅ All routes registered');
 
         // Start Fastify server

@@ -185,6 +185,10 @@ model Lead {
   statusProduction ProductionStatus? @map("status_production")
   statusPostSales PostSalesStatus? @map("status_post_sales")
   
+  // Dynamic Stage
+  stageId      String?      @map("stage_id")
+  stage        PipelineStage? @relation(fields: [stageId], references: [id])
+  
   // Assignment
   assignedTo   String?      @map("assigned_to")
   assignedUser User?        @relation("AssignedLeads", fields: [assignedTo], references: [id])
@@ -400,6 +404,10 @@ model Deal {
   status        DealStatus  @default(open)
   stage         String?     // Current stage in funnel
   pipeline      PipelineType @default(high_ticket)
+  
+  // Dynamic Stage
+  stageId       String?      @map("stage_id")
+  stageRef      PipelineStage? @relation(fields: [stageId], references: [id])
   
   // Product Relation
   productId     String?      @map("product_id")
@@ -754,6 +762,30 @@ model Organization {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("organization")
+}
+
+// ============ PIPELINES ============
+
+model PipelineStage {
+  id          String       @id @default(uuid())
+  name        String
+  pipeline    PipelineType // High_ticket, low_ticket, etc.
+  order       Int          @default(0)
+  color       String       @default("slate")
+  isSystem    Boolean      @default(false) @map("is_system") // If true, cannot be deleted
+  isActive    Boolean      @default(true) @map("is_active")
+  tenantId    String?      @map("tenant_id")
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  leads       Lead[]
+  deals       Deal[]
+
+  @@index([pipeline])
+  @@index([order])
+  @@map("pipeline_stages")
 }
 
 // ============ NOTIFICATIONS ============

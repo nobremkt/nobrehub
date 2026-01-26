@@ -5,6 +5,7 @@ import PermissionsManager from '../components/settings/PermissionsManager';
 import ProductsManager from '../components/settings/ProductsManager';
 import CompanySettings from '../components/settings/CompanySettings';
 import NotificationSettings from '../components/settings/NotificationSettings';
+import PipelineSettings from '../components/settings/PipelineSettings';
 
 const SettingsPage: React.FC = () => {
     const [activeSection, setActiveSection] = useState('channels'); // Default to channels as requested
@@ -79,12 +80,7 @@ const SettingsPage: React.FC = () => {
 
                         {activeSection === 'notifications' && <NotificationSettings />}
 
-                        {activeSection === 'pipeline' && (
-                            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                <h2 className="text-xl font-bold text-slate-900 mb-6">Pipeline</h2>
-                                <p className="text-slate-500 text-sm">Em breve...</p>
-                            </div>
-                        )}
+                        {activeSection === 'pipeline' && <PipelineSettings />}
                     </div>
                 </div>
             </div>
