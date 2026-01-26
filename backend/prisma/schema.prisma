@@ -165,6 +165,7 @@ model User {
   ownedDeals         Deal[]             @relation("OwnedDeals")
   scheduledMessages  ScheduledMessage[] @relation("ScheduledMessages")
   historyActions     LeadHistory[]      @relation("UserHistoryActions")
+  notificationPrefs  NotificationPreferences?
   
   @@map("users")
 }
@@ -732,4 +733,53 @@ model Product {
   deals       Deal[]
 
   @@map("products")
+}
+
+// ============ ORGANIZATION ============
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  cnpj        String?
+  email       String?
+  phone       String?
+  address     String?
+  website     String?
+  logoUrl     String?  @map("logo_url")
+  
+  // Single record constraint (we only support one organization for now)
+  isDefault   Boolean  @default(true) @map("is_default")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("organization")
+}
+
+// ============ NOTIFICATIONS ============
+
+model NotificationPreferences {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Email Notifications
+  emailLeads       Boolean @default(true) @map("email_leads")
+  emailDeals       Boolean @default(true) @map("email_deals")
+  emailActivities  Boolean @default(true) @map("email_activities")
+  emailSystem      Boolean @default(true) @map("email_system")
+
+  // Push/App Notifications
+  pushLeads        Boolean @default(true) @map("push_leads")
+  pushDeals        Boolean @default(true) @map("push_deals")
+  pushActivities   Boolean @default(true) @map("push_activities")
+  pushMentions     Boolean @default(true) @map("push_mentions")
+  
+  // WhatsApp Notifications
+  whatsappLeads    Boolean @default(false) @map("whatsapp_leads")
+  whatsappUrgent   Boolean @default(false) @map("whatsapp_urgent")
+
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
 }

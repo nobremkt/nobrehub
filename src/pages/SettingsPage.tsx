@@ -3,6 +3,8 @@ import { Building2, MessageSquare, Bell, Palette, Shield, ChevronRight, Globe, L
 import ChannelSettings from '../components/settings/ChannelSettings';
 import PermissionsManager from '../components/settings/PermissionsManager';
 import ProductsManager from '../components/settings/ProductsManager';
+import CompanySettings from '../components/settings/CompanySettings';
+import NotificationSettings from '../components/settings/NotificationSettings';
 
 const SettingsPage: React.FC = () => {
     const [activeSection, setActiveSection] = useState('channels'); // Default to channels as requested
@@ -73,19 +75,9 @@ const SettingsPage: React.FC = () => {
 
                         {activeSection === 'products' && <ProductsManager />}
 
-                        {activeSection === 'company' && (
-                            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                <h2 className="text-xl font-bold text-slate-900 mb-6">Dados da Empresa</h2>
-                                <p className="text-slate-500 text-sm">Em breve...</p>
-                            </div>
-                        )}
+                        {activeSection === 'company' && <CompanySettings />}
 
-                        {activeSection === 'notifications' && (
-                            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                                <h2 className="text-xl font-bold text-slate-900 mb-6">Notificações</h2>
-                                <p className="text-slate-500 text-sm">Em breve...</p>
-                            </div>
-                        )}
+                        {activeSection === 'notifications' && <NotificationSettings />}
 
                         {activeSection === 'pipeline' && (
                             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
