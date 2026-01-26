@@ -5,7 +5,8 @@ import { Plus, Edit2, Trash2, Search, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductsManager: React.FC = () => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const token = localStorage.getItem('token');
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
