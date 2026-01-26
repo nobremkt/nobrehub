@@ -15,6 +15,19 @@ interface NotificationPreferences {
     whatsappUrgent: boolean;
 }
 
+const getDefaultPreferences = (): NotificationPreferences => ({
+    emailLeads: true,
+    emailDeals: true,
+    emailActivities: true,
+    emailSystem: true,
+    pushLeads: true,
+    pushDeals: true,
+    pushActivities: true,
+    pushMentions: true,
+    whatsappLeads: false,
+    whatsappUrgent: false,
+});
+
 const NotificationSettings: React.FC = () => {
     const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
     const [loading, setLoading] = useState(true);
@@ -33,10 +46,16 @@ const NotificationSettings: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 setPrefs(data);
+            } else {
+                // Fallback to defaults if API returns error
+                console.warn('API returned non-OK, using defaults');
+                setPrefs(getDefaultPreferences());
             }
         } catch (error) {
             console.error('Error fetching preferences:', error);
-            toast.error('Erro ao carregar preferências');
+            // Use defaults on error so UI remains functional
+            setPrefs(getDefaultPreferences());
+            toast.error('Usando preferências padrão - conexão com servidor falhou');
         } finally {
             setLoading(false);
         }

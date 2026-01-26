@@ -40,9 +40,26 @@ const PermissionsManager: React.FC = () => {
         setLoading(true);
         try {
             const data = await getPermissions();
-            setPermissions(data);
+            // Se API retorna vazio, criar estrutura default editável
+            if (data.length === 0) {
+                const defaultPermissions = ROLES.map(role => ({
+                    id: role.id,
+                    role: role.id,
+                    permissions: role.id === 'admin' ? FEATURES.map(f => f.id) : []
+                }));
+                setPermissions(defaultPermissions);
+            } else {
+                setPermissions(data);
+            }
         } catch (error) {
-            toast.error('Erro ao carregar permissões');
+            toast.error('Erro ao carregar permissões - usando modo offline');
+            // Fallback: criar estrutura editável localmente
+            const fallbackPermissions = ROLES.map(role => ({
+                id: role.id,
+                role: role.id,
+                permissions: role.id === 'admin' ? FEATURES.map(f => f.id) : []
+            }));
+            setPermissions(fallbackPermissions);
         } finally {
             setLoading(false);
         }
