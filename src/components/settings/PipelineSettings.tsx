@@ -45,6 +45,38 @@ const PIPELINE_TYPES = [
     { id: 'post_sales', label: 'Pós-Vendas' }
 ];
 
+const PIPELINE_TEMPLATES = {
+    high_ticket: [
+        { name: 'Novo Lead', color: 'slate', id: 'novo', isSystem: true },
+        { name: 'Qualificado', color: 'amber', id: 'qualificado', isSystem: true },
+        { name: 'Call Agendada', color: 'blue', id: 'call_agendada', isSystem: true },
+        { name: 'Proposta', color: 'purple', id: 'proposta', isSystem: true },
+        { name: 'Negociação', color: 'orange', id: 'negociacao', isSystem: true },
+        { name: 'Fechado', color: 'emerald', id: 'fechado', isSystem: true },
+        { name: 'Perdido', color: 'rose', id: 'perdido', isSystem: true }
+    ],
+    low_ticket: [
+        { name: 'Novo', color: 'slate', id: 'novo', isSystem: true },
+        { name: 'Atribuído', color: 'blue', id: 'atribuido', isSystem: true },
+        { name: 'Em Negociação', color: 'amber', id: 'em_negociacao', isSystem: true },
+        { name: 'Fechado', color: 'emerald', id: 'fechado', isSystem: true },
+        { name: 'Perdido', color: 'rose', id: 'perdido', isSystem: true }
+    ],
+    production: [
+        { name: 'A Fazer', color: 'slate', id: 'backlog', isSystem: true },
+        { name: 'Em Produção', color: 'blue', id: 'fazendo', isSystem: true },
+        { name: 'Revisão', color: 'orange', id: 'revisao', isSystem: true },
+        { name: 'Entregue', color: 'emerald', id: 'concluido', isSystem: true }
+    ],
+    post_sales: [
+        { name: 'Novo', color: 'slate', id: 'novo', isSystem: true },
+        { name: 'Onboarding', color: 'indigo', id: 'onboarding', isSystem: true },
+        { name: 'Acompanhamento', color: 'blue', id: 'acompanhamento', isSystem: true },
+        { name: 'Renovação', color: 'amber', id: 'renovacao', isSystem: true },
+        { name: 'Encerrado', color: 'emerald', id: 'encerrado', isSystem: true }
+    ]
+};
+
 const COLORS = [
     { name: 'slate', bg: 'bg-slate-500' },
     { name: 'blue', bg: 'bg-blue-500' },
@@ -201,10 +233,16 @@ const PipelineSettings: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 setStages(data);
+            } else {
+                // Fallback to static
+                console.warn("API Unavailable: Using static templates");
+                setStages(PIPELINE_TEMPLATES[selectedPipeline as keyof typeof PIPELINE_TEMPLATES] as PipelineStage[]);
             }
         } catch (error) {
-            console.error('Failed to fetch stages', error);
-            toast.error('Erro ao carregar etapas');
+            console.error('Failed to fetch stages (using static fallback):', error);
+            // Fallback to static
+            setStages(PIPELINE_TEMPLATES[selectedPipeline as keyof typeof PIPELINE_TEMPLATES] as PipelineStage[]);
+            toast.warning('Modo Offline: Usando dados locais temporários');
         } finally {
             setLoading(false);
         }
@@ -338,8 +376,8 @@ const PipelineSettings: React.FC = () => {
                         key={type.id}
                         onClick={() => setSelectedPipeline(type.id)}
                         className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${selectedPipeline === type.id
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         {type.label}
