@@ -23,7 +23,9 @@ export async function permissionsRoutes(app: FastifyInstance) {
     // Update permissions
     app.put('/:role', async (req, reply) => {
         const user = (req as any).user;
-        if (user.role !== 'admin') return reply.code(403).send({ error: 'Acesso negado' });
+        if (user.role !== 'admin' && user.role !== 'strategic') {
+            return reply.code(403).send({ error: 'Acesso negado' });
+        }
 
         const { role } = req.params as { role: string };
         const schema = z.object({
