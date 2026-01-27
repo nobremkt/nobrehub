@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileText, Send, X, ChevronDown, RefreshCw, Search, Tag } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { supabaseGetWhatsAppTemplates } from '../services/supabaseApi';
 
 interface Template {
     name: string;
@@ -45,20 +44,9 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onSend, onClose, le
         setIsLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`${API_URL}/whatsapp/templates`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch templates');
-            }
-
-            const data = await response.json();
-            setTemplates(data.templates || []);
+            const data = await supabaseGetWhatsAppTemplates();
+            setTemplates(data || []);
         } catch (err: any) {
             console.error('Failed to fetch templates:', err);
             setError('Erro ao carregar templates. Verifique sua conexão com 360Dialog.');
@@ -230,8 +218,8 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onSend, onClose, le
                                     <button
                                         onClick={() => setSelectedCategory('all')}
                                         className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${selectedCategory === 'all'
-                                                ? 'bg-slate-800 text-white'
-                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            ? 'bg-slate-800 text-white'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                             }`}
                                     >
                                         Todos ({templates.length})
@@ -244,8 +232,8 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({ onSend, onClose, le
                                                 key={cat}
                                                 onClick={() => setSelectedCategory(cat)}
                                                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${selectedCategory === cat
-                                                        ? `${style.bg} ${style.color}`
-                                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    ? `${style.bg} ${style.color}`
+                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                     }`}
                                             >
                                                 {style.label} ({count})

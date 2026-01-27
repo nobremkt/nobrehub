@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, Target, Briefcase, Search, Plus, Monitor, Building2, Users, RefreshCw, Settings2 } from 'lucide-react';
-import { getUsers } from '../services/api';
+import { supabaseGetUsersWithSector, supabaseGetSectorsWithCount } from '../services/supabaseApi';
 import AddMemberModal from './AddMemberModal';
 import SectorManagementModal from './SectorManagementModal';
 
@@ -48,34 +48,15 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ onMonitor }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      // Fetch users with supabase
+      const usersData = await supabaseGetUsersWithSector();
+      console.log('[TeamManagement] Users loaded:', usersData.length, usersData);
+      setMembers(usersData as unknown as TeamMember[]);
 
-      // Fetch users
-      const usersResponse = await fetch(`${baseUrl}/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        console.log('[TeamManagement] Users loaded:', usersData.length, usersData);
-        setMembers(usersData);
-      } else {
-        console.error('[TeamManagement] Error loading users:', usersResponse.status, await usersResponse.text());
-      }
-
-      // Fetch sectors
-      const sectorsResponse = await fetch(`${baseUrl}/users/sectors`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (sectorsResponse.ok) {
-        const sectorsData = await sectorsResponse.json();
-        console.log('[TeamManagement] Setores carregados:', sectorsData.length, sectorsData);
-        setSectors(sectorsData);
-      } else {
-        console.error('[TeamManagement] Erro ao buscar setores:', sectorsResponse.status, await sectorsResponse.text());
-      }
+      // Fetch sectors with supabase
+      const sectorsData = await supabaseGetSectorsWithCount();
+      console.log('[TeamManagement] Setores carregados:', sectorsData.length, sectorsData);
+      setSectors(sectorsData);
     } catch (error) {
       console.error('Failed to fetch team data:', error);
     } finally {

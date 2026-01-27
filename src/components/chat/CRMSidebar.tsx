@@ -7,8 +7,14 @@ import {
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '../../lib/phoneFormat';
 import PhoneInput from '../ui/PhoneInput';
+import {
+    supabaseGetLeadDeals,
+    supabaseCreateDeal,
+    supabaseUpdateDeal,
+    Deal
+} from '../../services/supabaseApi';
 
-interface Deal {
+interface LocalDeal {
     id: string;
     value: number;
     product?: string;
@@ -45,8 +51,6 @@ interface CRMSidebarProps {
     onDealStatusChange?: (dealId: string, status: 'won' | 'lost') => Promise<void>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 // Stage configurations by pipeline
 const STAGES = {
     high_ticket: [
@@ -77,8 +81,8 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     onUpdateLead,
     onDealStatusChange
 }) => {
-    const [deals, setDeals] = useState<Deal[]>([]);
-    const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+    const [deals, setDeals] = useState<LocalDeal[]>([]);
+    const [selectedDeal, setSelectedDeal] = useState<LocalDeal | null>(null);
     const [isLoadingDeals, setIsLoadingDeals] = useState(true);
     const [showStageDropdown, setShowStageDropdown] = useState(false);
     const [isChangingStage, setIsChangingStage] = useState(false);
@@ -129,17 +133,11 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     useEffect(() => {
         const fetchDeals = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/leads/${lead.id}/deals`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setDeals(data);
-                    // Select first open deal
-                    const openDeal = data.find((d: Deal) => d.status === 'open');
-                    if (openDeal) setSelectedDeal(openDeal);
-                }
+                const data = await supabaseGetLeadDeals(lead.id);
+                setDeals(data as unknown as LocalDeal[]);
+                // Select first open deal
+                const openDeal = data.find((d) => d.status === 'open');
+                if (openDeal) setSelectedDeal(openDeal as unknown as LocalDeal);
             } catch (error) {
                 console.error('Error fetching deals:', error);
             } finally {
@@ -163,16 +161,7 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     const handleDealStatus = async (status: 'won' | 'lost') => {
         if (!selectedDeal) return;
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/deals/${selectedDeal.id}`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status })
-            });
-
+            await supabaseUpdateDeal(selectedDeal.id, { status });
             setSelectedDeal({ ...selectedDeal, status });
             setDeals(prev => prev.map(d => d.id === selectedDeal.id ? { ...d, status } : d));
             toast.success(status === 'won' ? 'Negócio ganho!' : 'Negócio perdido');
@@ -183,27 +172,17 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
 
     const handleAddDeal = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/deals`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    leadId: lead.id,
-                    pipeline,
-                    stage: 'novo',
-                    value: 0
-                })
+            const newDeal = await supabaseCreateDeal({
+                leadId: lead.id,
+                pipeline,
+                stage: 'novo',
+                value: 0
             });
-            if (response.ok) {
-                const newDeal = await response.json();
-                setDeals(prev => [newDeal, ...prev]);
-                setSelectedDeal(newDeal);
-                setIsEditingDeal(true);
-                toast.success('Negócio criado. Preencha os detalhes.');
-            }
+            const localDeal = newDeal as unknown as LocalDeal;
+            setDeals(prev => [localDeal, ...prev]);
+            setSelectedDeal(localDeal);
+            setIsEditingDeal(true);
+            toast.success('Negócio criado. Preencha os detalhes.');
         } catch (error) {
             toast.error('Erro ao criar negócio');
         }
@@ -224,27 +203,17 @@ const CRMSidebar: React.FC<CRMSidebarProps> = ({
     const handleSaveDeal = async () => {
         if (!selectedDeal) return;
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/deals/${selectedDeal.id}`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    value: editedDeal.value,
-                    origin: editedDeal.origin,
-                    product: editedDeal.product
-                })
+            await supabaseUpdateDeal(selectedDeal.id, {
+                value: editedDeal.value,
+                origin: editedDeal.origin,
+                product: editedDeal.product
             });
 
-            if (response.ok) {
-                const updatedDeal = { ...selectedDeal, ...editedDeal };
-                setSelectedDeal(updatedDeal);
-                setDeals(prev => prev.map(d => d.id === selectedDeal.id ? updatedDeal : d));
-                setIsEditingDeal(false);
-                toast.success('Negócio atualizado');
-            }
+            const updatedDeal = { ...selectedDeal, ...editedDeal };
+            setSelectedDeal(updatedDeal);
+            setDeals(prev => prev.map(d => d.id === selectedDeal.id ? updatedDeal : d));
+            setIsEditingDeal(false);
+            toast.success('Negócio atualizado');
         } catch (error) {
             toast.error('Erro ao atualizar negócio');
         }

@@ -11,7 +11,19 @@ import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
 import ScheduleMessageModal from './chat/ScheduleMessageModal';
 import { TagsEditor } from './TagsEditor';
-import { updateLeadTags, getAllTags } from '../services/api';
+import { supabaseUpdateLeadTags, supabaseGetAllTags } from '../services/supabaseApi';
+import {
+    supabaseGetConversation,
+    supabaseGetMessages,
+    supabaseGetAvailableAgents,
+    supabaseTransferConversation,
+    supabaseCloseConversation,
+    supabaseHoldConversation,
+    supabaseResumeConversation,
+    supabaseUpdateLeadStatus,
+    supabaseSendWhatsAppMessage,
+    supabaseSendWhatsAppTemplate
+} from '../services/supabaseApi';
 
 interface Message {
     id: string;
@@ -54,7 +66,7 @@ interface ChatViewProps {
     embedded?: boolean; // When true, don't use h-dvh and hide back button
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://xedfkizltrervaltuzrx.supabase.co';
 
 const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onConversationClosed, embedded = false }) => {
     const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -95,7 +107,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     useEffect(() => {
         if (showTagsPopover) {
-            getAllTags().then(setAvailableTags);
+            supabaseGetAllTags().then(setAvailableTags);
         }
     }, [showTagsPopover]);
 
@@ -123,7 +135,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 lead: { ...prev.lead, tags: newTags }
             } : null);
 
-            await updateLeadTags(conversation.lead.id, newTags);
+            await supabaseUpdateLeadTags(conversation.lead.id, newTags);
             toast.success('Tags atualizadas');
         } catch (error) {
             toast.error('Erro ao atualizar tags');
@@ -229,7 +241,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/whatsapp/upload`, {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-api/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
@@ -283,12 +295,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/whatsapp/upload`, {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-api/upload`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                    // Content-Type is set automatically for FormData
-                },
                 body: formData
             });
 
@@ -317,19 +325,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const fetchAvailableAgents = async () => {
         setIsLoadingAgents(true);
         try {
-            const token = localStorage.getItem('token');
-            // Fetch agents from same pipeline or all relevant ones
-            // Assuming current conversation pipeline implies target agents
-            const response = await fetch(`${API_URL}/conversations/agents/available?pipeline=${conversation?.pipeline}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                // Filter out current assigned agent
-                setAvailableAgents(data.filter((a: any) => a.id !== conversation?.assignedAgent?.id));
-                setShowTransferModal(true);
-                setShowActions(false); // Close actions menu
-            }
+            const agents = await supabaseGetAvailableAgents(conversation?.pipeline);
+            setAvailableAgents(agents.filter((a: any) => a.id !== conversation?.assignedAgent?.id));
+            setShowTransferModal(true);
+            setShowActions(false);
         } catch (error) {
             toast.error('Erro ao buscar agentes');
         } finally {
@@ -339,15 +338,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     const handleTransfer = async (newAgentId: string) => {
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/conversations/${conversationId}/transfer`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ newAgentId })
-            });
+            await supabaseTransferConversation(conversationId, newAgentId);
             toast.success('Conversa transferida com sucesso!');
             setShowTransferModal(false);
             onConversationClosed();
@@ -361,15 +352,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     // Fetch conversation details
     const fetchConversation = useCallback(async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/conversations/${conversationId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setConversation(data);
-                setMessages(data.messages || []);
-            }
+            const data = await supabaseGetConversation(conversationId);
+            setConversation(data as any);
+            const msgs = await supabaseGetMessages(conversationId);
+            setMessages(msgs);
         } catch (error) {
             console.error('Error fetching conversation:', error);
         } finally {
@@ -388,67 +374,60 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
         const pollInterval = setInterval(async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/conversations/${conversationId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    const serverMessages: Message[] = data.messages || [];
+                const serverMessages = await supabaseGetMessages(conversationId);
 
-                    setMessages(prev => {
-                        // Build lookup maps by waMessageId (primary) and id (fallback)
-                        const localByWaId = new Map<string, number>();
-                        const localById = new Map<string, number>();
-                        prev.forEach((m, idx) => {
-                            if (m.waMessageId) localByWaId.set(m.waMessageId, idx);
-                            localById.set(m.id, idx);
-                        });
-
-                        let hasChanges = false;
-                        const updated = [...prev];
-
-                        // Process each server message
-                        serverMessages.forEach(serverMsg => {
-                            // Try to find local message by waMessageId first, then by id
-                            let localIdx = -1;
-                            if (serverMsg.waMessageId && localByWaId.has(serverMsg.waMessageId)) {
-                                localIdx = localByWaId.get(serverMsg.waMessageId)!;
-                            } else if (localById.has(serverMsg.id)) {
-                                localIdx = localById.get(serverMsg.id)!;
-                            }
-
-                            if (localIdx !== -1) {
-                                // Message exists locally - only update if status changed
-                                const localMsg = updated[localIdx];
-                                if (localMsg.status !== serverMsg.status) {
-                                    updated[localIdx] = { ...localMsg, status: serverMsg.status };
-                                    hasChanges = true;
-                                }
-                            } else {
-                                // Message doesn't exist locally - add it
-                                // But skip if we have a pending message with same text (optimistic UI)
-                                const hasPendingMatch = prev.some(m =>
-                                    m.status === 'pending' &&
-                                    m.direction === serverMsg.direction &&
-                                    m.text === serverMsg.text
-                                );
-                                if (!hasPendingMatch) {
-                                    updated.push(serverMsg);
-                                    hasChanges = true;
-                                }
-                            }
-                        });
-
-                        if (!hasChanges) return prev;
-
-                        // Sort and return
-                        updated.sort((a, b) =>
-                            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                        );
-                        return updated;
+                setMessages(prev => {
+                    // Build lookup maps by waMessageId (primary) and id (fallback)
+                    const localByWaId = new Map<string, number>();
+                    const localById = new Map<string, number>();
+                    prev.forEach((m, idx) => {
+                        if (m.waMessageId) localByWaId.set(m.waMessageId, idx);
+                        localById.set(m.id, idx);
                     });
-                }
+
+                    let hasChanges = false;
+                    const updated = [...prev];
+
+                    // Process each server message
+                    serverMessages.forEach(serverMsg => {
+                        // Try to find local message by waMessageId first, then by id
+                        let localIdx = -1;
+                        if (serverMsg.waMessageId && localByWaId.has(serverMsg.waMessageId)) {
+                            localIdx = localByWaId.get(serverMsg.waMessageId)!;
+                        } else if (localById.has(serverMsg.id)) {
+                            localIdx = localById.get(serverMsg.id)!;
+                        }
+
+                        if (localIdx !== -1) {
+                            // Message exists locally - only update if status changed
+                            const localMsg = updated[localIdx];
+                            if (localMsg.status !== serverMsg.status) {
+                                updated[localIdx] = { ...localMsg, status: serverMsg.status };
+                                hasChanges = true;
+                            }
+                        } else {
+                            // Message doesn't exist locally - add it
+                            // But skip if we have a pending message with same text (optimistic UI)
+                            const hasPendingMatch = prev.some(m =>
+                                m.status === 'pending' &&
+                                m.direction === serverMsg.direction &&
+                                m.text === serverMsg.text
+                            );
+                            if (!hasPendingMatch) {
+                                updated.push(serverMsg);
+                                hasChanges = true;
+                            }
+                        }
+                    });
+
+                    if (!hasChanges) return prev;
+
+                    // Sort and return
+                    updated.sort((a, b) =>
+                        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                    );
+                    return updated;
+                });
             } catch (error) {
                 // Silent fail for polling
             }
@@ -548,34 +527,22 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         scrollToBottom();
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/whatsapp/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    to: conversation.lead.phone,
-                    text: textToSend,
-                    leadId: conversation.lead.id
-                })
-            });
+            const result = await supabaseSendWhatsAppMessage(
+                conversation.lead.phone,
+                textToSend,
+                conversationId,
+                conversation.lead.id
+            );
 
-            if (!response.ok) throw new Error('Failed to send');
-
-            const data = await response.json();
-
-            // On API success, update the temp message (id/status) if the socket hasn't replaced it yet
             setMessages(prev => {
                 const index = prev.findIndex(m => m.id === tempId);
                 if (index !== -1) {
                     const updated = [...prev];
                     updated[index] = {
                         ...updated[index],
-                        id: data.dbId || data.messageId, // Use DB ID if available
+                        id: result.messageId || tempId,
                         status: 'sent',
-                        waMessageId: data.messageId
+                        waMessageId: result.messageId
                     };
                     return updated;
                 }
@@ -601,15 +568,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     // Quick Actions
     const handlePaymentSignal = async () => {
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/conversations/${conversationId}/close`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'payment' })
-            });
+            await supabaseCloseConversation(conversationId);
             toast.success('Sinal confirmado! Lead movido para Pós-Venda.');
             onConversationClosed();
         } catch (error) {
@@ -620,18 +579,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     // Hold conversation (pause atendimento)
     const handleHold = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/conversations/${conversationId}/hold`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (response.ok) {
-                setConversation(prev => prev ? { ...prev, status: 'on_hold' } : null);
-                toast.info('Conversa colocada em espera');
-            }
+            await supabaseHoldConversation(conversationId);
+            setConversation(prev => prev ? { ...prev, status: 'on_hold' } : null);
+            toast.info('Conversa colocada em espera');
         } catch (error) {
             toast.error('Erro ao colocar conversa em espera');
         }
@@ -640,18 +590,9 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     // Resume conversation from hold
     const handleResume = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/conversations/${conversationId}/resume`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (response.ok) {
-                setConversation(prev => prev ? { ...prev, status: 'active' } : null);
-                toast.success('Atendimento retomado');
-            }
+            await supabaseResumeConversation(conversationId);
+            setConversation(prev => prev ? { ...prev, status: 'active' } : null);
+            toast.success('Atendimento retomado');
         } catch (error) {
             toast.error('Erro ao retomar conversa');
         }
@@ -660,15 +601,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     // Close conversation with reason modal
     const handleCloseConversation = async () => {
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/conversations/${conversationId}/close`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'resolved' })
-            });
+            await supabaseCloseConversation(conversationId);
             toast.success('Atendimento encerrado');
             onConversationClosed();
         } catch (error) {
@@ -678,15 +611,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
 
     const handleNoInterest = async () => {
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/conversations/${conversationId}/close`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'no_interest' })
-            });
+            await supabaseCloseConversation(conversationId);
             toast.info('Conversa fechada - Sem interesse');
             onConversationClosed();
         } catch (error) {
@@ -706,31 +631,16 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const handleMoveStage = async (newStage: string) => {
         if (!conversation) return;
 
-        const token = localStorage.getItem('token');
         try {
-            const response = await fetch(`${API_URL}/leads/${conversation.lead.id}/status`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: newStage })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update status');
-            }
-
-            const updatedLead = await response.json();
+            const updatedLead = await supabaseUpdateLeadStatus(conversation.lead.id, newStage, conversation.pipeline);
             toast.success(`Lead movido para: ${newStage}`);
 
-            // Update local state
             setConversation(prev => prev ? {
                 ...prev,
                 lead: {
                     ...prev.lead,
-                    statusHT: updatedLead.statusHT || updatedLead.status_ht || (conversation.pipeline === 'high_ticket' ? newStage : prev.lead.statusHT),
-                    statusLT: updatedLead.statusLT || updatedLead.status_lt || (conversation.pipeline === 'low_ticket' ? newStage : prev.lead.statusLT)
+                    statusHT: updatedLead.statusHT || (conversation.pipeline === 'high_ticket' ? newStage : prev.lead.statusHT),
+                    statusLT: updatedLead.statusLT || (conversation.pipeline === 'low_ticket' ? newStage : prev.lead.statusLT)
                 }
             } : null);
         } catch (error) {
@@ -744,43 +654,27 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
         if (!conversation) return;
 
-        const token = localStorage.getItem('token');
         const userName = localStorage.getItem('userName') || 'Você';
-        const userId = localStorage.getItem('userId');
+        const currentUserId = localStorage.getItem('userId');
 
         try {
-            const response = await fetch(`${API_URL}/whatsapp/send-template`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    to: conversation.lead.phone,
-                    templateName,
-                    parameters,
-                    leadId: conversation.lead.id,
-                    fullText
-                })
-            });
+            const result = await supabaseSendWhatsAppTemplate(
+                conversation.lead.phone,
+                templateName,
+                { components: parameters.length > 0 ? [{ type: 'body', parameters: parameters.map(p => ({ type: 'text', text: p })) }] : undefined },
+                conversationId,
+                conversation.lead.id
+            );
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to send template');
-            }
-
-            const result = await response.json();
-
-            // Add template message to local state
             const newMessage: Message = {
-                id: result.dbId || `temp-${Date.now()}`,
+                id: result.messageId || `temp-${Date.now()}`,
                 direction: 'out',
                 text: fullText || `📋 Template: ${templateName}`,
                 type: 'template',
                 templateName: templateName,
                 status: 'sent',
                 createdAt: new Date().toISOString(),
-                sentByUser: userId ? { id: userId, name: userName } : undefined,
+                sentByUser: currentUserId ? { id: currentUserId, name: userName } : undefined,
                 waMessageId: result.messageId
             };
 

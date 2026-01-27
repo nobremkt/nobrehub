@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Package } from 'lucide-react';
 import { Product } from '../../types/Product';
+import { supabaseGetProducts } from '../../services/supabaseApi';
 
 interface ProductSelectProps {
     value: string;
@@ -15,16 +16,8 @@ const ProductSelect: React.FC<ProductSelectProps> = ({ value, onChange, classNam
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/products`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setProducts(data);
-                }
+                const data = await supabaseGetProducts();
+                setProducts(data as Product[]);
             } catch (error) {
                 console.error('Error fetching products:', error);
             } finally {

@@ -5,6 +5,11 @@ import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
 import CRMSidebar from '../chat/CRMSidebar';
 import Lead360Modal, { TabType } from '../Lead360Modal';
+import {
+    supabaseGetActiveConversations,
+    supabaseGetConversationByLead,
+    supabaseUpdateLeadStatus
+} from '../../services/supabaseApi';
 
 interface Conversation {
     id: string;
@@ -32,8 +37,6 @@ interface ChatLayoutProps {
     initialLeadId?: string | null;
     onConversationOpened?: () => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /**
  * ChatLayout - 3-column layout for chat interface
@@ -65,14 +68,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/conversations/active`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setConversations(data);
-            }
+            const data = await supabaseGetActiveConversations();
+            setConversations(data as Conversation[]);
         } catch (error) {
             console.error('Error fetching conversations:', error);
         } finally {
@@ -89,31 +86,20 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         if (!currentConv) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/leads/${currentConv.lead.id}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-
-            if (response.ok) {
-                // Update local state immediately
-                setConversations(prev => prev.map(conv => {
-                    if (conv.id === selectedConversationId) {
-                        const updatedLead = { ...conv.lead };
-                        if (conv.pipeline === 'high_ticket') {
-                            updatedLead.statusHT = newStatus;
-                        } else {
-                            updatedLead.statusLT = newStatus;
-                        }
-                        return { ...conv, lead: updatedLead };
+            await supabaseUpdateLeadStatus(currentConv.lead.id, newStatus);
+            // Update local state immediately
+            setConversations(prev => prev.map(conv => {
+                if (conv.id === selectedConversationId) {
+                    const updatedLead = { ...conv.lead };
+                    if (conv.pipeline === 'high_ticket') {
+                        updatedLead.statusHT = newStatus;
+                    } else {
+                        updatedLead.statusLT = newStatus;
                     }
-                    return conv;
-                }));
-            }
+                    return { ...conv, lead: updatedLead };
+                }
+                return conv;
+            }));
         } catch (error) {
             console.error('Error moving stage:', error);
         }
@@ -136,22 +122,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             }
 
             try {
-                const token = localStorage.getItem('token');
-                // Use create=true to automatically create a conversation if none exists
-                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}?create=true`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const conv = await response.json();
-                    if (conv?.id) {
-                        setConversations(prev => {
-                            if (prev.some(c => c.id === conv.id)) return prev;
-                            return [conv, ...prev];
-                        });
-                        setSelectedConversationId(conv.id);
-                        onConversationOpened?.();
-                    }
+                // Use supabaseGetConversationByLead to get or create conversation
+                const conv = await supabaseGetConversationByLead(initialLeadId);
+                if (conv?.id) {
+                    setConversations(prev => {
+                        if (prev.some(c => c.id === conv.id)) return prev;
+                        return [conv as Conversation, ...prev];
+                    });
+                    setSelectedConversationId(conv.id);
+                    onConversationOpened?.();
                 } else {
                     onConversationOpened?.();
                 }

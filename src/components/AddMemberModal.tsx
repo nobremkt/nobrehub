@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Building2, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
+import { supabaseCreateUser } from '../services/supabaseApi';
 
 interface Sector {
     id: string;
@@ -58,24 +59,13 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
         setError(null);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/users`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    ...formData,
-                    sectorId: formData.sectorId || undefined
-                })
+            await supabaseCreateUser({
+                email: formData.email,
+                name: formData.name,
+                password: formData.password,
+                role: formData.role,
+                sectorId: formData.sectorId || undefined
             });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Erro ao criar membro');
-            }
-
             onSuccess();
             onClose();
         } catch (err: any) {

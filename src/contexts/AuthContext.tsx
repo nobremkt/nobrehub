@@ -1,16 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import * as api from '../services/api';
-
-interface User {
-    id: string;
-    email: string;
-    name: string;
-    role: 'admin' | 'sdr' | 'closer_ht' | 'closer_lt';
-    pipelineType?: 'high_ticket' | 'low_ticket';
-}
+import { supabaseLogin, supabaseGetCurrentUser, supabaseLogout, AuthUser } from '../services/supabaseAuth';
 
 interface AuthContextType {
-    user: User | null;
+    user: AuthUser | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -20,17 +12,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Check for existing session on mount
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
-            api.getCurrentUser()
-                .then(setUser)
+            supabaseGetCurrentUser(token)
+                .then((user) => {
+                    if (user) setUser(user);
+                })
                 .catch(() => {
-                    api.logout();
+                    supabaseLogout();
                     setUser(null);
                 })
                 .finally(() => setIsLoading(false));
@@ -40,12 +34,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const login = useCallback(async (email: string, password: string) => {
-        const response = await api.login(email, password);
+        const response = await supabaseLogin(email, password);
+        localStorage.setItem('token', response.token);
         setUser(response.user);
     }, []);
 
     const logout = useCallback(() => {
-        api.logout();
+        supabaseLogout();
         setUser(null);
     }, []);
 

@@ -3,10 +3,10 @@ import { Product, CreateProductDTO, UpdateProductDTO } from '../../types/Product
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Edit2, Trash2, Search, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabaseGetProducts, supabaseCreateProduct, supabaseUpdateProduct, supabaseDeleteProduct } from '../../services/supabaseApi';
 
 const ProductsManager: React.FC = () => {
     const { user } = useAuth();
-    const token = localStorage.getItem('token');
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,15 +24,8 @@ const ProductsManager: React.FC = () => {
 
     const fetchProducts = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/products`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setProducts(data);
-            }
+            const data = await supabaseGetProducts();
+            setProducts(data as Product[]);
         } catch (error) {
             console.error('Error fetching products:', error);
         } finally {
@@ -50,25 +43,14 @@ const ProductsManager: React.FC = () => {
                 price: parseFloat(price.replace('R$', '').replace('.', '').replace(',', '.').trim())
             };
 
-            const url = editingProduct
-                ? `${import.meta.env.VITE_API_URL}/products/${editingProduct.id}`
-                : `${import.meta.env.VITE_API_URL}/products`;
-
-            const method = editingProduct ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(productData)
-            });
-
-            if (response.ok) {
-                fetchProducts();
-                handleCloseModal();
+            if (editingProduct) {
+                await supabaseUpdateProduct(editingProduct.id, productData);
+            } else {
+                await supabaseCreateProduct(productData);
             }
+
+            fetchProducts();
+            handleCloseModal();
         } catch (error) {
             console.error('Error saving product:', error);
         }
@@ -78,16 +60,8 @@ const ProductsManager: React.FC = () => {
         if (!confirm('Tem certeza que deseja remover este produto?')) return;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/products/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                fetchProducts();
-            }
+            await supabaseDeleteProduct(id);
+            fetchProducts();
         } catch (error) {
             console.error('Error deleting product:', error);
         }

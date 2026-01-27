@@ -3,6 +3,7 @@ import { MessageCircle, Clock, User, Search, Phone, Building, DollarSign, Chevro
 import { useSocket } from '../hooks/useSocket';
 import ChatView from './ChatView';
 import InboxFilter, { InboxFilters } from './chat/InboxFilter';
+import { supabaseGetActiveConversations, supabaseGetConversationByLead } from '../services/supabaseApi';
 
 interface Conversation {
     id: string;
@@ -29,8 +30,6 @@ interface InboxProps {
     initialLeadId?: string | null;
     onConversationOpened?: () => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, onConversationOpened }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -60,20 +59,14 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/conversations/active`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setConversations(data);
-            }
+            const data = await supabaseGetActiveConversations(userId);
+            setConversations(data as Conversation[]);
         } catch (error) {
             console.error('Error fetching conversations:', error);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         fetchConversations();
@@ -94,22 +87,15 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
 
             // If not found locally, try to fetch from API (might be assigned to another agent or in queue)
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/conversations/by-lead/${initialLeadId}?create=true`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const conv = await response.json();
-                    if (conv && conv.id) {
-                        // Add to local list and select it
-                        setConversations(prev => {
-                            if (prev.some(c => c.id === conv.id)) return prev;
-                            return [conv, ...prev];
-                        });
-                        setSelectedConversation(conv.id);
-                        onConversationOpened?.();
-                    }
+                const conv = await supabaseGetConversationByLead(initialLeadId, true);
+                if (conv && conv.id) {
+                    // Add to local list and select it
+                    setConversations(prev => {
+                        if (prev.some(c => c.id === conv.id)) return prev;
+                        return [conv as Conversation, ...prev];
+                    });
+                    setSelectedConversation(conv.id);
+                    onConversationOpened?.();
                 } else {
                     console.log('No conversation found for lead:', initialLeadId);
                     onConversationOpened?.();

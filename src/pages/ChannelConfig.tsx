@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, Instagram, Check, Smartphone, AlertCircle, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getChannels, toggleChannel, Channel } from '../services/api';
+import { supabaseGetChannels, supabaseToggleChannel, Channel } from '../services/supabaseApi';
 
 const ChannelConfig: React.FC = () => {
     const [channels, setChannels] = useState<Channel[]>([]);
@@ -14,7 +14,7 @@ const ChannelConfig: React.FC = () => {
 
     const loadChannels = async () => {
         try {
-            const data = await getChannels();
+            const data = await supabaseGetChannels();
             setChannels(data);
         } catch (error) {
             console.error('Failed to load channels', error);
@@ -32,7 +32,7 @@ const ChannelConfig: React.FC = () => {
         ));
 
         try {
-            await toggleChannel(id, !currentStatus);
+            await supabaseToggleChannel(id, !currentStatus);
             toast.success(!currentStatus ? 'Canal habilitado' : 'Canal desabilitado');
         } catch (error) {
             toast.error('Erro ao atualizar canal');

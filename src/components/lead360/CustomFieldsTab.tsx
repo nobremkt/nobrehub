@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import * as api from '../../services/api';
+import { supabaseGetCustomFieldValues, supabaseSetCustomFieldValue, CustomField } from '../../services/supabaseApi';
 import ManageFieldsModal from './ManageFieldsModal';
 import PhoneInput from '../ui/PhoneInput';
 
@@ -27,7 +27,7 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
     baseFields = [],
     onSave
 }) => {
-    const [customFields, setCustomFields] = useState<api.CustomField[]>([]);
+    const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hideEmpty, setHideEmpty] = useState(false);
     const [isManaging, setIsManaging] = useState(false);
@@ -44,7 +44,7 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
     const loadCustomFields = async () => {
         setIsLoading(true);
         try {
-            const fields = await api.getCustomFieldValues(leadId);
+            const fields = await supabaseGetCustomFieldValues(leadId);
             // Filter by entity
             const entityFields = fields.filter(f => f.entity === entity);
             setCustomFields(entityFields);
@@ -64,7 +64,7 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
         if (value === undefined) return;
 
         try {
-            await api.setCustomFieldValue(leadId, fieldId, value);
+            await supabaseSetCustomFieldValue(leadId, fieldId, value);
             setCustomFields(prev =>
                 prev.map(f => f.id === fieldId ? { ...f, value } : f)
             );
@@ -100,7 +100,7 @@ export const CustomFieldsTab: React.FC<CustomFieldsTabProps> = ({
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
-    const getInputType = (type: api.CustomField['type']) => {
+    const getInputType = (type: CustomField['type']) => {
         switch (type) {
             case 'email': return 'email';
             case 'phone': return 'tel';

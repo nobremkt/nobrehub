@@ -4,7 +4,7 @@ import LeadModal from '../components/LeadModal';
 import Lead360Modal from '../components/Lead360Modal';
 import LossReasonModal from '../components/LossReasonModal';
 import { TagsDisplay } from '../components/TagsEditor';
-import { getLeads, Lead, deleteLead, createLead, updateLead, markLeadAsLost, getAllTags } from '../services/api';
+import { supabaseGetLeads, Lead, supabaseDeleteLead, supabaseCreateLead, supabaseUpdateLead, supabaseMarkLeadAsLost, supabaseGetAllTags } from '../services/supabaseApi';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 
@@ -58,7 +58,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
 
     const loadTags = async () => {
         try {
-            const tags = await getAllTags();
+            const tags = await supabaseGetAllTags();
             setAvailableTags(tags);
         } catch (error) {
             console.error('Failed to load tags', error);
@@ -84,7 +84,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
 
     const fetchLeads = async () => {
         try {
-            const data = await getLeads();
+            const data = await supabaseGetLeads();
             setLeads(data);
         } catch (error) {
             console.error('Erro ao buscar leads:', error);
@@ -172,7 +172,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
     const handleSaveLead = async (leadData: any) => {
         try {
             if (leadData.id) {
-                const updatedLead = await updateLead(leadData.id, {
+                const updatedLead = await supabaseUpdateLead(leadData.id, {
                     name: leadData.name,
                     email: leadData.email || undefined,
                     phone: leadData.phone,
@@ -187,7 +187,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                 setEditingLead(null);
                 toast.success('Contato atualizado!');
             } else {
-                const newLeadRaw = await createLead({
+                const newLeadRaw = await supabaseCreateLead({
                     name: leadData.name,
                     email: leadData.email || undefined,
                     phone: leadData.phone,
@@ -223,7 +223,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
     const handleBulkDelete = async () => {
         if (window.confirm(`Excluir ${selectedLeads.length} contatos?`)) {
             try {
-                await Promise.all(selectedLeads.map(id => deleteLead(id)));
+                await Promise.all(selectedLeads.map(id => supabaseDeleteLead(id)));
                 setLeads(leads.filter(l => !selectedLeads.includes(l.id)));
                 setSelectedLeads([]);
                 toast.success('Contatos excluídos!');
@@ -509,7 +509,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
                 onOpenChat={(lead) => onNavigateToChat && onNavigateToChat(lead.id)}
                 onUpdateLead={async (updates) => {
                     if (!detailLeadId) return;
-                    await updateLead(detailLeadId, updates as any);
+                    await supabaseUpdateLead(detailLeadId, updates as any);
                     setLeads(prev => prev.map(l => l.id === detailLeadId ? { ...l, ...updates } as Lead : l));
                 }}
             />

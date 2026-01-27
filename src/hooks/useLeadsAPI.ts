@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as api from '../services/api';
+import { supabaseGetLeads, supabaseCreateLead, supabaseUpdateLead, supabaseDeleteLead, supabaseUpdateLeadStatus, supabaseAssignLead, Lead as ApiLead, CreateLeadData } from '../services/supabaseApi';
 
 // Normalized Lead type for frontend compatibility
 export interface Lead {
@@ -20,7 +20,7 @@ export interface Lead {
 }
 
 // Adapter function to normalize API Lead to frontend Lead
-function normalizeApiLead(apiLead: api.Lead): Lead {
+function normalizeApiLead(apiLead: ApiLead): Lead {
     const status = apiLead.pipeline === 'high_ticket'
         ? (apiLead.statusHT || 'novo')
         : (apiLead.statusLT || 'novo');
@@ -34,7 +34,7 @@ function normalizeApiLead(apiLead: api.Lead): Lead {
         source: apiLead.source,
         pipeline: apiLead.pipeline,
         status,
-        assignedTo: apiLead.assignedUser?.name || apiLead.assignedTo || '',
+        assignedTo: apiLead.assignee?.name || apiLead.assignedTo || '',
         value: apiLead.estimatedValue,
         tags: apiLead.tags,
         notes: apiLead.notes || '',
@@ -47,8 +47,8 @@ interface UseLeadsReturn {
     leads: Lead[];
     loading: boolean;
     error: string | null;
-    addLead: (data: api.CreateLeadData) => Promise<Lead>;
-    updateLead: (id: string, data: Partial<api.CreateLeadData>) => Promise<Lead>;
+    addLead: (data: CreateLeadData) => Promise<Lead>;
+    updateLead: (id: string, data: Partial<CreateLeadData>) => Promise<Lead>;
     deleteLead: (id: string) => Promise<void>;
     updateLeadStatus: (id: string, status: string) => Promise<Lead>;
     assignLead: (id: string, userId: string) => Promise<Lead>;
@@ -64,7 +64,7 @@ export function useLeadsAPI(filters?: { pipeline?: string; status?: string }): U
         try {
             setLoading(true);
             setError(null);
-            const data = await api.getLeads(filters);
+            const data = await supabaseGetLeads(filters);
             setLeads(data.map(normalizeApiLead));
         } catch (err: any) {
             setError(err.message || 'Erro ao carregar leads');
@@ -77,34 +77,34 @@ export function useLeadsAPI(filters?: { pipeline?: string; status?: string }): U
         fetchLeads();
     }, [fetchLeads]);
 
-    const addLead = useCallback(async (data: api.CreateLeadData): Promise<Lead> => {
-        const newLead = await api.createLead(data);
+    const addLead = useCallback(async (data: CreateLeadData): Promise<Lead> => {
+        const newLead = await supabaseCreateLead(data);
         const normalized = normalizeApiLead(newLead);
         setLeads(prev => [normalized, ...prev]);
         return normalized;
     }, []);
 
-    const updateLead = useCallback(async (id: string, data: Partial<api.CreateLeadData>): Promise<Lead> => {
-        const updated = await api.updateLead(id, data);
+    const updateLead = useCallback(async (id: string, data: Partial<CreateLeadData>): Promise<Lead> => {
+        const updated = await supabaseUpdateLead(id, data);
         const normalized = normalizeApiLead(updated);
         setLeads(prev => prev.map(l => l.id === id ? normalized : l));
         return normalized;
     }, []);
 
     const deleteLead = useCallback(async (id: string): Promise<void> => {
-        await api.deleteLead(id);
+        await supabaseDeleteLead(id);
         setLeads(prev => prev.filter(l => l.id !== id));
     }, []);
 
     const updateLeadStatus = useCallback(async (id: string, status: string): Promise<Lead> => {
-        const updated = await api.updateLeadStatus(id, status);
+        const updated = await supabaseUpdateLeadStatus(id, status);
         const normalized = normalizeApiLead(updated);
         setLeads(prev => prev.map(l => l.id === id ? normalized : l));
         return normalized;
     }, []);
 
     const assignLead = useCallback(async (id: string, userId: string): Promise<Lead> => {
-        const updated = await api.assignLead(id, userId);
+        const updated = await supabaseAssignLead(id, userId);
         const normalized = normalizeApiLead(updated);
         setLeads(prev => prev.map(l => l.id === id ? normalized : l));
         return normalized;

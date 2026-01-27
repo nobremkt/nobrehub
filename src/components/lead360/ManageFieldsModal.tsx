@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, GripVertical, Save, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import * as api from '../../services/api';
+import { supabaseGetCustomFields, supabaseCreateCustomField, supabaseDeleteCustomField, CustomField } from '../../services/supabaseApi';
 
 interface ManageFieldsModalProps {
     isOpen: boolean;
@@ -13,7 +13,7 @@ interface ManageFieldsModalProps {
 interface NewFieldForm {
     name: string;
     key: string;
-    type: api.CustomField['type'];
+    type: CustomField['type'];
     placeholder: string;
     options: string; // Comma separated for input
 }
@@ -24,7 +24,7 @@ const ManageFieldsModal: React.FC<ManageFieldsModalProps> = ({
     entity,
     onFieldsChanged
 }) => {
-    const [fields, setFields] = useState<api.CustomField[]>([]);
+    const [fields, setFields] = useState<CustomField[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
@@ -46,7 +46,7 @@ const ManageFieldsModal: React.FC<ManageFieldsModalProps> = ({
     const loadFields = async () => {
         setIsLoading(true);
         try {
-            const data = await api.getCustomFields(entity);
+            const data = await supabaseGetCustomFields(entity);
             setFields(data);
         } catch (error) {
             toast.error('Erro ao carregar campos');
@@ -66,7 +66,7 @@ const ManageFieldsModal: React.FC<ManageFieldsModalProps> = ({
         const formattedKey = newField.key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 
         try {
-            await api.createCustomField({
+            await supabaseCreateCustomField({
                 name: newField.name,
                 key: formattedKey,
                 type: newField.type,
@@ -95,7 +95,7 @@ const ManageFieldsModal: React.FC<ManageFieldsModalProps> = ({
         if (!confirm(`Tem certeza que deseja excluir o campo "${name}"? Os dados associados serão perdidos.`)) return;
 
         try {
-            await api.deleteCustomField(id);
+            await supabaseDeleteCustomField(id);
             toast.success('Campo excluído');
             loadFields();
             onFieldsChanged();

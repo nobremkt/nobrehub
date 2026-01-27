@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPermissions, updatePermissions, RoleAccess } from '../../services/api';
+import { supabaseGetPermissions, supabaseUpdatePermissions, RoleAccess } from '../../services/supabaseApi';
 import { Shield, Check, Loader2, Save, Undo } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,7 +39,7 @@ const PermissionsManager: React.FC = () => {
     const loadPermissions = async () => {
         setLoading(true);
         try {
-            const data = await getPermissions();
+            const data = await supabaseGetPermissions();
             // Se API retorna vazio, criar estrutura default editável
             if (data.length === 0) {
                 const defaultPermissions = ROLES.map(role => ({
@@ -83,7 +83,7 @@ const PermissionsManager: React.FC = () => {
         setSaving(true);
         try {
             // Save all roles that changed (naive approach: save all)
-            await Promise.all(permissions.map(p => updatePermissions(p.role, p.permissions)));
+            await Promise.all(permissions.map(p => supabaseUpdatePermissions(p.role, p.permissions)));
             toast.success('Permissões atualizadas com sucesso!');
             setHasChanges(false);
         } catch (error) {

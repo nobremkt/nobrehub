@@ -5,7 +5,7 @@ import {
     Phone, Mail, CheckCircle2, AlertTriangle, ShoppingCart, CreditCard,
     MessageCircle, ArrowDownRight, ArrowUpRight
 } from 'lucide-react';
-import { Lead } from '../../services/api';
+import { Lead } from '../../services/supabaseApi';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import { cn } from '../../lib/utils';

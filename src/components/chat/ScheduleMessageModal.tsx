@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, X, Send, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabaseCreateScheduledMessage } from '../../services/supabaseApi';
 
 interface ScheduleMessageModalProps {
     isOpen: boolean;
@@ -8,8 +9,6 @@ interface ScheduleMessageModalProps {
     conversationId: string;
     leadName: string;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
     isOpen,
@@ -44,30 +43,16 @@ const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/scheduled-messages`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    conversationId,
-                    content: content.trim(),
-                    scheduledFor: scheduledFor.toISOString()
-                })
+            await supabaseCreateScheduledMessage({
+                conversationId,
+                content: content.trim(),
+                scheduledFor: scheduledFor.toISOString()
             });
-
-            if (response.ok) {
-                toast.success('Mensagem agendada!');
-                setContent('');
-                setDate('');
-                setTime('');
-                onClose();
-            } else {
-                const data = await response.json();
-                toast.error(data.error || 'Erro ao agendar mensagem');
-            }
+            toast.success('Mensagem agendada!');
+            setContent('');
+            setDate('');
+            setTime('');
+            onClose();
         } catch (error) {
             toast.error('Erro ao agendar mensagem');
         } finally {

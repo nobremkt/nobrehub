@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Filter, Check, ChevronDown, Tag, Trophy, ListFilter } from 'lucide-react';
-import * as api from '../../services/api';
+import { supabaseGetAllTags } from '../../services/supabaseApi';
 
 export interface InboxFilters {
     pipeline: 'all' | 'high_ticket' | 'low_ticket';
@@ -62,7 +62,7 @@ const InboxFilter: React.FC<InboxFilterProps> = ({
     const loadTags = async () => {
         setIsLoadingTags(true);
         try {
-            const tags = await api.getAllTags();
+            const tags = await supabaseGetAllTags();
             setAvailableTags(tags);
         } catch (error) {
             console.error('Failed to load tags', error);
@@ -137,8 +137,8 @@ const InboxFilter: React.FC<InboxFilterProps> = ({
                                     stage: null // Reset stage when pipeline changes
                                 }))}
                                 className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border transition-all ${localFilters.pipeline === option.value
-                                        ? 'bg-violet-50 border-violet-200 text-violet-700 font-medium'
-                                        : 'bg-white border-slate-200 text-slate-600 hover:border-violet-200 hover:bg-slate-50'
+                                    ? 'bg-violet-50 border-violet-200 text-violet-700 font-medium'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-violet-200 hover:bg-slate-50'
                                     }`}
                             >
                                 {option.label}
@@ -184,8 +184,8 @@ const InboxFilter: React.FC<InboxFilterProps> = ({
                                     key={tag}
                                     onClick={() => toggleTag(tag)}
                                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${localFilters.tags.includes(tag)
-                                            ? 'bg-violet-100 border-violet-200 text-violet-700'
-                                            : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'
+                                        ? 'bg-violet-100 border-violet-200 text-violet-700'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'
                                         }`}
                                 >
                                     {tag}
@@ -209,8 +209,8 @@ const InboxFilter: React.FC<InboxFilterProps> = ({
                                     channel: option.value as any
                                 }))}
                                 className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border transition-all ${localFilters.channel === option.value
-                                        ? 'bg-violet-50 border-violet-200 text-violet-700 font-medium'
-                                        : 'bg-white border-slate-200 text-slate-600 hover:border-violet-200 hover:bg-slate-50'
+                                    ? 'bg-violet-50 border-violet-200 text-violet-700 font-medium'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-violet-200 hover:bg-slate-50'
                                     }`}
                             >
                                 {option.label}

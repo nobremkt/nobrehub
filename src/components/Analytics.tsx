@@ -21,7 +21,7 @@ import {
     ArrowDownRight,
     Loader2
 } from 'lucide-react';
-import { getDashboardStats, DashboardStats } from '../services/api';
+import { supabaseGetDashboardStats, DashboardStats } from '../services/supabaseApi';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'sonner';
 
@@ -32,7 +32,7 @@ const Analytics: React.FC = () => {
 
     const loadStats = async () => {
         try {
-            const data = await getDashboardStats();
+            const data = await supabaseGetDashboardStats();
             setStats(data);
         } catch (error) {
             console.error('Failed to load stats:', error);

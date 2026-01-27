@@ -11,6 +11,14 @@ import { formatPhoneDisplay, getFullPhoneNumber } from '../lib/phoneFormat';
 import PhoneInput from './ui/PhoneInput';
 import CustomFieldsTab from './lead360/CustomFieldsTab';
 import ProductSelect from './ui/ProductSelect';
+import {
+    supabaseCreateDeal,
+    supabaseGetLeadDeals,
+    supabaseGetLeadConversations,
+    supabaseGetLeadHistory,
+    supabaseDeleteDeal,
+    Deal as SupabaseDeal
+} from '../services/supabaseApi';
 
 interface Deal {
     id: string;
@@ -71,8 +79,6 @@ interface Lead360ModalProps {
     initialTab?: TabType;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 export type TabType = 'atividades' | 'contato' | 'empresa' | 'negocios' | 'conversas' | 'historico';
 
 const Lead360Modal: React.FC<Lead360ModalProps> = ({
@@ -122,31 +128,24 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
     const handleAddDeal = async () => {
         if (!lead) return;
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/deals`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    leadId: lead.id,
-                    value: parseFloat(newDeal.value) || 0,
-                    product: newDeal.product || undefined,
-                    origin: newDeal.origin || undefined,
-                    pipeline: lead.pipeline || 'high_ticket',
-                    status: 'open'
-                })
+            const createdDeal = await supabaseCreateDeal({
+                leadId: lead.id,
+                pipeline: lead.pipeline || 'high_ticket',
+                value: parseFloat(newDeal.value) || 0
             });
-            if (response.ok) {
-                const createdDeal = await response.json();
-                setDeals(prev => [...prev, createdDeal]);
-                setNewDeal({ value: '', product: '', origin: '', productId: '' });
-                setIsAddingDeal(false);
-                toast.success('Negócio criado com sucesso!');
-            } else {
-                toast.error('Erro ao criar negócio');
-            }
+            const localDeal: Deal = {
+                id: createdDeal.id,
+                value: createdDeal.value,
+                product: newDeal.product || undefined,
+                origin: newDeal.origin || undefined,
+                status: 'open',
+                pipeline: lead.pipeline || 'high_ticket',
+                createdAt: createdDeal.createdAt
+            };
+            setDeals(prev => [...prev, localDeal]);
+            setNewDeal({ value: '', product: '', origin: '', productId: '' });
+            setIsAddingDeal(false);
+            toast.success('Negócio criado com sucesso!');
         } catch (error) {
             toast.error('Erro ao criar negócio');
         }
@@ -202,26 +201,31 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
 
         const fetchAllData = async () => {
             setIsLoading(true);
-            const token = localStorage.getItem('token');
-
             try {
-                const res = await fetch(`${API_URL}/leads/${lead.id}/details`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                // Fetch deals, conversations, and history in parallel
+                const [dealsData, conversationsData, historyData] = await Promise.all([
+                    supabaseGetLeadDeals(lead.id),
+                    supabaseGetLeadConversations(lead.id),
+                    supabaseGetLeadHistory(lead.id)
+                ]);
 
-                if (res.ok) {
-                    const data = await res.json();
-                    setDeals(data.deals || []);
-                    setConversations(data.conversations || []);
-                    // Map history items to expected format with readable descriptions
-                    setHistory((data.history || []).map((h: any) => ({
-                        id: h.id,
-                        action: h.action,
-                        description: h.details, // Keep raw for formatting function
-                        createdAt: h.createdAt,
-                        createdBy: h.user
-                    })));
-                }
+                setDeals(dealsData.map((d: any) => ({
+                    id: d.id,
+                    value: d.value,
+                    product: d.product,
+                    origin: d.origin,
+                    status: d.status,
+                    pipeline: d.pipeline,
+                    createdAt: d.createdAt
+                })));
+                setConversations(conversationsData);
+                setHistory(historyData.map((h: any) => ({
+                    id: h.id,
+                    action: h.action,
+                    description: h.details,
+                    createdAt: h.createdAt,
+                    createdBy: h.user
+                })));
             } catch (error) {
                 console.error('Error fetching lead details:', error);
             } finally {
@@ -590,15 +594,9 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                                                         onClick={async () => {
                                                             if (!confirm('Deseja excluir este negócio?')) return;
                                                             try {
-                                                                const token = localStorage.getItem('token');
-                                                                const res = await fetch(`${API_URL}/deals/${deal.id}`, {
-                                                                    method: 'DELETE',
-                                                                    headers: { Authorization: `Bearer ${token}` }
-                                                                });
-                                                                if (res.ok) {
-                                                                    setDeals(prev => prev.filter(d => d.id !== deal.id));
-                                                                    toast.success('Negócio excluído');
-                                                                }
+                                                                await supabaseDeleteDeal(deal.id);
+                                                                setDeals(prev => prev.filter(d => d.id !== deal.id));
+                                                                toast.success('Negócio excluído');
                                                             } catch {
                                                                 toast.error('Erro ao excluir');
                                                             }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Phone, Mail, Briefcase, DollarSign, Calendar, MessageCircle, Edit2, Trash2, Target, Globe, User } from 'lucide-react';
-import { Lead } from '../services/api';
+import { Lead } from '../services/supabaseApi';
 
 interface LeadDetailModalProps {
     isOpen: boolean;

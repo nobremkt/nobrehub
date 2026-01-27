@@ -4,7 +4,14 @@ import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Filter, X } from '
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import Lead360Modal from './Lead360Modal';
-import { getLeads, Lead, updateLeadStage, updateLead } from '../services/api';
+// Removed api.ts import - fully migrated to supabaseApi.ts
+import {
+  supabaseGetLeads,
+  supabaseUpdateLeadStage,
+  supabaseUpdateLead,
+  Lead,
+  supabaseGetPipelineStages
+} from '../services/supabaseApi';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 import LeadCard from './kanban/LeadCard';
@@ -231,8 +238,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
         if (currentPipeline === 'sales') {
           // For sales: fetch BOTH HT and LT at once for instant switching
           const [htData, ltData] = await Promise.all([
-            getLeads({ pipeline: 'high_ticket' }),
-            getLeads({ pipeline: 'low_ticket' })
+            supabaseGetLeads({ pipeline: 'high_ticket' }),
+            supabaseGetLeads({ pipeline: 'low_ticket' })
           ]);
           const allSales = [...htData, ...ltData];
 
@@ -244,7 +251,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
         } else {
           // For production/post_sales: just fetch that pipeline
           const pipelineType = getApiPipelineType(currentPipeline);
-          const data = await getLeads({ pipeline: pipelineType });
+          const data = await supabaseGetLeads({ pipeline: pipelineType });
 
           if (monitoredUser) {
             setLeads(data.filter(l => l.assignedAgentId === monitoredUser.id));
@@ -324,20 +331,11 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
 
       try {
         const pipelineType = currentPipeline === 'sales' ? salesSubPipeline : currentPipeline;
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages?pipeline=${pipelineType}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.length > 0) {
-            setBoardStages(data);
-          } else {
-            // Fallback to static if no dynamic stages found (e.g. before seed)
-            setBoardStages(PIPELINE_TEMPLATES[pipelineType as keyof typeof PIPELINE_TEMPLATES]);
-          }
+        const data = await supabaseGetPipelineStages(pipelineType);
+        if (data && data.length > 0) {
+          setBoardStages(data as BoardStageConfig[]);
         } else {
+          // Fallback to static if no dynamic stages found (e.g. before seed)
           setBoardStages(PIPELINE_TEMPLATES[pipelineType as keyof typeof PIPELINE_TEMPLATES]);
         }
       } catch (error) {
@@ -403,7 +401,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
       try {
         // Use transactional endpoint with audit log
         const pipelineType = currentPipeline === 'sales' ? salesSubPipeline : currentPipeline as any;
-        await updateLeadStage(leadId, newStatus, pipelineType);
+        await supabaseUpdateLeadStage(leadId, newStatus, pipelineType);
         toast.success('Etapa atualizada');
       } catch (error) {
         console.error('Failed to update stage', error);
@@ -715,7 +713,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
                       onOpenChat={handleOpenChat}
                       onSchedule={handleScheduleTask}
                       onMoreOptions={handleMoreOptions}
-                      agentName={lead.assignedUser?.name}
+                      agentName={lead.assignee?.name}
                     />
                   ))}
                 </KanbanColumn>
@@ -753,7 +751,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
           onClose={() => { setIsLead360Open(false); setSelectedLead(null); }}
           onUpdateLead={async (updates) => {
             if (!selectedLead) return;
-            await updateLead(selectedLead.id, updates as any);
+            await supabaseUpdateLead(selectedLead.id, updates as any);
             setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, ...updates } as Lead : l));
           }}
         />

@@ -28,15 +28,14 @@ import {
     Check
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface PipelineStage {
-    id: string;
-    name: string;
-    color: string;
-    order: number;
-    isSystem: boolean;
-    isActive: boolean;
-}
+import {
+    supabaseGetPipelineStages,
+    supabaseCreatePipelineStage,
+    supabaseUpdatePipelineStage,
+    supabaseDeletePipelineStage,
+    supabaseReorderPipelineStages,
+    PipelineStage
+} from '../../services/supabaseApi';
 
 const PIPELINE_TYPES = [
     { id: 'high_ticket', label: 'High Ticket' },
@@ -225,19 +224,8 @@ const PipelineSettings: React.FC = () => {
     const fetchStages = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            // Assume API returns stages sorted by order
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages?pipeline=${selectedPipeline}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setStages(data);
-            } else {
-                // Fallback to static
-                console.warn("API Unavailable: Using static templates");
-                setStages(PIPELINE_TEMPLATES[selectedPipeline as keyof typeof PIPELINE_TEMPLATES] as PipelineStage[]);
-            }
+            const data = await supabaseGetPipelineStages(selectedPipeline);
+            setStages(data);
         } catch (error) {
             console.error('Failed to fetch stages (using static fallback):', error);
             // Fallback to static
@@ -267,17 +255,8 @@ const PipelineSettings: React.FC = () => {
 
     const saveOrder = async (items: PipelineStage[]) => {
         try {
-            const token = localStorage.getItem('token');
             const orderUpdates = items.map((stage, index) => ({ id: stage.id, order: index }));
-
-            await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages/reorder`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ stages: orderUpdates })
-            });
+            await supabaseReorderPipelineStages(orderUpdates);
         } catch (error) {
             console.error('Failed to save order', error);
             toast.error('Erro ao salvar ordem');
@@ -288,26 +267,15 @@ const PipelineSettings: React.FC = () => {
         if (!newName.trim()) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    name: newName,
-                    pipeline: selectedPipeline,
-                    color: newColor
-                })
+            await supabaseCreatePipelineStage({
+                name: newName,
+                pipeline: selectedPipeline,
+                color: newColor
             });
-
-            if (response.ok) {
-                toast.success('Etapa adicionada');
-                setNewName('');
-                setIsAdding(false);
-                fetchStages();
-            }
+            toast.success('Etapa adicionada');
+            setNewName('');
+            setIsAdding(false);
+            fetchStages();
         } catch (error) {
             toast.error('Erro ao adicionar etapa');
         }
@@ -315,21 +283,10 @@ const PipelineSettings: React.FC = () => {
 
     const handleUpdateStage = async (id: string, name: string, color: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, color })
-            });
-
-            if (response.ok) {
-                setEditingId(null);
-                fetchStages(); // Refresh to ensure sync
-                toast.success('Etapa atualizada');
-            }
+            await supabaseUpdatePipelineStage(id, { name, color });
+            setEditingId(null);
+            fetchStages(); // Refresh to ensure sync
+            toast.success('Etapa atualizada');
         } catch (error) {
             toast.error('Erro ao atualizar etapa');
         }
@@ -339,19 +296,9 @@ const PipelineSettings: React.FC = () => {
         if (!window.confirm('Tem certeza que deseja remover esta etapa?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/pipelines/stages/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                toast.success('Etapa removida');
-                fetchStages();
-            } else {
-                const err = await response.json();
-                toast.error(err.error || 'Erro ao remover etapa');
-            }
+            await supabaseDeletePipelineStage(id);
+            toast.success('Etapa removida');
+            fetchStages();
         } catch (error) {
             toast.error('Erro ao remover etapa');
         }

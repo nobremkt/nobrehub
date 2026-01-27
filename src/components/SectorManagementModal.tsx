@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Pencil, Trash2, Building2, Loader2, Users, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    supabaseGetSectorsWithCount,
+    supabaseCreateSector,
+    supabaseUpdateSector,
+    supabaseDeleteSector
+} from '../services/supabaseApi';
 
 interface Sector {
     id: string;
@@ -45,19 +51,11 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
         color: '#6366f1'
     });
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
     const fetchSectors = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/users/sectors`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSectors(data);
-            }
+            const data = await supabaseGetSectorsWithCount();
+            setSectors(data);
         } catch (error) {
             console.error('Erro ao buscar setores:', error);
             toast.error('Erro ao carregar setores');
@@ -102,23 +100,10 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
 
         setSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            const url = editingId
-                ? `${API_URL}/users/sectors/${editingId}`
-                : `${API_URL}/users/sectors`;
-
-            const response = await fetch(url, {
-                method: editingId ? 'PUT' : 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(formData)
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Erro ao salvar setor');
+            if (editingId) {
+                await supabaseUpdateSector(editingId, formData);
+            } else {
+                await supabaseCreateSector(formData);
             }
 
             toast.success(editingId ? 'Setor atualizado!' : 'Setor criado!');
@@ -126,7 +111,7 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
             fetchSectors();
             onUpdate();
         } catch (error: any) {
-            toast.error(error.message);
+            toast.error(error.message || 'Erro ao salvar setor');
         } finally {
             setSaving(false);
         }
@@ -141,22 +126,12 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
         if (!confirm(`Deseja excluir o setor "${sector.name}"?`)) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/users/sectors/${sector.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Erro ao excluir setor');
-            }
-
+            await supabaseDeleteSector(sector.id);
             toast.success('Setor excluído!');
             fetchSectors();
             onUpdate();
         } catch (error: any) {
-            toast.error(error.message);
+            toast.error(error.message || 'Erro ao excluir setor');
         }
     };
 

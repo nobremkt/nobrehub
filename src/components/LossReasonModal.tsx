@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getLossReasons, LossReason } from '../services/api';
+import { supabaseGetLossReasons, LossReason } from '../services/supabaseApi';
 
 interface LossReasonModalProps {
     isOpen: boolean;
@@ -30,7 +30,7 @@ export const LossReasonModal: React.FC<LossReasonModalProps> = ({
     const loadReasons = async () => {
         setIsLoading(true);
         try {
-            const reasons = await getLossReasons();
+            const reasons = await supabaseGetLossReasons();
             setLossReasons(reasons);
         } finally {
             setIsLoading(false);

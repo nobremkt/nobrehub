@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Save, Mail, MessageSquare, Smartphone, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabaseGetNotificationPreferences, supabaseUpdateNotificationPreferences } from '../../services/supabaseApi';
 
 interface NotificationPreferences {
     emailLeads: boolean;
@@ -39,21 +40,14 @@ const NotificationSettings: React.FC = () => {
 
     const fetchPreferences = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/notifications/preferences`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setPrefs(data);
+            const data = await supabaseGetNotificationPreferences();
+            if (data) {
+                setPrefs(data as NotificationPreferences);
             } else {
-                // Fallback to defaults if API returns error
-                console.warn('API returned non-OK, using defaults');
                 setPrefs(getDefaultPreferences());
             }
         } catch (error) {
             console.error('Error fetching preferences:', error);
-            // Use defaults on error so UI remains functional
             setPrefs(getDefaultPreferences());
             toast.error('Usando preferências padrão - conexão com servidor falhou');
         } finally {
@@ -70,21 +64,8 @@ const NotificationSettings: React.FC = () => {
         if (!prefs) return;
         setSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/notifications/preferences`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(prefs)
-            });
-
-            if (response.ok) {
-                toast.success('Preferências salvas com sucesso!');
-            } else {
-                toast.error('Erro ao salvar preferências');
-            }
+            await supabaseUpdateNotificationPreferences(prefs);
+            toast.success('Preferências salvas com sucesso!');
         } catch (error) {
             console.error('Error updating preferences:', error);
             toast.error('Erro ao salvar preferências');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Briefcase, DollarSign, Target, Check, Mail, Phone, Globe } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
-import { Lead } from '../services/api';
+import { Lead } from '../services/supabaseApi';
 import ProductSelect from './ui/ProductSelect';
 
 interface LeadModalProps {

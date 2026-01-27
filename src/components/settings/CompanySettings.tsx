@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, Save, X, Globe, Phone, Mail, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabaseGetOrganization, supabaseUpdateOrganization } from '../../services/supabaseApi';
 
 interface Organization {
     id: string;
@@ -34,13 +35,9 @@ const CompanySettings: React.FC = () => {
 
     const fetchOrganization = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/organization`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setOrg(data);
+            const data = await supabaseGetOrganization();
+            if (data) {
+                setOrg(data as Organization);
                 setForm({
                     name: data.name || '',
                     cnpj: data.cnpj || '',
@@ -48,7 +45,7 @@ const CompanySettings: React.FC = () => {
                     phone: data.phone || '',
                     address: data.address || '',
                     website: data.website || '',
-                    logoUrl: data.logoUrl || '',
+                    logoUrl: data.logoUrl || data.logo_url || '',
                 });
             }
         } catch (error) {
@@ -63,22 +60,9 @@ const CompanySettings: React.FC = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/organization`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(form)
-            });
-
-            if (response.ok) {
-                toast.success('Dados atualizados com sucesso!');
-                fetchOrganization();
-            } else {
-                toast.error('Erro ao salvar dados');
-            }
+            await supabaseUpdateOrganization(form);
+            toast.success('Dados atualizados com sucesso!');
+            fetchOrganization();
         } catch (error) {
             console.error('Error updating organization:', error);
             toast.error('Erro ao salvar dados');

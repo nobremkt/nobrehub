@@ -5,7 +5,14 @@ import LeadModal from './LeadModal';
 import Lead360Modal from './Lead360Modal';
 import LossReasonModal from './LossReasonModal';
 import { TagsDisplay } from './TagsEditor';
-import { getLeads, Lead, deleteLead, createLead, updateLead, markLeadAsLost, getAllTags } from '../services/api';
+import {
+  supabaseGetLeads,
+  supabaseDeleteLead,
+  supabaseCreateLead,
+  supabaseUpdateLead,
+  supabaseMarkLeadAsLost,
+  Lead
+} from '../services/supabaseApi';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 
@@ -62,8 +69,8 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
 
   const fetchLeads = async () => {
     try {
-      const data = await getLeads();
-      setLeads(data);
+      const data = await supabaseGetLeads();
+      setLeads(data as Lead[]);
     } catch (error) {
       console.error('Erro ao buscar leads:', error);
     } finally {
@@ -175,7 +182,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
     try {
       if (leadData.id) {
         // Update existing lead
-        const updatedLead = await updateLead(leadData.id, {
+        const updatedLead = await supabaseUpdateLead(leadData.id, {
           name: leadData.name,
           email: leadData.email || undefined,
           phone: leadData.phone,
@@ -191,7 +198,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
         toast.success('Lead atualizado com sucesso!');
       } else {
         // Create new lead
-        const newLeadRaw = await createLead({
+        const newLeadRaw = await supabaseCreateLead({
           name: leadData.name,
           email: leadData.email || undefined,
           phone: leadData.phone,
@@ -233,7 +240,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const handleBulkDelete = async () => {
     if (window.confirm(`Tem certeza que deseja excluir ${selectedLeads.length} leads selecionados?`)) {
       try {
-        await Promise.all(selectedLeads.map(id => deleteLead(id)));
+        await Promise.all(selectedLeads.map(id => supabaseDeleteLead(id)));
         setLeads(leads.filter(l => !selectedLeads.includes(l.id)));
         setSelectedLeads([]);
         toast.success('Leads excluídos com sucesso!');
@@ -247,7 +254,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
   const handleDeleteLead = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este lead?')) {
       try {
-        await deleteLead(id);
+        await supabaseDeleteLead(id);
         setLeads(leads.filter(l => l.id !== id));
         toast.success('Lead excluído!');
       } catch (error) {
@@ -607,7 +614,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
         onOpenChat={handleOpenChat}
         onUpdateLead={async (updates) => {
           if (!detailLead) return;
-          await updateLead(detailLead.id, updates as any);
+          await supabaseUpdateLead(detailLead.id, updates as any);
           setLeads(prev => prev.map(l => l.id === detailLead.id ? { ...l, ...updates } as Lead : l));
         }}
       />
@@ -619,7 +626,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
         onConfirm={async (lossReasonId, notes) => {
           if (!lossModalLead) return;
           try {
-            const updated = await markLeadAsLost(lossModalLead.id, lossReasonId, notes);
+            const updated = await supabaseMarkLeadAsLost(lossModalLead.id, lossReasonId, notes);
             setLeads(prev => prev.map(l => l.id === lossModalLead.id ? updated : l));
             toast.success('Lead marcado como perdido');
             setLossModalLead(null);
@@ -647,7 +654,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                 onClick={async () => {
                   try {
                     await Promise.all(selectedLeads.map(id =>
-                      updateLead(id, { pipeline: 'high_ticket', statusHT: 'novo' })
+                      supabaseUpdateLead(id, { pipeline: 'high_ticket', statusHT: 'novo' })
                     ));
                     await fetchLeads();
                     setSelectedLeads([]);
@@ -666,7 +673,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
                 onClick={async () => {
                   try {
                     await Promise.all(selectedLeads.map(id =>
-                      updateLead(id, { pipeline: 'low_ticket', statusLT: 'novo' })
+                      supabaseUpdateLead(id, { pipeline: 'low_ticket', statusLT: 'novo' })
                     ));
                     await fetchLeads();
                     setSelectedLeads([]);

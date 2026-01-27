@@ -4,7 +4,7 @@ import {
     Plus, MoreVertical, Zap, ChevronDown, Circle, CheckCircle, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import * as api from '../../services/api';
+import { supabaseGetLeadActivities, supabaseCreateActivity, supabaseCompleteActivity, supabaseSkipActivity, Activity } from '../../services/supabaseApi';
 
 interface ActivitiesTabProps {
     leadId: string;
@@ -37,8 +37,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivityComplete }) => {
-    const [activities, setActivities] = useState<api.Activity[]>([]);
-    const [playbooks, setPlaybooks] = useState<api.Playbook[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [playbooks, setPlaybooks] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showAddActivity, setShowAddActivity] = useState(false);
     const [showPlaybooks, setShowPlaybooks] = useState(false);
@@ -46,7 +46,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
 
     // New activity form
     const [newActivity, setNewActivity] = useState({
-        type: 'call' as api.Activity['type'],
+        type: 'call' as Activity['type'],
         title: '',
         description: '',
         dueDate: new Date().toISOString().split('T')[0],
@@ -59,12 +59,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [activitiesData, playbooksData] = await Promise.all([
-                api.getLeadActivities(leadId),
-                api.getPlaybooks(),
-            ]);
+            const activitiesData = await supabaseGetLeadActivities(leadId);
             setActivities(activitiesData);
-            setPlaybooks(playbooksData);
         } catch (error) {
             console.error('Error loading activities:', error);
         } finally {
@@ -79,7 +75,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
         }
 
         try {
-            const created = await api.createActivity({
+            const created = await supabaseCreateActivity({
                 leadId,
                 type: newActivity.type,
                 title: newActivity.title,
@@ -97,7 +93,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
 
     const handleCompleteActivity = async (id: string) => {
         try {
-            const updated = await api.completeActivity(id);
+            const updated = await supabaseCompleteActivity(id);
             setActivities(prev => prev.map(a => a.id === id ? updated : a));
             toast.success('Atividade concluída!');
             onActivityComplete?.();
@@ -108,7 +104,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
 
     const handleSkipActivity = async (id: string) => {
         try {
-            const updated = await api.skipActivity(id);
+            const updated = await supabaseSkipActivity(id);
             setActivities(prev => prev.map(a => a.id === id ? updated : a));
             toast.info('Atividade pulada');
         } catch (error) {
@@ -117,14 +113,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({ leadId, onActivity
     };
 
     const handleApplyPlaybook = async (playbookId: string) => {
-        try {
-            const result = await api.applyPlaybook(playbookId, leadId);
-            setActivities(prev => [...prev, ...result.activities]);
-            setShowPlaybooks(false);
-            toast.success(`Playbook aplicado: ${result.activities.length} atividades criadas`);
-        } catch (error) {
-            toast.error('Erro ao aplicar playbook');
-        }
+        // TODO: Implement supabaseApplyPlaybook when playbooks are migrated
+        toast.info('Playbooks ainda não disponíveis');
+        setShowPlaybooks(false);
     };
 
     const formatDueDate = (date: string) => {
