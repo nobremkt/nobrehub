@@ -17,20 +17,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session on mount
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            supabaseGetCurrentUser(token)
-                .then((user) => {
-                    if (user) setUser(user);
-                })
-                .catch(() => {
-                    supabaseLogout();
-                    setUser(null);
-                })
-                .finally(() => setIsLoading(false));
-        } else {
-            setIsLoading(false);
-        }
+        supabaseGetCurrentUser()
+            .then((user) => {
+                if (user) setUser(user);
+            })
+            .catch(() => {
+                supabaseLogout();
+                setUser(null);
+            })
+            .finally(() => setIsLoading(false));
     }, []);
 
     const login = useCallback(async (email: string, password: string) => {
