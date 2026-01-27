@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Lock, Mail, Loader2, ArrowRight, ShieldCheck, Zap, ChevronDown, Users, User } from 'lucide-react';
-import * as api from '../services/api';
+import { supabaseLogin, supabaseDevLogin, supabaseGetDevUsers, AuthUser } from '../services/supabaseAuth';
 
 interface LoginProps {
   onLogin: (token: string, user: any) => void;
@@ -13,10 +13,8 @@ interface DevUser {
   email: string;
   role: string;
   pipelineType: string | null;
-  isOnline: boolean;
+  isActive: boolean;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -41,15 +39,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const fetchDevUsers = async () => {
     setLoadingDevUsers(true);
     try {
-      const response = await fetch(`${API_URL}/users/dev-list`);
-      if (response.ok) {
-        const users = await response.json();
-        if (Array.isArray(users)) {
-          setDevUsers(users);
-        } else {
-          console.error('dev-list returned non-array:', users);
-        }
-      }
+      const users = await supabaseGetDevUsers();
+      setDevUsers(users.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        pipelineType: u.pipelineType || null,
+        isActive: u.isActive ?? true
+      })));
     } catch (err) {
       console.error('Failed to fetch dev users:', err);
     } finally {
@@ -61,19 +59,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoggingInAs(user.id);
     setError(null);
     try {
-      // Use dev login endpoint that bypasses password
-      const response = await fetch(`${API_URL}/auth/dev-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        onLogin(data.token, data.user);
-      } else {
-        setError('Dev login failed');
-      }
+      // Use Supabase dev login
+      const response = await supabaseDevLogin(user.id);
+      onLogin(response.token, response.user);
     } catch (err: any) {
       setError(err.message || 'Dev login failed');
     } finally {
@@ -87,7 +75,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
 
     try {
-      const response = await api.login(email, password);
+      const response = await supabaseLogin(email, password);
       onLogin(response.token, response.user);
     } catch (err: any) {
       console.error('Login failed:', err);
@@ -102,7 +90,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
 
     try {
-      const response = await api.login('admin@nobremarketing.com.br', 'admin123');
+      const response = await supabaseLogin('admin@nobremarketing.com', 'admin123');
       onLogin(response.token, response.user);
     } catch (err: any) {
       console.error('Admin login failed:', err);
@@ -253,7 +241,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-slate-400">
                           <span>{user.pipelineType || 'Sem pipeline'}</span>
-                          <span className={`w-1.5 h-1.5 rounded-full ${user.isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                         </div>
                       </div>
                       {loggingInAs === user.id ? (

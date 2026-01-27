@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { SocketProvider } from './contexts/SocketContext';
+import { FirebaseProvider } from './contexts/FirebaseContext';
 import { AppLayout } from './components/layout';
 import NotificationHandler from './components/NotificationHandler';
 
@@ -147,7 +147,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <SocketProvider>
+    <FirebaseProvider>
       <NotificationHandler />
       <Routes>
         <Route path="/login" element={
@@ -160,7 +160,7 @@ const App: React.FC = () => {
         } />
       </Routes>
       <Toaster richColors position="bottom-right" />
-    </SocketProvider>
+    </FirebaseProvider>
   );
 };
 

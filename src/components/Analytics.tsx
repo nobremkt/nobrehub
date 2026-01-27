@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 const Analytics: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { socket } = useSocket({ userId: 'dashboard-viewer' });
+    const { subscribeToNewLeads, subscribeToLeadUpdates, isConnected } = useSocket({ userId: 'dashboard-viewer' });
 
     const loadStats = async () => {
         try {
@@ -44,31 +44,23 @@ const Analytics: React.FC = () => {
 
     useEffect(() => {
         loadStats();
+    }, []);
 
-        // Realtime updates: Refetch when leads change
-        if (socket) {
-            const handleUpdate = () => {
-                console.log('🔄 Lead change detected, refreshing dashboard...');
-                loadStats();
-            };
+    // Firebase realtime updates: Refetch when leads change
+    useEffect(() => {
+        const handleUpdate = () => {
+            console.log('🔥 Lead change detected, refreshing dashboard...');
+            loadStats();
+        };
 
-            socket.on('lead:new', handleUpdate);
-            socket.on('lead:updated', handleUpdate);
-            socket.on('lead:deleted', handleUpdate);
+        const unsubNewLeads = subscribeToNewLeads(handleUpdate);
+        const unsubLeadUpdates = subscribeToLeadUpdates(handleUpdate);
 
-            // Also listen for explicit dashboard updates if backend implements it later
-            socket.on('dashboard:update', (newStats: DashboardStats) => {
-                setStats(newStats);
-            });
-
-            return () => {
-                socket.off('lead:new', handleUpdate);
-                socket.off('lead:updated', handleUpdate);
-                socket.off('lead:deleted', handleUpdate);
-                socket.off('dashboard:update');
-            };
-        }
-    }, [socket]);
+        return () => {
+            unsubNewLeads();
+            unsubLeadUpdates();
+        };
+    }, [subscribeToNewLeads, subscribeToLeadUpdates]);
 
     if (isLoading) {
         return (
