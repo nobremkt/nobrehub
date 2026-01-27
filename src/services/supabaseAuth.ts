@@ -162,11 +162,23 @@ export async function supabaseDevLogin(userId: string): Promise<LoginResponse> {
         .eq('id', userId)
         .single();
 
-    if (error || !user) {
+    console.log('🔐 Supabase Auth: Query result', { user, error });
+
+    if (error) {
+        console.error('🔐 Supabase Auth: Dev login query error', error);
+        throw new Error(`Dev login failed: ${error.message}`);
+    }
+
+    if (!user) {
         throw new Error('User not found');
     }
 
     const token = btoa(JSON.stringify({ userId: user.id, timestamp: Date.now() }));
+
+    // Save to localStorage
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('isLoggedIn', 'true');
 
     return {
         token,
@@ -190,3 +202,10 @@ export function supabaseLogout(): void {
     localStorage.removeItem('user');
     localStorage.removeItem('isLoggedIn');
 }
+
+// ============ EXPORT ALIASES (without 'supabase' prefix) ============
+export { supabaseLogin as login };
+export { supabaseGetCurrentUser as getCurrentUser };
+export { supabaseGetDevUsers as getDevUsers };
+export { supabaseDevLogin as devLogin };
+export { supabaseLogout as logout };

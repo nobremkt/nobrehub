@@ -1264,3 +1264,95 @@ export async function supabaseSkipActivity(id: string): Promise<Activity> {
 }
 
 console.log('📊 Supabase API service initialized (Full)');
+
+// ============ EXPORT ALIASES (without 'supabase' prefix) ============
+// These provide cleaner imports now that api.ts has been removed
+
+// Leads
+export { supabaseGetLeads as getLeads };
+export { supabaseGetLead as getLead };
+export { supabaseCreateLead as createLead };
+export { supabaseUpdateLead as updateLead };
+export { supabaseUpdateLeadStatus as updateLeadStatus };
+export { supabaseDeleteLead as deleteLead };
+export { supabaseUpdateLeadStage as updateLeadStage };
+export { supabaseGetAllTags as getAllTags };
+export { supabaseUpdateLeadTags as updateLeadTags };
+export { supabaseMarkLeadAsLost as markLeadAsLost };
+export { supabaseGetLossReasons as getLossReasons };
+export { supabaseAssignLead as assignLead };
+
+// Dashboard
+export { supabaseGetDashboardStats as getDashboardStats };
+
+// Users
+export { supabaseGetUsers as getUsers };
+export { supabaseGetUser as getUser };
+export { supabaseCreateUser as createUser };
+
+// Conversations
+export { supabaseGetActiveConversations as getActiveConversations };
+export { supabaseGetConversation as getConversation };
+export { supabaseGetConversationByLead as getConversationByLead };
+export { supabaseUpdateConversation as updateConversation };
+export { supabaseCloseConversation as closeConversation };
+export { supabaseHoldConversation as holdConversation };
+export { supabaseResumeConversation as resumeConversation };
+export { supabaseTransferConversation as transferConversation };
+export { supabaseGetAvailableAgents as getAvailableAgents };
+
+// Deals
+export { supabaseGetDeals as getDeals };
+export { supabaseCreateDeal as createDeal };
+export { supabaseUpdateDeal as updateDeal };
+export { supabaseDeleteDeal as deleteDeal };
+
+// Products
+export { supabaseGetProducts as getProducts };
+export { supabaseGetProducts as getProduct };
+export { supabaseCreateProduct as createProduct };
+export { supabaseUpdateProduct as updateProduct };
+export { supabaseDeleteProduct as deleteProduct };
+
+// Sectors
+export { supabaseGetSectors as getSectors };
+export { supabaseCreateSector as createSector };
+export { supabaseUpdateSector as updateSector };
+export { supabaseDeleteSector as deleteSector };
+export { supabaseGetSectorsWithCount as getSectorsWithCount };
+
+// Lead Details
+export { supabaseGetLeadDeals as getLeadDeals };
+export { supabaseGetLeadConversations as getLeadConversations };
+export { supabaseGetLeadHistory as getLeadHistory };
+
+// Channels
+export { supabaseGetChannels as getChannels };
+export { supabaseToggleChannel as toggleChannel };
+
+// Pipeline
+export { supabaseGetPipelineStages as getPipelineStages };
+export { supabaseCreatePipelineStage as createPipelineStage };
+export { supabaseUpdatePipelineStage as updatePipelineStage };
+export { supabaseDeletePipelineStage as deletePipelineStage };
+export { supabaseReorderPipelineStages as reorderPipelineStages };
+
+// Custom Fields - TODO: Functions not yet implemented
+// export { supabaseGetCustomFields as getCustomFieldDefinitions };
+// export { supabaseCreateCustomField as createCustomFieldDefinition };
+// export { supabaseUpdateCustomField as updateCustomFieldDefinition };
+// export { supabaseDeleteCustomField as deleteCustomFieldDefinition };
+// export { supabaseGetCustomFieldValues as getLeadCustomFieldValues };
+// export { supabaseSetCustomFieldValue as updateLeadCustomFieldValue };
+
+// WhatsApp
+export { supabaseSendWhatsAppMessage as sendWhatsAppMessage };
+export { supabaseSendWhatsAppTemplate as sendWhatsAppTemplate };
+export { supabaseGetWhatsAppTemplates as getWhatsAppTemplates };
+export { supabaseGetMessages as getMessages };
+
+// Activities
+export { supabaseGetLeadActivities as getLeadActivities };
+export { supabaseCreateActivity as createActivity };
+export { supabaseCompleteActivity as completeActivity };
+export { supabaseSkipActivity as skipActivity };
