@@ -74,8 +74,6 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
         conversation_id: conversationId,
         lead_id: leadId,
         phone,
-        topic: "whatsapp",
-        extension: "whatsapp",
         direction,
         type: "text",
         text,
@@ -83,7 +81,6 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
         wa_message_id: waMessageId,
         created_at: now,
         updated_at: now,
-        inserted_at: now,
     };
 
     const { data, error } = await supabase
