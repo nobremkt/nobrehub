@@ -16,7 +16,12 @@ interface MessageBubbleProps {
 // Format time helper
 const formatTime = (dateString: string) => {
     try {
-        return new Date(dateString).toLocaleTimeString('pt-BR', {
+        // Ensure UTC interpretation if missing timezone
+        const dateStr = !dateString.endsWith('Z') && !dateString.includes('+')
+            ? `${dateString}Z`
+            : dateString;
+
+        return new Date(dateStr).toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit'
         });

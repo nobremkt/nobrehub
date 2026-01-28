@@ -283,7 +283,8 @@ export async function supabaseSendWhatsAppTemplate(to: string, templateName: str
     });
     const data = await response.json();
     if (!response.ok || (data && data.success === false)) {
-        throw new Error(data.error || 'Falha ao enviar template');
+        const errorMsg = data.error && typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Falha ao enviar template');
+        throw new Error(errorMsg);
     }
     return data;
 }
@@ -292,7 +293,8 @@ export async function supabaseGetWhatsAppTemplates(): Promise<any[]> {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-api/templates`);
     const data = await response.json();
     if (!response.ok || (data && data.error)) {
-        throw new Error(data.error || 'Falha ao buscar templates');
+        const errorMsg = data.error && typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Falha ao buscar templates');
+        throw new Error(errorMsg);
     }
     return data.templates || [];
 }

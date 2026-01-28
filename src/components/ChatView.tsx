@@ -246,6 +246,8 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             const msgs = await supabaseGetMessages(conversationId);
             setMessages(msgs);
         } catch (error) {
+            console.error('❌ Error fetching conversation:', error);
+            toast.error('Erro ao carregar mensagens');
         } finally {
             setIsLoading(false);
         }
@@ -391,8 +393,14 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
+    // Send message via Supabase function
     const handleSend = async () => {
         if (!newMessage.trim() || isSending || !conversation) return;
+
+        // Get user info from Supabase Auth (secure)
+        const { data: session } = await supabase.auth.getSession();
+        const currentUserId = session?.session?.user?.id;
+        const userName = session?.session?.user?.user_metadata?.name || 'Você';
 
         const textToSend = newMessage.trim();
         const tempId = `temp-${Date.now()}`;
@@ -403,10 +411,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             type: 'text',
             status: 'pending',
             createdAt: new Date().toISOString(),
-            sentByUser: { id: userId, name: 'You' }
+            sentByUser: currentUserId ? { id: currentUserId, name: userName } : undefined
         };
 
-        // Optimistic Update
+        // Optimistic update
         setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
         setIsSending(true);
@@ -420,20 +428,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 conversation.lead.id
             );
 
-            setMessages(prev => {
-                const index = prev.findIndex(m => m.id === tempId);
-                if (index !== -1) {
-                    const updated = [...prev];
-                    updated[index] = {
-                        ...updated[index],
-                        id: result.messageId || tempId,
-                        status: 'sent',
-                        waMessageId: result.messageId
-                    };
-                    return updated;
-                }
-                return prev;
-            });
 
         } catch (err: any) {
             toast.error(err.message || 'Erro ao enviar mensagem');
