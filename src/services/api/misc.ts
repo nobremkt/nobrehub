@@ -108,10 +108,9 @@ export async function supabaseGetPipelineStages(pipeline?: string): Promise<Pipe
 }
 
 export async function supabaseCreatePipelineStage(data: Partial<PipelineStage>): Promise<PipelineStage> {
-    const now = new Date().toISOString();
     const { data: created, error } = await supabase
         .from('pipeline_stages')
-        .insert({ id: crypto.randomUUID(), ...toSnakeCase(data), created_at: now, updated_at: now })
+        .insert({ id: crypto.randomUUID(), ...toSnakeCase(data), created_at: new Date().toISOString() })
         .select()
         .single();
     if (error) throw new Error(error.message);
@@ -121,7 +120,7 @@ export async function supabaseCreatePipelineStage(data: Partial<PipelineStage>):
 export async function supabaseUpdatePipelineStage(id: string, data: Partial<PipelineStage>): Promise<PipelineStage> {
     const { data: updated, error } = await supabase
         .from('pipeline_stages')
-        .update({ ...toSnakeCase(data), updated_at: new Date().toISOString() })
+        .update(toSnakeCase(data))
         .eq('id', id)
         .select()
         .single();
@@ -200,19 +199,19 @@ export interface Organization {
 }
 
 export async function supabaseGetOrganization(): Promise<Organization | null> {
-    const { data, error } = await supabase.from('organizations').select('*').limit(1).single();
+    const { data, error } = await supabase.from('organization').select('*').limit(1).single();
     if (error) return null;
     return toCamelCase(data);
 }
 
 export async function supabaseUpdateOrganization(orgData: Partial<Organization>): Promise<Organization> {
-    const { data: existing } = await supabase.from('organizations').select('id').limit(1).single();
+    const { data: existing } = await supabase.from('organization').select('id').limit(1).single();
     if (existing) {
-        const { data: updated, error } = await supabase.from('organizations').update(toSnakeCase(orgData)).eq('id', existing.id).select().single();
+        const { data: updated, error } = await supabase.from('organization').update(toSnakeCase(orgData)).eq('id', existing.id).select().single();
         if (error) throw new Error(error.message);
         return toCamelCase(updated);
     } else {
-        const { data: created, error } = await supabase.from('organizations').insert({ id: crypto.randomUUID(), ...toSnakeCase(orgData) }).select().single();
+        const { data: created, error } = await supabase.from('organization').insert({ id: crypto.randomUUID(), ...toSnakeCase(orgData) }).select().single();
         if (error) throw new Error(error.message);
         return toCamelCase(created);
     }
@@ -409,19 +408,19 @@ export interface RoleAccess {
 }
 
 export async function supabaseGetPermissions(): Promise<RoleAccess[]> {
-    const { data, error } = await supabase.from('role_permissions').select('*').order('role');
+    const { data, error } = await supabase.from('role_access').select('*').order('role');
     if (error) throw new Error(error.message);
     return (data || []).map(toCamelCase);
 }
 
 export async function supabaseUpdatePermissions(role: string, permissions: string[]): Promise<RoleAccess> {
-    const { data: existing } = await supabase.from('role_permissions').select('*').eq('role', role).single();
+    const { data: existing } = await supabase.from('role_access').select('*').eq('role', role).single();
     if (existing) {
-        const { data, error } = await supabase.from('role_permissions').update({ permissions }).eq('role', role).select().single();
+        const { data, error } = await supabase.from('role_access').update({ permissions }).eq('role', role).select().single();
         if (error) throw new Error(error.message);
         return toCamelCase(data);
     } else {
-        const { data, error } = await supabase.from('role_permissions').insert({ role, permissions }).select().single();
+        const { data, error } = await supabase.from('role_access').insert({ role, permissions }).select().single();
         if (error) throw new Error(error.message);
         return toCamelCase(data);
     }
