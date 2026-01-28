@@ -268,7 +268,11 @@ export async function supabaseSendWhatsAppMessage(to: string, text: string, conv
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, text, conversationId, leadId })
     });
-    return response.json();
+    const data = await response.json();
+    if (!response.ok || (data && data.success === false)) {
+        throw new Error(data.error || 'Falha ao enviar mensagem');
+    }
+    return data;
 }
 
 export async function supabaseSendWhatsAppTemplate(to: string, templateName: string, params?: { languageCode?: string; components?: any[] }, conversationId?: string, leadId?: string): Promise<{ success: boolean; messageId?: string }> {
@@ -277,12 +281,19 @@ export async function supabaseSendWhatsAppTemplate(to: string, templateName: str
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, templateName, ...params, conversationId, leadId })
     });
-    return response.json();
+    const data = await response.json();
+    if (!response.ok || (data && data.success === false)) {
+        throw new Error(data.error || 'Falha ao enviar template');
+    }
+    return data;
 }
 
 export async function supabaseGetWhatsAppTemplates(): Promise<any[]> {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-api/templates`);
     const data = await response.json();
+    if (!response.ok || (data && data.error)) {
+        throw new Error(data.error || 'Falha ao buscar templates');
+    }
     return data.templates || [];
 }
 

@@ -40,12 +40,28 @@ const formatTime = (dateStr: string | null): string => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
 
-    if (diff < 60000) return 'Agora';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}min`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
-    return date.toLocaleDateString('pt-BR');
+    if (isNaN(date.getTime())) return '-';
+
+    const isToday = date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() &&
+        date.getMonth() === yesterday.getMonth() &&
+        date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) {
+        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    if (isYesterday) {
+        return 'Ontem';
+    }
+
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
 /**
