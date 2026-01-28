@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
-import SidebarBoardList from './SidebarBoardList';
+
 import { canAccessNav, ROLE_LABELS } from '../../config/permissions';
 
 interface SidebarProps {
@@ -151,10 +151,23 @@ const Sidebar: React.FC<SidebarProps> = ({ user, unreadCount = 0, onLogout }) =>
                 )}
 
                 {/* Board List (Sectors with users) */}
-                <SidebarBoardList
-                    currentUser={{ id: user.id, name: user.name, role: user.role }}
-                    isCollapsed={isCollapsed}
-                />
+                {/* CRM Main Board Link */}
+                <nav className="py-2">
+                    <ul className="space-y-1 px-2">
+                        <li>
+                            <button
+                                onClick={() => navigate('/leads')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive('/leads') ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    }`}
+                            >
+                                <span className={isActive('/leads') ? 'text-blue-600' : 'text-slate-400'}>
+                                    <LayoutDashboard size={20} />
+                                </span>
+                                {!isCollapsed && <span className="flex-1 text-left text-sm font-medium">CRM Board</span>}
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
 
                 {/* Admin Items (Equipe, Automações) */}
                 {visibleAdminItems.length > 0 && (
