@@ -4,6 +4,7 @@
 // Types
 export type { Lead, CreateLeadData, DashboardStats, User, LossReason, Conversation, Deal, PipelineType } from '../../types/models';
 export type { Project, CreateProjectData, UpdateProjectData, ProjectStatus, ChecklistItem } from '../../types/project';
+export { PROJECT_STATUS_CONFIG } from '../../types/project';
 
 // Leads API
 export {

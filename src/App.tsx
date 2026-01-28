@@ -21,6 +21,7 @@ const PersonalWorkspace = lazy(() => import('./components/PersonalWorkspace'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ContactsView = lazy(() => import('./pages/ContactsView'));
 const SectorDashboard = lazy(() => import('./components/dashboard/SectorDashboard'));
+const ProductionPage = lazy(() => import('./pages/ProductionPage'));
 
 import { Agent } from './types';
 
@@ -142,7 +143,7 @@ const MainApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               setPendingLeadId(leadId || null);
             }} />
           } />
-          <Route path="/producao" element={<div className="p-6 text-slate-500">Módulo em desenvolvimento...</div>} />
+          <Route path="/producao" element={<ProductionPage />} />
           <Route path="/equipe" element={<TeamManagement onMonitor={setMonitoredUser} />} />
           <Route path="/automacoes" element={<FlowBuilder />} />
           <Route path="/config/*" element={<SettingsPage />} />

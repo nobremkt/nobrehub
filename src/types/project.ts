@@ -38,7 +38,16 @@ export interface Project {
     };
 }
 
-export type ProjectStatus = 'backlog' | 'doing' | 'review' | 'done';
+export type ProjectStatus = 'backlog' | 'doing' | 'review' | 'done' | 'revision';
+
+// Status display configuration
+export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string; bgColor: string }> = {
+    backlog: { label: 'Aguardando', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+    doing: { label: 'Em Produção', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    review: { label: 'Revisão', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+    done: { label: 'Entregue', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
+    revision: { label: 'Alteração', color: 'text-red-600', bgColor: 'bg-red-100' },
+};
 
 export interface CreateProjectData {
     name: string;
