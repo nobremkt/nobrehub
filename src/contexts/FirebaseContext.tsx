@@ -96,9 +96,14 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
                 callback({
                     id: data.id,
                     content: data.content,
+                    text: data.text || data.content,
                     sender: data.sender,
                     direction: data.direction,
+                    status: data.status || 'sent',
+                    waMessageId: data.waMessageId,
+                    type: data.type || 'text',
                     timestamp: data.timestamp,
+                    createdAt: data.createdAt || new Date(data.timestamp || Date.now()).toISOString(),
                     conversationId
                 });
             }
