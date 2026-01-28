@@ -329,425 +329,425 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         if (!conversationId) return;
 
         const unsubscribe = subscribeToConversation(conversationId, (newMessage) => {
+            setMessages((prev) => {
+                console.log('📩 Realtime Msg:', newMessage.id, newMessage.waMessageId, newMessage.text);
 
-            console.log('📩 Realtime Msg:', newMessage.id, newMessage.waMessageId, newMessage.text);
+                // Find existing message by waMessageId (primary) or id (fallback)
+                let existingIdx = -1;
+                if (newMessage.waMessageId) {
+                    existingIdx = prev.findIndex(m => m.waMessageId === newMessage.waMessageId);
+                }
+                if (existingIdx === -1) {
+                    existingIdx = prev.findIndex(m => m.id === newMessage.id);
+                }
 
-            // Find existing message by waMessageId (primary) or id (fallback)
-            let existingIdx = -1;
-            if (newMessage.waMessageId) {
-                existingIdx = prev.findIndex(m => m.waMessageId === newMessage.waMessageId);
-            }
-            if (existingIdx === -1) {
-                existingIdx = prev.findIndex(m => m.id === newMessage.id);
-            }
+                // If message exists, update it (status may have changed)
+                if (existingIdx !== -1) {
+                    const existing = prev[existingIdx];
+                    console.log('🔄 Updating existing:', existing.id, '->', newMessage.status);
 
-            // If message exists, update it (status may have changed)
-            if (existingIdx !== -1) {
-                const existing = prev[existingIdx];
-                console.log('🔄 Updating existing:', existing.id, '->', newMessage.status);
+                    // Always update if we found it, to ensure we have the latest data/ID
+                    if (existing.status !== newMessage.status || existing.id !== newMessage.id || existing.waMessageId !== newMessage.waMessageId) {
+                        const updated = [...prev];
+                        updated[existingIdx] = { ...existing, ...newMessage };
+                        return updated;
+                    }
+                    return prev;
+                }
 
-                // Always update if we found it, to ensure we have the latest data/ID
-                if (existing.status !== newMessage.status || existing.id !== newMessage.id || existing.waMessageId !== newMessage.waMessageId) {
+                // Check for pending message with same text (optimistic UI replacement)
+                if (newMessage.direction === 'out') {
+                    const pendingIdx = prev.findIndex(m =>
+                        (m.status === 'pending' || m.id.startsWith('temp-')) &&
+                        m.direction === 'out' &&
+                        m.text === newMessage.text
+                    );
+
+                    if (pendingIdx !== -1) {
+                        console.log('✅ Replacing pending:', prev[pendingIdx].id);
+                        const updated = [...prev];
+                        updated[pendingIdx] = newMessage;
+                        return updated;
+                    }
+                }
+
+                // Add new message
+                console.log('➕ Adding new message:', newMessage.id);
+                const updated = [...prev, newMessage].sort((a, b) =>
+                    new Date(a.createdAt || a.timestamp || 0).getTime() - new Date(b.createdAt || b.timestamp || 0).getTime()
+                );
+                return updated;
+            });
+            scrollToBottom();
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [conversationId, subscribeToConversation, scrollToBottom]);
+
+    // Auto scroll to bottom
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, scrollToBottom]);
+
+    const handleSend = async () => {
+        if (!newMessage.trim() || isSending || !conversation) return;
+
+        const textToSend = newMessage.trim();
+        const tempId = `temp-${Date.now()}`;
+        const tempMessage: Message = {
+            id: tempId,
+            direction: 'out',
+            text: textToSend,
+            type: 'text',
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            sentByUser: { id: userId, name: 'You' }
+        };
+
+        // Optimistic Update
+        setMessages(prev => [...prev, tempMessage]);
+        setNewMessage('');
+        setIsSending(true);
+        scrollToBottom();
+
+        try {
+            const result = await supabaseSendWhatsAppMessage(
+                conversation.lead.phone,
+                textToSend,
+                conversationId,
+                conversation.lead.id
+            );
+
+            setMessages(prev => {
+                const index = prev.findIndex(m => m.id === tempId);
+                if (index !== -1) {
                     const updated = [...prev];
-                    updated[existingIdx] = { ...existing, ...newMessage };
+                    updated[index] = {
+                        ...updated[index],
+                        id: result.messageId || tempId,
+                        status: 'sent',
+                        waMessageId: result.messageId
+                    };
                     return updated;
                 }
                 return prev;
-            }
+            });
 
-            // Check for pending message with same text (optimistic UI replacement)
-            if (newMessage.direction === 'out') {
-                const pendingIdx = prev.findIndex(m =>
-                    (m.status === 'pending' || m.id.startsWith('temp-')) &&
-                    m.direction === 'out' &&
-                    m.text === newMessage.text
-                );
+        } catch (err: any) {
+            toast.error(err.message || 'Erro ao enviar mensagem');
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+        } finally {
+            setIsSending(false);
+        }
+    };
 
-                if (pendingIdx !== -1) {
-                    console.log('✅ Replacing pending:', prev[pendingIdx].id);
-                    const updated = [...prev];
-                    updated[pendingIdx] = newMessage;
-                    return updated;
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    // Quick Actions
+    const handlePaymentSignal = async () => {
+        try {
+            await supabaseCloseConversation(conversationId);
+            toast.success('Sinal confirmado! Lead movido para PÃ³s-Venda.');
+            onConversationClosed();
+        } catch (error) {
+            toast.error('Erro ao processar pagamento');
+        }
+    };
+
+    // Hold conversation (pause atendimento)
+    const handleHold = async () => {
+        try {
+            await supabaseHoldConversation(conversationId);
+            setConversation(prev => prev ? { ...prev, status: 'on_hold' } : null);
+            toast.info('Conversa colocada em espera');
+        } catch (error) {
+            toast.error('Erro ao colocar conversa em espera');
+        }
+    };
+
+    // Resume conversation from hold
+    const handleResume = async () => {
+        try {
+            await supabaseResumeConversation(conversationId);
+            setConversation(prev => prev ? { ...prev, status: 'active' } : null);
+            toast.success('Atendimento retomado');
+        } catch (error) {
+            toast.error('Erro ao retomar conversa');
+        }
+    };
+
+    // Close conversation with reason modal
+    const handleCloseConversation = async () => {
+        try {
+            await supabaseCloseConversation(conversationId);
+            toast.success('Atendimento encerrado');
+            onConversationClosed();
+        } catch (error) {
+            toast.error('Erro ao encerrar conversa');
+        }
+    };
+
+    const handleNoInterest = async () => {
+        try {
+            await supabaseCloseConversation(conversationId);
+            toast.info('Conversa fechada - Sem interesse');
+            onConversationClosed();
+        } catch (error) {
+            toast.error('Erro ao fechar conversa');
+        }
+    };
+
+    const formatTime = (dateStr: string) => {
+        return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
+    };
+
+    // Move lead to different stage
+    const handleMoveStage = async (newStage: string) => {
+        if (!conversation) return;
+
+        try {
+            const updatedLead = await supabaseUpdateLeadStatus(conversation.lead.id, newStage, conversation.pipeline);
+            toast.success(`Lead movido para: ${newStage}`);
+
+            setConversation(prev => prev ? {
+                ...prev,
+                lead: {
+                    ...prev.lead,
+                    statusHT: updatedLead.statusHT || (conversation.pipeline === 'high_ticket' ? newStage : prev.lead.statusHT),
+                    statusLT: updatedLead.statusLT || (conversation.pipeline === 'low_ticket' ? newStage : prev.lead.statusLT)
                 }
-            }
+            } : null);
+        } catch (error) {
+            toast.error('Erro ao mover lead de etapa');
+            throw error;
+        }
+    };
 
-            // Add new message
-            console.log('➕ Adding new message:', newMessage.id);
-            const updated = [...prev, newMessage].sort((a, b) =>
-                new Date(a.createdAt || a.timestamp || 0).getTime() - new Date(b.createdAt || b.timestamp || 0).getTime()
+    // Send template message
+    const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
+        if (!conversation) return;
+
+        // Get user info from Supabase Auth (secure)
+        const { data: session } = await supabase.auth.getSession();
+        const currentUserId = session?.session?.user?.id;
+        const userName = session?.session?.user?.user_metadata?.name || 'Você';
+
+        try {
+            const result = await supabaseSendWhatsAppTemplate(
+                conversation.lead.phone,
+                templateName,
+                { components: parameters.length > 0 ? [{ type: 'body', parameters: parameters.map(p => ({ type: 'text', text: p })) }] : undefined },
+                conversationId,
+                conversation.lead.id
             );
-            return updated;
-        });
-        scrollToBottom();
-    });
 
-    return () => {
-        unsubscribe();
-    };
-}, [conversationId, subscribeToConversation, scrollToBottom]);
+            const newMessage: Message = {
+                id: result.messageId || `temp-${Date.now()}`,
+                direction: 'out',
+                text: fullText || `ðŸ“‹ Template: ${templateName}`,
+                type: 'template',
+                templateName: templateName,
+                status: 'sent',
+                createdAt: new Date().toISOString(),
+                sentByUser: currentUserId ? { id: currentUserId, name: userName } : undefined,
+                waMessageId: result.messageId
+            };
 
-// Auto scroll to bottom
-useEffect(() => {
-    scrollToBottom();
-}, [messages, scrollToBottom]);
-
-const handleSend = async () => {
-    if (!newMessage.trim() || isSending || !conversation) return;
-
-    const textToSend = newMessage.trim();
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage: Message = {
-        id: tempId,
-        direction: 'out',
-        text: textToSend,
-        type: 'text',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        sentByUser: { id: userId, name: 'You' }
+            setMessages(prev => [...prev, newMessage]);
+            toast.success(`Template "${templateName}" enviado com sucesso!`);
+        } catch (err: any) {
+            toast.error(err.message || 'Erro ao enviar template');
+            throw err;
+        }
     };
 
-    // Optimistic Update
-    setMessages(prev => [...prev, tempMessage]);
-    setNewMessage('');
-    setIsSending(true);
-    scrollToBottom();
-
-    try {
-        const result = await supabaseSendWhatsAppMessage(
-            conversation.lead.phone,
-            textToSend,
-            conversationId,
-            conversation.lead.id
-        );
-
-        setMessages(prev => {
-            const index = prev.findIndex(m => m.id === tempId);
-            if (index !== -1) {
-                const updated = [...prev];
-                updated[index] = {
-                    ...updated[index],
-                    id: result.messageId || tempId,
-                    status: 'sent',
-                    waMessageId: result.messageId
-                };
-                return updated;
-            }
-            return prev;
-        });
-
-    } catch (err: any) {
-        toast.error(err.message || 'Erro ao enviar mensagem');
-        setMessages(prev => prev.filter(m => m.id !== tempId));
-    } finally {
-        setIsSending(false);
-    }
-};
-
-const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-    }
-};
-
-// Quick Actions
-const handlePaymentSignal = async () => {
-    try {
-        await supabaseCloseConversation(conversationId);
-        toast.success('Sinal confirmado! Lead movido para PÃ³s-Venda.');
-        onConversationClosed();
-    } catch (error) {
-        toast.error('Erro ao processar pagamento');
-    }
-};
-
-// Hold conversation (pause atendimento)
-const handleHold = async () => {
-    try {
-        await supabaseHoldConversation(conversationId);
-        setConversation(prev => prev ? { ...prev, status: 'on_hold' } : null);
-        toast.info('Conversa colocada em espera');
-    } catch (error) {
-        toast.error('Erro ao colocar conversa em espera');
-    }
-};
-
-// Resume conversation from hold
-const handleResume = async () => {
-    try {
-        await supabaseResumeConversation(conversationId);
-        setConversation(prev => prev ? { ...prev, status: 'active' } : null);
-        toast.success('Atendimento retomado');
-    } catch (error) {
-        toast.error('Erro ao retomar conversa');
-    }
-};
-
-// Close conversation with reason modal
-const handleCloseConversation = async () => {
-    try {
-        await supabaseCloseConversation(conversationId);
-        toast.success('Atendimento encerrado');
-        onConversationClosed();
-    } catch (error) {
-        toast.error('Erro ao encerrar conversa');
-    }
-};
-
-const handleNoInterest = async () => {
-    try {
-        await supabaseCloseConversation(conversationId);
-        toast.info('Conversa fechada - Sem interesse');
-        onConversationClosed();
-    } catch (error) {
-        toast.error('Erro ao fechar conversa');
-    }
-};
-
-const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-};
-
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
-};
-
-// Move lead to different stage
-const handleMoveStage = async (newStage: string) => {
-    if (!conversation) return;
-
-    try {
-        const updatedLead = await supabaseUpdateLeadStatus(conversation.lead.id, newStage, conversation.pipeline);
-        toast.success(`Lead movido para: ${newStage}`);
-
-        setConversation(prev => prev ? {
-            ...prev,
-            lead: {
-                ...prev.lead,
-                statusHT: updatedLead.statusHT || (conversation.pipeline === 'high_ticket' ? newStage : prev.lead.statusHT),
-                statusLT: updatedLead.statusLT || (conversation.pipeline === 'low_ticket' ? newStage : prev.lead.statusLT)
-            }
-        } : null);
-    } catch (error) {
-        toast.error('Erro ao mover lead de etapa');
-        throw error;
-    }
-};
-
-// Send template message
-const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
-    if (!conversation) return;
-
-    // Get user info from Supabase Auth (secure)
-    const { data: session } = await supabase.auth.getSession();
-    const currentUserId = session?.session?.user?.id;
-    const userName = session?.session?.user?.user_metadata?.name || 'Você';
-
-    try {
-        const result = await supabaseSendWhatsAppTemplate(
-            conversation.lead.phone,
-            templateName,
-            { components: parameters.length > 0 ? [{ type: 'body', parameters: parameters.map(p => ({ type: 'text', text: p })) }] : undefined },
-            conversationId,
-            conversation.lead.id
-        );
-
-        const newMessage: Message = {
-            id: result.messageId || `temp-${Date.now()}`,
-            direction: 'out',
-            text: fullText || `ðŸ“‹ Template: ${templateName}`,
-            type: 'template',
-            templateName: templateName,
-            status: 'sent',
-            createdAt: new Date().toISOString(),
-            sentByUser: currentUserId ? { id: currentUserId, name: userName } : undefined,
-            waMessageId: result.messageId
-        };
-
-        setMessages(prev => [...prev, newMessage]);
-        toast.success(`Template "${templateName}" enviado com sucesso!`);
-    } catch (err: any) {
-        toast.error(err.message || 'Erro ao enviar template');
-        throw err;
-    }
-};
-
-if (isLoading) {
-    return (
-        <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-    );
-}
-
-if (!conversation) {
-    return (
-        <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
-            <p className="text-slate-400">Conversa nÃ£o encontrada</p>
-        </div>
-    );
-}
-
-return (
-    <div className={`${embedded ? 'h-full' : 'h-dvh'} flex bg-[#f8fafc]`}>
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-            {/* Header - Using new ChatHeader component */}
-            <ChatHeader
-                leadName={conversation.lead.name}
-                leadPhone={conversation.lead.phone}
-                channel="WhatsApp"
-                lastMessageAt={conversation.messages?.[conversation.messages.length - 1]?.createdAt || null}
-                conversationStatus={conversation.status as any}
-                assignedAgent={conversation.assignedAgent}
-                isConnected={isConnected}
-                onHold={handleHold}
-                onResume={handleResume}
-                onClose={handleCloseConversation}
-                onTransfer={fetchAvailableAgents}
-                onSchedule={() => setShowScheduleModal(true)}
-                onBack={!embedded ? onBack : undefined}
-                embedded={embedded}
-            />
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                {messages.map((msg) => (
-                    <MessageBubble
-                        key={msg.id}
-                        id={msg.id}
-                        direction={msg.direction}
-                        text={msg.text}
-                        mediaUrl={msg.mediaUrl}
-                        type={msg.type as any}
-                        status={msg.status as any}
-                        createdAt={msg.createdAt}
-                        templateName={msg.templateName}
-                        sentByUser={msg.sentByUser}
-                    />
-                ))}
-                <div ref={messagesEndRef} />
+    if (isLoading) {
+        return (
+            <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
+        );
+    }
 
-            {/* Input Bar (New Toolbar) */}
-            <MessageToolbar
-                newMessage={newMessage}
-                setNewMessage={setNewMessage}
-                handleSend={handleSend}
-                isSending={isSending}
-                isRecording={isRecording}
-                recordingDuration={recordingDuration}
-                startRecording={startRecording}
-                stopRecording={stopRecording}
-                sendAudio={sendAudio}
-                handleFileUpload={handleFileUpload}
-                setShowTemplateSelector={setShowTemplateSelector}
-                setShowScheduleModal={setShowScheduleModal}
-                showTagsPopover={showTagsPopover}
-                setShowTagsPopover={setShowTagsPopover}
-                availableTags={availableTags}
-                handleUpdateTags={handleUpdateTags}
-                currentTags={conversation?.lead.tags || []}
-            />
+    if (!conversation) {
+        return (
+            <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
+                <p className="text-slate-400">Conversa nÃ£o encontrada</p>
+            </div>
+        );
+    }
 
-            {/* Transfer Modal */}
-            {
-                showTransferModal && (
-                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
-                                <button
-                                    onClick={() => setShowTransferModal(false)}
-                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                                >
-                                    <XCircle size={20} />
-                                </button>
-                            </div>
+    return (
+        <div className={`${embedded ? 'h-full' : 'h-dvh'} flex bg-[#f8fafc]`}>
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Header - Using new ChatHeader component */}
+                <ChatHeader
+                    leadName={conversation.lead.name}
+                    leadPhone={conversation.lead.phone}
+                    channel="WhatsApp"
+                    lastMessageAt={conversation.messages?.[conversation.messages.length - 1]?.createdAt || null}
+                    conversationStatus={conversation.status as any}
+                    assignedAgent={conversation.assignedAgent}
+                    isConnected={isConnected}
+                    onHold={handleHold}
+                    onResume={handleResume}
+                    onClose={handleCloseConversation}
+                    onTransfer={fetchAvailableAgents}
+                    onSchedule={() => setShowScheduleModal(true)}
+                    onBack={!embedded ? onBack : undefined}
+                    embedded={embedded}
+                />
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                    {messages.map((msg) => (
+                        <MessageBubble
+                            key={msg.id}
+                            id={msg.id}
+                            direction={msg.direction}
+                            text={msg.text}
+                            mediaUrl={msg.mediaUrl}
+                            type={msg.type as any}
+                            status={msg.status as any}
+                            createdAt={msg.createdAt}
+                            templateName={msg.templateName}
+                            sentByUser={msg.sentByUser}
+                        />
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
 
-                            <div className="p-4 max-h-[300px] overflow-y-auto">
-                                {availableAgents.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400">
-                                        <User size={32} className="mx-auto mb-2 opacity-50" />
-                                        <p className="text-sm">Nenhum outro agente online</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {availableAgents.map(agent => (
-                                            <button
-                                                key={agent.id}
-                                                onClick={() => handleTransfer(agent.id)}
-                                                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                                                    {agent.name.charAt(0)}
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
-                                                    <p className="text-xs text-emerald-500 font-bold">Online</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                {/* Input Bar (New Toolbar) */}
+                <MessageToolbar
+                    newMessage={newMessage}
+                    setNewMessage={setNewMessage}
+                    handleSend={handleSend}
+                    isSending={isSending}
+                    isRecording={isRecording}
+                    recordingDuration={recordingDuration}
+                    startRecording={startRecording}
+                    stopRecording={stopRecording}
+                    sendAudio={sendAudio}
+                    handleFileUpload={handleFileUpload}
+                    setShowTemplateSelector={setShowTemplateSelector}
+                    setShowScheduleModal={setShowScheduleModal}
+                    showTagsPopover={showTagsPopover}
+                    setShowTagsPopover={setShowTagsPopover}
+                    availableTags={availableTags}
+                    handleUpdateTags={handleUpdateTags}
+                    currentTags={conversation?.lead.tags || []}
+                />
+
+                {/* Transfer Modal */}
+                {
+                    showTransferModal && (
+                        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                            <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                    <h3 className="font-bold text-lg text-slate-900">Transferir Conversa</h3>
+                                    <button
+                                        onClick={() => setShowTransferModal(false)}
+                                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                    >
+                                        <XCircle size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="p-4 max-h-[300px] overflow-y-auto">
+                                    {availableAgents.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-400">
+                                            <User size={32} className="mx-auto mb-2 opacity-50" />
+                                            <p className="text-sm">Nenhum outro agente online</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {availableAgents.map(agent => (
+                                                <button
+                                                    key={agent.id}
+                                                    onClick={() => handleTransfer(agent.id)}
+                                                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                        {agent.name.charAt(0)}
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-700 group-hover:text-blue-700">{agent.name}</p>
+                                                        <p className="text-xs text-emerald-500 font-bold">Online</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )
+                }
+            </div >
+
+            {/* Context Sidebar - Only show when NOT embedded (ChatLayout renders its own) */}
+            {!embedded && (
+                <div className="hidden lg:block">
+                    <CRMSidebar
+                        lead={conversation.lead as any}
+                        pipeline={conversation.pipeline}
+                        conversationId={conversationId}
+                        onOpenDetails={() => {
+                            setModalInitialTab('atividades');
+                            setShowLeadModal(true);
+                        }}
+                        onOpenConversations={() => {
+                            setModalInitialTab('conversas');
+                            setShowLeadModal(true);
+                        }}
+                        onMoveStage={handleMoveStage}
+                    />
+                </div>
+            )}
+
+            {
+                showLeadModal && (
+                    <Lead360Modal
+                        isOpen={showLeadModal}
+                        lead={conversation.lead as any}
+                        onClose={() => setShowLeadModal(false)}
+                        onOpenChat={() => { }}
+                        initialTab={modalInitialTab}
+                    />
                 )
             }
+
+            {/* Template Selector Modal */}
+            {
+                showTemplateSelector && (
+                    <TemplateSelector
+                        onSend={handleSendTemplate}
+                        onClose={() => setShowTemplateSelector(false)}
+                        leadName={conversation.lead.name}
+                    />
+                )
+            }
+
+            {/* Schedule Message Modal */}
+            <ScheduleMessageModal
+                isOpen={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                conversationId={conversationId}
+                leadName={conversation.lead.name}
+            />
         </div >
-
-        {/* Context Sidebar - Only show when NOT embedded (ChatLayout renders its own) */}
-        {!embedded && (
-            <div className="hidden lg:block">
-                <CRMSidebar
-                    lead={conversation.lead as any}
-                    pipeline={conversation.pipeline}
-                    conversationId={conversationId}
-                    onOpenDetails={() => {
-                        setModalInitialTab('atividades');
-                        setShowLeadModal(true);
-                    }}
-                    onOpenConversations={() => {
-                        setModalInitialTab('conversas');
-                        setShowLeadModal(true);
-                    }}
-                    onMoveStage={handleMoveStage}
-                />
-            </div>
-        )}
-
-        {
-            showLeadModal && (
-                <Lead360Modal
-                    isOpen={showLeadModal}
-                    lead={conversation.lead as any}
-                    onClose={() => setShowLeadModal(false)}
-                    onOpenChat={() => { }}
-                    initialTab={modalInitialTab}
-                />
-            )
-        }
-
-        {/* Template Selector Modal */}
-        {
-            showTemplateSelector && (
-                <TemplateSelector
-                    onSend={handleSendTemplate}
-                    onClose={() => setShowTemplateSelector(false)}
-                    leadName={conversation.lead.name}
-                />
-            )
-        }
-
-        {/* Schedule Message Modal */}
-        <ScheduleMessageModal
-            isOpen={showScheduleModal}
-            onClose={() => setShowScheduleModal(false)}
-            conversationId={conversationId}
-            leadName={conversation.lead.name}
-        />
-    </div >
-);
+    );
 };
 
 export default ChatView;
