@@ -127,6 +127,22 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isProjectDetailOpen, setIsProjectDetailOpen] = useState(false);
 
+  // User board filter
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Get current user from supabase auth session storage
+  const getCurrentUser = (): { id: string; role: string } | null => {
+    try {
+      const session = localStorage.getItem('supabase_session');
+      if (session) {
+        const parsed = JSON.parse(session);
+        return { id: parsed.user?.id, role: parsed.user?.user_metadata?.role || 'admin' };
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+  const currentUser = getCurrentUser();
+
   const navigate = useNavigate();
 
   // Determine board title based on route context
@@ -178,6 +194,8 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
     const now = new Date();
     return leads
       .filter(l => {
+        // User board filter (filter by assignedTo)
+        if (selectedUserId && l.assignedTo !== selectedUserId) return false;
         // Text search
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
@@ -205,7 +223,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
         if (kanbanFilters.hasNotes === 'no' && l.notes) return false;
         return true;
       });
-  }, [leads, searchTerm, kanbanFilters]);
+  }, [leads, searchTerm, kanbanFilters, selectedUserId]);
 
   // Get unique sources for filter dropdown with counts
   const sourceFiltersWithCounts = useMemo(() => {
@@ -692,6 +710,9 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
               sourceFilters={sourceFiltersWithCounts}
               activeSourceFilter={kanbanFilters.source}
               onSourceFilterChange={(source) => setKanbanFilters(prev => ({ ...prev, source }))}
+              currentUser={currentUser}
+              selectedUserId={selectedUserId}
+              onUserFilterChange={setSelectedUserId}
             />
           )}
 
