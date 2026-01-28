@@ -354,7 +354,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                     </button>
 
                                     {/* HT Users */}
-                                    {expandedSections.high_ticket && currentPipeline === 'sales' && salesSubPipeline === 'high_ticket' && (
+                                    {expandedSections.high_ticket && (
                                         renderUserList(htUsers, 'high_ticket')
                                     )}
                                 </div>
@@ -363,8 +363,10 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                 <div>
                                     <button
                                         onClick={() => {
-                                            onPipelineChange('sales');
-                                            onSubPipelineChange('low_ticket');
+                                            if (currentPipeline !== 'sales' || salesSubPipeline !== 'low_ticket') {
+                                                onPipelineChange('sales');
+                                                onSubPipelineChange('low_ticket');
+                                            }
                                             toggleSection('low_ticket');
                                         }}
                                         className={cn(
@@ -386,7 +388,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                     </button>
 
                                     {/* LT Users */}
-                                    {expandedSections.low_ticket && currentPipeline === 'sales' && salesSubPipeline === 'low_ticket' && (
+                                    {expandedSections.low_ticket && (
                                         renderUserList(ltUsers, 'low_ticket')
                                     )}
                                 </div>
@@ -398,7 +400,9 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                     <div>
                         <button
                             onClick={() => {
-                                onPipelineChange('production');
+                                if (currentPipeline !== 'production') {
+                                    onPipelineChange('production');
+                                }
                                 toggleSection('production');
                             }}
                             className={cn(
@@ -425,7 +429,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                         </button>
 
                         {/* Production Users */}
-                        {expandedSections.production && currentPipeline === 'production' && (
+                        {expandedSections.production && (
                             renderUserList(productionUsers, 'production')
                         )}
                     </div>
@@ -434,7 +438,9 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                     <div>
                         <button
                             onClick={() => {
-                                onPipelineChange('post_sales');
+                                if (currentPipeline !== 'post_sales') {
+                                    onPipelineChange('post_sales');
+                                }
                                 toggleSection('post_sales');
                             }}
                             className={cn(
@@ -461,7 +467,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                         </button>
 
                         {/* Post-sales Users */}
-                        {expandedSections.post_sales && currentPipeline === 'post_sales' && (
+                        {expandedSections.post_sales && (
                             renderUserList(postSalesUsers, 'post_sales')
                         )}
                     </div>
