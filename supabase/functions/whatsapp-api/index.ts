@@ -86,8 +86,8 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
         .single();
 
     if (error) {
-        console.error("❌ Error saving message:", error);
-        throw error;
+        console.error("❌ Error saving message:", JSON.stringify(error));
+        throw new Error(error.message || error.details || JSON.stringify(error));
     }
 
     return data;
@@ -146,7 +146,7 @@ async function handleSendMessage(body: any): Promise<Response> {
         });
     } catch (error) {
         console.error("❌ Send message error:", error);
-        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+        return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -212,7 +212,7 @@ async function handleSendTemplate(body: any): Promise<Response> {
         });
     } catch (error) {
         console.error("❌ Send template error:", error);
-        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+        return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -233,7 +233,7 @@ async function handleGetTemplates(): Promise<Response> {
         });
     } catch (error) {
         console.error("❌ Get templates error:", error);
-        return new Response(JSON.stringify({ templates: [], error: String(error) }), {
+        return new Response(JSON.stringify({ templates: [], error: error instanceof Error ? error.message : String(error) }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -277,7 +277,7 @@ Deno.serve(async (req: Request) => {
         });
     } catch (error) {
         console.error("❌ Edge Function error:", error);
-        return new Response(JSON.stringify({ error: String(error) }), {
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
