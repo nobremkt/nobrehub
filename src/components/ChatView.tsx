@@ -488,6 +488,23 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         }
     };
 
+    // Assume the conversation (assign to current user)
+    const handleAssume = async () => {
+        try {
+            await supabaseTransferConversation(conversationId, userId);
+            // Optimistic update - get user name from session
+            const { data: session } = await supabase.auth.getSession();
+            const userName = session?.session?.user?.user_metadata?.name || 'Você';
+            setConversation(prev => prev ? {
+                ...prev,
+                assignedAgent: { id: userId, name: userName }
+            } : null);
+            toast.success('Lead assumido com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao assumir lead');
+        }
+    };
+
     const handleNoInterest = async () => {
         try {
             await supabaseCloseConversation(conversationId);
@@ -591,14 +608,19 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     leadName={conversation.lead.name}
                     leadPhone={conversation.lead.phone}
                     channel="WhatsApp"
-                    lastMessageAt={conversation.messages?.[conversation.messages.length - 1]?.createdAt || null}
+                    lastMessageAt={
+                        // Find last INBOUND message from client for 24h window calculation
+                        [...messages].reverse().find(m => m.direction === 'in')?.createdAt || null
+                    }
                     conversationStatus={conversation.status as any}
                     assignedAgent={conversation.assignedAgent}
+                    currentUserId={userId}
                     isConnected={isConnected}
                     onHold={handleHold}
                     onResume={handleResume}
                     onClose={handleCloseConversation}
                     onTransfer={fetchAvailableAgents}
+                    onAssume={handleAssume}
                     onSchedule={() => setShowScheduleModal(true)}
                     onBack={!embedded ? onBack : undefined}
                     embedded={embedded}

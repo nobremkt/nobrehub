@@ -12,11 +12,13 @@ interface ChatHeaderProps {
     lastMessageAt: string | null;
     conversationStatus: 'queued' | 'active' | 'on_hold' | 'closed';
     assignedAgent?: { id: string; name: string } | null;
+    currentUserId?: string;
     isConnected: boolean;
     onHold: () => void;
     onResume: () => void;
     onClose: () => void;
     onTransfer: () => void;
+    onAssume?: () => void;
     onSchedule?: () => void;
     onBack?: () => void;
     embedded?: boolean;
@@ -29,11 +31,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     lastMessageAt,
     conversationStatus,
     assignedAgent,
+    currentUserId,
     isConnected,
     onHold,
     onResume,
     onClose,
     onTransfer,
+    onAssume,
     onSchedule,
     onBack,
     embedded = false
@@ -169,15 +173,26 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                         </button>
                     )}
 
-                    {/* Transfer Button */}
-                    <button
-                        onClick={onTransfer}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-700 transition-colors"
-                        title="Transferir conversa"
-                    >
-                        <ArrowRightLeft size={16} />
-                        <span className="hidden sm:inline">Transferir</span>
-                    </button>
+                    {/* Transfer/Assume Button - Show "Assumir" when no agent, otherwise "Transferir" */}
+                    {!assignedAgent && onAssume ? (
+                        <button
+                            onClick={onAssume}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-100 hover:bg-blue-200 rounded-xl text-sm font-medium text-blue-700 transition-colors"
+                            title="Assumir atendimento deste lead"
+                        >
+                            <UserPlus size={16} />
+                            <span className="hidden sm:inline">Assumir</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={onTransfer}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium text-slate-700 transition-colors"
+                            title="Transferir conversa"
+                        >
+                            <ArrowRightLeft size={16} />
+                            <span className="hidden sm:inline">Transferir</span>
+                        </button>
+                    )}
 
                     {/* Schedule Button */}
                     {onSchedule && (
