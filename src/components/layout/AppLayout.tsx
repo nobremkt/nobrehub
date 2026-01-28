@@ -1,6 +1,6 @@
 import React from 'react';
 import TopNav from './TopNav';
-import Sidebar from './Sidebar';
+
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -37,17 +37,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onLogout={onLogout}
             />
 
-            {/* Main area with Sidebar + Content */}
+            {/* Main area - Content only */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Sidebar with Board Navigation */}
-                <Sidebar
-                    user={user}
-                    unreadCount={unreadCount}
-                    onLogout={onLogout}
-                />
-
-                {/* Main Content */}
-                <main className="flex-1 overflow-hidden">
+                <main className="flex-1 overflow-hidden relative">
                     {children}
                 </main>
             </div>
