@@ -45,7 +45,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     const [timeRemaining, setTimeRemaining] = useState<string>('');
     const [isWithinWindow, setIsWithinWindow] = useState(true);
 
-    // Calculate 24h window remaining time
+    // Calculate 24h window remaining time - Real-time (1 second updates)
     useEffect(() => {
         if (!lastMessageAt) {
             setTimeRemaining('');
@@ -68,11 +68,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             setIsWithinWindow(true);
             const hours = Math.floor(remaining / (1000 * 60 * 60));
             const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-            setTimeRemaining(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            setTimeRemaining(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
         };
 
         calculateRemaining();
-        const interval = setInterval(calculateRemaining, 60000); // Update every minute
+        const interval = setInterval(calculateRemaining, 1000); // Update every second for real-time
 
         return () => clearInterval(interval);
     }, [lastMessageAt]);
