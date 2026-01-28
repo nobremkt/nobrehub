@@ -13,12 +13,13 @@ interface MessageBubbleProps {
     sentByUser?: { id: string; name: string };
 }
 
-// Format time helper
+// Format time helper - force Brasilia timezone
 const formatTime = (dateString: string) => {
     try {
         return new Date(dateString).toLocaleTimeString('pt-BR', {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
         });
     } catch {
         return '';

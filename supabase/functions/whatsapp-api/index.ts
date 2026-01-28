@@ -69,6 +69,7 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const messageData = {
+        id: crypto.randomUUID(),
         conversation_id: conversationId,
         lead_id: leadId,
         direction,
