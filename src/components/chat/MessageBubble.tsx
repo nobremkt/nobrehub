@@ -16,12 +16,7 @@ interface MessageBubbleProps {
 // Format time helper
 const formatTime = (dateString: string) => {
     try {
-        // Ensure UTC interpretation if missing timezone
-        const dateStr = !dateString.endsWith('Z') && !dateString.includes('+')
-            ? `${dateString}Z`
-            : dateString;
-
-        return new Date(dateStr).toLocaleTimeString('pt-BR', {
+        return new Date(dateString).toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -29,6 +24,7 @@ const formatTime = (dateString: string) => {
         return '';
     }
 };
+
 
 // Message status icon component
 const StatusIcon: React.FC<{ status: string; direction: 'in' | 'out' }> = ({ status, direction }) => {
