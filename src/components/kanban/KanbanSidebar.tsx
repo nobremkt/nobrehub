@@ -297,10 +297,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                     {/* VENDAS Section */}
                     <div>
                         <button
-                            onClick={() => {
-                                onPipelineChange('sales');
-                                toggleSection('sales');
-                            }}
+                            onClick={() => onPipelineChange('sales')}
                             className={cn(
                                 'w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group',
                                 currentPipeline === 'sales'
@@ -321,7 +318,12 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                             )}>
                                 {pipelineCounts.high_ticket + pipelineCounts.low_ticket}
                             </span>
-                            {expandedSections.sales ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span
+                                onClick={(e) => { e.stopPropagation(); toggleSection('sales'); }}
+                                className="p-1 hover:bg-white/50 rounded transition-colors cursor-pointer"
+                            >
+                                {expandedSections.sales ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
                         </button>
 
                         {/* HT/LT Sub-pipelines */}
@@ -333,7 +335,6 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                         onClick={() => {
                                             onPipelineChange('sales');
                                             onSubPipelineChange('high_ticket');
-                                            toggleSection('high_ticket');
                                         }}
                                         className={cn(
                                             'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm',
@@ -350,7 +351,12 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                         )}>
                                             {pipelineCounts.high_ticket}
                                         </span>
-                                        {expandedSections.high_ticket ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                        <span
+                                            onClick={(e) => { e.stopPropagation(); toggleSection('high_ticket'); }}
+                                            className="p-1 hover:bg-white/30 rounded transition-colors cursor-pointer"
+                                        >
+                                            {expandedSections.high_ticket ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                        </span>
                                     </button>
 
                                     {/* HT Users */}
@@ -363,11 +369,8 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                 <div>
                                     <button
                                         onClick={() => {
-                                            if (currentPipeline !== 'sales' || salesSubPipeline !== 'low_ticket') {
-                                                onPipelineChange('sales');
-                                                onSubPipelineChange('low_ticket');
-                                            }
-                                            toggleSection('low_ticket');
+                                            onPipelineChange('sales');
+                                            onSubPipelineChange('low_ticket');
                                         }}
                                         className={cn(
                                             'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm',
@@ -384,7 +387,12 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                                         )}>
                                             {pipelineCounts.low_ticket}
                                         </span>
-                                        {expandedSections.low_ticket ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                        <span
+                                            onClick={(e) => { e.stopPropagation(); toggleSection('low_ticket'); }}
+                                            className="p-1 hover:bg-white/30 rounded transition-colors cursor-pointer"
+                                        >
+                                            {expandedSections.low_ticket ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                        </span>
                                     </button>
 
                                     {/* LT Users */}
@@ -399,12 +407,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                     {/* PRODUÇÃO Section */}
                     <div>
                         <button
-                            onClick={() => {
-                                if (currentPipeline !== 'production') {
-                                    onPipelineChange('production');
-                                }
-                                toggleSection('production');
-                            }}
+                            onClick={() => onPipelineChange('production')}
                             className={cn(
                                 'w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group',
                                 currentPipeline === 'production'
@@ -425,7 +428,12 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                             )}>
                                 {pipelineCounts.production}
                             </span>
-                            {expandedSections.production ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span
+                                onClick={(e) => { e.stopPropagation(); toggleSection('production'); }}
+                                className="p-1 hover:bg-white/50 rounded transition-colors cursor-pointer"
+                            >
+                                {expandedSections.production ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
                         </button>
 
                         {/* Production Users */}
@@ -437,12 +445,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                     {/* PÓS-VENDA Section */}
                     <div>
                         <button
-                            onClick={() => {
-                                if (currentPipeline !== 'post_sales') {
-                                    onPipelineChange('post_sales');
-                                }
-                                toggleSection('post_sales');
-                            }}
+                            onClick={() => onPipelineChange('post_sales')}
                             className={cn(
                                 'w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group',
                                 currentPipeline === 'post_sales'
@@ -463,7 +466,12 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                             )}>
                                 {pipelineCounts.post_sales}
                             </span>
-                            {expandedSections.post_sales ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span
+                                onClick={(e) => { e.stopPropagation(); toggleSection('post_sales'); }}
+                                className="p-1 hover:bg-white/50 rounded transition-colors cursor-pointer"
+                            >
+                                {expandedSections.post_sales ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
                         </button>
 
                         {/* Post-sales Users */}
