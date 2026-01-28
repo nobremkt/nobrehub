@@ -35,9 +35,12 @@ interface ConversationListProps {
 
 /**
  * Format time relative to now
+ * Note: Supabase returns timestamps in local time or with proper UTC suffix.
+ * We simply format without additional timezone conversion.
  */
 const formatTime = (dateStr: string | null): string => {
     if (!dateStr) return '-';
+
     const date = new Date(dateStr);
     const now = new Date();
 
@@ -54,14 +57,14 @@ const formatTime = (dateStr: string | null): string => {
         date.getFullYear() === yesterday.getFullYear();
 
     if (isToday) {
-        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
 
     if (isYesterday) {
         return 'Ontem';
     }
 
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
 /**
