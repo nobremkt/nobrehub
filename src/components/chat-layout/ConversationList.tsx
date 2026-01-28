@@ -54,14 +54,14 @@ const formatTime = (dateStr: string | null): string => {
         date.getFullYear() === yesterday.getFullYear();
 
     if (isToday) {
-        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
     }
 
     if (isYesterday) {
         return 'Ontem';
     }
 
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
 };
 
 /**

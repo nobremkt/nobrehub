@@ -516,7 +516,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     };
 
     const formatTime = (dateStr: string) => {
-        return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
     };
 
     const formatCurrency = (value: number) => {
