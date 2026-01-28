@@ -15,28 +15,26 @@ Criar um painel dedicado para **produtores**, substituindo a visualização Kanb
 ## Diagrama de Fluxo
 
 ```mermaid
-flowchart TD
-    A[Produtor acessa /producao] --> B{Carrega projetos atribuídos}
+graph TD
+    A[Produtor acessa /producao] --> B{Carrega projetos}
     B --> C[Lista de Projetos]
     
-    C --> D[Projeto com status 'Aguardando']
-    C --> E[Projeto com status 'Produzindo']
-    C --> F[Projeto com status 'Finalizado']
+    C --> D[Projeto Aguardando]
+    C --> E[Projeto Produzindo]
+    C --> F[Projeto Finalizado]
     
-    D --> |Clica Play ▶️| G[Muda status para 'Produzindo']
-    E --> |Clica Check ✓| H[Muda status para 'Finalizado']
+    D -->|Clica Play| G[Muda para Produzindo]
+    E -->|Clica Check| H[Muda para Finalizado]
     
-    G --> I[Atualiza no Supabase]
+    G --> I[Atualiza Supabase]
     H --> I
     
-    I --> J[Emit socket para sincronizar]
+    I --> J[Emit socket]
     J --> C
     
-    subgraph Painel Lateral
-        K[Seleciona projeto] --> L[Mostra detalhes]
-        L --> M[Upload de arquivos]
-        L --> N[Marcar como Pronto]
-    end
+    K[Seleciona projeto] --> L[Mostra detalhes]
+    L --> M[Upload arquivos]
+    L --> N[Marcar Pronto]
 ```
 
 ---
