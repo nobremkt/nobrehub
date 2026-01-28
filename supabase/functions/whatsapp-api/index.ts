@@ -63,7 +63,7 @@ async function pushToFirebase(path: string, data: any): Promise<void> {
 }
 
 // Helper: Save message to Supabase
-async function saveMessage(conversationId: string, leadId: string, text: string, direction: "in" | "out", waMessageId?: string): Promise<any> {
+async function saveMessage(conversationId: string, leadId: string, text: string, direction: "in" | "out", phone: string, waMessageId?: string): Promise<any> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -72,6 +72,7 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
         id: crypto.randomUUID(),
         conversation_id: conversationId,
         lead_id: leadId,
+        phone,
         direction,
         type: "text",
         text,
@@ -126,7 +127,7 @@ async function handleSendMessage(body: any): Promise<Response> {
 
         // Save to database if conversationId provided
         if (conversationId && leadId) {
-            const savedMessage = await saveMessage(conversationId, leadId, text, "out", messageId);
+            const savedMessage = await saveMessage(conversationId, leadId, text, "out", formattedPhone, messageId);
 
             // Push to Firebase for realtime
             await pushToFirebase(`conversations/${conversationId}/newMessage`, {
@@ -193,7 +194,7 @@ async function handleSendTemplate(body: any): Promise<Response> {
 
         // Save to database
         if (conversationId && leadId) {
-            const savedMessage = await saveMessage(conversationId, leadId, `[Template: ${templateName}]`, "out", messageId);
+            const savedMessage = await saveMessage(conversationId, leadId, `[Template: ${templateName}]`, "out", formattedPhone, messageId);
 
             await pushToFirebase(`conversations/${conversationId}/newMessage`, {
                 id: savedMessage.id,
