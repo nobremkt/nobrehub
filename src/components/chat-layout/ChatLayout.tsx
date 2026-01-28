@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { useSocket } from '../../hooks/useSocket';
+import { useFirebase } from '../../contexts/FirebaseContext';
 import ConversationList from './ConversationList';
 import ChatView from '../ChatView';
 import CRMSidebar from '../chat/CRMSidebar';
@@ -63,7 +63,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         subscribeToNewConversations,
         subscribeToConversationUpdates,
         requestConversations
-    } = useSocket({ userId });
+    } = useFirebase({ userId });
 
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {

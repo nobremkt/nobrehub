@@ -14,7 +14,7 @@ import {
   Lead
 } from '../services/supabaseApi';
 import { toast } from 'sonner';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
 
 interface LeadListProps {
   onNavigateToChat?: (leadId?: string) => void;
@@ -44,7 +44,7 @@ const LeadList: React.FC<LeadListProps> = ({ onNavigateToChat }) => {
     lostOnly: false,
   });
 
-  const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
+  const { subscribeToNewLeads, subscribeToLeadUpdates } = useFirebase();
 
   useEffect(() => {
     fetchLeads();

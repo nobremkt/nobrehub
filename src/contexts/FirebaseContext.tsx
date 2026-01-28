@@ -1,4 +1,4 @@
-// FirebaseContext - Drop-in replacement for SocketContext
+﻿// FirebaseContext - Drop-in replacement for SocketContext
 // Provides the same API as SocketContext but uses Firebase Realtime DB
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -43,13 +43,11 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Monitor Firebase connection
     useEffect(() => {
-        console.log('🔥 FirebaseProvider: Initializing connection monitoring...');
 
         const connectedRef = ref(realtimeDb, '.info/connected');
 
         const unsubscribe = onValue(connectedRef, (snapshot) => {
             const connected = snapshot.val() === true;
-            console.log(`🔥 FirebaseProvider: Connection status: ${connected ? 'CONNECTED' : 'DISCONNECTED'}`);
             setIsConnected(connected);
         });
 
@@ -84,20 +82,17 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Join as agent (set current user)
     const joinAsAgent = useCallback((userId: string) => {
-        console.log(`🔥 FirebaseProvider: Agent joined: ${userId}`);
         setCurrentUserId(userId);
     }, []);
 
     // Subscribe to conversation messages
     const subscribeToConversation = useCallback((conversationId: string, callback: MessageCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to conversation ${conversationId}`);
 
         const messageRef = ref(realtimeDb, `conversations/${conversationId}/newMessage`);
 
         const unsubscribe = onValue(messageRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                console.log(`🔥 FirebaseProvider: New message in ${conversationId}:`, data);
                 callback({
                     id: data.id,
                     content: data.content,
@@ -110,14 +105,12 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
         });
 
         return () => {
-            console.log(`🔥 FirebaseProvider: Unsubscribing from conversation ${conversationId}`);
             unsubscribe();
         };
     }, []);
 
     // Subscribe to new leads
     const subscribeToNewLeads = useCallback((callback: LeadCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to new leads`);
 
         const leadsRef = ref(realtimeDb, `leads/new`);
 
@@ -132,7 +125,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Subscribe to lead updates
     const subscribeToLeadUpdates = useCallback((callback: LeadCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to lead updates`);
 
         const leadsRef = ref(realtimeDb, `leads/updates`);
 
@@ -147,7 +139,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Subscribe to new conversations
     const subscribeToNewConversations = useCallback((callback: ConversationCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to new conversations`);
 
         const convsRef = ref(realtimeDb, `conversationsUpdates/new`);
 
@@ -162,7 +153,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Subscribe to conversation updates
     const subscribeToConversationUpdates = useCallback((callback: ConversationCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to conversation updates`);
 
         const convsRef = ref(realtimeDb, `conversationsUpdates/updated`);
 
@@ -177,7 +167,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Subscribe to assignments
     const subscribeToAssignments = useCallback((callback: ConversationCallback) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to assignments`);
 
         const assignRef = ref(realtimeDb, `conversationsUpdates/assigned`);
 
@@ -192,7 +181,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Subscribe to queue updates
     const subscribeToQueue = useCallback((callback: (queueItem: any) => void) => {
-        console.log(`🔥 FirebaseProvider: Subscribing to queue`);
 
         const queueRef = ref(realtimeDb, `queue`);
 
@@ -209,13 +197,11 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     const subscribeToConversationsData = useCallback((callback: (conversations: any[]) => void) => {
         // This would typically come from the API, not realtime
         // For now, return empty unsubscribe
-        console.log(`🔥 FirebaseProvider: subscribeToConversationsData is a no-op (use API)`);
         return () => { };
     }, []);
 
     // Send message (write to Firebase, backend will process)
     const sendMessage = useCallback((conversationId: string, text: string, userId: string) => {
-        console.log(`🔥 FirebaseProvider: Sending message to ${conversationId}`);
 
         // Write to a "pending messages" location that backend will process
         // Or call API directly - this is just for compatibility
@@ -229,7 +215,6 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
 
     // Request conversations (no-op, use API instead)
     const requestConversations = useCallback((userId: string) => {
-        console.log(`🔥 FirebaseProvider: requestConversations is a no-op (use API)`);
     }, []);
 
     const value: FirebaseContextType = {
@@ -264,7 +249,6 @@ export function useFirebaseContext(): FirebaseContextType {
     return context;
 }
 
-// Compatibility hook - drop-in replacement for useSocket
 export function useFirebase(options?: { userId?: string }) {
     const context = useFirebaseContext();
 

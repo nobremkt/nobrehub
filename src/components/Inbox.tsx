@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, Clock, User, Search, Phone, Building, DollarSign, ChevronRight, Inbox as InboxIcon, Filter as FilterIcon } from 'lucide-react';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
 import ChatView from './ChatView';
 import InboxFilter, { InboxFilters } from './chat/InboxFilter';
 import { supabaseGetActiveConversations, supabaseGetConversationByLead } from '../services/supabaseApi';
@@ -54,7 +54,7 @@ const Inbox: React.FC<InboxProps> = ({ userId, isAdmin = false, initialLeadId, o
         subscribeToNewConversations,
         subscribeToConversationUpdates,
         requestConversations
-    } = useSocket({ userId });
+    } = useFirebase({ userId });
 
     // Fetch conversations from API
     const fetchConversations = useCallback(async () => {

@@ -42,7 +42,7 @@ export const analyzeLeadScore = async (contactInfo: string, lastMessages: string
         }
       }
     });
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || '{"score":50,"reasoning":"IA sem resposta"}');
   } catch (error) {
     console.error("Erro no scoring do lead:", error);
     return { score: 50, reasoning: "IA indisponível no momento." };

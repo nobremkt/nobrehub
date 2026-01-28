@@ -1,22 +1,27 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Search, Edit2, LogOut, Eye, ArrowLeft, Trash2, Filter, X } from 'lucide-react';
 import { Agent, BoardStageConfig } from '../types';
 import LeadModal from './LeadModal';
 import Lead360Modal from './Lead360Modal';
+import ProjectDetailModal from './ProjectDetailModal';
 // Removed api.ts import - fully migrated to supabaseApi.ts
 import {
   supabaseGetLeads,
   supabaseUpdateLeadStage,
   supabaseUpdateLead,
   Lead,
-  supabaseGetPipelineStages
+  supabaseGetPipelineStages,
+  getProjects,
+  updateProjectStatus,
+  Project
 } from '../services/supabaseApi';
 import { toast } from 'sonner';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
 import LeadCard from './kanban/LeadCard';
 import KanbanColumn from './kanban/KanbanColumn';
 import KanbanSidebar from './kanban/KanbanSidebar';
+import { SECTORS } from '../config/permissions';
 import {
   DndContext,
   closestCenter,
@@ -80,6 +85,9 @@ const COLORS = [
 
 
 const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWorkspace = false }) => {
+  // Route params for board navigation
+  const { userId, sectorId } = useParams<{ userId?: string; sectorId?: string }>();
+
   const [currentPipeline, setCurrentPipeline] = useState<'sales' | 'production' | 'post_sales'>('sales');
   const [salesSubPipeline, setSalesSubPipeline] = useState<'high_ticket' | 'low_ticket'>('high_ticket');
 
@@ -107,13 +115,33 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   // Cache for all leads - enables instant HT/LT switching
   const [allSalesLeads, setAllSalesLeads] = useState<Lead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
 
   // Lead 360 Modal State
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLead360Open, setIsLead360Open] = useState(false);
+
+  // Project Detail Modal State (for production pipeline)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isProjectDetailOpen, setIsProjectDetailOpen] = useState(false);
+
   const navigate = useNavigate();
+
+  // Determine board title based on route context
+  const boardTitle = useMemo(() => {
+    if (monitoredUser) return `Board: ${monitoredUser.name}`;
+    if (sectorId) {
+      const sector = SECTORS.find(s => s.id === sectorId);
+      return sector ? `${sector.label} - Visão do Setor` : 'Setor';
+    }
+    if (userId) {
+      // Will be updated when we know the user's name
+      return 'Board do Usuário';
+    }
+    return 'Pipeline Master';
+  }, [monitoredUser, sectorId, userId]);
 
   // Quick Action Handlers for LeadCard
   const handleOpenChat = (lead: Lead) => {
@@ -222,7 +250,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
   };
 
   // Socket Integration
-  const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket(); // Using global socket
+  const { subscribeToNewLeads, subscribeToLeadUpdates } = useFirebase();
 
   // DND Sensors
   const sensors = useSensors(
@@ -241,24 +269,66 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
             supabaseGetLeads({ pipeline: 'high_ticket' }),
             supabaseGetLeads({ pipeline: 'low_ticket' })
           ]);
-          const allSales = [...htData, ...ltData];
+          let allSales = [...htData, ...ltData];
 
-          if (monitoredUser) {
-            setAllSalesLeads(allSales.filter(l => l.assignedAgentId === monitoredUser.id));
-          } else {
-            setAllSalesLeads(allSales);
+          // Filter by route params (userId or monitoredUser)
+          if (userId) {
+            allSales = allSales.filter(l => l.assignedAgentId === userId);
+          } else if (monitoredUser) {
+            allSales = allSales.filter(l => l.assignedAgentId === monitoredUser.id);
           }
+
+          setAllSalesLeads(allSales);
+          setProjects([]); // Clear projects when on sales
+        } else if (currentPipeline === 'production') {
+          // For production: fetch projects instead of leads
+          let projectsData = await getProjects();
+
+          // Filter by route params
+          if (userId) {
+            projectsData = projectsData.filter(p => p.assignedTo === userId);
+          } else if (monitoredUser) {
+            projectsData = projectsData.filter(p => p.assignedTo === monitoredUser.id);
+          }
+
+          setProjects(projectsData);
+
+          // Convert projects to Lead-like format for display in existing cards
+          const projectsAsLeads: Lead[] = projectsData.map(p => ({
+            id: p.id,
+            name: p.name,
+            email: '',
+            phone: '',
+            company: p.lead?.company || '',
+            source: 'project',
+            pipeline: 'production' as any,
+            statusHT: p.status, // Use status for production kanban columns
+            statusLT: undefined,
+            estimatedValue: 0,
+            notes: p.notes,
+            createdAt: p.createdAt,
+            tags: p.deadline ? [`📅 ${new Date(p.deadline).toLocaleDateString('pt-BR')}`] : [],
+            assignedAgentId: p.assignedTo,
+            assignee: p.assignee
+          }));
+
+          setLeads(projectsAsLeads);
+          setAllSalesLeads([]);
         } else {
-          // For production/post_sales: just fetch that pipeline
+          // For post_sales: just fetch that pipeline
           const pipelineType = getApiPipelineType(currentPipeline);
-          const data = await supabaseGetLeads({ pipeline: pipelineType });
+          let data = await supabaseGetLeads({ pipeline: pipelineType });
 
-          if (monitoredUser) {
-            setLeads(data.filter(l => l.assignedAgentId === monitoredUser.id));
-          } else {
-            setLeads(data);
+          // Filter by route params
+          if (userId) {
+            data = data.filter(l => l.assignedAgentId === userId);
+          } else if (monitoredUser) {
+            data = data.filter(l => l.assignedAgentId === monitoredUser.id);
           }
-          setAllSalesLeads([]); // Clear sales cache when on other pipelines
+
+          setLeads(data);
+          setAllSalesLeads([]);
+          setProjects([]);
         }
       } catch (error) {
         console.error('Failed to load leads', error);
@@ -267,7 +337,7 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
       }
     };
     loadLeads();
-  }, [currentPipeline, monitoredUser]); // Note: removed salesSubPipeline dependency
+  }, [currentPipeline, monitoredUser, userId, sectorId]);
 
   // Filter sales leads locally when HT/LT changes (instant!)
   useEffect(() => {
@@ -753,6 +823,29 @@ const Kanban: React.FC<KanbanProps> = ({ monitoredUser, onExitMonitor, isOwnWork
             if (!selectedLead) return;
             await supabaseUpdateLead(selectedLead.id, updates as any);
             setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, ...updates } as Lead : l));
+          }}
+        />
+
+        {/* Project Detail Modal (for production pipeline) */}
+        <ProjectDetailModal
+          isOpen={isProjectDetailOpen}
+          project={selectedProject}
+          onClose={() => { setIsProjectDetailOpen(false); setSelectedProject(null); }}
+          onUpdate={(updatedProject) => {
+            // Update the project in local state and refresh leads display
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+            // Also update the leads-like display
+            setLeads(prev => prev.map(l => {
+              if (l.id === updatedProject.id) {
+                return {
+                  ...l,
+                  name: updatedProject.name,
+                  statusHT: updatedProject.status,
+                  tags: updatedProject.deadline ? [`📅 ${new Date(updatedProject.deadline).toLocaleDateString('pt-BR')}`] : []
+                } as Lead;
+              }
+              return l;
+            }));
           }}
         />
       </div>

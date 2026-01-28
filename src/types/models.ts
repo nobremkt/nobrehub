@@ -23,8 +23,8 @@ export interface Lead {
     email?: string;
     phone: string;
     company?: string;
-    source: string;
-    pipeline: PipelineType;
+    source?: string;
+    pipeline?: PipelineType;
     statusHT?: string;
     statusLT?: string;
     statusProduction?: string;
@@ -32,11 +32,11 @@ export interface Lead {
     assignedTo?: string;
     assignedAgentId?: string;
     assignedAt?: string;
-    estimatedValue: number;
-    tags: string[];
+    estimatedValue?: number;
+    tags?: string[];
     notes?: string;
     createdAt: string;
-    updatedAt: string;
+    updatedAt?: string;
     statusChangedAt?: string;
     contactReason?: string;
     lossReasonId?: string;

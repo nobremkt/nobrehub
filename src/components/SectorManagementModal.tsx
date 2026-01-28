@@ -270,7 +270,7 @@ const SectorManagementModal: React.FC<SectorManagementModalProps> = ({ isOpen, o
                                                     onClick={() => handleDelete(sector)}
                                                     className="p-2 hover:bg-red-50 rounded-xl transition-colors"
                                                     title="Excluir"
-                                                    disabled={sector._count?.users && sector._count.users > 0}
+                                                    disabled={!!(sector._count?.users && sector._count.users > 0)}
                                                 >
                                                     <Trash2 size={14} className={
                                                         sector._count?.users && sector._count.users > 0

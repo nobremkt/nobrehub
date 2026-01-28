@@ -25,6 +25,11 @@
       ]
     },
     "allowImportingTsExtensions": true,
+    /* Type Safety */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noFallthroughCasesInSwitch": true,
     "noEmit": true
   },
   "include": [

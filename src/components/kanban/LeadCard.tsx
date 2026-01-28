@@ -127,7 +127,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onOpenChat, onSchedu
 
     const timeInStage = useMemo(() => getTimeInStage(lead.statusChangedAt || lead.createdAt), [lead]);
     const temperature = useMemo(() => getLeadTemperature(lead), [lead]);
-    const sourceStyle = SOURCE_COLORS[lead.source] || SOURCE_COLORS.outro;
+    const sourceStyle = SOURCE_COLORS[lead.source || 'outro'] || SOURCE_COLORS.outro;
 
     // Parse tags for special styling
     const { specialTags, normalTags } = useMemo(() => {
@@ -174,7 +174,7 @@ const LeadCard: React.FC<LeadCardProps> = ({ lead, onClick, onOpenChat, onSchedu
                         'text-[10px] font-medium px-2 py-0.5 rounded-full',
                         sourceStyle.bg, sourceStyle.text
                     )}>
-                        {getSourceLabel(lead.source)}
+                        {getSourceLabel(lead.source || 'outro')}
                     </span>
                     {/* Temperature */}
                     {temperature === 'hot' && (

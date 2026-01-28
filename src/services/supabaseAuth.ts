@@ -1,4 +1,4 @@
-// Supabase Auth Service - 100% Native Supabase Authentication
+﻿// Supabase Auth Service - 100% Native Supabase Authentication
 // User IDs in public.users match auth.users IDs exactly
 
 import { supabase } from '../lib/supabase';
@@ -22,7 +22,6 @@ export interface LoginResponse {
  * Login using native Supabase Auth
  */
 export async function supabaseLogin(email: string, password: string): Promise<LoginResponse> {
-    console.log('🔐 Supabase Auth: Attempting login for', email);
 
     // Authenticate with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -31,17 +30,16 @@ export async function supabaseLogin(email: string, password: string): Promise<Lo
     });
 
     if (authError) {
-        console.error('🔐 Supabase Auth: Login failed', authError.message);
+        console.error('ðŸ” Supabase Auth: Login failed', authError.message);
         throw new Error(authError.message === 'Invalid login credentials'
             ? 'Email ou senha incorretos'
             : authError.message);
     }
 
     if (!authData.user || !authData.session) {
-        throw new Error('Autenticação falhou');
+        throw new Error('AutenticaÃ§Ã£o falhou');
     }
 
-    console.log('🔐 Supabase Auth: Auth success, fetching user profile');
 
     // Fetch user profile from public.users (same ID as auth.users)
     const { data: profile, error: profileError } = await supabase
@@ -51,16 +49,15 @@ export async function supabaseLogin(email: string, password: string): Promise<Lo
         .single();
 
     if (profileError || !profile) {
-        console.error('🔐 Supabase Auth: User profile not found', profileError);
-        throw new Error('Perfil de usuário não encontrado');
+        console.error('ðŸ” Supabase Auth: User profile not found', profileError);
+        throw new Error('Perfil de usuÃ¡rio nÃ£o encontrado');
     }
 
     if (!profile.is_active) {
         await supabase.auth.signOut();
-        throw new Error('Usuário inativo');
+        throw new Error('UsuÃ¡rio inativo');
     }
 
-    console.log('🔐 Supabase Auth: Login successful for', profile.name);
 
     // Save to localStorage for backward compatibility
     localStorage.setItem('token', authData.session.access_token);
@@ -145,7 +142,6 @@ export async function supabaseGetDevUsers(): Promise<AuthUser[]> {
  * NOTE: This does NOT create a real Supabase Auth session
  */
 export async function supabaseDevLogin(userId: string): Promise<LoginResponse> {
-    console.log('🔐 Supabase Auth: Dev login for user', userId);
 
     const { data: user, error } = await supabase
         .from('users')
@@ -154,7 +150,7 @@ export async function supabaseDevLogin(userId: string): Promise<LoginResponse> {
         .single();
 
     if (error || !user) {
-        console.error('🔐 Supabase Auth: Dev login failed', error);
+        console.error('ðŸ” Supabase Auth: Dev login failed', error);
         throw new Error('User not found');
     }
 
@@ -166,7 +162,6 @@ export async function supabaseDevLogin(userId: string): Promise<LoginResponse> {
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('isLoggedIn', 'true');
 
-    console.log('🔐 Supabase Auth: Dev login successful for', user.name);
 
     return {
         token,
@@ -190,10 +185,3 @@ export async function supabaseLogout(): Promise<void> {
     localStorage.removeItem('user');
     localStorage.removeItem('isLoggedIn');
 }
-
-// ============ EXPORT ALIASES (without 'supabase' prefix) ============
-export { supabaseLogin as login };
-export { supabaseGetCurrentUser as getCurrentUser };
-export { supabaseGetDevUsers as getDevUsers };
-export { supabaseDevLogin as devLogin };
-export { supabaseLogout as logout };

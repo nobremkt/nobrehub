@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { useSocket } from '../hooks/useSocket';
+﻿import React, { useEffect, useRef } from 'react';
+import { useFirebase } from '../contexts/FirebaseContext';
 import { useNotifications } from '../hooks/useNotifications';
 
 /**
@@ -8,7 +8,7 @@ import { useNotifications } from '../hooks/useNotifications';
  * Should be placed inside SocketProvider but outside main content.
  */
 const NotificationHandler: React.FC = () => {
-    const { subscribeToLeadUpdates, subscribeToNewLeads, isConnected } = useSocket();
+    const { subscribeToLeadUpdates, subscribeToNewLeads, isConnected } = useFirebase();
     const { requestPermission, notifyNewMessage } = useNotifications();
     const hasRequestedPermission = useRef(false);
 
@@ -17,7 +17,6 @@ const NotificationHandler: React.FC = () => {
         if (!hasRequestedPermission.current) {
             hasRequestedPermission.current = true;
             requestPermission().then(granted => {
-                console.log('🔔 Notification permission:', granted ? 'granted' : 'denied');
             });
         }
     }, [requestPermission]);
@@ -25,33 +24,26 @@ const NotificationHandler: React.FC = () => {
     // Subscribe to lead updates (fired when ANY message arrives for a lead)
     useEffect(() => {
         if (!isConnected) {
-            console.log('🔔 NotificationHandler: Not connected yet');
             return;
         }
 
-        console.log('🔔 NotificationHandler: Setting up listeners...');
 
         // New lead = new conversation from unknown contact
         const unsubscribeNewLead = subscribeToNewLeads((lead: any) => {
-            console.log('🔔 NEW LEAD notification:', lead);
             notifyNewMessage(lead.name || 'Novo contato', lead.contactReason || 'Nova mensagem', lead.id);
         });
 
         // Lead updated = new message on existing lead
         const unsubscribeLeadUpdated = subscribeToLeadUpdates((lead: any) => {
-            console.log('🔔 LEAD UPDATED notification check:', lead);
-            console.log('🔔 lastMessageFrom:', lead.lastMessageFrom);
 
             // Only notify for incoming messages (from client)
             if (lead.lastMessageFrom === 'in') {
-                console.log('🔔 Triggering notification for INCOMING:', lead.name, lead.lastMessage);
                 notifyNewMessage(
                     lead.name || 'Cliente',
                     lead.lastMessage || lead.contactReason || 'Nova mensagem',
                     lead.id
                 );
             } else {
-                console.log('🔔 Skipping - not an incoming message');
             }
         });
 

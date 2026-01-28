@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+﻿import { useEffect, useCallback, useRef } from 'react';
 
 // Notification sound (base64 encoded short beep)
 const NOTIFICATION_SOUND_URL = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleSlurA==';
@@ -29,7 +29,6 @@ export function useNotifications() {
     // Request permission
     const requestPermission = useCallback(async (): Promise<boolean> => {
         if (!('Notification' in window)) {
-            console.warn('This browser does not support notifications');
             return false;
         }
 
@@ -57,21 +56,18 @@ export function useNotifications() {
         if (audioRef.current) {
             audioRef.current.currentTime = 0;
             audioRef.current.play().catch(err => {
-                console.warn('Could not play notification sound:', err);
             });
         }
     }, []);
 
     // Show notification
     const showNotification = useCallback((options: NotificationOptions) => {
-        console.log('🔔 showNotification called:', options);
 
         // Play sound always (unless page is focused and we want silence)
         playSound();
 
         // Show browser notification if permitted
         if (isEnabled()) {
-            console.log('🔔 Creating browser notification...');
             try {
                 const notification = new Notification(options.title, {
                     body: options.body,
@@ -91,12 +87,10 @@ export function useNotifications() {
 
                 // Auto-close after 5 seconds
                 setTimeout(() => notification.close(), 5000);
-                console.log('🔔 Notification created successfully');
             } catch (err) {
-                console.error('🔔 Failed to create notification:', err);
+                console.error('ðŸ”” Failed to create notification:', err);
             }
         } else {
-            console.log('🔔 Notifications not enabled, skipping browser notification');
         }
     }, [isEnabled, playSound]);
 
@@ -108,7 +102,6 @@ export function useNotifications() {
             tag: `message-${conversationId || 'new'}`,
             onClick: () => {
                 // Could navigate to conversation here
-                console.log('Notification clicked, conversation:', conversationId);
             }
         });
     }, [showNotification]);

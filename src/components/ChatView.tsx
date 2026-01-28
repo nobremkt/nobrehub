@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Send, Phone, User, DollarSign, CreditCard, XCircle, RefreshCw, MoreVertical, Paperclip, Mic, ArrowRightLeft, X, FileText, Clock, Smile, Tag } from 'lucide-react';
 import { MessageToolbar } from './chat-layout/MessageToolbar';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
+import { useAudioRecording } from '../hooks/useAudioRecording';
 import { toast } from 'sonner';
 import CRMSidebar from './chat/CRMSidebar';
 import Lead360Modal, { TabType } from './Lead360Modal';
 import TemplateSelector from './TemplateSelector';
+import { supabase } from '../lib/supabase';
 
 import MessageBubble from './chat/MessageBubble';
 import ChatHeader from './chat/ChatHeader';
@@ -75,15 +77,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [showActions, setShowActions] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Audio Recording State
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingDuration, setRecordingDuration] = useState(0);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
-    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const audioMimeTypeRef = useRef<string>('audio/webm');
+    // Audio Recording Hook
+    const { isRecording, recordingDuration, startRecording, stopRecording, sendAudio: sendAudioHook, cancelRecording } = useAudioRecording();
 
     // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -148,119 +145,12 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
 
-    // Audio Recording Functions
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-            // WhatsApp prefers OGG/Opus. Try that first, fallback to webm.
-            let mimeType = 'audio/webm;codecs=opus';
-            if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-                mimeType = 'audio/ogg;codecs=opus';
-            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                mimeType = 'audio/webm;codecs=opus';
-            } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-                mimeType = 'audio/webm';
-            }
-
-            console.log('🎙️ Recording with mimeType:', mimeType);
-            audioMimeTypeRef.current = mimeType;
-
-            const mediaRecorder = new MediaRecorder(stream, { mimeType });
-            mediaRecorderRef.current = mediaRecorder;
-            audioChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunksRef.current.push(event.data);
-                }
-            };
-
-            mediaRecorder.onstop = () => {
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            mediaRecorder.start(100); // Collect data every 100ms
-            setIsRecording(true);
-            setRecordingDuration(0);
-
-            // Start duration timer
-            recordingIntervalRef.current = setInterval(() => {
-                setRecordingDuration(prev => prev + 1);
-            }, 1000);
-
-            toast.success('Gravando áudio...');
-        } catch (error: any) {
-            console.error('Error starting recording:', error);
-
-            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                toast.error('Microfone não encontrado. Conecte um microfone e tente novamente.');
-            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                toast.error('Permissão de microfone negada. Permita o acesso nas configurações do navegador.');
-            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-                toast.error('Microfone em uso por outro aplicativo. Feche outros apps e tente novamente.');
-            } else {
-                toast.error('Erro ao acessar microfone. Verifique as permissões.');
-            }
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            if (recordingIntervalRef.current) {
-                clearInterval(recordingIntervalRef.current);
-                recordingIntervalRef.current = null;
-            }
-        }
-    };
-
+    // Audio send wrapper using the hook
     const sendAudio = async () => {
-        if (!conversation || audioChunksRef.current.length === 0) return;
-
-        stopRecording(); // Ensure recording is stopped
-
-        // Wait a moment for the last chunk
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        // Use the actual mimeType that was used for recording
-        const mimeType = audioMimeTypeRef.current;
-        const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const audioFile = new File([audioBlob], `audio_${Date.now()}.${ext}`, { type: mimeType });
-
+        if (!conversation) return;
         setIsSending(true);
-        const toastId = toast.loading('Enviando áudio...');
-
-        const formData = new FormData();
-        formData.append('file', audioFile);
-        formData.append('to', conversation.lead.phone);
-        formData.append('type', 'audio');
-        formData.append('leadId', conversation.lead.id);
-
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-api/upload`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error || 'Falha no envio do áudio');
-            }
-
-            toast.dismiss(toastId);
-            toast.success('Áudio enviado!');
-            audioChunksRef.current = [];
-            setRecordingDuration(0);
-
-        } catch (error: any) {
-            console.error('Audio upload failed:', error);
-            toast.dismiss(toastId);
-            toast.error(`Erro no envio: ${error.message}`);
+            await sendAudioHook(conversation.lead.phone, conversation.lead.id, SUPABASE_URL);
         } finally {
             setIsSending(false);
         }
@@ -314,7 +204,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
 
         } catch (error: any) {
-            console.error('Upload failed:', error);
             toast.dismiss(toastId);
             toast.error(`Erro no envio: ${error.message}`);
         } finally {
@@ -347,7 +236,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         }
     };
 
-    const { subscribeToConversation, sendMessage, isConnected } = useSocket({ userId });
+    const { subscribeToConversation, sendMessage, isConnected } = useFirebase({ userId });
 
     // Fetch conversation details
     const fetchConversation = useCallback(async () => {
@@ -357,7 +246,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             const msgs = await supabaseGetMessages(conversationId);
             setMessages(msgs);
         } catch (error) {
-            console.error('Error fetching conversation:', error);
         } finally {
             setIsLoading(false);
         }
@@ -440,9 +328,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     useEffect(() => {
         if (!conversationId) return;
 
-        console.log(`🔌 ChatView: Subscribing to messages for ${conversationId}`);
         const unsubscribe = subscribeToConversation(conversationId, (newMessage) => {
-            console.log('📨 ChatView: MESSAGE RECEIVED!', newMessage);
 
             setMessages((prev) => {
                 // Find existing message by waMessageId (primary) or id (fallback)
@@ -459,12 +345,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     const existing = prev[existingIdx];
                     // Only update if there's a meaningful change
                     if (existing.status !== newMessage.status || existing.id !== newMessage.id) {
-                        console.log('🔄 Updating existing message at index:', existingIdx);
                         const updated = [...prev];
                         updated[existingIdx] = { ...existing, ...newMessage };
                         return updated;
                     }
-                    console.log('⚠️ SKIPPING - No changes to existing message');
                     return prev;
                 }
 
@@ -477,7 +361,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                     );
 
                     if (pendingIdx !== -1) {
-                        console.log('✅ Replacing pending message at index:', pendingIdx);
                         const updated = [...prev];
                         updated[pendingIdx] = newMessage;
                         return updated;
@@ -485,7 +368,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 }
 
                 // Add new message
-                console.log('✅ ADDING NEW MESSAGE to state');
                 const updated = [...prev, newMessage].sort((a, b) =>
                     new Date(a.createdAt || a.timestamp || 0).getTime() - new Date(b.createdAt || b.timestamp || 0).getTime()
                 );
@@ -495,7 +377,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
         });
 
         return () => {
-            console.log(`🔌 ChatView: Unsubscribing from ${conversationId}`);
             unsubscribe();
         };
     }, [conversationId, subscribeToConversation, scrollToBottom]);
@@ -550,7 +431,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             });
 
         } catch (err) {
-            console.error('Failed to send message:', err);
             toast.error('Erro ao enviar mensagem');
             setMessages(prev => prev.filter(m => m.id !== tempId));
         } finally {
@@ -569,7 +449,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const handlePaymentSignal = async () => {
         try {
             await supabaseCloseConversation(conversationId);
-            toast.success('Sinal confirmado! Lead movido para Pós-Venda.');
+            toast.success('Sinal confirmado! Lead movido para PÃ³s-Venda.');
             onConversationClosed();
         } catch (error) {
             toast.error('Erro ao processar pagamento');
@@ -644,7 +524,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
                 }
             } : null);
         } catch (error) {
-            console.error('Failed to move stage:', error);
             toast.error('Erro ao mover lead de etapa');
             throw error;
         }
@@ -654,8 +533,10 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     const handleSendTemplate = async (templateName: string, parameters: string[], fullText?: string) => {
         if (!conversation) return;
 
-        const userName = localStorage.getItem('userName') || 'Você';
-        const currentUserId = localStorage.getItem('userId');
+        // Get user info from Supabase Auth (secure)
+        const { data: session } = await supabase.auth.getSession();
+        const currentUserId = session?.session?.user?.id;
+        const userName = session?.session?.user?.user_metadata?.name || 'Você';
 
         try {
             const result = await supabaseSendWhatsAppTemplate(
@@ -669,7 +550,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             const newMessage: Message = {
                 id: result.messageId || `temp-${Date.now()}`,
                 direction: 'out',
-                text: fullText || `📋 Template: ${templateName}`,
+                text: fullText || `ðŸ“‹ Template: ${templateName}`,
                 type: 'template',
                 templateName: templateName,
                 status: 'sent',
@@ -681,7 +562,6 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
             setMessages(prev => [...prev, newMessage]);
             toast.success(`Template "${templateName}" enviado com sucesso!`);
         } catch (err: any) {
-            console.error('Failed to send template:', err);
             toast.error(err.message || 'Erro ao enviar template');
             throw err;
         }
@@ -698,7 +578,7 @@ const ChatView: React.FC<ChatViewProps> = ({ conversationId, userId, onBack, onC
     if (!conversation) {
         return (
             <div className={`${embedded ? 'h-full' : 'h-dvh'} flex items-center justify-center bg-[#f8fafc]`}>
-                <p className="text-slate-400">Conversa não encontrada</p>
+                <p className="text-slate-400">Conversa nÃ£o encontrada</p>
             </div>
         );
     }

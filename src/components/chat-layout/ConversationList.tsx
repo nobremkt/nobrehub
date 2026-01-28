@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, Search, Phone, Building, User, ChevronRight, Inbox as InboxIcon, Filter, ChevronDown, Clock, Check, UserCircle2 } from 'lucide-react';
-import { useSocket } from '../../hooks/useSocket';
+import { useFirebase } from '../../contexts/FirebaseContext';
 import { cn } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
 import AdvancedFilters, { AdvancedFilterState, defaultFilters } from './AdvancedFilters';
@@ -88,7 +88,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             assignment: 'all' // Default to "Todas"
         }
     });
-    const { isConnected } = useSocket({ userId });
+    const { isConnected } = useFirebase({ userId });
 
     // Count active filters (excluding the default "mine" filter)
     const countActiveFilters = (): number => {

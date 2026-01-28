@@ -6,7 +6,7 @@ import LossReasonModal from '../components/LossReasonModal';
 import { TagsDisplay } from '../components/TagsEditor';
 import { supabaseGetLeads, Lead, supabaseDeleteLead, supabaseCreateLead, supabaseUpdateLead, supabaseMarkLeadAsLost, supabaseGetAllTags } from '../services/supabaseApi';
 import { toast } from 'sonner';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
 
 interface ContactsViewProps {
     onNavigateToChat?: (leadId?: string) => void;
@@ -39,7 +39,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ onNavigateToChat }) => {
         dateRange: '' as '' | '7d' | '30d' | '90d',
     });
 
-    const { subscribeToNewLeads, subscribeToLeadUpdates } = useSocket();
+    const { subscribeToNewLeads, subscribeToLeadUpdates } = useFirebase();
 
     // Derived detail lead to ensure real-time updates
     const detailLead = useMemo(() =>

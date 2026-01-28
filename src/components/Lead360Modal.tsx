@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     X, Phone, Mail, Building2, User, Calendar, MessageCircle,
     DollarSign, Tag, Clock, ChevronRight, Plus, Edit3, Save,
-    Briefcase, MapPin, FileText, History, TrendingUp, Star, Trash2
+    Briefcase, MapPin, FileText, History, TrendingUp, Star, Trash2, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ActivitiesTab } from './lead360/ActivitiesTab';
@@ -11,6 +11,7 @@ import { formatPhoneDisplay, getFullPhoneNumber } from '../lib/phoneFormat';
 import PhoneInput from './ui/PhoneInput';
 import CustomFieldsTab from './lead360/CustomFieldsTab';
 import ProductSelect from './ui/ProductSelect';
+import SendToProductionModal from './SendToProductionModal';
 import {
     supabaseCreateDeal,
     supabaseGetLeadDeals,
@@ -19,6 +20,7 @@ import {
     supabaseDeleteDeal,
     Deal as SupabaseDeal
 } from '../services/supabaseApi';
+import { Lead } from '../types/models';
 
 interface Deal {
     id: string;
@@ -45,24 +47,6 @@ interface Conversation {
     lastMessageAt?: string;
     assignedAgent?: { name: string };
     messages?: { text?: string; createdAt: string }[];
-}
-
-interface Lead {
-    id: string;
-    name: string;
-    phone: string;
-    email?: string;
-    company?: string;
-    estimatedValue: number;
-    tags?: string[];
-    notes?: string;
-    source?: string;
-    pipeline?: string;
-    statusHT?: string;
-    statusLT?: string;
-    createdAt?: string;
-    updatedAt?: string;
-    lossReasonId?: string;
 }
 
 interface LossReason {
@@ -123,6 +107,9 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
         segment: '',
         employees: ''
     });
+
+    // Send to Production modal state
+    const [isSendToProductionOpen, setIsSendToProductionOpen] = useState(false);
 
     // Handle adding new deal
     const handleAddDeal = async () => {
@@ -353,6 +340,14 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsSendToProductionOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors"
+                            title="Enviar para Produção"
+                        >
+                            <Send size={16} />
+                            Produção
+                        </button>
                         <button
                             onClick={() => {
                                 if (onOpenChat) {
@@ -702,6 +697,18 @@ const Lead360Modal: React.FC<Lead360ModalProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* Send to Production Modal */}
+            {lead && (
+                <SendToProductionModal
+                    isOpen={isSendToProductionOpen}
+                    lead={lead}
+                    onClose={() => setIsSendToProductionOpen(false)}
+                    onSuccess={() => {
+                        toast.success('Lead enviado para produção!');
+                    }}
+                />
+            )}
         </div>
     );
 };

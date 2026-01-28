@@ -22,13 +22,13 @@ import {
     Loader2
 } from 'lucide-react';
 import { supabaseGetDashboardStats, DashboardStats } from '../services/supabaseApi';
-import { useSocket } from '../hooks/useSocket';
+import { useFirebase } from '../contexts/FirebaseContext';
 import { toast } from 'sonner';
 
 const Analytics: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { subscribeToNewLeads, subscribeToLeadUpdates, isConnected } = useSocket({ userId: 'dashboard-viewer' });
+    const { subscribeToNewLeads, subscribeToLeadUpdates, isConnected } = useFirebase({ userId: 'dashboard-viewer' });
 
     const loadStats = async () => {
         try {

@@ -1,9 +1,11 @@
 import React from 'react';
 import TopNav from './TopNav';
+import Sidebar from './Sidebar';
 
 interface AppLayoutProps {
     children: React.ReactNode;
     user: {
+        id: string;
         name: string;
         email: string;
         role: string;
@@ -15,8 +17,8 @@ interface AppLayoutProps {
 }
 
 /**
- * AppLayout - Horizontal navigation layout
- * TopNav at top (h-14), content fills remaining space
+ * AppLayout - Hybrid layout with TopNav + Sidebar
+ * TopNav at top (h-14), Sidebar on left, content fills remaining space
  */
 const AppLayout: React.FC<AppLayoutProps> = ({
     children,
@@ -35,12 +37,23 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onLogout={onLogout}
             />
 
-            {/* Main Content - Edge-to-edge, fills remaining space */}
-            <main className="flex-1 overflow-hidden">
-                {children}
-            </main>
+            {/* Main area with Sidebar + Content */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Sidebar with Board Navigation */}
+                <Sidebar
+                    user={user}
+                    unreadCount={unreadCount}
+                    onLogout={onLogout}
+                />
+
+                {/* Main Content */}
+                <main className="flex-1 overflow-hidden">
+                    {children}
+                </main>
+            </div>
         </div>
     );
 };
 
 export default AppLayout;
+

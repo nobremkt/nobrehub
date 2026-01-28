@@ -31,15 +31,15 @@ function normalizeApiLead(apiLead: ApiLead): Lead {
         email: apiLead.email || '',
         phone: apiLead.phone,
         company: apiLead.company || '',
-        source: apiLead.source,
-        pipeline: apiLead.pipeline,
+        source: apiLead.source || 'direct',
+        pipeline: apiLead.pipeline || 'high_ticket',
         status,
         assignedTo: apiLead.assignee?.name || apiLead.assignedTo || '',
-        value: apiLead.estimatedValue,
-        tags: apiLead.tags,
+        value: apiLead.estimatedValue ?? 0,
+        tags: apiLead.tags ?? [],
         notes: apiLead.notes || '',
         createdAt: apiLead.createdAt,
-        updatedAt: apiLead.updatedAt,
+        updatedAt: apiLead.updatedAt || apiLead.createdAt,
     };
 }
 
