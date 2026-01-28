@@ -68,17 +68,22 @@ async function saveMessage(conversationId: string, leadId: string, text: string,
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const now = new Date().toISOString();
     const messageData = {
         id: crypto.randomUUID(),
         conversation_id: conversationId,
         lead_id: leadId,
         phone,
+        topic: "whatsapp",
+        extension: "whatsapp",
         direction,
         type: "text",
         text,
         status: direction === "out" ? "sent" : "received",
         wa_message_id: waMessageId,
-        created_at: new Date().toISOString(),
+        created_at: now,
+        updated_at: now,
+        inserted_at: now,
     };
 
     const { data, error } = await supabase
