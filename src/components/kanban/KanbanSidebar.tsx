@@ -202,12 +202,30 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
 
         if (visibleUsers.length === 0) return null;
 
+        // Helper to switch to the correct board when clicking a user
+        const switchToBoard = () => {
+            if (pipeline === 'high_ticket') {
+                onPipelineChange('sales');
+                onSubPipelineChange('high_ticket');
+            } else if (pipeline === 'low_ticket') {
+                onPipelineChange('sales');
+                onSubPipelineChange('low_ticket');
+            } else if (pipeline === 'production') {
+                onPipelineChange('production');
+            } else if (pipeline === 'post_sales') {
+                onPipelineChange('post_sales');
+            }
+        };
+
         return (
             <div className="ml-4 mt-1 space-y-0.5">
                 {/* Ver Todos option */}
                 {canSeeAllUsers && (
                     <button
-                        onClick={() => onUserFilterChange(null)}
+                        onClick={() => {
+                            switchToBoard();
+                            onUserFilterChange(null);
+                        }}
                         className={cn(
                             'w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm',
                             selectedUserId === null && currentPipeline === (pipeline === 'high_ticket' || pipeline === 'low_ticket' ? 'sales' : pipeline)
@@ -224,7 +242,10 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                 {visibleUsers.map(user => (
                     <button
                         key={user.id}
-                        onClick={() => onUserFilterChange(user.id)}
+                        onClick={() => {
+                            switchToBoard();
+                            onUserFilterChange(user.id);
+                        }}
                         className={cn(
                             'w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm',
                             selectedUserId === user.id
