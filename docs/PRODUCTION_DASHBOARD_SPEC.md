@@ -14,27 +14,46 @@ Criar um painel dedicado para **produtores**, substituindo a visualização Kanb
 
 ## Diagrama de Fluxo
 
-```mermaid
-graph TD
-    A[Produtor acessa /producao] --> B{Carrega projetos}
-    B --> C[Lista de Projetos]
-    
-    C --> D[Projeto Aguardando]
-    C --> E[Projeto Produzindo]
-    C --> F[Projeto Finalizado]
-    
-    D -->|Clica Play| G[Muda para Produzindo]
-    E -->|Clica Check| H[Muda para Finalizado]
-    
-    G --> I[Atualiza Supabase]
-    H --> I
-    
-    I --> J[Emit socket]
-    J --> C
-    
-    K[Seleciona projeto] --> L[Mostra detalhes]
-    L --> M[Upload arquivos]
-    L --> N[Marcar Pronto]
+```text
+[Produtor acessa /producao]
+          |
+          v
+  {Carrega projetos}
+          |
+          v
+  [Lista de Projetos]
+          |
+          +-----------------------------+-----------------------------+
+          |                             |                             |
+          v                             v                             v
+[Projeto 'Aguardando']        [Projeto 'Produzindo']        [Projeto 'Finalizado']
+          |                             |
+    (Clica Play ▶️)              (Clica Check ✓)
+          |                             |
+          v                             v
+[Muda para 'Produzindo']      [Muda para 'Finalizado']
+          |                             |
+          +-------------+---------------+
+                        |
+                        v
+               [Atualiza Supabase]
+                        |
+                        v
+                  [Emit socket]
+                        |
+                        v
+               [Atualiza Interface]
+
+
+      ---------------- PAINEL LATERAL ----------------
+      |                                              |
+      |  [Seleciona Projeto] -> [Mostra Detalhes]    |
+      |                               |              |
+      |                               +-> [Upload]   |
+      |                               |              |
+      |                               +-> [Pronto]   |
+      |                                              |
+      ------------------------------------------------
 ```
 
 ---

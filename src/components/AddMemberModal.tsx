@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Building2, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
-import { supabaseCreateUser } from '../services/supabaseApi';
+import { supabaseCreateUser, supabaseUpdateUser } from '../services/supabaseApi';
 
 interface Sector {
     id: string;
@@ -8,11 +8,20 @@ interface Sector {
     color: string;
 }
 
+interface EditMember {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    sectorId: string | null;
+}
+
 interface AddMemberModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
     sectors: Sector[];
+    editMember?: EditMember | null;
 }
 
 const ROLES = [
@@ -27,7 +36,8 @@ const ROLES = [
     { value: 'strategic', label: 'Estratégico', description: 'Visão geral do negócio' }
 ];
 
-const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSuccess, sectors }) => {
+const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSuccess, sectors, editMember }) => {
+    const isEditMode = !!editMember;
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -39,19 +49,31 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Reset form when modal opens
+    // Reset or populate form when modal opens
     useEffect(() => {
         if (isOpen) {
-            setFormData({
-                name: '',
-                email: '',
-                password: '',
-                role: 'closer_lt',
-                sectorId: ''
-            });
+            if (editMember) {
+                // Edit mode: populate with existing data
+                setFormData({
+                    name: editMember.name || '',
+                    email: editMember.email || '',
+                    password: '', // Password is optional in edit mode
+                    role: editMember.role || 'closer_lt',
+                    sectorId: editMember.sectorId || ''
+                });
+            } else {
+                // Create mode: reset form
+                setFormData({
+                    name: '',
+                    email: '',
+                    password: '',
+                    role: 'closer_lt',
+                    sectorId: ''
+                });
+            }
             setError(null);
         }
-    }, [isOpen]);
+    }, [isOpen, editMember]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,17 +81,28 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
         setError(null);
 
         try {
-            await supabaseCreateUser({
-                email: formData.email,
-                name: formData.name,
-                password: formData.password,
-                role: formData.role,
-                sectorId: formData.sectorId || undefined
-            });
+            if (isEditMode && editMember) {
+                // Update existing member
+                await supabaseUpdateUser(editMember.id, {
+                    name: formData.name,
+                    role: formData.role,
+                    sectorId: formData.sectorId || null,
+                    ...(formData.password ? { password: formData.password } : {})
+                });
+            } else {
+                // Create new member
+                await supabaseCreateUser({
+                    email: formData.email,
+                    name: formData.name,
+                    password: formData.password,
+                    role: formData.role,
+                    sectorId: formData.sectorId || undefined
+                });
+            }
             onSuccess();
             onClose();
         } catch (err: any) {
-            setError(err.message || 'Erro ao criar membro');
+            setError(err.message || (isEditMode ? 'Erro ao atualizar membro' : 'Erro ao criar membro'));
         } finally {
             setLoading(false);
         }
@@ -91,10 +124,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
                 <div className="flex items-center justify-between p-6 border-b border-slate-100">
                     <div>
                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                            Novo Membro
+                            {isEditMode ? 'Editar Membro' : 'Novo Membro'}
                         </h2>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                            Adicionar à equipe
+                            {isEditMode ? 'Atualizar informações' : 'Adicionar à equipe'}
                         </p>
                     </div>
                     <button
@@ -159,11 +192,11 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
                             <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                             <input
                                 type={showPassword ? 'text' : 'password'}
-                                required
+                                required={!isEditMode}
                                 minLength={6}
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                placeholder="Mínimo 6 caracteres"
+                                placeholder={isEditMode ? 'Deixe em branco para manter' : 'Mínimo 6 caracteres'}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-12 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
                             />
                             <button
@@ -237,10 +270,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onSucc
                             {loading ? (
                                 <>
                                     <Loader2 size={18} className="animate-spin" />
-                                    Criando...
+                                    {isEditMode ? 'Salvando...' : 'Criando...'}
                                 </>
                             ) : (
-                                'Criar Membro'
+                                isEditMode ? 'Salvar Alterações' : 'Criar Membro'
                             )}
                         </button>
                     </div>

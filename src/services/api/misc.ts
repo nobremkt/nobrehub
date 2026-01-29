@@ -340,6 +340,36 @@ export async function supabaseCreateUser(data: { email: string; name: string; pa
     return toCamelCase(created);
 }
 
+export async function supabaseUpdateUser(userId: string, data: { name?: string; role?: string; sectorId?: string | null; password?: string }): Promise<User> {
+    const now = new Date().toISOString();
+    const updateData: Record<string, any> = {
+        updated_at: now
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.role !== undefined) updateData.role = data.role;
+    if (data.sectorId !== undefined) updateData.sector_id = data.sectorId;
+    if (data.password) updateData.password_hash = btoa(data.password);
+
+    const { data: updated, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+    if (error) throw new Error(error.message);
+    return toCamelCase(updated);
+}
+
+export async function supabaseDeactivateUser(userId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+        .from('users')
+        .update({ is_active: false, updated_at: now })
+        .eq('id', userId);
+    if (error) throw new Error(error.message);
+}
+
 export async function supabaseGetUsersWithSector(): Promise<User[]> {
     const { data, error } = await supabase
         .from('users')

@@ -88,6 +88,8 @@ export {
     supabaseGetMessages,
     // User Management
     supabaseCreateUser,
+    supabaseUpdateUser,
+    supabaseDeactivateUser,
     supabaseGetUsersWithSector,
     // Lead Details
     supabaseGetLeadConversations,
