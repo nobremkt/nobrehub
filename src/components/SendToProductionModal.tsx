@@ -115,7 +115,10 @@ const SendToProductionModal: React.FC<SendToProductionModalProps> = ({
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div
+                className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
                     <div className="flex items-center justify-between">
