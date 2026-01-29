@@ -88,6 +88,14 @@ export interface DashboardStats {
     totalValue: number;
     highTicket: Array<{ status: string; count: number; value: number }>;
     lowTicket: Array<{ status: string; count: number; value: number }>;
+    recentSales: Array<{
+        id: string;
+        name: string;
+        value: number;
+        status: string;
+        date: string;
+        pipeline: string;
+    }>;
 }
 
 // ============ LOSS REASONS ============

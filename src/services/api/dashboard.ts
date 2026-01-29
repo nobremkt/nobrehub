@@ -8,7 +8,7 @@ export async function supabaseGetDashboardStats(): Promise<DashboardStats> {
 
     const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, pipeline, status_ht, status_lt, status_production, status_post_sales, estimated_value, created_at');
+        .select('id, name, pipeline, status_ht, status_lt, status_production, status_post_sales, estimated_value, created_at, updated_at');
 
     if (error) throw new Error(error.message);
 
@@ -16,10 +16,12 @@ export async function supabaseGetDashboardStats(): Promise<DashboardStats> {
     const totalLeads = allLeads.length;
     const leadsToday = allLeads.filter(l => new Date(l.created_at) >= today).length;
 
-    const closedLeads = allLeads.filter(l =>
+    const closedLeadsList = allLeads.filter(l =>
         l.status_ht === 'fechado' || l.status_lt === 'pago' ||
         l.status_production === 'entregue' || l.status_post_sales === 'concluido'
-    ).length;
+    );
+
+    const closedLeads = closedLeadsList.length;
 
     const totalValue = allLeads.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
 
@@ -46,12 +48,29 @@ export async function supabaseGetDashboardStats(): Promise<DashboardStats> {
         });
     });
 
+    // Recent Sales Logic: Sort closed leads by updated_at descending
+    const recentSales = closedLeadsList
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        .slice(0, 10)
+        .map(l => ({
+            id: l.id,
+            name: l.name,
+            value: Number(l.estimated_value) || 0,
+            status: l.status_ht === 'fechado' ? 'High Ticket' :
+                l.status_lt === 'pago' ? 'Low Ticket' :
+                    l.status_production === 'entregue' ? 'Produção' : 'Pós-Venda',
+            date: l.updated_at,
+            pipeline: l.pipeline
+        }));
+
     return {
         totalLeads,
         leadsToday,
         closedLeads,
         totalValue,
         highTicket: Array.from(htStatusMap.entries()).map(([status, data]) => ({ status, ...data })),
-        lowTicket: Array.from(ltStatusMap.entries()).map(([status, data]) => ({ status, ...data }))
+        lowTicket: Array.from(ltStatusMap.entries()).map(([status, data]) => ({ status, ...data })),
+        recentSales
     };
 }
+
