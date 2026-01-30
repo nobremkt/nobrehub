@@ -2,7 +2,7 @@ import { AppLayout } from '@/design-system/layouts';
 import { Card, CardHeader, CardBody, Input, Button, Badge } from '@/design-system';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { useState, useEffect } from 'react';
-import { Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Save, AlertCircle } from 'lucide-react';
 
 export function IntegrationsPage() {
     const { whatsapp, setWhatsappConfig } = useSettingsStore();

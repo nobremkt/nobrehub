@@ -49,6 +49,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
 
     selectConversation: (id) => {
         const { unsubMessages, messages } = get();
+        const { unsubMessages } = get();
 
         // Unsubscribe from previous conversation messages
         unsubMessages();
@@ -59,7 +60,6 @@ export const useInboxStore = create<InboxState>((set, get) => ({
         }
 
         // Check if we already have messages for this conversation (optional optimization, but we want realtime)
-        // Subscribing to new conversation
         // Subscribing to new conversation
         const unsubscribe = InboxService.subscribeToMessages(id, (newMessages) => {
             set((state) => ({

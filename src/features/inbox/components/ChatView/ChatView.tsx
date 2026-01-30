@@ -3,7 +3,6 @@ import { useInboxStore } from '../../stores/useInboxStore';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
-import { Message } from '../../types';
 import styles from './ChatView.module.css';
 
 export const ChatView: React.FC = () => {
