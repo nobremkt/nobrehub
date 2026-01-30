@@ -1,0 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - CONTACTS PAGE STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--spacing-6);
+    background: var(--color-background);
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-4);
+}
+
+.titleSection {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    color: var(--color-text-primary);
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Table Header (contador + seleção) */
+.tableHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-3) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.selectionInfo {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.selectionInfo span {
+    font-weight: 500;
+}

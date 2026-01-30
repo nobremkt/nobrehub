@@ -1,0 +1,149 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - ADVANCED FILTERS MODAL STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-5);
+    padding: var(--spacing-4);
+    max-height: 60vh;
+    overflow-y: auto;
+
+    /* Scrollbar following design system */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover, rgba(255, 255, 255, 0.2));
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.sectionTitle {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    padding-bottom: var(--spacing-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.filterRow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.filterRow label {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+/* Date Range */
+.dateRange {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-3);
+}
+
+.dateInput {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.dateInput label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.dateInput input[type="date"] {
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-bg-primary, var(--color-background));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: all var(--duration-normal, 0.15s) var(--ease-in-out, ease);
+    color-scheme: dark;
+}
+
+.dateInput input[type="date"]:focus {
+    border-color: var(--color-primary-500, var(--color-primary));
+    box-shadow: 0 0 10px var(--color-primary-500, var(--color-primary));
+}
+
+.dateInput input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}
+
+/* Segmented Control */
+.segmentedControl {
+    display: flex;
+    gap: 0;
+    background: var(--color-bg-primary, var(--color-background));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+}
+
+.segmentButton {
+    flex: 1;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    outline: none;
+}
+
+.segmentButton:hover:not(.active) {
+    color: var(--color-text-primary);
+    background: var(--color-background-hover, rgba(255, 255, 255, 0.05));
+}
+
+.segmentButton:focus-visible {
+    box-shadow: 0 0 10px var(--color-primary-500, var(--color-primary));
+}
+
+.segmentButton.active {
+    background: var(--color-primary-500, var(--color-primary));
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 0 10px var(--color-primary-500, var(--color-primary));
+}
+
+/* Footer */
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    padding-top: var(--spacing-4);
+    margin-top: var(--spacing-2);
+    border-top: 1px solid var(--color-border);
+}

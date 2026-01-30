@@ -1,3 +1,10 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - INBOX PAGE STYLES (REFACTORED)
+ * Layout 3 Painéis: Lista (esquerda) | Chat (centro) | Detalhes (direita)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 .container {
     display: flex;
     flex: 1;
@@ -7,29 +14,107 @@
     overflow: hidden;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PAINEL ESQUERDO - LISTA DE CONVERSAS
+ * ───────────────────────────────────────────────────────────────────────────── */
 .conversationListWrapper {
     width: 320px;
     flex-shrink: 0;
     height: 100%;
+    background: var(--color-bg-primary);
     border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PAINEL CENTRAL - CHAT VIEW (Principal)
+ * ───────────────────────────────────────────────────────────────────────────── */
 .chatViewWrapper {
     flex: 1;
     min-width: 0;
     height: 100%;
+    background: var(--color-bg-secondary);
+    display: flex;
+    flex-direction: column;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PAINEL DIREITO - DETALHES DO CONTATO
+ * ───────────────────────────────────────────────────────────────────────────── */
 .sidebarWrapper {
-    width: 300px;
+    width: 360px;
     flex-shrink: 0;
     height: 100%;
+    background: var(--color-bg-primary);
+    border-left: 1px solid var(--color-border);
     display: none;
+    overflow-y: auto;
+
+    /* Scrollbar do Design System */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
 }
 
-/* Desktop Breakpoint */
+.sidebarWrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebarWrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebarWrapper::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.sidebarWrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * RESPONSIVO
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tablet: Esconde sidebar, mostra lista + chat */
+@media (max-width: 1023px) {
+    .conversationListWrapper {
+        width: 280px;
+    }
+}
+
+/* Desktop: Mostra todos os 3 painéis */
 @media (min-width: 1024px) {
     .sidebarWrapper {
-        display: block;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* Desktop Grande: Aumenta sidebar */
+@media (min-width: 1440px) {
+    .sidebarWrapper {
+        width: 400px;
+    }
+}
+
+/* Mobile: Apenas um painel por vez (TODO: implementar navegação) */
+@media (max-width: 768px) {
+    .conversationListWrapper {
+        width: 100%;
+    }
+
+    .chatViewWrapper {
+        display: none;
+    }
+
+    .container.chatActive .conversationListWrapper {
+        display: none;
+    }
+
+    .container.chatActive .chatViewWrapper {
+        display: flex;
+        width: 100%;
     }
 }

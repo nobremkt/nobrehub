@@ -1,9 +1,18 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - CONVERSATION LIST (REFACTORED)
+ * Lista de conversas com filtros e busca
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { ConversationItem } from './ConversationItem';
-import { Input, Button } from '@/design-system';
-import { Search, Filter } from 'lucide-react';
+import { Input } from '@/design-system';
+import { Search, MessageSquare, CheckCircle, Clock } from 'lucide-react';
 import styles from './ConversationList.module.css';
+
+type StatusFilter = 'all' | 'open' | 'closed' | 'unread';
 
 export const ConversationList: React.FC = () => {
     const {
@@ -15,6 +24,7 @@ export const ConversationList: React.FC = () => {
     } = useInboxStore();
 
     const [tempSearch, setTempSearch] = useState(filters.query);
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -22,15 +32,20 @@ export const ConversationList: React.FC = () => {
         setFilter({ query });
     };
 
-    const toggleUnreadFilter = () => {
-        setFilter({
-            status: filters.status === 'unread' ? 'all' : 'unread'
-        });
+    const handleStatusFilter = (status: StatusFilter) => {
+        setStatusFilter(status);
+        if (status === 'unread') {
+            setFilter({ status: 'unread' });
+        } else {
+            setFilter({ status: 'all' });
+        }
     };
 
     const filteredConversations = conversations.filter(c => {
         // Filter by Status
-        if (filters.status === 'unread' && c.unreadCount === 0) return false;
+        if (statusFilter === 'unread' && c.unreadCount === 0) return false;
+        if (statusFilter === 'open' && c.status === 'closed') return false;
+        if (statusFilter === 'closed' && c.status !== 'closed') return false;
 
         // Filter by Query
         if (filters.query) {
@@ -44,27 +59,28 @@ export const ConversationList: React.FC = () => {
         return true;
     });
 
+    // Count by status
+    const openCount = conversations.filter(c => c.status !== 'closed').length;
+    const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
+
     return (
         <div className={styles.container}>
+            {/* Header */}
             <div className={styles.header}>
-                <h2 className={styles.title}>Inbox</h2>
-                <div className={styles.actions}>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleUnreadFilter}
-                        className={filters.status === 'unread' ? styles.filterActive : ''}
-                        leftIcon={<Filter size={16} />}
-                    >
-                        Não lidos
-                    </Button>
+                <div className={styles.headerTop}>
+                    <h2 className={styles.title}>
+                        <MessageSquare size={20} />
+                        Inbox
+                    </h2>
+                    <span className={styles.counter}>{conversations.length}</span>
                 </div>
             </div>
 
+            {/* Search */}
             <div className={styles.search}>
                 <div className={styles.inputWrapper}>
                     <Input
-                        placeholder="Buscar..."
+                        placeholder="Buscar conversa..."
                         value={tempSearch}
                         onChange={handleSearch}
                         leftIcon={<Search size={16} />}
@@ -72,6 +88,39 @@ export const ConversationList: React.FC = () => {
                 </div>
             </div>
 
+            {/* Filter Tabs */}
+            <div className={styles.filterTabs}>
+                <button
+                    className={`${styles.filterTab} ${statusFilter === 'all' ? styles.active : ''}`}
+                    onClick={() => handleStatusFilter('all')}
+                >
+                    Todas
+                </button>
+                <button
+                    className={`${styles.filterTab} ${statusFilter === 'open' ? styles.active : ''}`}
+                    onClick={() => handleStatusFilter('open')}
+                >
+                    <Clock size={14} />
+                    Abertas
+                    {openCount > 0 && <span className={styles.filterCount}>{openCount}</span>}
+                </button>
+                <button
+                    className={`${styles.filterTab} ${statusFilter === 'unread' ? styles.active : ''}`}
+                    onClick={() => handleStatusFilter('unread')}
+                >
+                    Não lidas
+                    {unreadCount > 0 && <span className={styles.filterCount}>{unreadCount}</span>}
+                </button>
+                <button
+                    className={`${styles.filterTab} ${statusFilter === 'closed' ? styles.active : ''}`}
+                    onClick={() => handleStatusFilter('closed')}
+                >
+                    <CheckCircle size={14} />
+                    Fechadas
+                </button>
+            </div>
+
+            {/* Conversation List */}
             <div className={styles.list}>
                 {filteredConversations.length > 0 ? (
                     filteredConversations.map(conv => (
@@ -84,7 +133,8 @@ export const ConversationList: React.FC = () => {
                     ))
                 ) : (
                     <div className={styles.emptyState}>
-                        Nenhuma conversa encontrada
+                        <MessageSquare size={32} strokeWidth={1.5} />
+                        <span>Nenhuma conversa encontrada</span>
                     </div>
                 )}
             </div>

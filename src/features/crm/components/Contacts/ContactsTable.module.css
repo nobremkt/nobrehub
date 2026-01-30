@@ -1,0 +1,208 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - CONTACTS TABLE STYLES
+ * Tabela de contatos seguindo referência do Clint CRM
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.tableWrapper {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+/* Header */
+.table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-background-elevated);
+}
+
+.table th {
+    padding: var(--spacing-3) var(--spacing-4);
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+/* Rows */
+.table tbody tr {
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.15s ease;
+}
+
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.table tbody tr:hover {
+    background: var(--color-background-hover);
+}
+
+.table td {
+    padding: var(--spacing-3) var(--spacing-4);
+    vertical-align: middle;
+}
+
+.selectedRow {
+    background: var(--color-primary-alpha) !important;
+}
+
+/* Checkbox Cell */
+.checkboxCell {
+    width: 48px;
+    text-align: center !important;
+}
+
+/* Name Cell */
+.nameCell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    min-width: 200px;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.nameInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.name {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.company {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* Info Cells (Phone, Email) */
+.infoCell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--color-text-primary);
+}
+
+.infoIcon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.noData {
+    color: var(--color-text-muted);
+}
+
+/* Deals Count Badge */
+.dealsCount {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(100, 100, 100, 0.2);
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+}
+
+/* Tags Cell */
+.tagsCell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    align-items: center;
+}
+
+.moreTags {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 2px 6px;
+    background: var(--color-background);
+    border-radius: var(--radius-sm);
+}
+
+/* Loading State */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-4);
+    padding: var(--spacing-12);
+    color: var(--color-text-secondary);
+}
+
+/* Empty State */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-12);
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-4);
+    opacity: 0.5;
+}
+
+.empty h3 {
+    margin: 0 0 var(--spacing-2);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.empty p {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+
+    .table th:nth-child(4),
+    .table td:nth-child(4),
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        display: none;
+    }
+
+    .nameCell {
+        min-width: 150px;
+    }
+}

@@ -1,0 +1,176 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - CONTACTS FILTER BAR STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.filterBar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex-wrap: wrap;
+}
+
+/* Search Input */
+.searchWrapper {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.searchInput {
+    width: 100%;
+}
+
+/* Dropdown Wrapper */
+.dropdownWrapper {
+    position: relative;
+}
+
+.dropdownMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    margin-top: var(--spacing-1);
+    background: var(--color-background-elevated, #1a1a1a);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 220px;
+    backdrop-filter: none;
+}
+
+/* Filter Buttons */
+.filterButton {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-background-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.filterButton:hover {
+    background: var(--color-background-hover);
+    border-color: var(--color-border-hover);
+    color: var(--color-text-primary);
+}
+
+.filterButton:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.filterCount {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 var(--spacing-1);
+    background: var(--color-primary);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+}
+
+.clearButton {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: transparent;
+    border: none;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.clearButton:hover {
+    color: var(--color-danger);
+}
+
+/* Dropdown Content */
+.dropdownContent {
+    min-width: 200px;
+    max-width: 280px;
+    padding: var(--spacing-2);
+}
+
+.dropdownSearch {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2);
+    margin-bottom: var(--spacing-2);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.dropdownSearch input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    outline: none;
+}
+
+.dropdownSearch input::placeholder {
+    color: var(--color-text-muted);
+}
+
+.optionsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    max-height: 240px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    transition: background 0.15s ease;
+}
+
+.checkboxLabel:hover {
+    background: var(--color-background-hover);
+}
+
+.checkboxLabel input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+}
+
+/* Active Tags Row */
+.activeTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    padding-top: var(--spacing-2);
+}
