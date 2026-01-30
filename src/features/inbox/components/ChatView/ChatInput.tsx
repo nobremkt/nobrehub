@@ -7,6 +7,7 @@ interface ChatInputProps {
     onSend: (text: string) => void;
     onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document') => void;
     onSelectTemplate?: (template: MessageTemplate) => void;
+    disabled?: boolean;
 }
 
 interface MessageTemplate {
@@ -44,7 +45,7 @@ const TEMPLATES: MessageTemplate[] = [
     }
 ];
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate, disabled }) => {
     const [text, setText] = useState('');
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
@@ -110,7 +111,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
     };
 
     return (
-        <div className={styles.inputArea}>
+        <div className={`${styles.inputArea} ${disabled ? styles.inputAreaDisabled : ''}`}>
             {/* File Preview */}
             {selectedFile && (
                 <div style={{

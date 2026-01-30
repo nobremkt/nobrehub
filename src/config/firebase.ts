@@ -3,7 +3,7 @@
  * NOBRE HUB - CONFIGURAÇÃO: FIREBASE
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * Configuração do Firebase (Auth, Firestore, Realtime).
+ * Configuração do Firebase (Auth, Firestore, Realtime, Storage).
  * As credenciais devem vir de variáveis de ambiente.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -13,6 +13,7 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,6 +30,7 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let realtimeDb: Database;
+let storage: FirebaseStorage;
 
 export function initFirebase() {
     if (!getApps().length) {
@@ -40,8 +42,9 @@ export function initFirebase() {
     auth = getAuth(app);
     db = getFirestore(app);
     realtimeDb = getDatabase(app);
+    storage = getStorage(app);
 
-    return { app, auth, db, realtimeDb };
+    return { app, auth, db, realtimeDb, storage };
 }
 
 export function getFirebaseAuth(): Auth {
@@ -59,4 +62,10 @@ export function getRealtimeDb(): Database {
     return realtimeDb;
 }
 
-export { app, auth, db, realtimeDb };
+export function getFirebaseStorage(): FirebaseStorage {
+    if (!storage) initFirebase();
+    return storage;
+}
+
+export { app, auth, db, realtimeDb, storage };
+
