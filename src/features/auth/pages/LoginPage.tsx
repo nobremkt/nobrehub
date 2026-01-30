@@ -5,7 +5,7 @@
  */
 
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
 import { Button, Input, Card, CardBody } from '@/design-system';
 import { ROUTES } from '@/config';
@@ -99,15 +99,15 @@ export function LoginPage() {
                             </Button>
                         </form>
 
-                        <a href={ROUTES.auth.forgotPassword} className={styles.forgotLink}>
+                        <Link to={ROUTES.auth.forgotPassword} className={styles.forgotLink}>
                             Esqueceu sua senha?
-                        </a>
+                        </Link>
                     </CardBody>
                 </Card>
 
                 {/* Footer */}
                 <p className={styles.footer}>
-                    © 2026 Nobre Marketing. Todos os direitos reservados.
+                    © {new Date().getFullYear()} Nobre Marketing. Todos os direitos reservados.
                 </p>
             </div>
         </div>

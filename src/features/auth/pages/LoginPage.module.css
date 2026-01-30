@@ -6,20 +6,30 @@
 
 .container {
     min-height: 100vh;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-6);
-    background: linear-gradient(135deg, var(--color-neutral-800) 0%, var(--color-neutral-900) 100%);
+    position: relative;
+    overflow: hidden;
+    /* Dynamic background based on theme */
+    background-color: var(--color-bg-secondary);
+    /* Subtle texture or gradient */
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(239, 17, 54, 0.08), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(239, 17, 54, 0.05), transparent 25%);
 }
 
 .wrapper {
     width: 100%;
-    max-width: 420px;
+    max-width: 440px;
+    padding: var(--space-6);
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: var(--space-8);
+    position: relative;
+    z-index: 10;
+    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -30,34 +40,36 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
 }
 
 .logo {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
     color: white;
-    font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-2xl);
+    font-weight: 800;
+    font-size: 2rem;
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 10px 25px -5px rgba(239, 17, 54, 0.4);
     margin-bottom: var(--space-2);
 }
 
 .title {
-    font-size: var(--font-size-3xl);
-    font-weight: var(--font-weight-bold);
-    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -0.02em;
     margin: 0;
 }
 
 .subtitle {
-    font-size: var(--font-size-base);
-    color: var(--color-neutral-400);
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
     margin: 0;
 }
 
@@ -65,20 +77,25 @@
  * CARD
  * ───────────────────────────────────────────────────────────────────────────── */
 .card {
-    width: 100%;
-    background: #ffffff !important;
+    /* Using design system tokens for background to support dark mode */
+    background-color: var(--color-bg-elevated) !important;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1) !important;
+    border-radius: var(--radius-2xl) !important;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
 }
 
 .cardBody {
-    padding: var(--space-8) !important;
+    padding: var(--space-8) var(--space-10) !important;
 }
 
 .formTitle {
     font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-neutral-900);
+    font-weight: 600;
+    color: var(--color-text-primary);
     text-align: center;
-    margin: 0 0 var(--space-6) 0;
+    margin: 0 0 var(--space-8) 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -87,7 +104,7 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
 }
 
 .errorMessage {
@@ -98,29 +115,74 @@
     color: var(--color-danger-700);
     font-size: var(--font-size-sm);
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 .forgotLink {
-    display: block;
     text-align: center;
-    margin-top: var(--space-4);
     font-size: var(--font-size-sm);
-    color: var(--color-primary-600);
+    color: var(--color-text-muted);
     text-decoration: none;
-    transition: color var(--duration-fast);
+    transition: all var(--duration-fast);
+    font-weight: 500;
+    margin-top: var(--space-6);
+    display: inline-block;
+    width: 100%;
 }
 
 .forgotLink:hover {
-    color: var(--color-primary-700);
-    text-decoration: underline;
+    color: var(--color-primary-500);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * FOOTER
  * ───────────────────────────────────────────────────────────────────────────── */
 .footer {
-    font-size: var(--font-size-sm);
-    color: var(--color-neutral-500);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
     text-align: center;
+    opacity: 0.6;
     margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ANIMATIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+@keyframes slideUpFade {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
 }
