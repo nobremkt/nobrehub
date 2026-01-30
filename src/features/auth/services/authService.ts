@@ -115,9 +115,10 @@ export async function getUserData(uid: string, email?: string): Promise<User | n
         sectorId: data.sectorId,
         phone: data.phone,
         active: data.active ?? true,
+        isActive: data.active ?? true,
         createdAt: data.createdAt ?? Date.now(),
         updatedAt: data.updatedAt ?? Date.now(),
-    } as unknown as User;
+    } as User;
 }
 
 /**

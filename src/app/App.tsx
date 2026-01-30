@@ -24,6 +24,7 @@ import { AppLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
+import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 
 // Inicializa Firebase no boot
@@ -153,6 +154,18 @@ export function App() {
                 <Route path={ROUTES.postSales.root + '/*'} element={
                     <ProtectedRoute>
                         <PlaceholderPage title="Pós-Venda" />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.team.members} element={
+                    <ProtectedRoute>
+                        <MembersPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.team.chat} element={
+                    <ProtectedRoute>
+                        <TeamChatPage />
                     </ProtectedRoute>
                 } />
 
