@@ -24,8 +24,8 @@ export default async function handler(req, res) {
         });
     }
 
-    // Build the full URL
-    const fullUrl = `${baseUrl}/v1/messages`;
+    // Build the full URL - v2 API uses /messages, not /v1/messages
+    const fullUrl = `${baseUrl}/messages`;
 
     // Build the payload
     const payload = {
