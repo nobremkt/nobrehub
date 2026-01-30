@@ -59,6 +59,29 @@
     margin-bottom: var(--space-2);
 }
 
+.logoContainer {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xl);
+    background-color: transparent;
+    margin-bottom: var(--space-2);
+}
+
+.brandLogoImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.submitBtn {
+    width: 100% !important;
+    margin-top: var(--space-2);
+}
+
 .title {
     font-size: 2rem;
     font-weight: 700;

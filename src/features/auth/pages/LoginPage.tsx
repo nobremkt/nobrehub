@@ -4,16 +4,23 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
-import { Button, Input, Card, CardBody } from '@/design-system';
+import { Input, Card, CardBody } from '@/design-system';
+import { PremiumButton } from '@/design-system/components/PremiumButton/PremiumButton';
+import { useOrganizationStore } from '@/features/settings/stores/useOrganizationStore';
 import { ROUTES } from '@/config';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {
     const navigate = useNavigate();
     const { login, status, error, resetError } = useAuthStore();
+    const { companyName, logoUrl, init: initOrg } = useOrganizationStore();
+
+    useEffect(() => {
+        initOrg();
+    }, [initOrg]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -49,8 +56,14 @@ export function LoginPage() {
             <div className={styles.wrapper}>
                 {/* Logo & Brand */}
                 <div className={styles.brand}>
-                    <div className={styles.logo}>N</div>
-                    <h1 className={styles.title}>Nobre Hub</h1>
+                    {logoUrl ? (
+                        <div className={styles.logoContainer}>
+                            <img src={logoUrl} alt={companyName} className={styles.brandLogoImage} />
+                        </div>
+                    ) : (
+                        <div className={styles.logo}>N</div>
+                    )}
+                    <h1 className={styles.title}>{companyName || 'Nobre Hub'}</h1>
                     <p className={styles.subtitle}>Sistema de gestão Nobre Marketing</p>
                 </div>
 
@@ -88,15 +101,14 @@ export function LoginPage() {
                                 </div>
                             )}
 
-                            <Button
+                            <PremiumButton
                                 type="submit"
-                                variant="primary"
-                                size="lg"
-                                fullWidth
+                                className={styles.submitBtn}
                                 isLoading={isLoading}
+                                disabled={isLoading}
                             >
-                                {isLoading ? 'Entrando...' : 'Entrar'}
-                            </Button>
+                                {isLoading ? 'ENTRANDO...' : 'ENTRAR'}
+                            </PremiumButton>
                         </form>
 
                         <Link to={ROUTES.auth.forgotPassword} className={styles.forgotLink}>
