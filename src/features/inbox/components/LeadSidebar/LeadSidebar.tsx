@@ -42,6 +42,22 @@ export const LeadSidebar: React.FC = () => {
                 <div className={styles.infoRow}>
                     <Phone size={16} />
                     <span>{conversation.leadPhone}</span>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto p-1 h-auto"
+                        onClick={() => {
+                            const newPhone = prompt('Editar telefone (ex: 5511999999999):', conversation.leadPhone);
+                            if (newPhone) {
+                                // Calls a quick update - ideally should be in InboxService/Store but we'll do inline for speed or add a method
+                                import('../../services/InboxService').then(({ InboxService }) => {
+                                    InboxService.updateLeadPhone(conversation.id, newPhone);
+                                });
+                            }
+                        }}
+                    >
+                        ✏️
+                    </Button>
                 </div>
 
                 {conversation.leadEmail && (

@@ -1,6 +1,7 @@
 import { getRealtimeDb } from '@/config/firebase';
-import { ref, onValue, push, set, serverTimestamp, query, orderByChild, limitToLast, update } from 'firebase/database';
+import { ref, onValue, push, set, serverTimestamp, query, orderByChild, limitToLast, update, get } from 'firebase/database';
 import { Conversation, Message } from '../types';
+import { useSettingsStore } from '../../settings/stores/useSettingsStore';
 
 const DB_PATHS = {
     CONVERSATIONS: 'conversations',
@@ -69,7 +70,53 @@ export const InboxService = {
     sendMessage: async (conversationId: string, text: string, senderId: string = 'user') => {
         const db = getRealtimeDb();
 
-        // 1. Create message in messages node
+        // 0. Get Conversation Details (to get phone number)
+        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
+        const conversation = conversationRefSnapshot.val() as Conversation;
+
+        // 1. Send to WhatsApp (if configured)
+        // We do this BEFORE saving to Firebase to ensure it actually sent, or at least try
+        const { whatsapp } = useSettingsStore.getState();
+        let whatsappMessageId = null;
+
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+            try {
+                // Determine destination phone
+                // 360Dialog expects country code + phone, no symbols
+                const phone = conversation.leadPhone.replace(/\D/g, '');
+
+                const response = await fetch(`${whatsapp.baseUrl}/v1/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'D360-API-KEY': whatsapp.apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: phone,
+                        type: 'text',
+                        text: {
+                            body: text
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('360Dialog Error:', errorData);
+                    throw new Error('Failed to send message via WhatsApp');
+                }
+
+                const responseData = await response.json();
+                whatsappMessageId = responseData.messages?.[0]?.id;
+            } catch (error) {
+                console.error('Failed to send WhatsApp message:', error);
+                // We proceed to save to Firebase anyway as "pending" or "failed"? 
+                // For now, we save but maybe we should flag it. 
+                // Let's proceed so the user sees it in the chat at least.
+            }
+        }
+
+        // 2. Create message in messages node
         const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
         const newMessageRef = push(messagesRef);
 
@@ -79,13 +126,14 @@ export const InboxService = {
             senderId,
             timestamp: serverTimestamp(),
             direction: 'out', // Explicitly set direction
-            status: 'sent',
+            status: whatsappMessageId ? 'sent' : 'pending', // If we have ID, it's sent
             type: 'text',
+            whatsappMessageId: whatsappMessageId // Store specific ID
         };
 
         await set(newMessageRef, messageData);
 
-        // 2. Update conversation lastMessage
+        // 3. Update conversation lastMessage
         const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
         await update(conversationRef, {
             lastMessage: messageData,
@@ -94,6 +142,17 @@ export const InboxService = {
         });
 
         return newMessageRef.key;
+    },
+
+    /**
+     * Helper to update lead phone (for testing/editing).
+     */
+    updateLeadPhone: async (conversationId: string, newPhone: string) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        await update(conversationRef, {
+            leadPhone: newPhone
+        });
     },
 
     /**
