@@ -18,7 +18,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     return (
         <div className={clsx(styles.bubbleRow, isOut ? styles.bubbleRowOut : styles.bubbleRowIn)}>
             <div className={clsx(styles.bubble, isOut ? styles.bubbleOut : styles.bubbleIn)}>
-                <div className={styles.bubbleContent}>
+                <div className={styles.bubbleContent} style={{ whiteSpace: 'pre-wrap' }}>
                     {message.type === 'text' && message.content}
                     {message.type === 'image' && <div>[Imagem] {message.content}</div>}
                     {message.type === 'audio' && <div>[Áudio] {message.content}</div>}
