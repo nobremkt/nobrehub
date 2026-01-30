@@ -27,6 +27,8 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
                 to,
                 type: 'text',
                 text: {
