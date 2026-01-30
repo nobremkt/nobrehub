@@ -1,5 +1,5 @@
 import { getRealtimeDb } from '@/config/firebase';
-import { ref, onValue, push, set, serverTimestamp, query, orderByChild, limitToLast, update, get } from 'firebase/database';
+import { ref, onValue, push, set, serverTimestamp, query, orderByChild, limitToLast, update } from 'firebase/database';
 import { Conversation, Message } from '../types';
 
 const DB_PATHS = {

@@ -4,7 +4,7 @@ import { ChatView } from '../components/ChatView/ChatView';
 import { LeadSidebar } from '../components/LeadSidebar/LeadSidebar';
 import { AppLayout } from '@/design-system/layouts';
 import { useInboxStore } from '../stores/useInboxStore';
-import { useInboxStore } from '../stores/useInboxStore';
+
 import styles from './InboxPage.module.css';
 
 import { DevToolbar } from '../components/DevToolbar';
