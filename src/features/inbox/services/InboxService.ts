@@ -85,18 +85,16 @@ export const InboxService = {
                 // 360Dialog expects country code + phone, no symbols
                 const phone = conversation.leadPhone.replace(/\D/g, '');
 
-                const response = await fetch(`${whatsapp.baseUrl}/v1/messages`, {
+                const response = await fetch('/api/send-message', {
                     method: 'POST',
                     headers: {
-                        'D360-API-KEY': whatsapp.apiKey,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
+                        apiKey: whatsapp.apiKey,
+                        baseUrl: whatsapp.baseUrl,
                         to: phone,
-                        type: 'text',
-                        text: {
-                            body: text
-                        }
+                        text: text
                     })
                 });
 
