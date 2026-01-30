@@ -28,9 +28,11 @@
 .contentFullWidth {
     flex: 1;
     padding: 0;
-    overflow-y: hidden;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
+    height: calc(100vh - var(--header-height, 0px));
+    min-height: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
