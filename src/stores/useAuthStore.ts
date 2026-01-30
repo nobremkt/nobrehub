@@ -12,7 +12,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { APP_CONFIG } from '@/config/constants';
-import { loginWithEmail, logoutUser, subscribeToAuthState } from '@/features/auth/services';
+import { loginWithEmail, logoutUser, subscribeToAuthState, getUserData } from '@/features/auth/services';
 import type { User, AuthStatus } from '@/types/user.types';
 
 interface AuthState {
@@ -95,19 +95,32 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         // Não logado - imediatamente define o estado
                         set({ user: null, status: 'unauthenticated' });
                     } else {
-                        // Usuário existe no Firebase Auth
-                        // Criamos um usuário básico a partir dos dados do Firebase Auth
-                        // Os dados completos serão buscados do Firestore após o login
-                        const basicUser: User = {
-                            id: firebaseUser.uid,
-                            email: firebaseUser.email || '',
-                            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
-                            role: 'viewer', // Role padrão, será atualizado depois
-                            isActive: true,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                        };
-                        set({ user: basicUser, status: 'authenticated' });
+                        // Usuário autenticado no Firebase, buscar dados completos
+                        getUserData(firebaseUser.uid, firebaseUser.email || undefined)
+                            .then((userData) => {
+                                if (userData) {
+                                    set({ user: userData, status: 'authenticated' });
+                                } else {
+                                    // Fallback apenas se não achar dados (ex: usuário novo sem cadastro)
+                                    // Mantém comportamento anterior de user básico
+                                    const basicUser: User = {
+                                        id: firebaseUser.uid,
+                                        email: firebaseUser.email || '',
+                                        name: firebaseUser.displayName || 'Usuário',
+                                        role: 'viewer',
+                                        isActive: true,
+                                        createdAt: new Date(),
+                                        updatedAt: new Date(),
+                                    };
+                                    set({ user: basicUser, status: 'authenticated' });
+                                }
+                            })
+                            .catch((err) => {
+                                console.error("Error fetching user data in auth listener:", err);
+                                // Em caso de erro, definir como não autenticado ou manter básico?
+                                // Melhor manter básico para não travar app app
+                                set({ status: 'unauthenticated', error: 'Erro ao carregar perfil do usuário.' });
+                            });
                     }
                 });
 

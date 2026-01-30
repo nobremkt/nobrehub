@@ -20,6 +20,9 @@ export type { PremiumButtonProps } from './PremiumButton/PremiumButton';
 export { Input } from './Input';
 export type { InputProps, InputSize } from './Input';
 
+export { NumberInput } from './NumberInput';
+export type { NumberInputProps } from './NumberInput';
+
 // Containers
 export { Card, CardHeader, CardBody, CardFooter } from './Card';
 export type { CardProps, CardHeaderProps } from './Card';
@@ -27,6 +30,9 @@ export type { CardProps, CardHeaderProps } from './Card';
 // Overlays
 export { Modal } from './Modal';
 export type { ModalProps, ModalSize } from './Modal';
+
+export { ConfirmModal } from './ConfirmModal';
+export type { ConfirmModalProps, ConfirmVariant } from './ConfirmModal';
 
 // Display
 export { Tag } from './Tag';

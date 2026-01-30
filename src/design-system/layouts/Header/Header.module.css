@@ -44,6 +44,11 @@
     color: var(--color-text-primary);
 }
 
+.logoImage {
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
 .spacer {
     flex: 1;
 }

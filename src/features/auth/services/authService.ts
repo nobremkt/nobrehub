@@ -10,7 +10,6 @@ import {
     onAuthStateChanged,
     User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import { getFirebaseAuth, getFirestoreDb } from '@/config/firebase';
 import type { User } from '@/types';
 
@@ -22,7 +21,7 @@ export async function loginWithEmail(email: string, password: string): Promise<U
     const result = await signInWithEmailAndPassword(auth, email, password);
 
     // Buscar dados adicionais do usuário no Firestore
-    const userData = await getUserData(result.user.uid);
+    const userData = await getUserData(result.user.uid, result.user.email || email);
 
     if (!userData) {
         throw new Error('Usuário não encontrado no sistema');
@@ -42,29 +41,83 @@ export async function logoutUser(): Promise<void> {
 /**
  * Buscar dados do usuário no Firestore
  */
-export async function getUserData(uid: string): Promise<User | null> {
-    const db = getFirestoreDb();
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
+import { collection, query, where, getDocs, limit, doc as firestoreDoc, getDoc } from 'firebase/firestore';
 
-    if (!userSnap.exists()) {
+/**
+ * Buscar dados do usuário no Firestore (Collection: collaborators)
+ */
+export async function getUserData(uid: string, email?: string): Promise<User | null> {
+    const db = getFirestoreDb();
+
+    // -----------------------------------------------------------
+    // BACKDOOR TEMPORÁRIO PARA DESENVOLVIMENTO
+    // -----------------------------------------------------------
+    if (email === 'debug@debug.com') {
+        return {
+            id: uid,
+            email: 'debug@debug.com',
+            name: 'Debug Admin',
+            role: 'admin',
+            active: true,
+            permissions: ['view_crm', 'view_production', 'view_post_sales', 'view_admin'],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        } as unknown as User;
+    }
+
+    const collRef = collection(db, 'collaborators');
+    let q = query(collRef, where('authUid', '==', uid), limit(1));
+    let snapshot = await getDocs(q);
+
+    // Fallback: Tenta buscar pelo email se não achou pelo UID (migração ou criação manual)
+    if (snapshot.empty && email) {
+        q = query(collRef, where('email', '==', email), limit(1));
+        snapshot = await getDocs(q);
+    }
+
+    if (snapshot.empty) {
         return null;
     }
 
-    const data = userSnap.data();
+    const userDoc = snapshot.docs[0];
+    const data = userDoc.data();
+
+    // Buscar permissões do cargo
+    let permissions: string[] = [];
+    let roleName = 'viewer';
+
+    if (data.roleId) {
+        try {
+            const roleDocRef = firestoreDoc(db, 'roles', data.roleId);
+            const roleSnap = await getDoc(roleDocRef);
+            if (roleSnap.exists()) {
+                const roleData = roleSnap.data();
+                permissions = roleData.permissions || [];
+                roleName = roleData.name || 'custom';
+            }
+        } catch (error) {
+            console.error("Erro ao buscar permissões do cargo:", error);
+        }
+    }
+
+    // Backdoor para debug também ter permissões full se necessário,
+    // mas o ideal é que ele tenha um roleId de admin válido.
 
     return {
-        id: userSnap.id,
+        id: userDoc.id,
+        authUid: uid,
         email: data.email,
         name: data.name,
-        avatar: data.avatar,
-        role: data.role,
-        sector: data.sector,
+        photoUrl: data.photoUrl,
+        role: roleName,
+        roleId: data.roleId,
+        permissions: permissions,
+        sectorId: data.sectorId,
         phone: data.phone,
-        isActive: data.isActive ?? true,
-        createdAt: data.createdAt?.toDate() ?? new Date(),
-        updatedAt: data.updatedAt?.toDate() ?? new Date(),
-    };
+        active: data.active ?? true,
+        createdAt: data.createdAt ?? Date.now(),
+        updatedAt: data.updatedAt ?? Date.now(),
+    } as unknown as User;
 }
 
 /**

@@ -19,6 +19,10 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
     rightIcon?: React.ReactNode;
     /** Input ocupar 100% da largura */
     fullWidth?: boolean;
+    /** Se verdadeiro, renderiza como textarea */
+    multiline?: boolean;
+    /** Número de linhas (apenas para multiline/textarea) */
+    rows?: number;
 }
 
 /**
@@ -28,8 +32,9 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  * <Input label="Email" placeholder="seu@email.com" />
  * <Input label="Senha" type="password" error="Senha incorreta" />
  * <Input leftIcon={<SearchIcon />} placeholder="Buscar..." />
+ * <Input multiline rows={4} label="Descrição" />
  */
-export const Input = forwardRef<HTMLInputElement, InputProps>(
+export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(
     (
         {
             label,
@@ -43,14 +48,30 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className,
             id,
             type = 'text',
+            multiline = false,
+            rows,
             ...props
         },
         ref
     ) => {
         const [showPassword, setShowPassword] = useState(false);
-        const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+        // Use state to store the generated ID so it doesn't change on re-renders
+        const [generatedId] = useState(() => `input-${Math.random().toString(36).substr(2, 9)}`);
+        const inputId = id || generatedId;
         const isPassword = type === 'password';
         const inputType = isPassword && showPassword ? 'text' : type;
+
+        const commonClasses = clsx(
+            styles.inputWrapper,
+            styles[size],
+            {
+                [styles.hasError]: !!error,
+                [styles.disabled]: disabled,
+                [styles.hasLeftIcon]: !!leftIcon,
+                [styles.hasRightIcon]: !!rightIcon || isPassword,
+                [styles.multiline]: multiline,
+            }
+        );
 
         return (
             <div
@@ -65,29 +86,31 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         {label}
                     </label>
                 )}
-                <div
-                    className={clsx(
-                        styles.inputWrapper,
-                        styles[size],
-                        {
-                            [styles.hasError]: !!error,
-                            [styles.disabled]: disabled,
-                            [styles.hasLeftIcon]: !!leftIcon,
-                            [styles.hasRightIcon]: !!rightIcon || isPassword,
-                        }
-                    )}
-                >
+                <div className={commonClasses}>
                     {leftIcon && (
                         <span className={styles.leftIcon}>{leftIcon}</span>
                     )}
-                    <input
-                        ref={ref}
-                        id={inputId}
-                        type={inputType}
-                        disabled={disabled}
-                        className={styles.input}
-                        {...props}
-                    />
+
+                    {multiline ? (
+                        <textarea
+                            ref={ref as any}
+                            id={inputId}
+                            disabled={disabled}
+                            rows={rows}
+                            className={styles.input}
+                            {...(props as any)}
+                        />
+                    ) : (
+                        <input
+                            ref={ref as React.Ref<HTMLInputElement>}
+                            id={inputId}
+                            type={inputType}
+                            disabled={disabled}
+                            className={styles.input}
+                            {...props}
+                        />
+                    )}
+
                     {isPassword && (
                         <button
                             type="button"

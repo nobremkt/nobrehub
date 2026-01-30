@@ -23,6 +23,8 @@ import { DebugUIPage } from '@/pages';
 import { AppLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
+import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
+import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 
 // Inicializa Firebase no boot
 initFirebase();
@@ -98,6 +100,9 @@ export function App() {
         setTheme(theme);
     }, []);
 
+    // Aplica tema personalizado (Cores)
+    useThemeApplier();
+
     // Inicializa listener de autenticação
     useEffect(() => {
         const unsubscribe = initAuthListener();
@@ -172,7 +177,7 @@ export function App() {
 
                 <Route path={ROUTES.settings.collaborators} element={
                     <ProtectedRoute>
-                        <PlaceholderPage title="Colaboradores" />
+                        <CollaboratorsPage />
                     </ProtectedRoute>
                 } />
 
@@ -185,6 +190,43 @@ export function App() {
                 <Route path={ROUTES.settings.integrations} element={
                     <ProtectedRoute>
                         <IntegrationsPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.organization} element={
+                    <ProtectedRoute>
+                        <OrganizationPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.products} element={
+                    <ProtectedRoute>
+                        <ProductsPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.lossReasons} element={
+                    <ProtectedRoute>
+                        <LossReasonsPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.sectors} element={
+                    <ProtectedRoute>
+                        <SectorsPage />
+                    </ProtectedRoute>
+                } />
+
+
+                <Route path={ROUTES.settings.roles} element={
+                    <ProtectedRoute>
+                        <RolesPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.permissions} element={
+                    <ProtectedRoute>
+                        <PermissionsPage />
                     </ProtectedRoute>
                 } />
 

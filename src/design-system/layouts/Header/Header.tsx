@@ -10,6 +10,7 @@
 
 import { Bell } from 'lucide-react';
 import { Badge } from '@/design-system/components';
+import { useOrganizationStore } from '@/features/settings/stores/useOrganizationStore';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -17,12 +18,23 @@ interface HeaderProps {
 }
 
 export function Header({ notificationCount = 0 }: HeaderProps) {
+    const { companyName, logoUrl } = useOrganizationStore();
+
     return (
         <header className={styles.header}>
             {/* Logo */}
             <div className={styles.logo}>
-                <div className={styles.logoIcon}>N</div>
-                <span className={styles.logoText}>Nobre Hub</span>
+                {logoUrl ? (
+                    <img
+                        src={logoUrl}
+                        alt={companyName}
+                        className={styles.logoImage}
+                        style={{ height: '32px', width: 'auto', maxHeight: '32px', objectFit: 'contain' }}
+                    />
+                ) : (
+                    <div className={styles.logoIcon}>{companyName.charAt(0).toUpperCase()}</div>
+                )}
+                <span className={styles.logoText}>{companyName}</span>
             </div>
 
             {/* Spacer */}
