@@ -19,7 +19,7 @@ const DEFAULT_PRIMARY_COLOR = '#ef1136'; // Vermelho Nobre
 
 export const useOrganizationStore = create<OrganizationState>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             companyName: 'Minha Empresa',
             logoUrl: null,
             primaryColor: DEFAULT_PRIMARY_COLOR,

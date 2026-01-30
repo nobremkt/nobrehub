@@ -1,5 +1,5 @@
 import { getFirestoreDb } from '@/config/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export interface OrganizationSettings {
     companyName: string;
