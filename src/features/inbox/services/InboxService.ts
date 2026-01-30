@@ -154,6 +154,126 @@ export const InboxService = {
     },
 
     /**
+     * Send a media message (image, video, audio, document).
+     */
+    sendMediaMessage: async (
+        conversationId: string,
+        mediaUrl: string,
+        mediaType: 'image' | 'video' | 'audio' | 'document',
+        mediaName?: string,
+        senderId: string = 'user'
+    ) => {
+        const db = getRealtimeDb();
+
+        // Get conversation for phone number
+        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
+        const conversation = conversationRefSnapshot.val() as Conversation;
+
+        // Send to WhatsApp
+        const { whatsapp } = useSettingsStore.getState();
+        let whatsappMessageId = null;
+
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+            try {
+                const phone = conversation.leadPhone.replace(/\D/g, '');
+
+                const response = await fetch('/api/send-media', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        apiKey: whatsapp.apiKey,
+                        baseUrl: whatsapp.baseUrl,
+                        to: phone,
+                        mediaType: mediaType,
+                        mediaUrl: mediaUrl,
+                        caption: mediaName
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('360Dialog Media Error:', errorData);
+                    throw new Error('Failed to send media via WhatsApp');
+                }
+
+                const responseData = await response.json();
+                whatsappMessageId = responseData.messages?.[0]?.id;
+            } catch (error) {
+                console.error('Failed to send WhatsApp media:', error);
+            }
+        }
+
+        // Create message in Firebase
+        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
+        const newMessageRef = push(messagesRef);
+
+        const contentMap = {
+            image: '[Imagem]',
+            video: '[Vídeo]',
+            audio: '[Áudio]',
+            document: mediaName || '[Documento]'
+        };
+
+        const messageData = {
+            id: newMessageRef.key,
+            content: contentMap[mediaType],
+            senderId,
+            timestamp: serverTimestamp(),
+            direction: 'out',
+            status: whatsappMessageId ? 'sent' : 'pending',
+            type: mediaType,
+            mediaUrl: mediaUrl,
+            mediaName: mediaName,
+            whatsappMessageId: whatsappMessageId
+        };
+
+        await set(newMessageRef, messageData);
+
+        // Update conversation
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        await update(conversationRef, {
+            lastMessage: messageData,
+            unreadCount: 0,
+            updatedAt: serverTimestamp(),
+        });
+
+        return newMessageRef.key;
+    },
+
+    /**
+     * Assign conversation to a team member.
+     */
+    assignConversation: async (conversationId: string, userId: string | null) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        await update(conversationRef, {
+            assignedTo: userId,
+            updatedAt: serverTimestamp()
+        });
+    },
+
+    /**
+     * Close or reopen a conversation.
+     */
+    toggleConversationStatus: async (conversationId: string) => {
+        const db = getRealtimeDb();
+        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
+        const conversation = conversationRefSnapshot.val() as Conversation;
+
+        const newStatus = conversation.status === 'open' ? 'closed' : 'open';
+
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        await update(conversationRef, {
+            status: newStatus,
+            updatedAt: serverTimestamp()
+        });
+
+        return newStatus;
+    },
+
+    /**
      * Mark conversation as read.
      */
     markAsRead: async (conversationId: string) => {

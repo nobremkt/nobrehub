@@ -1,7 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Message } from '../../types';
-import { Check, CheckCircle, Clock } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 import styles from './ChatView.module.css';
 
 interface MessageBubbleProps {
@@ -31,11 +31,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                         {formatMessageTime(new Date(message.timestamp || message.createdAt || Date.now()))}
                     </span>
                     {isOut && (
-                        <span style={{ display: 'flex', alignItems: 'center', marginLeft: '4px' }}>
-                            {message.status === 'pending' && <Clock size={12} />}
-                            {message.status === 'sent' && <Check size={12} />}
-                            {message.status === 'delivered' && <Check size={12} />}
-                            {message.status === 'read' && <CheckCircle size={12} color="#65d072" />}
+                        <span className={styles.statusIcon}>
+                            {message.status === 'pending' && <Clock size={14} className={styles.statusPending} />}
+                            {message.status === 'sent' && <Check size={14} className={styles.statusSent} />}
+                            {message.status === 'delivered' && (
+                                <span className={styles.doubleCheck}>
+                                    <Check size={14} />
+                                    <Check size={14} style={{ marginLeft: '-8px' }} />
+                                </span>
+                            )}
+                            {message.status === 'read' && (
+                                <span className={styles.doubleCheck + ' ' + styles.statusRead}>
+                                    <Check size={14} />
+                                    <Check size={14} style={{ marginLeft: '-8px' }} />
+                                </span>
+                            )}
+                            {message.status === 'failed' && <span className={styles.statusFailed}>!</span>}
                         </span>
                     )}
                 </div>

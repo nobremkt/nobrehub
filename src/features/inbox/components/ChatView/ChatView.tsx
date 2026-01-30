@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
+import { InboxService } from '../../services/InboxService';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
@@ -31,6 +32,30 @@ export const ChatView: React.FC = () => {
         await sendMessage(text);
     };
 
+    const handleSendMedia = async (file: File, type: 'image' | 'video' | 'audio' | 'document') => {
+        if (!selectedConversationId) return;
+
+        // For now, we'll need to upload to a storage service first
+        // This is a placeholder - in production, upload to Firebase Storage or similar
+        console.log('Media upload:', file.name, type);
+
+        // TODO: Implement file upload to Firebase Storage
+        // const mediaUrl = await uploadToStorage(file);
+        // await InboxService.sendMediaMessage(selectedConversationId, mediaUrl, type, file.name);
+
+        alert('Envio de mídia em desenvolvimento. Em breve!');
+    };
+
+    const handleAssign = async (userId: string | null) => {
+        if (!selectedConversationId) return;
+        await InboxService.assignConversation(selectedConversationId, userId);
+    };
+
+    const handleCloseConversation = async () => {
+        if (!selectedConversationId) return;
+        await InboxService.toggleConversationStatus(selectedConversationId);
+    };
+
     if (!selectedConversationId || !conversation) {
         return (
             <div className={styles.container}>
@@ -43,7 +68,11 @@ export const ChatView: React.FC = () => {
 
     return (
         <div className={styles.container}>
-            <ChatHeader conversation={conversation} />
+            <ChatHeader
+                conversation={conversation}
+                onAssign={handleAssign}
+                onCloseConversation={handleCloseConversation}
+            />
 
             <div className={styles.messagesArea}>
                 {currentMessages.map(msg => (
@@ -52,7 +81,10 @@ export const ChatView: React.FC = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            <ChatInput onSend={handleSendMessage} />
+            <ChatInput
+                onSend={handleSendMessage}
+                onSendMedia={handleSendMedia}
+            />
         </div>
     );
 };
