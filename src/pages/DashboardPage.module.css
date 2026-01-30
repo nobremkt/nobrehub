@@ -1,0 +1,147 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - PAGES: DASHBOARD STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * WELCOME
+ * ───────────────────────────────────────────────────────────────────────────── */
+.welcome {
+    margin-bottom: var(--space-2);
+}
+
+.welcomeTitle {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.welcomeSubtitle {
+    font-size: var(--font-size-base);
+    color: var(--color-text-muted);
+    margin: var(--space-1) 0 0 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * STATS GRID
+ * ───────────────────────────────────────────────────────────────────────────── */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.statCard {
+    overflow: hidden;
+}
+
+.statBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5) !important;
+}
+
+.statTop {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.statIcon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    color: white;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+}
+
+.statTitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-medium);
+}
+
+.statBottom {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.statValue {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+.statChange {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.statChange.positive {
+    color: var(--color-success-600);
+}
+
+.statChange.negative {
+    color: var(--color-danger-600);
+}
+
+.statChange.neutral {
+    color: var(--color-text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ACTIVITY
+ * ───────────────────────────────────────────────────────────────────────────── */
+.activity {
+    max-width: 900px;
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.activityItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.activityText {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}

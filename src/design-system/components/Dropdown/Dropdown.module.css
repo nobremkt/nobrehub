@@ -1,0 +1,153 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 100%;
+}
+
+.label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+}
+
+.relative {
+    position: relative;
+}
+
+.trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-in-out);
+    gap: var(--space-2);
+}
+
+.trigger:hover:not(.disabled) {
+    border-color: var(--color-border-hover);
+}
+
+.trigger:focus-visible,
+.trigger.isOpen {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px var(--color-primary-100);
+    outline: none;
+}
+
+:global(.dark) .trigger:focus-visible,
+:global([data-theme="dark"]) .trigger:focus-visible,
+:global(.dark) .trigger.isOpen,
+:global([data-theme="dark"]) .trigger.isOpen {
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+.disabled {
+    cursor: not-allowed;
+    background-color: var(--color-bg-secondary);
+    opacity: 0.6;
+}
+
+.hasError {
+    border-color: var(--color-danger-500);
+}
+
+.value {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+.placeholder {
+    color: var(--color-text-muted);
+}
+
+.chevron {
+    color: var(--color-text-muted);
+    transition: transform var(--duration-normal) var(--ease-in-out);
+}
+
+.chevronUp {
+    transform: rotate(180deg);
+}
+
+.menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+    overflow: hidden;
+    animation: scaleIn var(--duration-fast) var(--ease-out);
+}
+
+.list {
+    list-style: none;
+    padding: var(--space-1);
+    margin: 0;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.option {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.option:hover {
+    background-color: var(--color-hover);
+}
+
+.selected {
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-600);
+    font-weight: var(--font-weight-semibold);
+}
+
+:global(.dark) .selected {
+    background-color: var(--color-primary-900);
+    color: var(--color-primary-100);
+}
+
+.errorText {
+    font-size: var(--font-size-xs);
+    color: var(--color-danger-500);
+}
+
+.icon,
+.optionIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

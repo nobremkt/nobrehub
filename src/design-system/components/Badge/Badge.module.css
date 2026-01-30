@@ -1,0 +1,111 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - BADGE COMPONENT STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1rem;
+    height: 1.125rem;
+    padding: 0 0.375rem;
+    border-radius: var(--radius-full);
+    font-size: 0.625rem;
+    /* Subtler 10px text */
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    letter-spacing: 0.02em;
+}
+
+.wrapper .badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+}
+
+.dot {
+    min-width: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    padding: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * VARIANTS - Light Mode
+ * ───────────────────────────────────────────────────────────────────────────── */
+.default {
+    background-color: #6b7280;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.35);
+}
+
+.primary {
+    background-color: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.success {
+    background-color: #22c55e;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+}
+
+.warning {
+    background-color: #f59e0b;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.danger {
+    background-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * VARIANTS - Dark Mode
+ * ───────────────────────────────────────────────────────────────────────────── */
+:global(.dark) .default,
+:global([data-theme="dark"]) .default {
+    background-color: #4b5563;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    /* Neutral shadow in dark mode */
+}
+
+:global(.dark) .primary,
+:global([data-theme="dark"]) .primary {
+    background-color: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
+    /* Stronger glow in dark mode */
+}
+
+:global(.dark) .success,
+:global([data-theme="dark"]) .success {
+    background-color: #22c55e;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(34, 197, 94, 0.5);
+}
+
+:global(.dark) .warning,
+:global([data-theme="dark"]) .warning {
+    background-color: #f59e0b;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+}
+
+:global(.dark) .danger,
+:global([data-theme="dark"]) .danger {
+    background-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
+}

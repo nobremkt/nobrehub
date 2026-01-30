@@ -1,0 +1,396 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - KANBAN STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * LAYOUT
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.kanban {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: transparent;
+    overflow: hidden;
+    padding: 0;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    margin-bottom: 1rem;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * TABS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--color-bg-secondary);
+    border-radius: 0.5rem;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+}
+
+.tabActive {
+    color: var(--color-primary);
+    background: var(--color-bg-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * BUTTONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.filterBtn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filterBtn:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-muted);
+}
+
+.addBtn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.addBtn:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * BOARD
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.board {
+    display: flex;
+    flex: 1;
+    gap: 1rem;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * COLUMN
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.column {
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+    width: 280px;
+    max-height: 100%;
+    background: var(--color-bg-tertiary);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.columnHeader {
+    padding: 0.875rem 1rem;
+    background: var(--color-bg-primary);
+}
+
+.columnColorBar {
+    height: 3px;
+    width: 100%;
+    border-radius: 2px;
+    margin-bottom: 0.75rem;
+}
+
+.columnInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.columnTitleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.columnName {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin: 0;
+}
+
+.columnCount {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--color-bg-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+}
+
+.columnTotal {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-success);
+}
+
+.columnBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100px;
+    transition: background 0.15s ease;
+}
+
+.columnBodyOver {
+    background: var(--color-primary-soft);
+}
+
+.emptyColumn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-style: italic;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CARD
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    background: var(--color-bg-primary);
+    border-radius: 0.5rem;
+    cursor: grab;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.card:active {
+    cursor: grabbing;
+}
+
+.cardOverlay {
+    width: 260px;
+    border: 1px solid var(--color-primary);
+    background: var(--color-bg-primary);
+    box-shadow:
+        0 15px 35px -5px rgba(0, 0, 0, 0.2),
+        0 10px 15px -3px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(var(--color-primary-rgb), 0.2);
+    cursor: grabbing;
+    z-index: 10000;
+    pointer-events: none;
+    rotate: 2deg;
+}
+
+.sortableWrapper {
+    touch-action: none;
+    will-change: transform;
+}
+
+.cardHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.cardTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.cardName {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.urgentIcon {
+    color: var(--color-warning);
+    flex-shrink: 0;
+}
+
+.cardCompany {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cardTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.tag {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.cardFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.cardMeta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-radius: 50%;
+}
+
+.cardTime {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+}
+
+.cardValue {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-success);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SCROLLBAR
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.columnBody::-webkit-scrollbar {
+    width: 4px;
+}
+
+.columnBody::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.columnBody::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
+}
+
+.columnBody::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+.board::-webkit-scrollbar {
+    height: 6px;
+}
+
+.board::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.board::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+.board::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}

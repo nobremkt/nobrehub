@@ -1,0 +1,246 @@
+.scrollArea {
+    --scrollbar-size: 8px;
+    --scrollbar-thumb-color: var(--color-primary-500);
+    --scrollbar-thumb-hover-color: var(--color-primary-400);
+    --scrollbar-track-color: rgba(255, 255, 255, 0.05);
+    --scrollbar-thumb-radius: 100px;
+
+    position: relative;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+
+.horizontal {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CUSTOM SCROLLBAR - Modern Glassmorphism Design
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Scrollbar Base */
+.scrollArea::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+}
+
+/* Track - Subtle glowing line */
+.scrollArea::-webkit-scrollbar-track {
+    background: linear-gradient(180deg,
+            transparent 0%,
+            var(--scrollbar-track-color) 20%,
+            var(--scrollbar-track-color) 80%,
+            transparent 100%);
+    border-radius: var(--scrollbar-thumb-radius);
+    margin: 4px 0;
+}
+
+/* Thumb - Gradient Pill with Glow */
+.scrollArea::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,
+            var(--color-primary-400) 0%,
+            var(--color-primary-500) 50%,
+            var(--color-primary-600) 100%);
+    border-radius: var(--scrollbar-thumb-radius);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    box-shadow:
+        0 0 10px rgba(var(--color-primary-rgb, 139, 92, 246), 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 40px;
+}
+
+/* Thumb Hover - Brighter with stronger glow */
+.scrollArea::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg,
+            var(--color-primary-300) 0%,
+            var(--color-primary-400) 50%,
+            var(--color-primary-500) 100%);
+    box-shadow:
+        0 0 20px rgba(var(--color-primary-rgb, 139, 92, 246), 0.5),
+        0 0 40px rgba(var(--color-primary-rgb, 139, 92, 246), 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 1px solid transparent;
+}
+
+/* Thumb Active/Dragging */
+.scrollArea::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg,
+            var(--color-primary-300) 0%,
+            var(--color-primary-500) 100%);
+    box-shadow:
+        0 0 25px rgba(var(--color-primary-rgb, 139, 92, 246), 0.6),
+        0 0 50px rgba(var(--color-primary-rgb, 139, 92, 246), 0.3);
+}
+
+/* Hide Buttons */
+.scrollArea::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Corner */
+.scrollArea::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HORIZONTAL SCROLLBAR VARIATIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.horizontal::-webkit-scrollbar-track {
+    background: linear-gradient(90deg,
+            transparent 0%,
+            var(--scrollbar-track-color) 20%,
+            var(--scrollbar-track-color) 80%,
+            transparent 100%);
+    margin: 0 4px;
+}
+
+.horizontal::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg,
+            var(--color-primary-400) 0%,
+            var(--color-primary-500) 50%,
+            var(--color-primary-600) 100%);
+    min-width: 40px;
+}
+
+.horizontal::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg,
+            var(--color-primary-300) 0%,
+            var(--color-primary-400) 50%,
+            var(--color-primary-500) 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DARK MODE OVERRIDES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:global(.dark) .scrollArea {
+    --scrollbar-track-color: rgba(255, 255, 255, 0.03);
+}
+
+:global(.dark) .scrollArea::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,
+            var(--color-primary-500) 0%,
+            var(--color-primary-600) 50%,
+            var(--color-primary-700) 100%);
+    box-shadow:
+        0 0 12px rgba(var(--color-primary-rgb, 139, 92, 246), 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+:global(.dark) .scrollArea::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg,
+            var(--color-primary-400) 0%,
+            var(--color-primary-500) 50%,
+            var(--color-primary-600) 100%);
+    box-shadow:
+        0 0 24px rgba(var(--color-primary-rgb, 139, 92, 246), 0.6),
+        0 0 48px rgba(var(--color-primary-rgb, 139, 92, 246), 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+:global(.dark) .horizontal::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg,
+            var(--color-primary-500) 0%,
+            var(--color-primary-600) 50%,
+            var(--color-primary-700) 100%);
+}
+
+:global(.dark) .horizontal::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg,
+            var(--color-primary-400) 0%,
+            var(--color-primary-500) 50%,
+            var(--color-primary-600) 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE SPECIFIC
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:global(.light) .scrollArea {
+    --scrollbar-track-color: rgba(0, 0, 0, 0.05);
+}
+
+:global(.light) .scrollArea::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,
+            var(--color-primary-400) 0%,
+            var(--color-primary-500) 50%,
+            var(--color-primary-600) 100%);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        0 0 12px rgba(var(--color-primary-rgb, 139, 92, 246), 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+:global(.light) .scrollArea::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg,
+            var(--color-primary-300) 0%,
+            var(--color-primary-400) 50%,
+            var(--color-primary-500) 100%);
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(var(--color-primary-rgb, 139, 92, 246), 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SIZE VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.thin {
+    --scrollbar-size: 6px;
+}
+
+.thin::-webkit-scrollbar-thumb {
+    min-height: 30px;
+}
+
+.thick {
+    --scrollbar-size: 12px;
+}
+
+.thick::-webkit-scrollbar-thumb {
+    min-height: 50px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   AUTO-HIDE SCROLLBAR (Shows on hover)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.autoHide::-webkit-scrollbar-thumb {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.autoHide:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+}
+
+/* Firefox auto-hide simulation */
+.autoHide {
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+}
+
+.autoHide:hover {
+    scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CONTENT WRAPPER
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.content {
+    display: block;
+    width: 100%;
+}

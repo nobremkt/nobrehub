@@ -1,0 +1,35 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - LAYOUT: APP LAYOUT STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: var(--sidebar-width, 260px);
+    min-height: 100vh;
+    background-color: var(--color-bg-secondary);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.content {
+    flex: 1;
+    padding: var(--space-6);
+    overflow-y: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * MOBILE RESPONSIVE
+ * ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    .main {
+        margin-left: 0;
+    }
+}

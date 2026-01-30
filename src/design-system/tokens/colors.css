@@ -1,0 +1,164 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - DESIGN TOKENS: CORES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Sistema de cores com suporte a Light/Dark mode.
+ * Paleta baseada na identidade visual Nobre Marketing.
+ * 
+ * Cor Primária: #ef1136 (Vermelho Nobre)
+ * Background Dark: #282828
+ * Background Light: #f4f2f3
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+:root {
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * CORES PRIMÁRIAS (Brand - Vermelho Nobre)
+   * ───────────────────────────────────────────────────────────────────────────── */
+  --color-primary-50: #fef2f3;
+  --color-primary-100: #fde6e8;
+  --color-primary-200: #fbd0d6;
+  --color-primary-300: #f7a8b3;
+  --color-primary-400: #f27688;
+  --color-primary-500: #ef1136;
+  --color-primary-600: #d90f30;
+  --color-primary-700: #b60d28;
+  --color-primary-800: #960b21;
+  --color-primary-900: #7c0a1e;
+  --color-primary-950: #44040f;
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * CORES DE SUCESSO
+   * ───────────────────────────────────────────────────────────────────────────── */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * CORES DE ALERTA/WARNING
+   * ───────────────────────────────────────────────────────────────────────────── */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * CORES DE ERRO/DANGER
+   * ───────────────────────────────────────────────────────────────────────────── */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-300: #fca5a5;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * NEUTRALS (Escala de cinza)
+   * ───────────────────────────────────────────────────────────────────────────── */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f4f2f3;
+  /* Fundo claro Nobre */
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #282828;
+  /* Fundo escuro Nobre */
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * CORES SEMÂNTICAS - LIGHT MODE
+   * ───────────────────────────────────────────────────────────────────────────── */
+
+  /* Backgrounds */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f4f2f3;
+  --color-bg-tertiary: #e5e5e5;
+  --color-bg-elevated: #ffffff;
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Textos */
+  --color-text-primary: #171717;
+  --color-text-secondary: #525252;
+  --color-text-muted: #737373;
+  --color-text-inverted: #ffffff;
+
+  /* Bordas */
+  --color-border: #e5e5e5;
+  --color-border-hover: #d4d4d4;
+  --color-border-focus: var(--color-primary-500);
+
+  /* Estados */
+  --color-hover: rgba(0, 0, 0, 0.04);
+  --color-active: rgba(0, 0, 0, 0.08);
+  --color-disabled: #a3a3a3;
+
+  /* Sidebar */
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-text: #171717;
+  --color-sidebar-text-muted: #737373;
+  --color-sidebar-hover: rgba(0, 0, 0, 0.05);
+  --color-sidebar-active: rgba(239, 17, 54, 0.1);
+  --color-sidebar-border: #e5e5e5;
+  --color-sidebar-accent: #ef1136;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * DARK MODE
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.dark,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --color-bg-primary: #282828;
+  --color-bg-secondary: #1f1f1f;
+  --color-bg-tertiary: #171717;
+  --color-bg-elevated: #333333;
+  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Textos */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #d4d4d4;
+  --color-text-muted: #737373;
+  --color-text-inverted: #171717;
+
+  /* Bordas */
+  --color-border: #404040;
+  --color-border-hover: #525252;
+  --color-border-focus: var(--color-primary-400);
+
+  /* Estados */
+  --color-hover: rgba(255, 255, 255, 0.04);
+  --color-active: rgba(255, 255, 255, 0.08);
+  --color-disabled: #525252;
+
+  /* Sidebar */
+  --color-sidebar-bg: #1f1f1f;
+  --color-sidebar-text: #ffffff;
+  --color-sidebar-text-muted: #737373;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active: rgba(239, 17, 54, 0.15);
+  --color-sidebar-border: rgba(255, 255, 255, 0.08);
+}

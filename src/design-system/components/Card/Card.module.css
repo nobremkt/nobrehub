@@ -1,0 +1,137 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * CARD COMPONENT STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.card {
+    background-color: var(--color-bg-primary);
+    border-radius: var(--radius-xl);
+    transition: var(--transition-default);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * VARIANTS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.default {
+    border: 1px solid var(--color-border);
+}
+
+.default:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.elevated {
+    box-shadow: var(--shadow-md);
+    border: 1px solid transparent;
+    /* Prevents layout shift if border added later, or just consistency */
+}
+
+.elevated:hover {
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-4px);
+    z-index: 10;
+}
+
+.outlined {
+    border: 1px solid var(--color-border);
+    background-color: transparent;
+}
+
+.outlined:hover {
+    border-color: var(--color-primary-500);
+    background-color: var(--color-bg-primary);
+    /* Slight background on hover */
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PADDING
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.padding-none {
+    padding: 0;
+}
+
+.padding-sm {
+    padding: var(--spacing-3);
+}
+
+.padding-md {
+    padding: var(--spacing-4);
+}
+
+.padding-lg {
+    padding: var(--spacing-6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CLICKABLE
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.clickable {
+    cursor: pointer;
+}
+
+.clickable:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.clickable:active {
+    transform: scale(0.99);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SUB-COMPONENTS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    padding-bottom: var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-4);
+}
+
+.headerContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: var(--spacing-1) 0 0;
+}
+
+.action {
+    flex-shrink: 0;
+}
+
+.body {
+    /* Estilo padrão - pode ser personalizado */
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    padding-top: var(--spacing-4);
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--spacing-4);
+}

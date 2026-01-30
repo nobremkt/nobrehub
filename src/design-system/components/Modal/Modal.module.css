@@ -1,0 +1,157 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * MODAL COMPONENT STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-4);
+    background-color: var(--color-bg-overlay);
+    backdrop-filter: blur(8px);
+    /* Increased blur */
+    animation: fadeIn var(--duration-fast) var(--ease-out);
+}
+
+.modal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--spacing-8));
+    background-color: var(--color-bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    animation: scaleIn var(--duration-normal) var(--ease-spring);
+    outline: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SIZES
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.sm {
+    width: 100%;
+    max-width: 400px;
+}
+
+.md {
+    width: 100%;
+    max-width: 500px;
+}
+
+.lg {
+    width: 100%;
+    max-width: 700px;
+}
+
+.xl {
+    width: 100%;
+    max-width: 900px;
+}
+
+.full {
+    width: calc(100vw - var(--spacing-8));
+    max-width: none;
+    height: calc(100vh - var(--spacing-8));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * HEADER
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    padding: var(--spacing-4) var(--spacing-5);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.closeButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: var(--transition-default);
+}
+
+.closeButton:hover {
+    background-color: var(--color-hover);
+    color: var(--color-text-primary);
+}
+
+.closeButton:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * BODY
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FOOTER
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4) var(--spacing-5);
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ANIMATIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

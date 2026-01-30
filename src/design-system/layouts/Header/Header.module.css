@@ -1,0 +1,75 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - LAYOUT: HEADER STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.header {
+    display: flex;
+    align-items: center;
+    height: var(--header-height, 48px);
+    padding: 0 var(--space-4);
+    background-color: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * LOGO
+ * ───────────────────────────────────────────────────────────────────────────── */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.logoIcon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    color: white;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-sm);
+    border-radius: var(--radius-md);
+}
+
+.logoText {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.spacer {
+    flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * NOTIFICATION BUTTON
+ * ───────────────────────────────────────────────────────────────────────────── */
+.notificationBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: all var(--duration-fast);
+}
+
+.notificationBtn:hover {
+    background: var(--color-hover);
+    color: var(--color-text-primary);
+}
+
+.notificationBtn:active {
+    background: var(--color-active);
+}

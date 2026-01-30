@@ -1,0 +1,159 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - LAYOUT: TOP NAV STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.topnav {
+    display: flex;
+    align-items: center;
+    height: var(--topnav-height, 64px);
+    padding: 0 var(--space-6);
+    background-color: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-4);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * MOBILE MENU
+ * ───────────────────────────────────────────────────────────────────────────── */
+.mobileMenuBtn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: background var(--duration-fast);
+}
+
+.mobileMenuBtn:hover {
+    background: var(--color-hover);
+}
+
+@media (max-width: 1024px) {
+    .mobileMenuBtn {
+        display: flex;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * TITLE SECTION
+ * ───────────────────────────────────────────────────────────────────────────── */
+.titleSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-0);
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+}
+
+.spacer {
+    flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ACTIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SEARCH BOX
+ * ───────────────────────────────────────────────────────────────────────────── */
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    min-width: 200px;
+    transition: all var(--duration-fast);
+}
+
+.searchBox:focus-within {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px var(--color-primary-500);
+}
+
+.searchIcon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.searchInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    outline: none;
+}
+
+.searchInput::placeholder {
+    color: var(--color-text-muted);
+}
+
+.searchKbd {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    background: var(--color-bg-tertiary);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+}
+
+@media (max-width: 768px) {
+    .searchBox {
+        display: none;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ICON BUTTONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.iconBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: all var(--duration-fast);
+}
+
+.iconBtn:hover {
+    background: var(--color-hover);
+    color: var(--color-text-primary);
+}
+
+.iconBtn:active {
+    background: var(--color-active);
+}

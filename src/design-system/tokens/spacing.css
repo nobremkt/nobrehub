@@ -1,0 +1,186 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - DESIGN TOKENS: ESPAÇAMENTO
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Sistema de espaçamento baseado em escala de 4px.
+ * Garante consistência em margins, paddings e gaps.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+:root {
+    /* ─────────────────────────────────────────────────────────────────────────────
+   * SPACING SCALE (base: 4px)
+   * ───────────────────────────────────────────────────────────────────────────── */
+    --space-0: 0;
+    --space-px: 1px;
+    --space-0-5: 0.125rem;
+    /* 2px */
+    --space-1: 0.25rem;
+    /* 4px */
+    --space-1-5: 0.375rem;
+    /* 6px */
+    --space-2: 0.5rem;
+    /* 8px */
+    --space-2-5: 0.625rem;
+    /* 10px */
+    --space-3: 0.75rem;
+    /* 12px */
+    --space-3-5: 0.875rem;
+    /* 14px */
+    --space-4: 1rem;
+    /* 16px */
+    --space-5: 1.25rem;
+    /* 20px */
+    --space-6: 1.5rem;
+    /* 24px */
+    --space-7: 1.75rem;
+    /* 28px */
+    --space-8: 2rem;
+    /* 32px */
+    --space-9: 2.25rem;
+    /* 36px */
+    --space-10: 2.5rem;
+    /* 40px */
+    --space-11: 2.75rem;
+    /* 44px */
+    --space-12: 3rem;
+    /* 48px */
+    --space-14: 3.5rem;
+    /* 56px */
+    --space-16: 4rem;
+    /* 64px */
+    --space-20: 5rem;
+    /* 80px */
+    --space-24: 6rem;
+    /* 96px */
+    --space-28: 7rem;
+    /* 112px */
+    --space-32: 8rem;
+    /* 128px */
+    --space-36: 9rem;
+    /* 144px */
+    --space-40: 10rem;
+    /* 160px */
+    --space-44: 11rem;
+    /* 176px */
+    --space-48: 12rem;
+    /* 192px */
+    --space-52: 13rem;
+    /* 208px */
+    --space-56: 14rem;
+    /* 224px */
+    --space-60: 15rem;
+    /* 240px */
+    --space-64: 16rem;
+    /* 256px */
+    --space-72: 18rem;
+    /* 288px */
+    --space-80: 20rem;
+    /* 320px */
+    --space-96: 24rem;
+    /* 384px */
+
+    /* ─────────────────────────────────────────────────────────────────────────────
+   * BACKWARD COMPATIBILITY (Allows usage of --spacing-*)
+   * ───────────────────────────────────────────────────────────────────────────── */
+    --spacing-0: var(--space-0);
+    --spacing-px: var(--space-px);
+    --spacing-0-5: var(--space-0-5);
+    --spacing-1: var(--space-1);
+    --spacing-1-5: var(--space-1-5);
+    --spacing-2: var(--space-2);
+    --spacing-2-5: var(--space-2-5);
+    --spacing-3: var(--space-3);
+    --spacing-3-5: var(--space-3-5);
+    --spacing-4: var(--space-4);
+    --spacing-5: var(--space-5);
+    --spacing-6: var(--space-6);
+    --spacing-7: var(--space-7);
+    --spacing-8: var(--space-8);
+    --spacing-9: var(--space-9);
+    --spacing-10: var(--space-10);
+    --spacing-11: var(--space-11);
+    --spacing-12: var(--space-12);
+    --spacing-14: var(--space-14);
+    --spacing-16: var(--space-16);
+    --spacing-20: var(--space-20);
+    --spacing-24: var(--space-24);
+    --spacing-28: var(--space-28);
+    --spacing-32: var(--space-32);
+    --spacing-36: var(--space-36);
+    --spacing-40: var(--space-40);
+    --spacing-44: var(--space-44);
+    --spacing-48: var(--space-48);
+    --spacing-52: var(--space-52);
+    --spacing-56: var(--space-56);
+    --spacing-60: var(--space-60);
+    --spacing-64: var(--space-64);
+    --spacing-72: var(--space-72);
+    --spacing-80: var(--space-80);
+    --spacing-96: var(--space-96);
+
+    /* ─────────────────────────────────────────────────────────────────────────────
+   * BORDER RADIUS
+   * ───────────────────────────────────────────────────────────────────────────── */
+    --radius-none: 0;
+    --radius-xs: 0.125rem;
+    /* 2px */
+    --radius-sm: 0.25rem;
+    /* 4px */
+    --radius-md: 0.375rem;
+    /* 6px */
+    --radius-lg: 0.5rem;
+    /* 8px */
+    --radius-xl: 0.75rem;
+    /* 12px */
+    --radius-2xl: 1rem;
+    /* 16px */
+    --radius-3xl: 1.5rem;
+    /* 24px */
+    --radius-full: 9999px;
+
+    /* ─────────────────────────────────────────────────────────────────────────────
+   * LAYOUT ESPECÍFICO
+   * ───────────────────────────────────────────────────────────────────────────── */
+    --sidebar-width: 16rem;
+    /* 256px */
+    --sidebar-collapsed-width: 4rem;
+    /* 64px */
+    --topnav-height: 4rem;
+    /* 64px */
+    --page-padding: var(--space-6);
+    --card-padding: var(--space-4);
+    --section-gap: var(--space-8);
+
+    /* ─────────────────────────────────────────────────────────────────────────────
+   * COMPONENT SIZES
+   * ───────────────────────────────────────────────────────────────────────────── */
+    --input-height-sm: 2rem;
+    /* 32px */
+    --input-height-md: 2.5rem;
+    /* 40px */
+    --input-height-lg: 3rem;
+    /* 48px */
+    --button-height-sm: 2rem;
+    /* 32px */
+    --button-height-md: 2.5rem;
+    /* 40px */
+    --button-height-lg: 3rem;
+    /* 48px */
+    --icon-size-sm: 1rem;
+    /* 16px */
+    --icon-size-md: 1.25rem;
+    /* 20px */
+    --icon-size-lg: 1.5rem;
+    /* 24px */
+    --avatar-size-sm: 2rem;
+    /* 32px */
+    --avatar-size-md: 2.5rem;
+    /* 40px */
+    --avatar-size-lg: 3rem;
+    /* 48px */
+    --avatar-size-xl: 4rem;
+    /* 64px */
+}

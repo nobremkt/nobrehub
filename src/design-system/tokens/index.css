@@ -1,0 +1,16 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - DESIGN TOKENS INDEX
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Arquivo de importação central de todos os design tokens.
+ * Importe este arquivo na raiz do app para ter acesso a todas as variáveis.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+@import './colors.css';
+@import './typography.css';
+@import './spacing.css';
+@import './shadows.css';
+@import './animations.css';

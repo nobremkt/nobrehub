@@ -1,0 +1,269 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * BUTTON COMPONENT STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: var(--transition-default);
+    border: 1px solid transparent;
+    outline: none;
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    /* Needed for premium shine absolute position */
+}
+
+.button:focus-visible {
+    box-shadow: var(--shadow-primary);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SIZES
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.sm {
+    height: var(--button-height-sm);
+    padding: 0 var(--spacing-3);
+    font-size: var(--font-size-sm);
+}
+
+.md {
+    height: var(--button-height-md);
+    padding: 0 var(--spacing-4);
+    font-size: var(--font-size-sm);
+}
+
+.lg {
+    height: var(--button-height-lg);
+    padding: 0 var(--spacing-6);
+    font-size: var(--font-size-base);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * VARIANTS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.primary {
+    background-color: var(--color-primary-600);
+    color: white;
+    border-color: var(--color-primary-600);
+}
+
+.primary:hover:not(:disabled) {
+    background-color: var(--color-primary-700);
+    border-color: var(--color-primary-700);
+}
+
+.primary:active:not(:disabled) {
+    background-color: var(--color-primary-800);
+}
+
+.secondary {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+.secondary:hover:not(:disabled) {
+    background-color: var(--color-bg-secondary);
+    border-color: var(--color-border-hover);
+}
+
+.secondary:active:not(:disabled) {
+    background-color: var(--color-bg-tertiary);
+}
+
+.ghost {
+    background-color: transparent;
+    color: var(--color-text-primary);
+    border-color: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+    background-color: var(--color-hover);
+}
+
+.ghost:active:not(:disabled) {
+    background-color: var(--color-active);
+}
+
+.danger {
+    background-color: var(--color-danger-600);
+    color: white;
+    border-color: var(--color-danger-600);
+}
+
+.danger:hover:not(:disabled) {
+    background-color: var(--color-danger-700);
+    border-color: var(--color-danger-700);
+}
+
+.danger:active:not(:disabled) {
+    background-color: var(--color-danger-800);
+}
+
+.danger:focus-visible {
+    box-shadow: var(--shadow-danger);
+}
+
+.success {
+    background-color: var(--color-success-600);
+    color: white;
+    border-color: var(--color-success-600);
+}
+
+.success:hover:not(:disabled) {
+    background-color: var(--color-success-700);
+    border-color: var(--color-success-700);
+}
+
+.success:active:not(:disabled) {
+    background-color: var(--color-success-800);
+}
+
+.success:focus-visible {
+    box-shadow: var(--shadow-success);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * PREMIUM VARIANT
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.premium {
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    /* Contains the shine */
+    transition: all 0.3s ease;
+}
+
+.premium:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--color-primary-700), var(--color-primary-600));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(var(--color-primary-rgb), 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.premium:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(var(--color-primary-rgb), 0.3);
+}
+
+/* Premium Shine Effect */
+.shineContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent);
+    transform: skewX(-20deg);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% {
+        left: -100%;
+    }
+
+    20% {
+        left: 200%;
+    }
+
+    100% {
+        left: 200%;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * MODIFIERS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.fullWidth {
+    width: 100%;
+}
+
+.loading {
+    pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ICONS & SPINNER
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.leftIcon,
+.rightIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.leftIcon svg,
+.rightIcon svg {
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
+}
+
+.sm .leftIcon svg,
+.sm .rightIcon svg {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+}
+
+.spinner {
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.label {
+    display: inline-flex;
+    align-items: center;
+    z-index: 1;
+    /* Ensure label is above shine */
+}
