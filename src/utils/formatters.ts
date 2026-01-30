@@ -126,6 +126,7 @@ export function abbreviateName(name: string, maxLength: number = 20): string {
  * Gera iniciais do nome
  */
 export function getInitials(name: string): string {
+    if (!name) return '';
     const parts = name.trim().split(' ').filter(Boolean);
 
     if (parts.length === 0) return '';

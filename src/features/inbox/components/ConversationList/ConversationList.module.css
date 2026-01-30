@@ -1,0 +1,219 @@
+/* Container Global */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--color-bg-primary);
+    /* Mais limpo que surface */
+    border-right: 1px solid var(--color-border);
+    transition: background-color 0.3s ease;
+}
+
+/* Header */
+.header {
+    padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    background-color: var(--color-bg-primary);
+    position: relative;
+    z-index: 10;
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* Search Area */
+.search {
+    padding: 0 var(--space-4) var(--space-2) var(--space-4);
+}
+
+.inputWrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Lista de Conversas */
+.list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--space-2);
+}
+
+.list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.list::-webkit-scrollbar-thumb {
+    background: transparent;
+}
+
+.list:hover::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+}
+
+/* Empty State */
+.emptyState {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-8);
+}
+
+/* Item de Conversa */
+.item {
+    display: flex;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    /* Evita pulo de layout */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    margin: 0 var(--space-2);
+    border-radius: var(--radius-lg);
+}
+
+.item:hover {
+    background-color: var(--color-bg-secondary);
+}
+
+.itemActive {
+    background-color: var(--color-primary-50);
+}
+
+:global(.dark) .itemActive {
+    background-color: rgba(239, 17, 54, 0.1);
+}
+
+/* Avatar com Status */
+.avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--color-bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 0 0 1px var(--color-border);
+}
+
+.avatarImg {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Conteúdo do Item */
+.content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rowTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.time {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.rowBottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preview {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.itemActive .preview {
+    color: var(--color-text-primary);
+}
+
+/* Badge de Não Lidos */
+.badge {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    color: white;
+    font-size: 10px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+    animation: scaleIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Typing Indicator */
+.typing {
+    color: var(--color-primary-500);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Animations */
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

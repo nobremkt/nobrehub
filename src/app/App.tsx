@@ -17,10 +17,12 @@ import { ROUTES } from '@/config';
 import { LoginPage } from '@/features/auth';
 import { DashboardPage } from '@/pages';
 import { AppearancePage } from '@/features/settings/pages';
+import { IntegrationsPage } from '@/features/settings/pages/IntegrationsPage';
 import { CRMPage } from '@/features/crm/pages/CRMPage';
 import { DebugUIPage } from '@/pages';
 import { AppLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
+import { InboxPage } from '@/features/inbox/pages/InboxPage';
 
 // Inicializa Firebase no boot
 initFirebase();
@@ -133,7 +135,7 @@ export function App() {
 
                 <Route path={ROUTES.inbox.root + '/*'} element={
                     <ProtectedRoute>
-                        <PlaceholderPage title="Inbox" />
+                        <InboxPage />
                     </ProtectedRoute>
                 } />
 
@@ -177,6 +179,12 @@ export function App() {
                 <Route path={ROUTES.settings.root + '/*'} element={
                     <ProtectedRoute>
                         <PlaceholderPage title="Configurações" />
+                    </ProtectedRoute>
+                } />
+
+                <Route path={ROUTES.settings.integrations} element={
+                    <ProtectedRoute>
+                        <IntegrationsPage />
                     </ProtectedRoute>
                 } />
 

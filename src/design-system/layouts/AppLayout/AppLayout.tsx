@@ -17,9 +17,10 @@ import styles from './AppLayout.module.css';
 interface AppLayoutProps {
     children: ReactNode;
     notificationCount?: number;
+    fullWidth?: boolean;
 }
 
-export function AppLayout({ children, notificationCount = 0 }: AppLayoutProps) {
+export function AppLayout({ children, notificationCount = 0, fullWidth = false }: AppLayoutProps) {
     const { sidebarCollapsed } = useUIStore();
     const sidebarWidth = sidebarCollapsed ? '72px' : '260px';
 
@@ -33,7 +34,7 @@ export function AppLayout({ children, notificationCount = 0 }: AppLayoutProps) {
             <div className={styles.main}>
                 <Header notificationCount={notificationCount} />
 
-                <main className={styles.content}>
+                <main className={fullWidth ? styles.contentFullWidth : styles.content}>
                     {children}
                 </main>
             </div>

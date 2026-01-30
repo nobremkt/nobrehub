@@ -1,0 +1,195 @@
+/* Layout Principal */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--color-bg-secondary);
+    /* Fundo sutil */
+    position: relative;
+    background-image: radial-gradient(var(--color-border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    /* Padrão de pontilhados sutil */
+}
+
+/* Header */
+.header {
+    height: 72px;
+    padding: 0 var(--space-6);
+    background-color: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.headerInfo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.headerName {
+    font-weight: 700;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-md);
+    line-height: 1.2;
+}
+
+.headerStatus {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.statusDot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-success-500);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--color-bg-primary);
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Área de Mensagens */
+.messagesArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-6) var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    scroll-behavior: smooth;
+}
+
+/* Message Bubble */
+.bubbleRow {
+    display: flex;
+    width: 100%;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bubbleRowOut {
+    justify-content: flex-end;
+}
+
+.bubbleRowIn {
+    justify-content: flex-start;
+}
+
+.bubble {
+    max-width: 65%;
+    padding: var(--space-3) var(--space-4);
+    border-radius: 18px;
+    position: relative;
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: var(--shadow-sm);
+    word-wrap: break-word;
+}
+
+.bubbleOut {
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.bubbleIn {
+    background-color: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--color-border);
+}
+
+.bubbleMeta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 4px;
+    font-size: 11px;
+    opacity: 0.7;
+    margin-bottom: -4px;
+    margin-right: -4px;
+}
+
+.bubbleOut .bubbleMeta {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.bubbleIn .bubbleMeta {
+    color: var(--color-text-muted);
+}
+
+/* Input Area */
+.inputArea {
+    padding: var(--space-4) var(--space-6);
+    background-color: var(--color-bg-primary);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-end;
+    position: relative;
+    z-index: 10;
+}
+
+.inputWrapper {
+    flex: 1;
+    background-color: var(--color-bg-secondary);
+    border-radius: 24px;
+    border: 1px solid var(--color-border);
+    padding: 0 var(--space-2);
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.inputWrapper:focus-within {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 2px rgba(239, 17, 54, 0.1);
+    background-color: var(--color-bg-primary);
+}
+
+.inputActions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* Empty State */
+.emptyState {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    background-color: var(--color-bg-secondary);
+    gap: var(--space-4);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
