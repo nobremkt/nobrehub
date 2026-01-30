@@ -15,7 +15,7 @@
     color: var(--color-text-primary);
 }
 
-.inputWrapper {
+.inputContainer {
     position: relative;
     display: flex;
     align-items: center;
@@ -23,17 +23,17 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     transition: all var(--duration-normal) var(--ease-in-out);
+    overflow: hidden;
+    /* Ensures buttons don't spill out */
 }
 
-/* .inputWrapper:hover:not(.disabled) removed */
-
-.inputWrapper:focus-within {
+.inputContainer:focus-within {
     border-color: var(--color-primary-500);
     box-shadow: 0 0 0 3px var(--color-primary-100);
 }
 
-:global(.dark) .inputWrapper:focus-within,
-:global([data-theme="dark"]) .inputWrapper:focus-within {
+:global(.dark) .inputContainer:focus-within,
+:global([data-theme="dark"]) .inputContainer:focus-within {
     box-shadow: 0 0 10px var(--color-primary-500);
 }
 
@@ -66,6 +66,7 @@
 }
 
 .input {
+    flex: 1;
     width: 100%;
     background: transparent;
     border: none;
@@ -73,6 +74,16 @@
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     outline: none;
+    text-align: left;
+    /* Or center if preferred */
+    -moz-appearance: textfield;
+    /* Remove controls in Firefox */
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .input::placeholder {
@@ -83,38 +94,58 @@
     cursor: not-allowed;
 }
 
-/* Ícones */
-.leftIcon,
-.rightIcon {
+/* Control Buttons */
+.controls {
+    display: flex;
+    align-items: center;
+    border-left: 1px solid var(--color-border);
+    height: 100%;
+}
+
+.controlButton {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-muted);
-    padding: 0 var(--space-3);
-}
-
-.hasLeftIcon .input {
-    padding-left: 0;
-}
-
-.hasRightIcon .input {
-    padding-right: 0;
-}
-
-.passwordToggle {
-    background: transparent;
+    width: 32px;
+    /* Standardize button width */
+    height: 100%;
     border: none;
+    background-color: var(--color-bg-secondary);
+    /* Subtle background for buttons */
+    color: var(--color-text-secondary);
     cursor: pointer;
-    padding: 0 var(--space-3);
+    transition: all var(--duration-fast);
+}
+
+.controlButton:hover:not(:disabled) {
+    background-color: var(--color-hover);
+    color: var(--color-primary-600);
+}
+
+.controlButton:active:not(:disabled) {
+    background-color: var(--color-surface-tertiary);
+}
+
+.controlButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Divider between buttons */
+.separator {
+    width: 1px;
+    height: 60%;
+    background-color: var(--color-border);
+}
+
+/* Icon Styles */
+.leftIcon {
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--color-text-muted);
-    transition: color var(--duration-fast);
-}
-
-.passwordToggle:hover {
-    color: var(--color-text-primary);
+    padding-left: var(--space-3);
+    padding-right: 0;
 }
 
 .helper {
@@ -124,29 +155,4 @@
 
 .errorText {
     color: var(--color-danger-500);
-}
-
-/* 
- * CRITICAL FIX: Disable browser validation styles 
- * Prevents the red outline/box-shadow on invalid fields
- */
-.input:invalid,
-.input:-moz-ui-invalid {
-    box-shadow: none !important;
-    outline: none !important;
-}
-
-.input:focus {
-    box-shadow: none !important;
-    outline: none !important;
-}
-
-.multiline {
-    height: auto;
-    align-items: flex-start;
-}
-
-.multiline .input {
-    resize: vertical;
-    min-height: 80px;
 }

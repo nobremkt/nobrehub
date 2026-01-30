@@ -13,6 +13,7 @@
 
 .relative {
     position: relative;
+    /* position: relative é mantido apenas para referência, mas o menu flutua fora */
 }
 
 .trigger {
@@ -29,9 +30,7 @@
     gap: var(--space-2);
 }
 
-.trigger:hover:not(.disabled) {
-    border-color: var(--color-border-hover);
-}
+
 
 .trigger:focus-visible,
 .trigger.isOpen {
@@ -78,16 +77,19 @@
     transform: rotate(180deg);
 }
 
-.menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    width: 100%;
+/* 
+ * MENU PORTAL 
+ * Posicionamento Fixed para sair de overflows
+ */
+.menuPortal {
+    position: fixed;
+    /* Fixed relative to viewport via JS calculation */
     background-color: var(--color-bg-elevated);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    z-index: 50;
+    box-shadow: var(--shadow-xl);
+    z-index: 9999;
+    /* Z-Index muito alto para ficar acima de Modais (que costumam ser 1000) */
     overflow: hidden;
     animation: scaleIn var(--duration-fast) var(--ease-out);
 }
@@ -116,15 +118,34 @@
     background-color: var(--color-hover);
 }
 
+/* 
+ * SELECTED STATE 
+ * Ajustado para ser menos agressivo e mais legível usando variáveis padrão
+ */
 .selected {
-    background-color: var(--color-primary-50);
+    background-color: var(--color-surface-tertiary);
+    /* Fundo sutil */
     color: var(--color-primary-600);
     font-weight: var(--font-weight-semibold);
+    position: relative;
+}
+
+/* Indicador visual lateral para reforçar seleção sem depender só de cor de fundo */
+.selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60%;
+    width: 3px;
+    background-color: var(--color-primary-500);
+    border-radius: 0 4px 4px 0;
 }
 
 :global(.dark) .selected {
-    background-color: var(--color-primary-900);
-    color: var(--color-primary-100);
+    background-color: var(--color-surface-tertiary);
+    color: var(--color-primary-400);
 }
 
 .errorText {

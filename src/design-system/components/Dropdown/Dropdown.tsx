@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { ChevronDown } from 'lucide-react';
 import styles from './Dropdown.module.css';
@@ -35,15 +36,42 @@ export function Dropdown({
     noSound = false,
 }: DropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const { playSound } = useUISound();
 
     const selectedOption = options.find((opt) => opt.value === value);
 
+    const updatePosition = useCallback(() => {
+        if (isOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + window.scrollY + 4,
+                left: rect.left + window.scrollX,
+                width: rect.width,
+            });
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true); // true para capture scroll de ancestrais
+
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [updatePosition]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+            if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
+                // Verificar se o clique não foi dentro do menu (que está no portal)
+                const menu = document.getElementById('dropdown-menu-portal');
+                if (menu && !menu.contains(event.target as Node)) {
+                    setIsOpen(false);
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -73,11 +101,46 @@ export function Dropdown({
         }
     }, [noSound, playSound]);
 
+    // Portal Menu Component
+    const MenuPortal = () => {
+        if (!isOpen) return null;
+
+        return createPortal(
+            <div
+                id="dropdown-menu-portal"
+                className={styles.menuPortal}
+                style={{
+                    top: menuPosition.top,
+                    left: menuPosition.left,
+                    width: menuPosition.width,
+                }}
+            >
+                <ul className={styles.list}>
+                    {options.map((option) => (
+                        <li
+                            key={option.value}
+                            className={clsx(styles.option, {
+                                [styles.selected]: option.value === value,
+                            })}
+                            onClick={() => handleSelect(option.value)}
+                            onMouseEnter={handleOptionHover}
+                        >
+                            {option.icon && <span className={styles.optionIcon}>{option.icon}</span>}
+                            {option.label}
+                        </li>
+                    ))}
+                </ul>
+            </div>,
+            document.body
+        );
+    };
+
     return (
-        <div className={clsx(styles.container, className)} ref={containerRef}>
+        <div className={clsx(styles.container, className)}>
             {label && <label className={styles.label}>{label}</label>}
             <div className={styles.relative}>
                 <button
+                    ref={triggerRef}
                     type="button"
                     className={clsx(styles.trigger, {
                         [styles.isOpen]: isOpen,
@@ -100,25 +163,7 @@ export function Dropdown({
                     <ChevronDown className={clsx(styles.chevron, { [styles.chevronUp]: isOpen })} size={18} />
                 </button>
 
-                {isOpen && (
-                    <div className={styles.menu}>
-                        <ul className={styles.list}>
-                            {options.map((option) => (
-                                <li
-                                    key={option.value}
-                                    className={clsx(styles.option, {
-                                        [styles.selected]: option.value === value,
-                                    })}
-                                    onClick={() => handleSelect(option.value)}
-                                    onMouseEnter={handleOptionHover}
-                                >
-                                    {option.icon && <span className={styles.optionIcon}>{option.icon}</span>}
-                                    {option.label}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
+                <MenuPortal />
             </div>
             {error && <p className={styles.errorText}>{error}</p>}
         </div>

@@ -40,11 +40,15 @@ import { ROUTES } from '@/config';
 import { getInitials } from '@/utils';
 import styles from './Sidebar.module.css';
 
+import { usePermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/config/permissions';
+
 interface SubItem {
     id: string;
     label: string;
     path: string;
     icon: React.ReactNode;
+    permission?: string;
 }
 
 interface NavCategory {
@@ -53,6 +57,7 @@ interface NavCategory {
     icon: React.ReactNode;
     path?: string;
     subItems?: SubItem[];
+    permission?: string;
 }
 
 const navCategories: NavCategory[] = [
@@ -66,6 +71,7 @@ const navCategories: NavCategory[] = [
         id: 'crm',
         label: 'CRM',
         icon: <Users size={20} />,
+        permission: PERMISSIONS.VIEW_CRM,
         subItems: [
             { id: 'kanban', label: 'Kanban', path: ROUTES.crm.kanban, icon: <Kanban size={18} /> },
             { id: 'leads', label: 'Base de Contatos', path: ROUTES.crm.leads, icon: <Contact size={18} /> },
@@ -76,12 +82,14 @@ const navCategories: NavCategory[] = [
         id: 'production',
         label: 'Produção',
         icon: <Video size={20} />,
+        permission: PERMISSIONS.VIEW_PRODUCTION,
         path: ROUTES.production.root
     },
     {
         id: 'postSales',
         label: 'Pós-Venda',
         icon: <Package size={20} />,
+        permission: PERMISSIONS.VIEW_POST_SALES,
         path: ROUTES.postSales.root
     },
     {
@@ -97,6 +105,7 @@ const navCategories: NavCategory[] = [
         id: 'debug',
         label: 'Debug',
         icon: <Bug size={20} />,
+        permission: PERMISSIONS.VIEW_ADMIN, // Restrito a admin
         subItems: [
             { id: 'debug-ui', label: 'DEBUG UI', path: ROUTES.debug_ui, icon: <Palette size={18} /> },
         ]
@@ -105,6 +114,7 @@ const navCategories: NavCategory[] = [
         id: 'administration',
         label: 'Administração',
         icon: <Shield size={20} />,
+        permission: PERMISSIONS.VIEW_ADMIN,
         subItems: [
             { id: 'organization', label: 'Organização', path: ROUTES.settings.organization, icon: <Building2 size={18} /> },
             { id: 'pipeline', label: 'Pipeline', path: ROUTES.settings.pipeline, icon: <Kanban size={18} /> },
@@ -131,6 +141,7 @@ const navCategories: NavCategory[] = [
 export function Sidebar() {
     const { user, logout } = useAuthStore();
     const { sidebarCollapsed, setSidebarCollapsed, sidebarExpandedCategories, toggleSidebarCategory } = useUIStore();
+    const { can } = usePermission();
     const location = useLocation();
 
     const handleMouseEnter = () => {
@@ -173,6 +184,16 @@ export function Sidebar() {
             <nav className={styles.nav}>
                 <ul className={styles.navList}>
                     {navCategories.map((category) => {
+                        // Check category permission
+                        if (category.permission && !can(category.permission)) {
+                            return null;
+                        }
+
+                        // Hardcode: Hide debug category for everyone except debug@debug.com
+                        if (category.id === 'debug' && user?.email !== 'debug@debug.com') {
+                            return null;
+                        }
+
                         const active = isCategoryActive(category);
                         const expanded = sidebarExpandedCategories.includes(category.id);
 
@@ -194,17 +215,24 @@ export function Sidebar() {
                                         </button>
 
                                         <ul className={`${styles.subList} ${expanded && !sidebarCollapsed ? styles.open : ''}`}>
-                                            {category.subItems.map((sub) => (
-                                                <li key={sub.id}>
-                                                    <NavLink
-                                                        to={sub.path}
-                                                        className={`${styles.subItem} ${isActive(sub.path) ? styles.active : ''}`}
-                                                    >
-                                                        <span className={styles.subIcon}>{sub.icon}</span>
-                                                        <span className={styles.subLabel}>{sub.label}</span>
-                                                    </NavLink>
-                                                </li>
-                                            ))}
+                                            {category.subItems.map((sub) => {
+                                                // Check subitem permission
+                                                if (sub.permission && !can(sub.permission)) {
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <li key={sub.id}>
+                                                        <NavLink
+                                                            to={sub.path}
+                                                            className={`${styles.subItem} ${isActive(sub.path) ? styles.active : ''}`}
+                                                        >
+                                                            <span className={styles.subIcon}>{sub.icon}</span>
+                                                            <span className={styles.subLabel}>{sub.label}</span>
+                                                        </NavLink>
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                     </>
                                 ) : (
