@@ -20,6 +20,7 @@ export const ROLES = {
     SDR: 'sdr',
     PRODUCTION: 'production',
     POST_SALES: 'post_sales',
+    VIEWER: 'viewer', // Read-only default
 } as const;
 
 export type Role = typeof ROLES[keyof typeof ROLES];
@@ -138,6 +139,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
         PERMISSIONS.INBOX_SEND,
         PERMISSIONS.TEAM_CHAT,
     ],
+
+    [ROLES.VIEWER]: [],
 };
 
 /**
