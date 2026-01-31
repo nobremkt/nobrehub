@@ -5,7 +5,7 @@
  */
 
 import { useState, FormEvent, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores';
 import { Input, Card, CardBody } from '@/design-system';
 import { PremiumButton } from '@/design-system/components/PremiumButton/PremiumButton';
@@ -111,9 +111,6 @@ export function LoginPage() {
                             </PremiumButton>
                         </form>
 
-                        <Link to={ROUTES.auth.forgotPassword} className={styles.forgotLink}>
-                            Esqueceu sua senha?
-                        </Link>
                     </CardBody>
                 </Card>
 

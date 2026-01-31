@@ -20,7 +20,7 @@ import { AppearancePage } from '@/features/settings/pages';
 import { IntegrationsPage } from '@/features/settings/pages/IntegrationsPage';
 import { CRMPage } from '@/features/crm/pages/CRMPage';
 import { DebugUIPage } from '@/pages';
-import { AppLayout } from '@/design-system/layouts';
+import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
@@ -76,19 +76,14 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
-/**
- * Placeholder page para rotas em desenvolvimento
- */
 function PlaceholderPage({ title }: { title: string }) {
     return (
-        <AppLayout>
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>{title}</h1>
-                <p style={{ color: 'var(--color-text-muted)' }}>
-                    Página em desenvolvimento
-                </p>
-            </div>
-        </AppLayout>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>{title}</h1>
+            <p style={{ color: 'var(--color-text-muted)' }}>
+                Página em desenvolvimento
+            </p>
+        </div>
     );
 }
 
@@ -120,128 +115,53 @@ export function App() {
                     </PublicRoute>
                 } />
 
-                {/* Protected Routes */}
-                <Route path={ROUTES.dashboard} element={
+                {/* Protected Routes with MainLayout */}
+                <Route element={
                     <ProtectedRoute>
-                        <DashboardPage />
+                        <MainLayout />
                     </ProtectedRoute>
-                } />
+                }>
+                    <Route path={ROUTES.dashboard} element={<DashboardPage />} />
 
-                <Route path={ROUTES.debug_ui} element={
-                    <ProtectedRoute>
-                        <DebugUIPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.debug_ui} element={<DebugUIPage />} />
 
-                <Route path={ROUTES.crm.root + '/*'} element={
-                    <ProtectedRoute>
-                        <CRMPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
 
-                <Route path={ROUTES.inbox.root + '/*'} element={
-                    <ProtectedRoute>
-                        <InboxPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.inbox.root + '/*'} element={<InboxPage />} />
 
-                <Route path={ROUTES.production.root + '/*'} element={
-                    <ProtectedRoute>
-                        <PlaceholderPage title="Produção" />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.production.root + '/*'} element={<PlaceholderPage title="Produção" />} />
 
-                <Route path={ROUTES.postSales.root + '/*'} element={
-                    <ProtectedRoute>
-                        <PlaceholderPage title="Pós-Venda" />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.postSales.root + '/*'} element={<PlaceholderPage title="Pós-Venda" />} />
 
-                <Route path={ROUTES.team.members} element={
-                    <ProtectedRoute>
-                        <MembersPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.team.members} element={<MembersPage />} />
 
-                <Route path={ROUTES.team.chat} element={
-                    <ProtectedRoute>
-                        <TeamChatPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.team.chat} element={<TeamChatPage />} />
 
-                <Route path={ROUTES.team.root + '/*'} element={
-                    <ProtectedRoute>
-                        <PlaceholderPage title="Equipe" />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.team.root + '/*'} element={<PlaceholderPage title="Equipe" />} />
 
-                <Route path={ROUTES.analytics.root + '/*'} element={
-                    <ProtectedRoute>
-                        <PlaceholderPage title="Analytics" />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.analytics.root + '/*'} element={<PlaceholderPage title="Analytics" />} />
 
-                {/* Settings */}
-                <Route path={ROUTES.settings.appearance} element={
-                    <ProtectedRoute>
-                        <AppearancePage />
-                    </ProtectedRoute>
-                } />
+                    {/* Settings */}
+                    <Route path={ROUTES.settings.appearance} element={<AppearancePage />} />
 
-                <Route path={ROUTES.settings.collaborators} element={
-                    <ProtectedRoute>
-                        <CollaboratorsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.collaborators} element={<CollaboratorsPage />} />
 
-                <Route path={ROUTES.settings.root + '/*'} element={
-                    <ProtectedRoute>
-                        <PlaceholderPage title="Configurações" />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.root + '/*'} element={<PlaceholderPage title="Configurações" />} />
 
-                <Route path={ROUTES.settings.integrations} element={
-                    <ProtectedRoute>
-                        <IntegrationsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.integrations} element={<IntegrationsPage />} />
 
-                <Route path={ROUTES.settings.organization} element={
-                    <ProtectedRoute>
-                        <OrganizationPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.organization} element={<OrganizationPage />} />
 
-                <Route path={ROUTES.settings.products} element={
-                    <ProtectedRoute>
-                        <ProductsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.products} element={<ProductsPage />} />
 
-                <Route path={ROUTES.settings.lossReasons} element={
-                    <ProtectedRoute>
-                        <LossReasonsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.lossReasons} element={<LossReasonsPage />} />
 
-                <Route path={ROUTES.settings.sectors} element={
-                    <ProtectedRoute>
-                        <SectorsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.sectors} element={<SectorsPage />} />
 
+                    <Route path={ROUTES.settings.roles} element={<RolesPage />} />
 
-                <Route path={ROUTES.settings.roles} element={
-                    <ProtectedRoute>
-                        <RolesPage />
-                    </ProtectedRoute>
-                } />
-
-                <Route path={ROUTES.settings.permissions} element={
-                    <ProtectedRoute>
-                        <PermissionsPage />
-                    </ProtectedRoute>
-                } />
+                    <Route path={ROUTES.settings.permissions} element={<PermissionsPage />} />
+                </Route>
 
                 {/* Catch-all redirect */}
                 <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />

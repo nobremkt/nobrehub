@@ -9,7 +9,7 @@ import React, { useEffect } from 'react';
 import { ConversationList } from '../components/ConversationList/ConversationList';
 import { ChatView } from '../components/ChatView/ChatView';
 import { ProfilePanel } from '../components/ProfilePanel/ProfilePanel';
-import { AppLayout } from '@/design-system/layouts';
+
 import { useInboxStore } from '../stores/useInboxStore';
 
 import styles from './InboxPage.module.css';
@@ -24,7 +24,7 @@ export const InboxPage: React.FC = () => {
     }, [init]);
 
     return (
-        <AppLayout fullWidth>
+        <>
             <div className={`${styles.container} ${selectedConversationId ? styles.chatActive : ''}`}>
                 {/* Painel Esquerdo - Lista de Conversas */}
                 <div className={styles.conversationListWrapper}>
@@ -42,6 +42,6 @@ export const InboxPage: React.FC = () => {
                 </div>
             </div>
             <DevToolbar />
-        </AppLayout>
+        </>
     );
 };

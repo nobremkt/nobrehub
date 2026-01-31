@@ -149,21 +149,7 @@
     animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
-.forgotLink {
-    text-align: center;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    text-decoration: none;
-    transition: all var(--duration-fast);
-    font-weight: 500;
-    margin-top: var(--space-6);
-    display: inline-block;
-    width: 100%;
-}
 
-.forgotLink:hover {
-    color: var(--color-primary-500);
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * FOOTER
