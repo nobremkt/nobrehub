@@ -1,7 +1,7 @@
 .card {
     position: relative;
-    width: 360px;
-    height: 612px;
+    width: 320px;
+    height: 544px;
     border-radius: 29px;
     border: 10px solid #282828;
     overflow: hidden;
@@ -44,7 +44,7 @@
 }
 
 .header {
-    margin-bottom: 40px;
+    margin-bottom: 24px;
 }
 
 .nameRow {
@@ -55,7 +55,7 @@
 }
 
 .name {
-    font-size: 42px;
+    font-size: 36px;
     font-weight: 700;
     color: white;
     line-height: 1.1;
@@ -89,7 +89,7 @@
 }
 
 .role {
-    font-size: 24px;
+    font-size: 20px;
     color: #e0e0e0;
     font-weight: 400;
     margin: 0;
