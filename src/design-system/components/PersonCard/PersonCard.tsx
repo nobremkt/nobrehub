@@ -35,6 +35,7 @@ export const PersonCard: React.FC<PersonCardProps> = ({
             <img src={imageUrl} alt={name} className={styles.image} />
 
             {/* Gradient Overlay */}
+            <div className={styles.blurOverlay} />
             <div className={styles.overlay} />
 
             {/* Content */}
