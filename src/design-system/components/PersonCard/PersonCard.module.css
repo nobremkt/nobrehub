@@ -1,7 +1,8 @@
 .card {
     position: relative;
-    width: 320px;
-    height: 544px;
+    width: 100%;
+    aspect-ratio: 320/544;
+    height: auto;
     border-radius: 29px;
     border: 10px solid #282828;
     overflow: hidden;
@@ -52,25 +53,25 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 32px 24px;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
     z-index: 10;
 }
 
 .header {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .nameRow {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 2px;
 }
 
 .name {
-    font-size: 36px;
+    font-size: 24px;
     font-weight: 700;
     color: white;
     line-height: 1.1;
@@ -80,31 +81,24 @@
 
 .verifiedIcon {
     color: white;
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     fill: white;
 }
 
-.verifiedIcon :global(path) {
-    stroke: none;
-}
-
-/* Customizing the lucide icon to look filled white if needed, or we use a specific verified badge style */
-/* Actually BadgeCheck from lucide is outlined. We might want a filled one or just style it */
 .verifiedBadge {
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     color: #282828;
-    /* The checkmark color */
 }
 
 .role {
-    font-size: 20px;
+    font-size: 14px;
     color: #e0e0e0;
     font-weight: 400;
     margin: 0;
@@ -115,49 +109,49 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
-    /* Adjustment for the border thickness visual */
+    margin-bottom: 0px;
+    gap: 8px;
 }
 
 .status {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: rgba(0, 0, 0, 0.4);
-    padding: 8px 14px;
+    padding: 6px 10px;
     border-radius: 100px;
     backdrop-filter: blur(4px);
 }
 
 .statusDot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     background-color: #75FF35;
-    /* From SVG */
     border-radius: 50%;
-    box-shadow: 0 0 8px #75FF35;
+    box-shadow: 0 0 6px #75FF35;
 }
 
 .statusText {
     color: white;
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 400;
 }
 
 .button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background-color: white;
     color: #1a1a1a;
     border: none;
-    padding: 14px 24px;
+    padding: 8px 16px;
     border-radius: 100px;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s, background-color 0.2s;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .button:hover {

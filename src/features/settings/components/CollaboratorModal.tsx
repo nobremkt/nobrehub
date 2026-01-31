@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { getFirebaseStorage } from '@/config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Modal, Input, Button, Checkbox, Dropdown } from '@/design-system';
 import { Collaborator } from '../types';
 import { useCollaboratorStore } from '../stores/useCollaboratorStore';
@@ -25,6 +27,7 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
     const [sectorId, setSectorId] = useState('');
     const [active, setActive] = useState(true);
     const [photoUrl, setPhotoUrl] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
     // Validation State
@@ -201,10 +204,49 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                     label="URL da Foto"
                     placeholder="https://..."
                     value={photoUrl}
-                    onChange={(e) => setPhotoUrl(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhotoUrl(e.target.value)}
                     fullWidth
-                    helperText="Cole o link de uma imagem pública."
+                    helperText="Cole o link ou faça upload de uma imagem."
                 />
+                <div className="flex justify-end -mt-3">
+                    <input
+                        type="file"
+                        id="photo-upload"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            setIsUploading(true);
+                            try {
+                                const storage = getFirebaseStorage();
+                                const timestamp = Date.now();
+                                const filename = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                                const storageRef = ref(storage, `collaborators/photos/${filename}`);
+
+                                const snapshot = await uploadBytes(storageRef, file);
+                                const downloadURL = await getDownloadURL(snapshot.ref);
+
+                                setPhotoUrl(downloadURL);
+                            } catch (error) {
+                                console.error("Upload failed:", error);
+                                // Optional: You could set a specific error state here if needed
+                            } finally {
+                                setIsUploading(false);
+                            }
+                        }}
+                    />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        isLoading={isUploading}
+                        onClick={() => document.getElementById('photo-upload')?.click()}
+                    >
+                        Upload do Computador
+                    </Button>
+                </div>
 
                 <div className="pt-2">
                     <Checkbox
