@@ -1,6 +1,6 @@
 import 'react-phone-number-input/style.css';
 import React from 'react';
-import PhoneInputLib, { isValidPhoneNumber } from 'react-phone-number-input';
+import PhoneInputLib from 'react-phone-number-input';
 import pt from 'react-phone-number-input/locale/pt'; // Português
 import styles from './PhoneInput.module.css';
 
