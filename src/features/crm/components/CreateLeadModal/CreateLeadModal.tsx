@@ -71,7 +71,7 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                 />
 
                 <PhoneInput
-                    label="Telefone *"
+                    label="Telefone"
                     value={formData.phone}
                     onChange={(val) => setFormData({ ...formData, phone: val })}
                     placeholder="(00) 00000-0000"

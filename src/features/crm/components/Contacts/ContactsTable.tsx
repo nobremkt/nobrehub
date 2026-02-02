@@ -26,11 +26,13 @@ interface Contact {
 interface ContactsTableProps {
     contacts: Contact[];
     isLoading?: boolean;
+    onContactClick?: (contact: Contact) => void;
 }
 
 export const ContactsTable: React.FC<ContactsTableProps> = ({
     contacts,
     isLoading = false,
+    onContactClick,
 }) => {
     const { selectedIds, toggleSelect, selectAll, clearSelection } = useContactsStore();
 
@@ -45,7 +47,16 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
         }
     };
 
+    const handleRowClick = (contact: Contact) => {
+        if (onContactClick) {
+            onContactClick(contact);
+        }
+    };
 
+    const handleCheckboxClick = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        toggleSelect(id);
+    };
 
     const getTagVariant = (tag: string) => {
         const lowerTag = tag.toLowerCase();
@@ -97,10 +108,11 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                     {contacts.map((contact) => (
                         <tr
                             key={contact.id}
-                            className={selectedIds.has(contact.id) ? styles.selectedRow : ''}
+                            className={`${selectedIds.has(contact.id) ? styles.selectedRow : ''} ${styles.clickableRow}`}
+                            onClick={() => handleRowClick(contact)}
                         >
                             {/* Checkbox */}
-                            <td className={styles.checkboxCell}>
+                            <td className={styles.checkboxCell} onClick={(e) => handleCheckboxClick(e, contact.id)}>
                                 <Checkbox
                                     checked={selectedIds.has(contact.id)}
                                     onChange={() => toggleSelect(contact.id)}

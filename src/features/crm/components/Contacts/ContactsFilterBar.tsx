@@ -8,7 +8,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
-import { Input, Tag } from '@/design-system';
+import { Input, Tag, Checkbox } from '@/design-system';
 import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { AdvancedFiltersModal } from './AdvancedFiltersModal';
 import styles from './ContactsFilterBar.module.css';
@@ -112,32 +112,32 @@ export const ContactsFilterBar: React.FC = () => {
                         onClose={() => setOpenDropdown(null)}
                     >
                         <div className={styles.dropdownContent}>
-                            <label className={styles.checkboxLabel}>
-                                <input
-                                    type="checkbox"
-                                    checked={filters.campos.includes('contato')}
-                                    onChange={() => {
-                                        const newCampos = filters.campos.includes('contato')
-                                            ? filters.campos.filter(c => c !== 'contato')
-                                            : [...filters.campos, 'contato' as const];
-                                        setFilter('campos', newCampos);
-                                    }}
-                                />
-                                Contato
-                            </label>
-                            <label className={styles.checkboxLabel}>
-                                <input
-                                    type="checkbox"
-                                    checked={filters.campos.includes('empresa')}
-                                    onChange={() => {
-                                        const newCampos = filters.campos.includes('empresa')
-                                            ? filters.campos.filter(c => c !== 'empresa')
-                                            : [...filters.campos, 'empresa' as const];
-                                        setFilter('campos', newCampos);
-                                    }}
-                                />
-                                Empresa
-                            </label>
+                            <div className={styles.optionsList}>
+                                <label className={styles.checkboxLabel}>
+                                    <Checkbox
+                                        checked={filters.campos.includes('contato')}
+                                        onChange={() => {
+                                            const newCampos = filters.campos.includes('contato')
+                                                ? filters.campos.filter(c => c !== 'contato')
+                                                : [...filters.campos, 'contato' as const];
+                                            setFilter('campos', newCampos);
+                                        }}
+                                    />
+                                    Contato
+                                </label>
+                                <label className={styles.checkboxLabel}>
+                                    <Checkbox
+                                        checked={filters.campos.includes('empresa')}
+                                        onChange={() => {
+                                            const newCampos = filters.campos.includes('empresa')
+                                                ? filters.campos.filter(c => c !== 'empresa')
+                                                : [...filters.campos, 'empresa' as const];
+                                            setFilter('campos', newCampos);
+                                        }}
+                                    />
+                                    Empresa
+                                </label>
+                            </div>
                         </div>
                     </DropdownMenu>
                 </div>
@@ -165,8 +165,7 @@ export const ContactsFilterBar: React.FC = () => {
                             </div>
                             <div className={styles.optionsList}>
                                 <label className={styles.checkboxLabel}>
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={filters.tags.length === 0}
                                         onChange={() => setFilter('tags', [])}
                                     />
@@ -174,8 +173,7 @@ export const ContactsFilterBar: React.FC = () => {
                                 </label>
                                 {availableTags.map(tag => (
                                     <label key={tag} className={styles.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             checked={filters.tags.includes(tag)}
                                             onChange={() => handleTagToggle(tag)}
                                         />
@@ -217,8 +215,7 @@ export const ContactsFilterBar: React.FC = () => {
                             <div className={styles.optionsList}>
                                 {availableLossReasons.map(reason => (
                                     <label key={reason.id} className={styles.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             checked={filters.motivoPerda.includes(reason.name)}
                                             onChange={() => handleLossReasonToggle(reason.name)}
                                         />

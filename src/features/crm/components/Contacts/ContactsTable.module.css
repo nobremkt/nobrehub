@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - CONTACTS TABLE STYLES
- * Tabela de contatos seguindo referência do Clint CRM
+ * Tabela de contatos - High Density & Premium UI
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
 .tableWrapper {
@@ -14,7 +14,8 @@
 .table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    /* 13px */
 }
 
 /* Header */
@@ -22,16 +23,19 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: var(--color-background-elevated);
+    background: var(--color-bg-secondary);
 }
 
 .table th {
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: 0.75rem 1rem;
     text-align: left;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--color-text-secondary);
     border-bottom: 1px solid var(--color-border);
     white-space: nowrap;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
 }
 
 /* Rows */
@@ -40,21 +44,27 @@
     transition: background 0.15s ease;
 }
 
+.clickableRow {
+    cursor: pointer;
+}
+
 .table tbody tr:last-child {
     border-bottom: none;
 }
 
 .table tbody tr:hover {
-    background: var(--color-background-hover);
+    background: var(--color-bg-secondary);
 }
 
 .table td {
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: 0.75rem 1rem;
+    /* Mais compacto */
     vertical-align: middle;
 }
 
 .selectedRow {
-    background: var(--color-primary-alpha) !important;
+    background: rgba(220, 38, 38, 0.08) !important;
+    /* var(--color-primary-alpha) pode não estar definido */
 }
 
 /* Checkbox Cell */

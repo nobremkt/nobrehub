@@ -1,18 +1,20 @@
 .container {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    width: auto;
+    gap: 0.5rem;
+    width: 100%;
 }
 
 .label {
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-weight: 500;
     color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
 }
 
 .required {
-    color: var(--color-danger-500);
+    color: var(--color-primary-500);
     margin-left: 2px;
 }
 
@@ -23,16 +25,11 @@
     background-color: var(--color-bg-primary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    transition: all var(--duration-normal) var(--ease-in-out);
+    transition: all 0.2s ease;
 }
 
 .inputWrapper:focus-within {
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px var(--color-primary-100);
-}
-
-:global(.dark) .inputWrapper:focus-within,
-:global([data-theme="dark"]) .inputWrapper:focus-within {
     box-shadow: 0 0 10px var(--color-primary-500);
 }
 
@@ -41,8 +38,7 @@
 }
 
 .hasError:focus-within {
-    border-color: var(--color-danger-500);
-    box-shadow: 0 0 0 3px var(--color-danger-100);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
 }
 
 .disabled {
@@ -66,12 +62,12 @@
     width: 100%;
 }
 
-/* O seletor de país (bandeira e seta) */
 :global(.PhoneInputCountry) {
     display: flex;
     align-items: center;
-    padding-left: var(--space-3);
-    margin-right: var(--space-2);
+    padding-left: 0.75rem;
+    margin-right: 0.5rem;
+    position: relative;
 }
 
 :global(.PhoneInputCountrySelect) {
@@ -84,14 +80,23 @@
     border: 0;
     opacity: 0;
     cursor: pointer;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
 }
 
-/* Ajuste no ícone da bandeira para ficar alinhado */
+/* Hack para as opções do select nativo ficarem escuras no dark mode (se suportado pelo browser) */
+:global(.PhoneInputCountrySelect) option {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
 :global(.PhoneInputCountryIcon) {
     width: 24px;
     height: 18px;
     display: block;
     box-shadow: 0 0 0 1px var(--color-border);
+    border-radius: 2px;
+    overflow: hidden;
 }
 
 :global(.PhoneInputCountryIcon--border) {
@@ -106,31 +111,30 @@
     object-fit: cover;
 }
 
-/* Seta do dropdown */
 :global(.PhoneInputCountrySelectArrow) {
     display: block;
-    content: '';
-    width: 0.3em;
-    height: 0.3em;
-    margin-left: 0.3em;
-    border-right: 1px solid var(--color-text-muted);
-    border-bottom: 1px solid var(--color-text-muted);
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: 0.5rem;
+    border-right: 2px solid var(--color-text-muted);
+    border-bottom: 2px solid var(--color-text-muted);
     transform: rotate(45deg);
     opacity: 0.7;
+    margin-top: -4px;
+    /* ajuste fino visual */
 }
 
-/* O input de texto nativo */
 .nativeInput {
     flex: 1;
     width: 100%;
     background: transparent;
     border: none;
-    padding: var(--space-2) var(--space-3);
+    padding: 0.625rem 0.75rem;
+    /* ~10px 12px */
     padding-left: 0;
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     outline: none;
-    height: var(--input-height-md);
 }
 
 .nativeInput::placeholder {
