@@ -19,6 +19,7 @@ interface InboxState {
     setFilter: (filter: Partial<SearchFilters>) => void;
     sendMessage: (content: string) => Promise<void>;
     markAsRead: (conversationId: string) => void;
+    updateConversationDetails: (conversationId: string, data: Partial<Conversation>) => Promise<void>;
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
@@ -101,6 +102,14 @@ export const useInboxStore = create<InboxState>((set, get) => ({
             await InboxService.markAsRead(conversationId);
         } catch (error) {
             console.error('Failed to mark as read:', error);
+        }
+    },
+
+    updateConversationDetails: async (conversationId, data) => {
+        try {
+            await InboxService.updateConversationDetails(conversationId, data);
+        } catch (error) {
+            console.error('Failed to update conversation details:', error);
         }
     }
 }));

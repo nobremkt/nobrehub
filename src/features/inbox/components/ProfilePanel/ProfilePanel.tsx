@@ -20,10 +20,14 @@ import {
     FileText,
     History,
     Plus,
-    Edit2
+    Edit2,
+    Check,
+    X
 } from 'lucide-react';
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { toast } from 'react-toastify';
 
 interface AccordionSectionProps {
     title: string;
@@ -67,8 +71,17 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 };
 
 export const ProfilePanel: React.FC = () => {
-    const { selectedConversationId, conversations } = useInboxStore();
+    const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
+
+    // Load collaborators on mount
+    React.useEffect(() => {
+        if (collaborators.length === 0) fetchCollaborators();
+    }, [fetchCollaborators, collaborators.length]);
+
     const conversation = conversations.find(c => c.id === selectedConversationId);
+
+    const assignedMember = conversation ? collaborators.find(c => c.id === conversation.assignedTo) : null;
 
     if (!selectedConversationId || !conversation) {
         return (
@@ -82,7 +95,80 @@ export const ProfilePanel: React.FC = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        // TODO: Adicionar toast de feedback
+        toast.success('Copiado!');
+    };
+
+    // Inline Editing State
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
+
+    const startEditing = (field: string, currentValue: string | undefined) => {
+        setEditingField(field);
+        setEditValue(currentValue || '');
+    };
+
+    const cancelEditing = () => {
+        setEditingField(null);
+        setEditValue('');
+    };
+
+    const saveEditing = async () => {
+        if (!selectedConversationId || !editingField) return;
+
+        const updates: any = {};
+        if (editingField === 'name') updates.leadName = editValue;
+        if (editingField === 'phone') updates.leadPhone = editValue;
+        if (editingField === 'email') updates.leadEmail = editValue;
+        if (editingField === 'company') updates.leadCompany = editValue;
+
+        await updateConversationDetails(selectedConversationId, updates);
+        setEditingField(null);
+        setEditValue('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') saveEditing();
+        if (e.key === 'Escape') cancelEditing();
+    };
+
+    const renderEditableField = (field: string, label: string, value: string | undefined, placeholder?: string) => {
+        const isEditing = editingField === field;
+
+        return (
+            <div className={styles.field}>
+                <span className={styles.fieldLabel}>{label}</span>
+                {isEditing ? (
+                    <div className={styles.editContainer}>
+                        <input
+                            className={styles.editInput}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={placeholder}
+                            autoFocus
+                        />
+                        <div className={styles.editActions}>
+                            <button className={`${styles.editActionBtn} ${styles.save}`} onClick={saveEditing}>
+                                <Check size={14} />
+                            </button>
+                            <button className={`${styles.editActionBtn} ${styles.cancel}`} onClick={cancelEditing}>
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <span className={styles.fieldValue}>{value || '-'}</span>
+                        <button
+                            className={styles.fieldEdit}
+                            onClick={() => startEditing(field, value)}
+                        >
+                            <Edit2 size={14} />
+                        </button>
+                    </>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -199,30 +285,10 @@ export const ProfilePanel: React.FC = () => {
                     icon={<User size={16} />}
                 >
                     <div className={styles.fieldList}>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Nome</span>
-                            <span className={styles.fieldValue}>{conversation.leadName}</span>
-                            <button className={styles.fieldEdit}><Edit2 size={14} /></button>
-                        </div>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Telefone</span>
-                            <span className={styles.fieldValue}>{conversation.leadPhone}</span>
-                            <button className={styles.fieldEdit}><Edit2 size={14} /></button>
-                        </div>
-                        {conversation.leadEmail && (
-                            <div className={styles.field}>
-                                <span className={styles.fieldLabel}>Email</span>
-                                <span className={styles.fieldValue}>{conversation.leadEmail}</span>
-                                <button className={styles.fieldEdit}><Edit2 size={14} /></button>
-                            </div>
-                        )}
-                        {conversation.leadCompany && (
-                            <div className={styles.field}>
-                                <span className={styles.fieldLabel}>Empresa</span>
-                                <span className={styles.fieldValue}>{conversation.leadCompany}</span>
-                                <button className={styles.fieldEdit}><Edit2 size={14} /></button>
-                            </div>
-                        )}
+                        {renderEditableField('name', 'Nome', conversation.leadName)}
+                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
+                        {renderEditableField('email', 'Email', conversation.leadEmail)}
+                        {renderEditableField('company', 'Empresa', conversation.leadCompany)}
                     </div>
                 </AccordionSection>
 
@@ -243,8 +309,12 @@ export const ProfilePanel: React.FC = () => {
                         </div>
                         <div className={styles.field}>
                             <span className={styles.fieldLabel}>Dono</span>
-                            <span className={styles.fieldValue}>Não atribuído</span>
-                            <button className={styles.fieldEdit}><Edit2 size={14} /></button>
+                            <span className={styles.fieldValue}>
+                                {assignedMember ? assignedMember.name : 'Não atribuído'}
+                            </span>
+                            <button className={styles.fieldEdit}>
+                                <Edit2 size={14} />
+                            </button>
                         </div>
                     </div>
                 </AccordionSection>

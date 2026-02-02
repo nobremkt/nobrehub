@@ -60,3 +60,14 @@ export interface Permission {
     createdAt: number;
     updatedAt: number;
 }
+
+export interface MessageTemplate {
+    id: string;
+    name: string;
+    content: string; // Body text for display
+    category: string;
+    language?: string;
+    components?: any[]; // Full WhatsApp components structure
+    createdAt: number;
+    updatedAt: number;
+}

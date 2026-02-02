@@ -243,6 +243,18 @@ export const InboxService = {
     },
 
     /**
+     * Update diverse conversation details (lead info, tags, notes, etc).
+     */
+    updateConversationDetails: async (conversationId: string, data: Partial<Conversation>) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        // We do NOT update updatedAt here to avoid reordering cards just for simple edits
+        await update(conversationRef, {
+            ...data
+        });
+    },
+
+    /**
      * Assign conversation to a team member.
      */
     assignConversation: async (conversationId: string, userId: string | null) => {

@@ -5,7 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Conversation } from '../../types';
 import { Button, Tag } from '@/design-system';
 import {
@@ -21,19 +21,13 @@ import {
 } from 'lucide-react';
 import { getInitials } from '@/utils';
 import styles from './ChatHeader.module.css';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 
 interface ChatHeaderProps {
     conversation: Conversation;
     onAssign?: (userId: string | null) => void;
     onCloseConversation?: () => void;
 }
-
-// Mock team members - in production, fetch from backend
-const TEAM_MEMBERS = [
-    { id: 'user1', name: 'João Silva', avatar: null },
-    { id: 'user2', name: 'Maria Santos', avatar: null },
-    { id: 'user3', name: 'Carlos Oliveira', avatar: null },
-];
 
 // WhatsApp Icon Component
 const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
@@ -53,9 +47,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     onAssign,
     onCloseConversation
 }) => {
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
-    const assignedMember = TEAM_MEMBERS.find(m => m.id === conversation.assignedTo);
+    useEffect(() => {
+        // Load collaborators if not loaded
+        if (collaborators.length === 0) {
+            fetchCollaborators();
+        }
+    }, [fetchCollaborators]);
+
+    const assignedMember = collaborators.find(m => m.id === conversation.assignedTo);
 
     const handleAssign = (userId: string | null) => {
         if (onAssign) {
@@ -172,14 +174,18 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             )}
 
                             {/* Team members */}
-                            {TEAM_MEMBERS.map(member => (
+                            {collaborators.map(member => (
                                 <button
                                     key={member.id}
                                     className={`${styles.dropdownItem} ${member.id === conversation.assignedTo ? styles.activeItem : ''}`}
                                     onClick={() => handleAssign(member.id)}
                                 >
                                     <div className={styles.memberAvatar}>
-                                        {member.name.charAt(0)}
+                                        {member.photoUrl ? (
+                                            <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            member.name.charAt(0)
+                                        )}
                                     </div>
                                     <span>{member.name}</span>
                                     {member.id === conversation.assignedTo && (

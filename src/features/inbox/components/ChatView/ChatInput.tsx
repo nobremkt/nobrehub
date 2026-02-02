@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Input, Button } from '@/design-system';
 import { Send, Paperclip, Mic, Image, FileText, Film, X, Zap } from 'lucide-react';
 import styles from './ChatView.module.css';
+import { useTemplateStore } from '@/features/settings/stores/useTemplateStore';
+import { MessageTemplate } from '@/features/settings/types';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
@@ -10,47 +12,19 @@ interface ChatInputProps {
     disabled?: boolean;
 }
 
-interface MessageTemplate {
-    id: string;
-    name: string;
-    content: string;
-    category: string;
-}
-
-// Mock templates - in production, fetch from backend
-const TEMPLATES: MessageTemplate[] = [
-    {
-        id: '1',
-        name: 'Boas-vindas',
-        content: 'Olá! Seja bem-vindo(a) à Nobre Marketing. Como posso ajudá-lo(a) hoje?',
-        category: 'saudacao'
-    },
-    {
-        id: '2',
-        name: 'Follow-up',
-        content: 'Olá! Notei que conversamos recentemente. Gostaria de saber se ainda posso ajudá-lo(a) com alguma dúvida?',
-        category: 'followup'
-    },
-    {
-        id: '3',
-        name: 'Agradecimento',
-        content: 'Muito obrigado pelo contato! Qualquer dúvida, estamos à disposição. 🙏',
-        category: 'fechamento'
-    },
-    {
-        id: '4',
-        name: 'Orçamento',
-        content: 'Segue em anexo o orçamento solicitado. Fico no aguardo do seu retorno para esclarecer qualquer dúvida!',
-        category: 'comercial'
-    }
-];
+// Templates now managed by useTemplateStore
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate, disabled }) => {
+    const { templates, fetchTemplates } = useTemplateStore();
     const [text, setText] = useState('');
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -165,16 +139,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
                             <X size={18} />
                         </Button>
                     </div>
-                    {TEMPLATES.map(template => (
-                        <div
-                            key={template.id}
-                            className={styles.templateItem}
-                            onClick={() => handleTemplateSelect(template)}
-                        >
-                            <div className={styles.templateName}>{template.name}</div>
-                            <div className={styles.templateContent}>{template.content}</div>
+                    {templates.length > 0 ? (
+                        templates.map(template => (
+                            <div
+                                key={template.id}
+                                className={styles.templateItem}
+                                onClick={() => handleTemplateSelect(template)}
+                            >
+                                <div className={styles.templateName}>{template.name}</div>
+                                <div className={styles.templateContent}>{template.content}</div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className={styles.emptyState}>
+                            Nenhum template aprovado encontrado (360Dialog).
                         </div>
-                    ))}
+                    )}
                 </div>
             )}
 
