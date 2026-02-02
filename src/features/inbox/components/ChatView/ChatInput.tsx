@@ -15,7 +15,7 @@ interface ChatInputProps {
 // Templates now managed by useTemplateStore
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate, disabled }) => {
-    const { templates, fetchTemplates, isLoading } = useTemplateStore();
+    const { templates, fetchTemplates, isLoading, error } = useTemplateStore();
     const [text, setText] = useState('');
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
@@ -147,7 +147,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
                         </Button>
                     </div>
                     {isLoading ? (
-                        <div className={styles.emptyState}>Carregando templates...</div>
+                        <div className={styles.emptyState}>
+                            <div className={styles.spinner} />
+                            Carregando templates...
+                        </div>
+                    ) : error ? (
+                        <div className={styles.emptyState} style={{ color: 'var(--color-danger-500)', textAlign: 'center' }}>
+                            <p style={{ fontWeight: 600, marginBottom: 4 }}>Erro ao carregar</p>
+                            <span style={{ fontSize: 13 }}>{error}</span>
+                            {error.includes('360Dialog') && (
+                                <span style={{ display: 'block', marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+                                    Verifique Configurações {'>'} Integrações
+                                </span>
+                            )}
+                        </div>
                     ) : templates.length > 0 ? (
                         templates.map(template => (
                             <div
@@ -161,7 +174,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
                         ))
                     ) : (
                         <div className={styles.emptyState}>
-                            Nenhum template aprovado encontrado (360Dialog).
+                            Nenhum template aprovado encontrado.
+                            <span style={{ display: 'block', marginTop: 4, fontSize: 12, opacity: 0.7 }}>
+                                Verifique se há templates com status "approved" no painel da 360Dialog ou se a API Key está correta.
+                            </span>
                         </div>
                     )}
                 </div>
