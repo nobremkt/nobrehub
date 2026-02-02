@@ -26,6 +26,7 @@ import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
+import { usePresence } from '@/features/presence/hooks/usePresence';
 
 // Inicializa Firebase no boot
 initFirebase();
@@ -98,6 +99,9 @@ export function App() {
 
     // Aplica tema personalizado (Cores)
     useThemeApplier();
+
+    // Monitora presença online/offline/idle
+    usePresence();
 
     // Inicializa listener de autenticação
     useEffect(() => {
