@@ -5,24 +5,27 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ContactsTable } from '../components/Contacts/ContactsTable';
 import { ContactsFilterBar } from '../components/Contacts/ContactsFilterBar';
 import { useContactsStore, useFilteredContacts } from '../stores/useContactsStore';
 import { Button } from '@/design-system';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, RefreshCw } from 'lucide-react';
+import { CreateLeadModal } from '../components/CreateLeadModal/CreateLeadModal';
 import styles from './ContactsPage.module.css';
 
 // Mock data para desenvolvimento
 export const ContactsPage: React.FC = () => {
     const {
         fetchContacts,
+        syncContacts,
         setAvailableLossReasons,
         isLoading,
         selectedIds,
     } = useContactsStore();
 
     const filteredContacts = useFilteredContacts();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Carregar contatos reais
     useEffect(() => {
@@ -39,8 +42,16 @@ export const ContactsPage: React.FC = () => {
     }, [fetchContacts, setAvailableLossReasons]);
 
     const handleNewContact = () => {
-        // TODO: Abrir modal de novo contato
-        console.log('Novo contato');
+        setIsCreateModalOpen(true);
+    };
+
+    const handleSync = async () => {
+        const count = await syncContacts();
+        if (count > 0) {
+            alert(`${count} contatos importados do Inbox!`);
+        } else {
+            alert('Nenhum novo contato encontrado no Inbox.');
+        }
     };
 
     return (
@@ -52,13 +63,23 @@ export const ContactsPage: React.FC = () => {
                     <h1 className={styles.title}>Contatos</h1>
                 </div>
 
-                <Button
-                    variant="primary"
-                    leftIcon={<Plus size={18} />}
-                    onClick={handleNewContact}
-                >
-                    Novo contato
-                </Button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                        variant="secondary"
+                        leftIcon={<RefreshCw size={18} />}
+                        onClick={handleSync}
+                        isLoading={isLoading}
+                    >
+                        Sincronizar Inbox
+                    </Button>
+                    <Button
+                        variant="primary"
+                        leftIcon={<Plus size={18} />}
+                        onClick={handleNewContact}
+                    >
+                        Novo contato
+                    </Button>
+                </div>
             </div>
 
             {/* Barra de Filtros */}
@@ -80,8 +101,13 @@ export const ContactsPage: React.FC = () => {
                 contacts={filteredContacts}
                 isLoading={isLoading}
             />
+
+            <CreateLeadModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={() => fetchContacts()}
+            />
         </div>
     );
 };
-
 export default ContactsPage;

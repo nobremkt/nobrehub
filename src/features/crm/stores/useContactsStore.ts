@@ -47,6 +47,7 @@ export interface ContactsState {
 
     // Actions
     fetchContacts: () => Promise<void>;
+    syncContacts: () => Promise<number>;
     setContacts: (contacts: Lead[]) => void;
     setLoading: (loading: boolean) => void;
     toggleSelect: (id: string) => void;
@@ -66,7 +67,7 @@ const defaultFilters: ContactFilters = {
     motivoPerda: [],
 };
 
-export const useContactsStore = create<ContactsState>((set) => ({
+export const useContactsStore = create<ContactsState>((set, get) => ({
     // Initial state
     contacts: [],
     selectedIds: new Set(),
@@ -98,6 +99,23 @@ export const useContactsStore = create<ContactsState>((set) => ({
         } catch (error: any) {
             console.error('Failed to fetch contacts:', error);
             set({ error: error.message, isLoading: false });
+        }
+    },
+
+    syncContacts: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const count = await LeadService.syncFromInbox();
+            // Refresh list if new leads added
+            if (count > 0) {
+                await get().fetchContacts();
+            }
+            set({ isLoading: false });
+            return count;
+        } catch (error: any) {
+            console.error('Failed to sync contacts:', error);
+            set({ error: error.message, isLoading: false });
+            return 0;
         }
     },
 

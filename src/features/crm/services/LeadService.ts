@@ -1,4 +1,4 @@
-import { getFirestoreDb } from '@/config/firebase';
+import { getFirestoreDb, getRealtimeDb } from '@/config/firebase';
 import {
     collection,
     getDocs,
@@ -10,6 +10,7 @@ import {
     orderBy,
     Timestamp
 } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import { Lead } from '@/types/lead.types';
 
 const COLLECTION_NAME = 'leads';
@@ -98,6 +99,78 @@ export const LeadService = {
             await deleteDoc(doc(db, COLLECTION_NAME, id));
         } catch (error) {
             console.error('Error deleting lead:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Sync leads from Inbox conversations.
+     * Creates new leads for conversations that have a phone number but no corresponding lead in Firestore.
+     */
+    syncFromInbox: async (): Promise<number> => {
+        try {
+            const realtimeDb = getRealtimeDb();
+            const firestoreDb = getFirestoreDb();
+
+            // 1. Get all conversations
+            const conversationsSnapshot = await get(ref(realtimeDb, 'conversations'));
+            const conversationsData = conversationsSnapshot.val();
+
+            if (!conversationsData) return 0;
+
+            const conversations = Object.values(conversationsData) as any[];
+
+            // 2. Get all existing leads (to check for duplicates by phone)
+            const leadsQuery = await getDocs(collection(firestoreDb, COLLECTION_NAME));
+            const existingPhones = new Set<string>();
+
+            leadsQuery.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.phone) {
+                    // Normalize phone for comparison (remove non-digits)
+                    existingPhones.add(data.phone.replace(/\D/g, ''));
+                }
+            });
+
+            // 3. Filter candidates for sync
+            const newLeadsPromises: Promise<any>[] = [];
+            const now = new Date();
+            let count = 0;
+
+            for (const conv of conversations) {
+                if (!conv.leadPhone) continue;
+
+                const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
+
+                if (!existingPhones.has(normalizedPhone)) {
+                    // Create new lead
+                    // Mark as added to avoid duplicates in same run if multiple convs exist for same phone
+                    existingPhones.add(normalizedPhone);
+                    count++;
+
+                    newLeadsPromises.push(addDoc(collection(firestoreDb, COLLECTION_NAME), {
+                        name: conv.leadName || normalizedPhone,
+                        phone: conv.leadPhone,
+                        email: conv.leadEmail || null,
+                        company: conv.leadCompany || null,
+                        pipeline: 'venda', // Default pipeline
+                        status: 'ht-novo', // Default stage
+                        order: 0,
+                        estimatedValue: 0,
+                        tags: ['Importado Inbox'],
+                        responsibleId: 'admin', // Default to admin for now
+                        createdAt: Timestamp.fromDate(now),
+                        updatedAt: Timestamp.fromDate(now),
+                    }));
+                }
+            }
+
+            // 4. Execute creations
+            await Promise.all(newLeadsPromises);
+
+            return count;
+        } catch (error) {
+            console.error('Error syncing from inbox:', error);
             throw error;
         }
     }

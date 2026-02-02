@@ -269,7 +269,8 @@ function KanbanColumn({ id, name, color, leads, onLeadClick }: KanbanColumnProps
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KANBAN BOARD (Main Component)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────import { Lead360Modal } from '../Lead360Modal/Lead360Modal';
+import { CreateLeadModal } from '../CreateLeadModal/CreateLeadModal';
 
 export function KanbanBoard() {
     const { activePipeline, getStagesByPipeline, leads: storeLeads, setLeads, fetchLeads, updateLead } = useKanbanStore();
@@ -277,6 +278,7 @@ export function KanbanBoard() {
     const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const stages = getStagesByPipeline(activePipeline);
 
@@ -478,7 +480,12 @@ export function KanbanBoard() {
                 </div>
                 <div className={styles.headerRight}>
                     <button className={styles.filterBtn}>Filtros</button>
-                    <button className={styles.addBtn}>+ Novo Lead</button>
+                    <button
+                        className={styles.addBtn}
+                        onClick={() => setIsCreateModalOpen(true)}
+                    >
+                        + Novo Lead
+                    </button>
                 </div>
             </div>
 
@@ -518,6 +525,12 @@ export function KanbanBoard() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 lead={selectedLead}
+            />
+
+            <CreateLeadModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={() => fetchLeads()}
             />
         </div>
     );
