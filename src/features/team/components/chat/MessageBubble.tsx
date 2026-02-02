@@ -3,7 +3,7 @@ import { useCollaboratorStore } from '@/features/settings/stores/useCollaborator
 import { TeamMessage } from '../../types/chat';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import '../../styles/chat.css';
+import { ChatBubble } from '@/design-system/components/Chat';
 
 interface MessageBubbleProps {
     message: TeamMessage;
@@ -35,15 +35,30 @@ export const MessageBubble = ({ message, showSender = false }: MessageBubbleProp
         }
     };
 
+    const getMetadata = () => {
+        if (message.attachments && message.attachments.length > 0) {
+            return {
+                fileName: message.attachments[0].name,
+                // fileSize: message.attachments[0].size // If size existed
+            };
+        }
+        // Fallback or parse from content URL
+        return {};
+    };
+
+    const { fileName } = getMetadata();
+
     return (
-        <div className={`message-wrapper ${isMine ? 'own' : 'other'}`}>
-            <div className={`message-bubble ${isMine ? 'own' : 'other'}`}>
-                {!isMine && showSender && (
-                    <div className="message-sender">{senderName}</div>
-                )}
-                <div className="message-content">{message.content}</div>
-                <div className="message-time">{formatMessageTime(message.createdAt)}</div>
-            </div>
-        </div>
+        <ChatBubble
+            content={message.content}
+            type={message.type}
+            isMine={isMine}
+            senderName={senderName}
+            showSender={showSender}
+            time={formatMessageTime(message.createdAt)}
+            fileName={fileName}
+            onImageClick={(url) => window.open(url, '_blank')}
+            onFileClick={(url) => window.open(url, '_blank')}
+        />
     );
 };

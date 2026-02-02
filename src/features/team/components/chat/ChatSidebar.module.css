@@ -13,12 +13,14 @@
     background-color: var(--color-bg-primary);
     position: relative;
     z-index: 10;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .headerTop {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: var(--spacing-3);
 }
 
 .title {
@@ -31,18 +33,31 @@
     margin: 0;
 }
 
-.counter {
-    background: var(--color-bg-secondary);
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 2px 8px;
+.newChatButton {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--color-primary-500);
+    color: white;
+    border: none;
     border-radius: var(--radius-full);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.newChatButton:hover {
+    background-color: var(--color-primary-600);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 /* Search Area */
 .search {
-    padding: 0 var(--spacing-4) var(--spacing-3);
+    position: relative;
 }
 
 .inputWrapper {
@@ -50,55 +65,29 @@
     width: 100%;
 }
 
-/* Filter Tabs */
-.filterTabs {
-    display: flex;
-    gap: var(--spacing-1);
-    padding: 0 var(--spacing-4) var(--spacing-3);
-    border-bottom: 1px solid var(--color-border);
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.filterTabs::-webkit-scrollbar {
-    display: none;
-}
-
-.filterTab {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-1);
-    padding: var(--spacing-2) var(--spacing-3);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-}
-
-.filterTab:hover {
-    background: var(--color-hover);
+.searchInput {
+    width: 100%;
+    padding: 10px 16px 10px 40px;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
     color: var(--color-text-primary);
+    outline: none;
+    transition: all 0.2s ease;
 }
 
-.filterTab.active {
-    background: var(--color-primary-500);
-    color: white;
+.searchInput:focus {
+    background-color: var(--color-bg-primary);
+    border-color: var(--color-primary-300);
+    box-shadow: 0 0 0 3px var(--color-primary-100);
 }
 
-.filterCount {
-    background: rgba(255, 255, 255, 0.2);
-    font-size: 0.6875rem;
-    padding: 1px 5px;
-    border-radius: var(--radius-full);
-}
-
-.filterTab:not(.active) .filterCount {
-    background: var(--color-bg-tertiary);
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--color-text-muted);
 }
 
@@ -153,11 +142,11 @@
     gap: var(--space-3);
     cursor: pointer;
     border-bottom: 1px solid transparent;
-    /* Evita pulo de layout */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     margin: 0 var(--space-2);
     border-radius: var(--radius-lg);
+    background: transparent;
 }
 
 .item:hover {
@@ -172,7 +161,7 @@
     background-color: rgba(239, 17, 54, 0.1);
 }
 
-/* Avatar com Status */
+/* Avatar */
 .avatar {
     width: 44px;
     height: 44px;
@@ -186,6 +175,7 @@
     flex-shrink: 0;
     position: relative;
     box-shadow: 0 0 0 1px var(--color-border);
+    overflow: hidden;
 }
 
 .avatarImg {
@@ -207,7 +197,7 @@
 .rowTop {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
 }
 
 .name {
@@ -224,12 +214,7 @@
     color: var(--color-text-muted);
     white-space: nowrap;
     font-weight: 500;
-}
-
-.rowBottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    margin-left: 8px;
 }
 
 .preview {
@@ -238,49 +223,14 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 170px;
+    line-height: 1.4;
 }
 
 .itemActive .preview {
     color: var(--color-text-primary);
 }
 
-/* Badge de Não Lidos */
-.badge {
-    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
-    color: white;
-    font-size: 10px;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 5px;
-    font-weight: 700;
-    box-shadow: var(--shadow-sm);
-    animation: scaleIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Typing Indicator */
-.typing {
-    color: var(--color-primary-500);
-    font-size: 12px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-
-/* Animations */
-@keyframes scaleIn {
-    from {
-        transform: scale(0);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+.ownMessage {
+    font-style: italic;
+    color: var(--color-text-muted);
 }

@@ -1,8 +1,6 @@
 import React from 'react';
-import clsx from 'clsx';
 import { Message } from '../../types';
-import { Check, Clock } from 'lucide-react';
-import styles from './ChatView.module.css';
+import { ChatBubble } from '@/design-system/components/Chat';
 
 interface MessageBubbleProps {
     message: Message;
@@ -15,42 +13,37 @@ const formatMessageTime = (date: Date) => {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     const isOut = message.direction === 'out';
 
-    return (
-        <div className={clsx(styles.bubbleRow, isOut ? styles.bubbleRowOut : styles.bubbleRowIn)}>
-            <div className={clsx(styles.bubble, isOut ? styles.bubbleOut : styles.bubbleIn)}>
-                <div className={styles.bubbleContent} style={{ whiteSpace: 'pre-wrap' }}>
-                    {message.type === 'text' && message.content}
-                    {message.type === 'image' && <div>[Imagem] {message.content}</div>}
-                    {message.type === 'audio' && <div>[Áudio] {message.content}</div>}
-                    {message.type === 'document' && <div>[Documento] {message.content}</div>}
-                </div>
+    const getType = (msgType: string): 'text' | 'image' | 'video' | 'file' | 'audio' | 'system' => {
+        if (msgType === 'document') return 'file';
+        if (msgType === 'image') return 'image';
+        if (msgType === 'video') return 'video';
+        if (msgType === 'audio') return 'audio';
+        return 'text';
+    };
 
-                <div className={styles.bubbleMeta}>
-                    <span>
-                        {/* @ts-ignore - Handle both timestamp and createdAt */}
-                        {formatMessageTime(new Date(message.timestamp || message.createdAt || Date.now()))}
-                    </span>
-                    {isOut && (
-                        <span className={styles.statusIcon}>
-                            {message.status === 'pending' && <Clock size={14} className={styles.statusPending} />}
-                            {message.status === 'sent' && <Check size={14} className={styles.statusSent} />}
-                            {message.status === 'delivered' && (
-                                <span className={styles.doubleCheck}>
-                                    <Check size={14} />
-                                    <Check size={14} style={{ marginLeft: '-8px' }} />
-                                </span>
-                            )}
-                            {message.status === 'read' && (
-                                <span className={styles.doubleCheck + ' ' + styles.statusRead}>
-                                    <Check size={14} />
-                                    <Check size={14} style={{ marginLeft: '-8px' }} />
-                                </span>
-                            )}
-                            {message.status === 'failed' && <span className={styles.statusFailed}>!</span>}
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
+    // Use mediaUrl for media types if available, otherwise fallback to content
+    const contentUrl = (['image', 'video', 'audio', 'document'].includes(message.type) && message.mediaUrl)
+        ? message.mediaUrl
+        : message.content;
+
+    // Use mediaName for filename if available
+    const fileName = message.mediaName || (message.type === 'document' ? 'Documento' : undefined);
+
+    const timeString = message.createdAt instanceof Date
+        ? formatMessageTime(message.createdAt)
+        : formatMessageTime(new Date(message.createdAt));
+
+    return (
+        <ChatBubble
+            content={contentUrl || ''}
+            type={getType(message.type)}
+            isMine={isOut}
+            showSender={false}
+            status={message.status}
+            time={timeString}
+            fileName={fileName}
+            onImageClick={(url) => window.open(url, '_blank')}
+            onFileClick={(url) => window.open(url, '_blank')}
+        />
     );
 };

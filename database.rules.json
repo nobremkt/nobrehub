@@ -1,0 +1,19 @@
+{
+    "rules": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "conversations": {
+            ".indexOn": [
+                "lastMessage/timestamp",
+                "updatedAt"
+            ]
+        },
+        "messages": {
+            "$conversationId": {
+                ".indexOn": [
+                    "timestamp"
+                ]
+            }
+        }
+    }
+}

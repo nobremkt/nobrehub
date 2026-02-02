@@ -1,87 +1,155 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Smile } from 'lucide-react';
-import '../../styles/chat.css';
+import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
+import { Image as ImageIcon, FileText } from 'lucide-react';
 
 interface ChatInputProps {
-    onSend: (message: string) => void;
+    onSend: (message: string | Blob | File, type?: 'text' | 'image' | 'file' | 'audio') => void;
     disabled?: boolean;
     placeholder?: string;
 }
 
 export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua mensagem..." }: ChatInputProps) => {
     const [message, setMessage] = useState('');
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
 
-    // Auto-resize textarea
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const shouldSendRef = useRef(false);
+
+    // File refs
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
+    // Cleanup on unmount
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
-        }
-    }, [message]);
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+                mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+            }
+        };
+    }, []);
 
-    const handleSubmit = (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+            shouldSendRef.current = false;
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const streamTracks = mediaRecorder.stream.getTracks();
+                streamTracks.forEach(track => track.stop());
+
+                if (shouldSendRef.current) {
+                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                    // Create file with a consistent name pattern, store will rename if needed
+                    const audioFile = new File([audioBlob], "audio_message.webm", { type: 'audio/webm' });
+                    onSend(audioFile, 'audio');
+                }
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+        }
+    };
+
+    const stopRecording = (send: boolean) => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            shouldSendRef.current = send;
+            mediaRecorderRef.current.stop();
+        }
+
+        setIsRecording(false);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+
+    const handleSendText = () => {
         if (!message.trim() || disabled) return;
-
-        onSend(message);
+        onSend(message, 'text');
         setMessage('');
+    };
 
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            onSend(file, type);
+            e.target.value = ''; // Reset input
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit();
+    const attachmentOptions: AttachmentOption[] = [
+        {
+            id: 'image',
+            label: 'Imagem',
+            icon: <ImageIcon size={18} />,
+            onClick: () => imageInputRef.current?.click()
+        },
+        {
+            id: 'file',
+            label: 'Documento',
+            icon: <FileText size={18} />,
+            onClick: () => fileInputRef.current?.click()
         }
-    };
+    ];
 
     return (
-        <div className="chat-input-container">
-            <div className="chat-input-wrapper">
-                <div className="chat-input-actions">
-                    <button
-                        type="button"
-                        className="chat-input-action-btn"
-                        disabled={disabled}
-                        title="Anexar arquivo"
-                    >
-                        <Paperclip size={20} />
-                    </button>
-                    <button
-                        type="button"
-                        className="chat-input-action-btn"
-                        disabled={disabled}
-                        title="Emojis"
-                    >
-                        <Smile size={20} />
-                    </button>
-                </div>
-
-                <textarea
-                    ref={textareaRef}
-                    className="chat-input-field"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    rows={1}
-                />
-
-                <button
-                    type="button"
-                    onClick={() => handleSubmit()}
-                    disabled={!message.trim() || disabled}
-                    className="chat-send-btn"
-                    title="Enviar mensagem"
-                >
-                    <Send size={18} />
-                </button>
-            </div>
-        </div>
+        <>
+            <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => handleFileChange(e, 'image')}
+            />
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={(e) => handleFileChange(e, 'file')}
+            />
+            <DSChatInput
+                value={message}
+                onChange={setMessage}
+                onSend={handleSendText}
+                isRecording={isRecording}
+                recordingTimeFormatted={formatTime(recordingDuration)}
+                onStartRecording={startRecording}
+                onStopRecording={() => stopRecording(true)}
+                onCancelRecording={() => stopRecording(false)}
+                disabled={disabled}
+                placeholder={placeholder}
+                attachmentOptions={attachmentOptions}
+            />
+        </>
     );
 };

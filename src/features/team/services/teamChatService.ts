@@ -1,5 +1,6 @@
 import {
-    getRealtimeDb
+    getRealtimeDb,
+    getFirebaseStorage
 } from '@/config/firebase';
 import {
     ref,
@@ -12,6 +13,11 @@ import {
     orderByChild,
     limitToLast
 } from 'firebase/database';
+import {
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL
+} from 'firebase/storage';
 import { TeamChat, TeamMessage, ChatParticipant } from '../types/chat';
 
 const DB_CHATS = 'chats';
@@ -100,9 +106,19 @@ export const TeamChatService = {
     },
 
     /**
+     * Upload an attachment
+     */
+    uploadAttachment: async (file: Blob | File, path: string): Promise<string> => {
+        const storage = getFirebaseStorage();
+        const fileRef = storageRef(storage, path);
+        await uploadBytes(fileRef, file);
+        return getDownloadURL(fileRef);
+    },
+
+    /**
      * Send a message
      */
-    sendMessage: async (chatId: string, senderId: string, content: string, type: 'text' | 'image' | 'file' = 'text', participants: string[]): Promise<void> => {
+    sendMessage: async (chatId: string, senderId: string, content: string, type: 'text' | 'image' | 'file' | 'audio' = 'text', participants: string[]): Promise<void> => {
         const db = getRealtimeDb();
         const newMessageKey = push(child(ref(db), `${DB_MESSAGES}/${chatId}`)).key;
 
@@ -130,7 +146,7 @@ export const TeamChatService = {
 
         // 2. Update Chat Metadata (Last Message)
         const lastMessageSnippet = {
-            content: type === 'text' ? content : (type === 'image' ? 'Imagem' : 'Arquivo'),
+            content: type === 'text' ? content : (type === 'audio' ? 'Áudio' : (type === 'image' ? 'Imagem' : 'Arquivo')),
             senderId,
             createdAt: timestamp,
             type

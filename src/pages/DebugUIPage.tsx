@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 import {
     Badge,
@@ -14,7 +14,8 @@ import {
     Checkbox,
     Dropdown,
     ScrollArea,
-    PremiumButton
+    PremiumButton,
+    AudioPlayer
 } from '@/design-system';
 import { useUIStore } from '@/stores';
 import { Sun, Moon, User, Settings, Mail } from 'lucide-react';
@@ -338,6 +339,55 @@ export function DebugUIPage() {
                         </div>
                     </CardBody>
                 </Card>
+
+                {/* Chat Components Showcase */}
+                <Card style={{ gridColumn: 'span 2' }}>
+                    <CardHeader title="Chat Components" />
+                    <CardBody>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            {/* Audio Player */}
+                            <div>
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
+                                    Audio Player Design
+                                </h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                    {/* Incoming Audio */}
+                                    <div style={{ maxWidth: '350px' }}>
+                                        <p style={{ fontSize: '0.75rem', marginBottom: '0.5rem', opacity: 0.7 }}>Incoming (Received)</p>
+                                        <div style={{
+                                            padding: '8px 12px',
+                                            backgroundColor: 'var(--color-bg-elevated)',
+                                            borderRadius: '18px',
+                                            borderBottomLeftRadius: '4px',
+                                            border: '1px solid var(--color-border)',
+                                            width: 'fit-content'
+                                        }}>
+                                            <AudioPlayer src="/sounds/ui/mensagem.mp3" />
+                                        </div>
+                                    </div>
+
+                                    {/* Outgoing Audio */}
+                                    <div style={{ maxWidth: '350px' }}>
+                                        <p style={{ fontSize: '0.75rem', marginBottom: '0.5rem', opacity: 0.7 }}>Outgoing (Sent)</p>
+                                        <div style={{
+                                            padding: '8px 12px',
+                                            background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500))',
+                                            borderRadius: '18px',
+                                            borderBottomRightRadius: '4px',
+                                            width: 'fit-content',
+                                            color: 'white'
+                                        }}>
+                                            <AudioPlayer
+                                                src="/sounds/ui/notification.mp3"
+                                                isMine={true}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardBody>
+                </Card>
             </div>
 
             {/* Modal Demo */}
@@ -359,3 +409,4 @@ export function DebugUIPage() {
         </div>
     );
 }
+

@@ -1,0 +1,144 @@
+/* Audio Player Container */
+.audioPlayerContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.05);
+    /* Fundo sutil */
+    border-radius: 12px;
+    min-width: 260px;
+    max-width: 100%;
+}
+
+/* Play/Pause Button */
+.playButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--color-primary-500);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.playButton:hover {
+    background-color: var(--color-primary-600);
+    transform: scale(1.05);
+}
+
+.playButton:active {
+    transform: scale(0.95);
+}
+
+/* Progress Area */
+.progressArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+/* Waveform Visualization */
+.waveform {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 24px;
+    width: 100%;
+    overflow: hidden;
+    cursor: pointer;
+    /* Interaction */
+    position: relative;
+    /* Mask out sides slightly */
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+.waveform:hover .waveBar {
+    opacity: 0.8;
+}
+
+.waveBar {
+    width: 3px;
+    background-color: var(--color-text-muted);
+    border-radius: 2px;
+    transition: height 0.2s, background-color 0.2s;
+    height: 10px;
+    /* Default height */
+    pointer-events: none;
+    /* Let clicks pass to container */
+}
+
+/* Active part of waveform (played) */
+.waveBarActive {
+    background-color: var(--color-primary-500);
+}
+
+.bubbleOut .waveBar {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.bubbleOut .waveBarActive {
+    background-color: white;
+}
+
+
+/* Time Display */
+.timeDisplay {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.bubbleOut .timeDisplay {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Additional Controls (Speed, etc - Optional) */
+.speedButton {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--color-text-primary);
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.speedButton:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.bubbleOut .speedButton {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.bubbleOut .speedButton:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Adjust container based on bubble type for better contrast */
+.bubbleOut .audioPlayerContainer {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.bubbleOut .playButton {
+    background-color: white;
+    color: var(--color-primary-500);
+}
+
+.bubbleOut .playButton:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+}

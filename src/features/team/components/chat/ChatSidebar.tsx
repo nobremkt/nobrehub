@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { NewChatModal } from './NewChatModal';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
-import '../../styles/chat.css';
+import styles from './ChatSidebar.module.css';
 
 export const ChatSidebar = () => {
     const { chats, selectChat, activeChatId, isLoadingChats } = useTeamChatStore();
@@ -52,64 +52,56 @@ export const ChatSidebar = () => {
 
     const formatTime = (timestamp: number) => {
         if (!timestamp) return '';
-        return formatDistanceToNow(timestamp, { addSuffix: false, locale: ptBR });
+        try {
+            return formatDistanceToNow(timestamp, { addSuffix: false, locale: ptBR });
+        } catch (e) {
+            return '';
+        }
     };
 
-    // Skeleton loader
-    const SkeletonItem = () => (
-        <div className="chat-skeleton-item">
-            <div className="chat-skeleton-avatar" />
-            <div className="chat-skeleton-content">
-                <div className="chat-skeleton-line" style={{ width: '70%' }} />
-                <div className="chat-skeleton-line short" />
-            </div>
-        </div>
-    );
-
     return (
-        <div className="chat-sidebar">
+        <div className={styles.container}>
             {/* Header */}
-            <div className="chat-sidebar-header">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="chat-sidebar-title">Mensagens</h2>
+            <div className={styles.header}>
+                <div className={styles.headerTop}>
+                    <h2 className={styles.title}>
+                        <MessageSquare size={20} />
+                        Mensagens
+                    </h2>
                     <button
                         onClick={() => setIsNewChatModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-full text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                        className={styles.newChatButton}
                     >
                         <Plus size={16} />
-                        <span>Nova</span>
+                        Nova
                     </button>
                 </div>
 
-                <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                    <input
-                        type="text"
-                        placeholder="Buscar conversas..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface-secondary border border-border rounded-xl text-sm focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100 transition-all duration-200"
-                    />
+                <div className={styles.search}>
+                    <div className={styles.inputWrapper}>
+                        <Search size={16} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder="Buscar conversas..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                    </div>
                 </div>
             </div>
 
             {/* List */}
-            <div className="chat-list">
+            <div className={styles.list}>
                 {isLoadingChats ? (
-                    <>
-                        <SkeletonItem />
-                        <SkeletonItem />
-                        <SkeletonItem />
-                    </>
+                    <div className={styles.emptyState}>Carregando...</div>
                 ) : filteredChats.length === 0 ? (
-                    <div className="chat-empty-state" style={{ padding: '2rem' }}>
-                        <div className="chat-empty-icon" style={{ width: '80px', height: '80px', padding: '1.25rem' }}>
-                            <MessageSquare size={40} strokeWidth={1.5} />
-                        </div>
-                        <h3 className="chat-empty-title" style={{ fontSize: '1rem' }}>
+                    <div className={styles.emptyState}>
+                        <MessageSquare size={32} strokeWidth={1.5} />
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>
                             {searchTerm ? 'Nenhum resultado' : 'Nenhuma conversa'}
                         </h3>
-                        <p className="chat-empty-description" style={{ fontSize: '0.875rem' }}>
+                        <p style={{ fontSize: '0.875rem' }}>
                             {searchTerm
                                 ? 'Tente buscar por outro nome'
                                 : 'Inicie uma conversa com sua equipe'}
@@ -117,7 +109,7 @@ export const ChatSidebar = () => {
                         {!searchTerm && (
                             <button
                                 onClick={() => setIsNewChatModalOpen(true)}
-                                className="mt-4 text-primary-600 hover:text-primary-700 text-sm font-medium transition-colors"
+                                style={{ color: 'var(--color-primary-500)', marginTop: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
                             >
                                 Iniciar nova conversa →
                             </button>
@@ -134,19 +126,17 @@ export const ChatSidebar = () => {
                         const otherStatus = otherId ? teamStatus[otherId]?.state : 'offline';
 
                         return (
-                            <button
+                            <div
                                 key={chat.id}
                                 onClick={() => selectChat(chat.id)}
-                                className={`chat-item ${isActive ? 'active' : ''}`}
+                                className={`${styles.item} ${isActive ? styles.itemActive : ''}`}
                             >
                                 {/* Avatar */}
-                                <div className="chat-avatar relative">
+                                <div className={styles.avatar}>
                                     {photoUrl ? (
-                                        <img src={photoUrl} alt={name} />
+                                        <img src={photoUrl} alt={name} className={styles.avatarImg} />
                                     ) : (
-                                        <div className="chat-avatar-placeholder">
-                                            {chat.type === 'group' ? <Users size={22} /> : <User size={22} />}
-                                        </div>
+                                        chat.type === 'group' ? <Users size={20} /> : <User size={20} />
                                     )}
 
                                     {chat.type !== 'group' && (
@@ -157,27 +147,27 @@ export const ChatSidebar = () => {
                                 </div>
 
                                 {/* Info */}
-                                <div className="chat-item-info">
-                                    <div className="chat-item-header">
-                                        <span className="chat-item-name">{name}</span>
+                                <div className={styles.content}>
+                                    <div className={styles.rowTop}>
+                                        <span className={styles.name}>{name}</span>
                                         {lastMsg && (
-                                            <span className="chat-item-time">
+                                            <span className={styles.time}>
                                                 {formatTime(lastMsg.createdAt)}
                                             </span>
                                         )}
                                     </div>
-                                    <p className={`chat-item-preview ${lastMsg?.senderId === currentAuthUid ? 'own-message' : ''}`}>
+                                    <div className={styles.preview}>
                                         {lastMsg ? (
                                             <>
-                                                {lastMsg.senderId === currentAuthUid && 'Você: '}
+                                                {lastMsg.senderId === currentAuthUid && <span className={styles.ownMessage}>Você: </span>}
                                                 {lastMsg.content}
                                             </>
                                         ) : (
-                                            <span className="italic text-text-muted">Nova conversa</span>
+                                            <span style={{ fontStyle: 'italic', opacity: 0.7 }}>Nova conversa</span>
                                         )}
-                                    </p>
+                                    </div>
                                 </div>
-                            </button>
+                            </div>
                         );
                     })
                 )}
