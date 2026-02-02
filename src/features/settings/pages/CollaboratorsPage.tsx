@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { CollaboratorModal } from '../components/CollaboratorModal';
 import { Plus, Pencil, Trash2, Search, Mail, Phone, User } from 'lucide-react';
 import { Collaborator } from '../types';
+import { formatPhone } from '@/utils';
 
 export const CollaboratorsPage = () => {
     const { collaborators, fetchCollaborators, isLoading, deleteCollaborator } = useCollaboratorStore();
@@ -146,7 +147,7 @@ export const CollaboratorsPage = () => {
                                 {collaborator.phone && (
                                     <div className="flex items-center gap-2 text-sm text-text-muted">
                                         <Phone size={14} className="shrink-0" />
-                                        <span className="text-xs text-text-primary">{collaborator.phone}</span>
+                                        <span className="text-xs text-text-primary">{formatPhone(collaborator.phone)}</span>
                                     </div>
                                 )}
                             </div>

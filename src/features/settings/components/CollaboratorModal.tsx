@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getFirebaseStorage } from '@/config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Modal, Input, Button, Checkbox, Dropdown } from '@/design-system';
+import { Modal, Input, Button, Checkbox, Dropdown, PhoneInput } from '@/design-system';
 import { Collaborator } from '../types';
 import { useCollaboratorStore } from '../stores/useCollaboratorStore';
 import { useRoleStore } from '../stores/useRoleStore';
@@ -174,12 +174,11 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                     error={errors.password}
                 />
 
-                <Input
+                <PhoneInput
                     label="Telefone / WhatsApp"
                     placeholder="(00) 00000-0000"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    fullWidth
+                    onChange={(val) => setPhone(val)}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

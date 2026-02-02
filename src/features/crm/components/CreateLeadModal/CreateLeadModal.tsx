@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save } from 'lucide-react';
-import { Button, Input } from '@/design-system';
+import { Button, Input, PhoneInput } from '@/design-system';
 import { useKanbanStore } from '../../stores/useKanbanStore';
 import styles from './CreateLeadModal.module.css';
 
@@ -77,9 +77,9 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
 
                     <div className={styles.field}>
                         <label>Telefone *</label>
-                        <Input
+                        <PhoneInput
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(val) => setFormData({ ...formData, phone: val })}
                             placeholder="(00) 00000-0000"
                             required
                         />

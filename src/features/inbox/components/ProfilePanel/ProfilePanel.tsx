@@ -7,7 +7,8 @@
 
 import React, { useState } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
-import { Tag } from '@/design-system';
+import { Tag, PhoneInput } from '@/design-system';
+import { formatPhone } from '@/utils';
 import {
     Phone,
     Mail,
@@ -139,14 +140,25 @@ export const ProfilePanel: React.FC = () => {
                 <span className={styles.fieldLabel}>{label}</span>
                 {isEditing ? (
                     <div className={styles.editContainer}>
-                        <input
-                            className={styles.editInput}
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={placeholder}
-                            autoFocus
-                        />
+                        {field === 'phone' ? (
+                            <div style={{ flex: 1 }}>
+                                <PhoneInput
+                                    value={editValue}
+                                    onChange={(val) => setEditValue(val)}
+                                    placeholder={placeholder}
+                                    className={styles.phoneInputOverride}
+                                />
+                            </div>
+                        ) : (
+                            <input
+                                className={styles.editInput}
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={placeholder}
+                                autoFocus
+                            />
+                        )}
                         <div className={styles.editActions}>
                             <button className={`${styles.editActionBtn} ${styles.save}`} onClick={saveEditing}>
                                 <Check size={14} />
@@ -158,7 +170,9 @@ export const ProfilePanel: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        <span className={styles.fieldValue}>{value || '-'}</span>
+                        <span className={styles.fieldValue}>
+                            {field === 'phone' && value ? formatPhone(value) : (value || '-')}
+                        </span>
                         <button
                             className={styles.fieldEdit}
                             onClick={() => startEditing(field, value)}

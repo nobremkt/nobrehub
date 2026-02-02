@@ -10,7 +10,7 @@ import React from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
 import { Checkbox, Tag, Spinner } from '@/design-system';
 import { Phone, Mail, Building2 } from 'lucide-react';
-import { getInitials } from '@/utils';
+import { getInitials, formatPhone } from '@/utils';
 import styles from './ContactsTable.module.css';
 
 interface Contact {
@@ -45,18 +45,7 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
         }
     };
 
-    const formatPhone = (phone: string) => {
-        // Remove caracteres não numéricos
-        const cleaned = phone.replace(/\D/g, '');
-        // Formato (XX) XXXXX-XXXX
-        if (cleaned.length === 11) {
-            return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
-        }
-        if (cleaned.length === 13) { // Com código do país
-            return `+${cleaned.slice(0, 2)} (${cleaned.slice(2, 4)}) ${cleaned.slice(4, 9)}-${cleaned.slice(9)}`;
-        }
-        return phone;
-    };
+
 
     const getTagVariant = (tag: string) => {
         const lowerTag = tag.toLowerCase();

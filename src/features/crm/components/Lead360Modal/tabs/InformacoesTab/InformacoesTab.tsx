@@ -2,7 +2,7 @@
 import { Lead } from '@/types/lead.types';
 import { Info, StickyNote } from 'lucide-react';
 import styles from './InformacoesTab.module.css';
-import { formatCurrency, formatDate } from '../../utils/helpers';
+import { formatCurrency, formatDate, formatPhone } from '@/utils';
 
 interface InformacoesTabProps {
     lead: Lead;
@@ -28,7 +28,7 @@ export function InformacoesTab({ lead }: InformacoesTabProps) {
                     </div>
                     <div className={styles.infoItem}>
                         <span className={styles.infoLabel}>Telefone</span>
-                        <span className={styles.infoValue}>{lead.phone || 'Não informado'}</span>
+                        <span className={styles.infoValue}>{lead.phone ? formatPhone(lead.phone) : 'Não informado'}</span>
                     </div>
                     <div className={styles.infoItem}>
                         <span className={styles.infoLabel}>Empresa</span>
@@ -36,7 +36,7 @@ export function InformacoesTab({ lead }: InformacoesTabProps) {
                     </div>
                     <div className={styles.infoItem}>
                         <span className={styles.infoLabel}>Valor Estimado</span>
-                        <span className={styles.infoValue}>{formatCurrency(lead.estimatedValue)}</span>
+                        <span className={styles.infoValue}>{formatCurrency(lead.estimatedValue || 0)}</span>
                     </div>
                     <div className={styles.infoItem}>
                         <span className={styles.infoLabel}>Pipeline</span>
