@@ -23,6 +23,7 @@ import { DebugUIPage } from '@/pages';
 import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
+import { ProductionPage } from '@/features/production/pages/ProductionPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
@@ -129,7 +130,7 @@ export function App() {
 
                     <Route path={ROUTES.inbox.root + '/*'} element={<InboxPage />} />
 
-                    <Route path={ROUTES.production.root + '/*'} element={<PlaceholderPage title="Produção" />} />
+                    <Route path={ROUTES.production.root + '/*'} element={<ProductionPage />} />
 
                     <Route path={ROUTES.postSales.root + '/*'} element={<PlaceholderPage title="Pós-Venda" />} />
 
