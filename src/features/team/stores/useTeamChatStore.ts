@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { TeamChat, TeamMessage, ChatParticipant } from '../types/chat';
 import { TeamChatService } from '../services/teamChatService';
+import { playMessageSound } from '@/utils/notificationUtils';
 
 interface TeamChatState {
     currentUserId: string | null;
@@ -19,7 +20,7 @@ interface TeamChatState {
     init: (userId: string) => void;
     selectChat: (chatId: string) => void;
     clearSelection: () => void; // Added this
-    sendMessage: (content: string, type?: 'text' | 'image' | 'file') => Promise<void>;
+    sendMessage: (content: string | File | Blob, type?: 'text' | 'image' | 'file' | 'audio') => Promise<void>;
     createPrivateChat: (otherUser: ChatParticipant) => Promise<string>;
     createGroupChat: (name: string, participants: ChatParticipant[]) => Promise<string>;
     cleanup: () => void;
@@ -47,6 +48,26 @@ export const useTeamChatStore = create<TeamChatState>((set, get) => ({
         set({ isLoadingChats: true, currentUserId: userId });
 
         const unsub = TeamChatService.subscribeToUserChats(userId, (chats) => {
+            const prevState = get();
+
+            // Notification Logic regarding "Track messages"
+            if (!prevState.isLoadingChats) {
+                chats.forEach(chat => {
+                    const oldChat = prevState.chats.find(c => c.id === chat.id);
+                    const isNewUpdate = !oldChat || chat.updatedAt > oldChat.updatedAt;
+
+                    if (isNewUpdate && chat.lastMessage && chat.lastMessage.senderId !== userId) {
+                        // Notify if: App is hidden OR User is not on this chat
+                        const isChatActive = prevState.activeChatId === chat.id;
+
+                        // Only play sound if user is NOT viewing this specific chat
+                        if (!isChatActive) {
+                            playMessageSound();
+                        }
+                    }
+                });
+            }
+
             set({
                 chats,
                 isLoadingChats: false
@@ -108,13 +129,22 @@ export const useTeamChatStore = create<TeamChatState>((set, get) => ({
         });
     },
 
-    sendMessage: async (content: string, type = 'text') => {
+    sendMessage: async (content: string | File | Blob, type = 'text') => {
         const { activeChat, activeChatId, currentUserId } = get();
 
         if (!activeChatId || !currentUserId || !activeChat) return;
 
         try {
-            await TeamChatService.sendMessage(activeChatId, currentUserId, content, type, activeChat.participants);
+            let finalContent = content;
+
+            if (content instanceof File || content instanceof Blob) {
+                // Upload
+                const fileName = (content instanceof File) ? content.name : `audio_${Date.now()}.webm`;
+                const path = `chats/${activeChatId}/${Date.now()}_${fileName}`;
+                finalContent = await TeamChatService.uploadAttachment(content, path);
+            }
+
+            await TeamChatService.sendMessage(activeChatId, currentUserId, finalContent as string, type as any, activeChat.participants);
         } catch (error) {
             console.error("Failed to send message", error);
         }

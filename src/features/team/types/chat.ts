@@ -14,7 +14,7 @@ export interface TeamMessage {
     chatId: string;
     senderId: string;
     content: string;
-    type: 'text' | 'image' | 'file' | 'system';
+    type: 'text' | 'image' | 'video' | 'file' | 'audio' | 'system';
     createdAt: number;
     readBy?: Record<string, number>; // uid -> timestamp
     attachments?: {
@@ -35,7 +35,7 @@ export interface TeamChat {
         content: string;
         senderId: string;
         createdAt: number;
-        type: 'text' | 'image' | 'file' | 'system';
+        type: 'text' | 'image' | 'file' | 'audio' | 'system';
     };
     unreadCount?: number; // Calculated client-side usually
     updatedAt: number;

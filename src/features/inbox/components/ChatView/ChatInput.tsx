@@ -1,270 +1,173 @@
-import React, { useState, useRef } from 'react';
-import { Input, Button } from '@/design-system';
-import { Send, Paperclip, Mic, Image, FileText, Film, X, Zap } from 'lucide-react';
-import styles from './ChatView.module.css';
-import { useTemplateStore } from '@/features/settings/stores/useTemplateStore';
-import { MessageTemplate } from '@/features/settings/types';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
+import { Image as ImageIcon, Video, FileText } from 'lucide-react';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
     onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document') => void;
-    onSelectTemplate?: (template: MessageTemplate) => void;
+    // Removing onSelectTemplate as simplification was requested
     disabled?: boolean;
 }
 
-// Templates now managed by useTemplateStore
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, disabled }) => {
+    const [message, setMessage] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate, disabled }) => {
-    const { templates, fetchTemplates, isLoading, error } = useTemplateStore();
-    const [text, setText] = useState('');
-    const [showAttachMenu, setShowAttachMenu] = useState(false);
-    const [showTemplates, setShowTemplates] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [filePreview, setFilePreview] = useState<string | null>(null);
-    const [templatesFetched, setTemplatesFetched] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const shouldSendRef = useRef(false);
 
-    // Lazy load templates only when user opens templates panel
-    const handleOpenTemplates = () => {
-        if (!templatesFetched) {
-            fetchTemplates();
-            setTemplatesFetched(true);
-        }
-        setShowTemplates(!showTemplates);
-        setShowAttachMenu(false);
-    };
-
+    // File Input Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
 
-    const handleSend = () => {
-        if (selectedFile && onSendMedia) {
-            const type = getFileType(selectedFile);
-            onSendMedia(selectedFile, type);
-            clearFile();
-        } else if (text.trim()) {
-            onSend(text);
-            setText('');
-        }
-    };
-
-    const getFileType = (file: File): 'image' | 'video' | 'audio' | 'document' => {
-        if (file.type.startsWith('image/')) return 'image';
-        if (file.type.startsWith('video/')) return 'video';
-        if (file.type.startsWith('audio/')) return 'audio';
-        return 'document';
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            setShowAttachMenu(false);
-
-            if (type === 'image' || type === 'video') {
-                const url = URL.createObjectURL(file);
-                setFilePreview(url);
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+                mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
             }
+        };
+    }, []);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+            shouldSendRef.current = false;
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const streamTracks = mediaRecorder.stream.getTracks();
+                streamTracks.forEach(track => track.stop());
+
+                if (shouldSendRef.current) {
+                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                    const audioFile = new File([audioBlob], "audio_message.webm", { type: 'audio/webm' });
+
+                    if (onSendMedia) {
+                        onSendMedia(audioFile, 'audio');
+                    }
+                }
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
         }
     };
 
-    const clearFile = () => {
-        setSelectedFile(null);
-        if (filePreview) {
-            URL.revokeObjectURL(filePreview);
-            setFilePreview(null);
+    const stopRecording = (send: boolean) => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            shouldSendRef.current = send;
+            mediaRecorderRef.current.stop();
+        }
+
+        setIsRecording(false);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
         }
     };
 
-    const handleTemplateSelect = (template: MessageTemplate) => {
-        setText(template.content);
-        setShowTemplates(false);
-        if (onSelectTemplate) {
-            onSelectTemplate(template);
-        }
+    const handleSendText = () => {
+        if (!message.trim() || disabled) return;
+        onSend(message);
+        setMessage('');
     };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'document') => {
+        const file = e.target.files?.[0];
+        if (!file || !onSendMedia) return;
+
+        // Force correct type if input gave use wrong one, but usually input restrict by accept
+        onSendMedia(file, type as any);
+        e.target.value = '';
+    };
+
+    const attachmentOptions: AttachmentOption[] = [
+        {
+            id: 'image',
+            label: 'Imagem',
+            icon: <ImageIcon size={18} />,
+            onClick: () => imageInputRef.current?.click()
+        },
+        {
+            id: 'video',
+            label: 'Vídeo',
+            icon: <Video size={18} />,
+            onClick: () => videoInputRef.current?.click()
+        },
+        {
+            id: 'document',
+            label: 'Documento',
+            icon: <FileText size={18} />,
+            onClick: () => fileInputRef.current?.click()
+        }
+    ];
 
     return (
-        <div className={`${styles.inputArea} ${disabled ? styles.inputAreaDisabled : ''}`}>
-            {/* File Preview */}
-            {selectedFile && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    left: 'var(--space-6)',
-                    right: 'var(--space-6)',
-                    background: 'var(--color-bg-elevated)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    padding: 'var(--space-3)',
-                    marginBottom: 'var(--space-2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-3)'
-                }}>
-                    {filePreview && getFileType(selectedFile) === 'image' && (
-                        <img src={filePreview} alt="Preview" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8 }} />
-                    )}
-                    {filePreview && getFileType(selectedFile) === 'video' && (
-                        <video src={filePreview} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8 }} />
-                    )}
-                    {getFileType(selectedFile) === 'document' && (
-                        <FileText size={40} style={{ color: 'var(--color-primary-500)' }} />
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {selectedFile.name}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                            {(selectedFile.size / 1024).toFixed(1)} KB
-                        </div>
-                    </div>
-                    <Button variant="ghost" onClick={clearFile}>
-                        <X size={18} />
-                    </Button>
-                </div>
-            )}
-
-            {/* Templates Modal */}
-            {showTemplates && (
-                <div className={styles.templateModal}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 'var(--space-3)'
-                    }}>
-                        <span style={{ fontWeight: 600 }}>Templates de Mensagem</span>
-                        <Button variant="ghost" onClick={() => setShowTemplates(false)}>
-                            <X size={18} />
-                        </Button>
-                    </div>
-                    {isLoading ? (
-                        <div className={styles.emptyState}>
-                            <div className={styles.spinner} />
-                            Carregando templates...
-                        </div>
-                    ) : error ? (
-                        <div className={styles.emptyState} style={{ color: 'var(--color-danger-500)', textAlign: 'center' }}>
-                            <p style={{ fontWeight: 600, marginBottom: 4 }}>Erro ao carregar</p>
-                            <span style={{ fontSize: 13 }}>{error}</span>
-                            {error.includes('360Dialog') && (
-                                <span style={{ display: 'block', marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-                                    Verifique Configurações {'>'} Integrações
-                                </span>
-                            )}
-                        </div>
-                    ) : templates.length > 0 ? (
-                        templates.map(template => (
-                            <div
-                                key={template.id}
-                                className={styles.templateItem}
-                                onClick={() => handleTemplateSelect(template)}
-                            >
-                                <div className={styles.templateName}>{template.name}</div>
-                                <div className={styles.templateContent}>{template.content}</div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className={styles.emptyState}>
-                            Nenhum template aprovado encontrado.
-                            <span style={{ display: 'block', marginTop: 4, fontSize: 12, opacity: 0.7 }}>
-                                Verifique se há templates com status "approved" no painel da 360Dialog ou se a API Key está correta.
-                            </span>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Attach Menu */}
-            {showAttachMenu && (
-                <div className={styles.attachDropdown}>
-                    <div className={styles.attachItem} onClick={() => imageInputRef.current?.click()}>
-                        <Image size={20} />
-                        <span>Imagem</span>
-                    </div>
-                    <div className={styles.attachItem} onClick={() => videoInputRef.current?.click()}>
-                        <Film size={20} />
-                        <span>Vídeo</span>
-                    </div>
-                    <div className={styles.attachItem} onClick={() => fileInputRef.current?.click()}>
-                        <FileText size={20} />
-                        <span>Documento</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Hidden File Inputs */}
+        <>
             <input
-                ref={imageInputRef}
                 type="file"
+                ref={imageInputRef}
                 accept="image/*"
                 style={{ display: 'none' }}
-                onChange={(e) => handleFileSelect(e, 'image')}
+                onChange={(e) => handleFileChange(e, 'image')}
             />
             <input
-                ref={videoInputRef}
                 type="file"
+                ref={videoInputRef}
                 accept="video/*"
                 style={{ display: 'none' }}
-                onChange={(e) => handleFileSelect(e, 'video')}
+                onChange={(e) => handleFileChange(e, 'video')}
             />
             <input
-                ref={fileInputRef}
                 type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                ref={fileInputRef}
                 style={{ display: 'none' }}
-                onChange={(e) => handleFileSelect(e, 'document')}
+                onChange={(e) => handleFileChange(e, 'document')}
             />
-
-            <div className={styles.attachButton}>
-                <Button variant="ghost" onClick={() => {
-                    setShowAttachMenu(!showAttachMenu);
-                    setShowTemplates(false);
-                }}>
-                    <Paperclip size={20} />
-                </Button>
-            </div>
-
-            <Button
-                variant="ghost"
-                onClick={handleOpenTemplates}
-                title="Templates"
-            >
-                <Zap size={20} />
-            </Button>
-
-            <div className={styles.inputWrapper}>
-                <Input
-                    placeholder="Digite sua mensagem..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => {
-                        setShowAttachMenu(false);
-                        setShowTemplates(false);
-                    }}
-                />
-            </div>
-
-            <div className={styles.inputActions}>
-                {text.trim() || selectedFile ? (
-                    <Button variant="primary" onClick={handleSend}>
-                        <Send size={18} />
-                    </Button>
-                ) : (
-                    <Button variant="ghost">
-                        <Mic size={20} />
-                    </Button>
-                )}
-            </div>
-        </div>
+            <DSChatInput
+                value={message}
+                onChange={setMessage}
+                onSend={handleSendText}
+                isRecording={isRecording}
+                recordingTimeFormatted={formatTime(recordingDuration)}
+                onStartRecording={startRecording}
+                onStopRecording={() => stopRecording(true)}
+                onCancelRecording={() => stopRecording(false)}
+                disabled={disabled}
+                placeholder="Digite sua mensagem..."
+                attachmentOptions={attachmentOptions}
+            />
+        </>
     );
 };

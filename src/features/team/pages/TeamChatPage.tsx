@@ -1,7 +1,39 @@
-import { ChatLayout } from '../components/chat/ChatLayout';
+import React, { useEffect } from 'react';
+import { ChatSidebar } from '../components/chat/ChatSidebar';
+import { ChatWindow } from '../components/chat/ChatWindow';
+import { useTeamChatStore } from '../stores/useTeamChatStore';
 
-export const TeamChatPage = () => {
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import styles from './TeamChatPage.module.css';
+
+export const TeamChatPage: React.FC = () => {
+    const { activeChatId, clearSelection } = useTeamChatStore();
+    const { fetchCollaborators } = useCollaboratorStore();
+
+    useEffect(() => {
+        fetchCollaborators();
+
+        // Init is now handled globally by TeamChatListener in MainLayout
+        // We only need to clear selection when leaving this page
+        return () => clearSelection();
+    }, [clearSelection, fetchCollaborators]);
+
     return (
-        <ChatLayout />
+        <div className={`${styles.container} ${activeChatId ? styles.chatActive : ''}`}>
+            {/* Painel Esquerdo - Lista de Conversas */}
+            <div className={styles.conversationListWrapper}>
+                <ChatSidebar />
+            </div>
+
+            {/* Painel Central - Chat View */}
+            <div className={styles.chatViewWrapper}>
+                <ChatWindow />
+            </div>
+
+            {/* Painel Direito - (Opcional/Futuro) */}
+            <div className={styles.sidebarWrapper}>
+                {/* <TeamProfilePanel /> */}
+            </div>
+        </div>
     );
 };

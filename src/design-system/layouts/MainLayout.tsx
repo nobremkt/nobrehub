@@ -2,6 +2,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { ROUTES } from '@/config';
+import { TeamChatListener } from '@/features/team/components/TeamChatListener';
 
 export function MainLayout() {
     const location = useLocation();
@@ -13,8 +14,11 @@ export function MainLayout() {
         location.pathname.startsWith(ROUTES.production.root);
 
     return (
-        <AppLayout fullWidth={isFullWidth}>
-            <Outlet />
-        </AppLayout>
+        <>
+            <TeamChatListener />
+            <AppLayout fullWidth={isFullWidth}>
+                <Outlet />
+            </AppLayout>
+        </>
     );
 }

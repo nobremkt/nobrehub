@@ -6,7 +6,7 @@ import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { Phone, Video, Users, User, Info, MessageSquare } from 'lucide-react';
 import { TeamMessage } from '../../types/chat';
-import '../../styles/chat.css';
+import styles from './ChatWindow.module.css';
 
 export const ChatWindow = () => {
     const { activeChat, messages, isLoadingMessages, sendMessage } = useTeamChatStore();
@@ -20,9 +20,9 @@ export const ChatWindow = () => {
         }
     }, [messages]);
 
-    const handleSendMessage = async (content: string) => {
-        if (!content.trim()) return;
-        await sendMessage(content);
+    const handleSendMessage = async (content: string | Blob | File, type: 'text' | 'image' | 'file' | 'audio' = 'text') => {
+        if (typeof content === 'string' && !content.trim()) return;
+        await sendMessage(content, type);
     };
 
     // Get chat display info
@@ -55,13 +55,11 @@ export const ChatWindow = () => {
     // Empty State
     if (!activeChat) {
         return (
-            <div className="chat-window">
-                <div className="chat-empty-state">
-                    <div className="chat-empty-icon">
-                        <MessageSquare size={56} strokeWidth={1.5} />
-                    </div>
-                    <h3 className="chat-empty-title">Selecione uma conversa</h3>
-                    <p className="chat-empty-description">
+            <div className={styles.container}>
+                <div className={styles.emptyState}>
+                    <MessageSquare size={56} strokeWidth={1.5} />
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Selecione uma conversa</h3>
+                    <p style={{ maxWidth: '300px' }}>
                         Escolha uma conversa da lista ou inicie uma nova para começar a conversar com sua equipe
                     </p>
                 </div>
@@ -70,55 +68,54 @@ export const ChatWindow = () => {
     }
 
     return (
-        <div className="chat-window">
+        <div className={styles.container}>
             {/* Header */}
-            <div className="chat-header">
-                <div className="chat-header-info">
-                    <div className="chat-header-avatar">
-                        {displayInfo.photoUrl ? (
-                            <img src={displayInfo.photoUrl} alt={displayInfo.name} />
-                        ) : (
-                            <div className="chat-avatar-placeholder">
-                                {displayInfo.isGroup ? <Users size={24} /> : <User size={24} />}
-                            </div>
-                        )}
-                    </div>
-                    <div className="chat-header-details">
-                        <h3>{displayInfo.name}</h3>
+            <div className={styles.header}>
+                <div className={styles.headerLeft}>
+                    {displayInfo.photoUrl ? (
+                        <img src={displayInfo.photoUrl} alt={displayInfo.name} className={styles.avatarImg} />
+                    ) : (
+                        <div className={styles.avatarPlaceholder}>
+                            {displayInfo.isGroup ? <Users size={24} /> : <User size={24} />}
+                        </div>
+                    )}
+                    <div className={styles.headerInfo}>
+                        <div className={styles.headerName}>{displayInfo.name}</div>
                         {displayInfo.isGroup ? (
-                            <span className="text-xs text-text-muted">
+                            <div className={styles.headerStatus}>
                                 {displayInfo.memberCount} membros
-                            </span>
+                            </div>
                         ) : (
-                            <span className="chat-header-status">Online</span>
+                            <div className={styles.headerStatus}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--color-success-500)' }}></div>
+                                Online
+                            </div>
                         )}
                     </div>
                 </div>
 
-                <div className="chat-header-actions">
-                    <button className="chat-header-action-btn" title="Chamada de voz" disabled>
-                        <Phone size={18} />
+                <div className={styles.headerRight}>
+                    <button className={styles.headerActionBtn} title="Chamada de voz" disabled>
+                        <Phone size={20} />
                     </button>
-                    <button className="chat-header-action-btn" title="Chamada de vídeo" disabled>
-                        <Video size={18} />
+                    <button className={styles.headerActionBtn} title="Chamada de vídeo" disabled>
+                        <Video size={20} />
                     </button>
-                    <button className="chat-header-action-btn" title="Informações">
-                        <Info size={18} />
+                    <button className={styles.headerActionBtn} title="Informações">
+                        <Info size={20} />
                     </button>
                 </div>
             </div>
 
             {/* Messages */}
-            <div className="chat-messages">
+            <div className={styles.messagesArea}>
                 {isLoadingMessages ? (
-                    <div className="chat-loading">
+                    <div className={styles.loading}>
                         <Spinner />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="chat-empty-state" style={{ padding: '3rem' }}>
-                        <p className="text-text-muted text-sm">
-                            Nenhuma mensagem ainda. Diga olá! 👋
-                        </p>
+                    <div className={styles.emptyState} style={{ background: 'transparent' }}>
+                        <p>Nenhuma mensagem ainda. Diga olá! 👋</p>
                     </div>
                 ) : (
                     <>

@@ -15,6 +15,9 @@
 // Re-export all components
 export * from './components';
 
+// Explicit Chat exports to ensure visibility if not in main index
+export * from './components/Chat';
+
 // Re-export layouts
 export * from './layouts';
 
