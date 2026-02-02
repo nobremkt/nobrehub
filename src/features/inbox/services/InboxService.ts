@@ -16,7 +16,7 @@ export const InboxService = {
     subscribeToConversations: (callback: (conversations: Conversation[]) => void) => {
         const db = getRealtimeDb();
         const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const q = query(conversationsRef, orderByChild('lastMessage/timestamp'));
+        const q = query(conversationsRef, orderByChild('lastMessage/timestamp'), limitToLast(50));
 
         return onValue(q, (snapshot) => {
             const data = snapshot.val();
@@ -67,29 +67,54 @@ export const InboxService = {
     /**
      * Send a new message.
      */
-    sendMessage: async (conversationId: string, text: string, senderId: string = 'user') => {
+    sendMessage: async (conversationId: string, text: string, senderId: string = 'agent') => {
         const db = getRealtimeDb();
 
         // 0. Get Conversation Details (to get phone number)
         const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
         const conversation = conversationRefSnapshot.val() as Conversation;
 
-        // 1. Send to WhatsApp (if configured)
-        // We do this BEFORE saving to Firebase to ensure it actually sent, or at least try
+        if (!conversation) {
+            throw new Error('Conversation not found');
+        }
+
+        // 1. Create message in messages node IMMEDIATELY (Save-First)
+        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
+        const newMessageRef = push(messagesRef);
+        const messageId = newMessageRef.key!;
+
+        const timestamp = serverTimestamp();
+
+        const messageData = {
+            id: messageId,
+            content: text,
+            senderId,
+            timestamp: timestamp,
+            direction: 'out',
+            status: 'pending', // Initial status
+            type: 'text',
+        };
+
+        // Batch updates for atomicity (Message + Conversation Last Message)
+        const updates: Record<string, any> = {};
+        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0; // Reset unread since we are acting
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+
+        await update(ref(db), updates);
+
+        // 2. Send to WhatsApp (if configured)
         const { whatsapp } = useSettingsStore.getState();
-        let whatsappMessageId = null;
 
         if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
             try {
                 // Determine destination phone
-                // 360Dialog expects country code + phone, no symbols
                 const phone = conversation.leadPhone.replace(/\D/g, '');
 
                 const response = await fetch('/api/send-message', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         apiKey: whatsapp.apiKey,
                         baseUrl: whatsapp.baseUrl,
@@ -105,41 +130,31 @@ export const InboxService = {
                 }
 
                 const responseData = await response.json();
-                whatsappMessageId = responseData.messages?.[0]?.id;
+                const whatsappMessageId = responseData.messages?.[0]?.id;
+
+                // 3. Update status to SENT on success
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'sent',
+                    whatsappMessageId: whatsappMessageId
+                });
+
             } catch (error) {
                 console.error('Failed to send WhatsApp message:', error);
-                // We proceed to save to Firebase anyway as "pending" or "failed"? 
-                // For now, we save but maybe we should flag it. 
-                // Let's proceed so the user sees it in the chat at least.
+                // 3. Update status to ERROR on failure
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'error'
+                });
+                // We do NOT throw here to avoid crashing the UI, visual feedback is enough via 'error' status
             }
+        } else {
+            // If no WhatsApp config, we might want to mark as sent (simulated) or keep as pending
+            // For now, let's mark as sent since it's "sent to system"
+            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                status: 'sent'
+            });
         }
 
-        // 2. Create message in messages node
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-
-        const messageData = {
-            id: newMessageRef.key,
-            content: text,
-            senderId,
-            timestamp: serverTimestamp(),
-            direction: 'out', // Explicitly set direction
-            status: whatsappMessageId ? 'sent' : 'pending', // If we have ID, it's sent
-            type: 'text',
-            whatsappMessageId: whatsappMessageId // Store specific ID
-        };
-
-        await set(newMessageRef, messageData);
-
-        // 3. Update conversation lastMessage
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
-            lastMessage: messageData,
-            unreadCount: 0, // Reset if we match sender, logic might vary
-            updatedAt: serverTimestamp(),
-        });
-
-        return newMessageRef.key;
+        return messageId;
     },
 
     /**
@@ -161,17 +176,55 @@ export const InboxService = {
         mediaUrl: string,
         mediaType: 'image' | 'video' | 'audio' | 'document',
         mediaName?: string,
-        senderId: string = 'user'
+        senderId: string = 'agent'
     ) => {
         const db = getRealtimeDb();
 
-        // Get conversation for phone number
+        // 0. Get Conversation
         const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
         const conversation = conversationRefSnapshot.val() as Conversation;
 
-        // Send to WhatsApp
+        if (!conversation) {
+            throw new Error('Conversation not found');
+        }
+
+        // 1. Create message in Firebase IMMEDIATELY (Save-First)
+        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
+        const newMessageRef = push(messagesRef);
+        const messageId = newMessageRef.key!;
+
+        const contentMap = {
+            image: '[Imagem]',
+            video: '[Vídeo]',
+            audio: '[Áudio]',
+            document: mediaName || '[Documento]'
+        };
+
+        const timestamp = serverTimestamp();
+
+        const messageData = {
+            id: messageId,
+            content: contentMap[mediaType],
+            senderId,
+            timestamp: timestamp,
+            direction: 'out',
+            status: 'pending',
+            type: mediaType,
+            mediaUrl: mediaUrl,
+            mediaName: mediaName
+        };
+
+        // Batch update
+        const updates: Record<string, any> = {};
+        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+
+        await update(ref(db), updates);
+
+        // 2. Send to WhatsApp
         const { whatsapp } = useSettingsStore.getState();
-        let whatsappMessageId = null;
 
         if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
             try {
@@ -179,9 +232,7 @@ export const InboxService = {
 
                 const response = await fetch('/api/send-media', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         apiKey: whatsapp.apiKey,
                         baseUrl: whatsapp.baseUrl,
@@ -199,47 +250,28 @@ export const InboxService = {
                 }
 
                 const responseData = await response.json();
-                whatsappMessageId = responseData.messages?.[0]?.id;
+                const whatsappMessageId = responseData.messages?.[0]?.id;
+
+                // 3. Update success
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'sent',
+                    whatsappMessageId: whatsappMessageId
+                });
+
             } catch (error) {
                 console.error('Failed to send WhatsApp media:', error);
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'error'
+                });
             }
+        } else {
+            // If no WhatsApp config, mark as sent
+            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                status: 'sent'
+            });
         }
 
-        // Create message in Firebase
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-
-        const contentMap = {
-            image: '[Imagem]',
-            video: '[Vídeo]',
-            audio: '[Áudio]',
-            document: mediaName || '[Documento]'
-        };
-
-        const messageData = {
-            id: newMessageRef.key,
-            content: contentMap[mediaType],
-            senderId,
-            timestamp: serverTimestamp(),
-            direction: 'out',
-            status: whatsappMessageId ? 'sent' : 'pending',
-            type: mediaType,
-            mediaUrl: mediaUrl,
-            mediaName: mediaName,
-            whatsappMessageId: whatsappMessageId
-        };
-
-        await set(newMessageRef, messageData);
-
-        // Update conversation
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
-            lastMessage: messageData,
-            unreadCount: 0,
-            updatedAt: serverTimestamp(),
-        });
-
-        return newMessageRef.key;
+        return messageId;
     },
 
     /**

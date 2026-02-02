@@ -16,8 +16,16 @@ export interface Project {
     producerId: string;
     producerName: string;
     status: ProjectStatus;
+    priority?: 'normal' | 'high';
     notes?: string;
     checklist: ProjectChecklistItem[];
+
+    // Extensibility fields
+    source: 'manual' | 'automation' | string;
+    externalId?: string;
+    metadata?: Record<string, any>;
+    tags?: string[];
+
     deliveredAt?: Date;
     createdAt: Date;
     updatedAt: Date;

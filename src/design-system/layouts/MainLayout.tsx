@@ -9,7 +9,8 @@ export function MainLayout() {
     // Determine if full width based on route
     // Add other full width routes here as needed
     const isFullWidth = location.pathname.startsWith(ROUTES.team.chat) ||
-        location.pathname.startsWith(ROUTES.inbox.root);
+        location.pathname.startsWith(ROUTES.inbox.root) ||
+        location.pathname.startsWith(ROUTES.production.root);
 
     return (
         <AppLayout fullWidth={isFullWidth}>
