@@ -12,6 +12,8 @@ import { useContactsStore, useFilteredContacts } from '../stores/useContactsStor
 import { Button } from '@/design-system';
 import { Plus, Users, RefreshCw } from 'lucide-react';
 import { CreateLeadModal } from '../components/CreateLeadModal/CreateLeadModal';
+import { Lead360Modal } from '../components/Lead360Modal/Lead360Modal';
+import { Lead } from '@/types/lead.types';
 import styles from './ContactsPage.module.css';
 
 // Mock data para desenvolvimento
@@ -26,6 +28,7 @@ export const ContactsPage: React.FC = () => {
 
     const filteredContacts = useFilteredContacts();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
     // Carregar contatos reais
     useEffect(() => {
@@ -43,6 +46,11 @@ export const ContactsPage: React.FC = () => {
 
     const handleNewContact = () => {
         setIsCreateModalOpen(true);
+    };
+
+    const handleContactClick = (contact: any) => {
+        // O contact aqui é um Lead completo em runtime
+        setSelectedLead(contact as Lead);
     };
 
     const handleSync = async () => {
@@ -100,12 +108,19 @@ export const ContactsPage: React.FC = () => {
             <ContactsTable
                 contacts={filteredContacts}
                 isLoading={isLoading}
+                onContactClick={handleContactClick}
             />
 
             <CreateLeadModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={() => fetchContacts()}
+            />
+
+            <Lead360Modal
+                isOpen={!!selectedLead}
+                onClose={() => setSelectedLead(null)}
+                lead={selectedLead}
             />
         </div>
     );
