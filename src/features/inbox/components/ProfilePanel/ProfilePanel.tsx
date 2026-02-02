@@ -74,6 +74,10 @@ export const ProfilePanel: React.FC = () => {
     const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
 
+    // Inline Editing State
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
+
     // Load collaborators on mount
     React.useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
@@ -97,10 +101,6 @@ export const ProfilePanel: React.FC = () => {
         navigator.clipboard.writeText(text);
         toast.success('Copiado!');
     };
-
-    // Inline Editing State
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState('');
 
     const startEditing = (field: string, currentValue: string | undefined) => {
         setEditingField(field);
