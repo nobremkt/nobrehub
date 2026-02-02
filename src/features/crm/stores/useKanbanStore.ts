@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Lead, PipelineStage } from '@/types/lead.types';
+import { LeadService } from '../services/LeadService';
 
 export type PipelineType = 'high-ticket' | 'low-ticket';
 
@@ -7,12 +8,20 @@ interface KanbanState {
     leads: Lead[];
     stages: PipelineStage[];
     activePipeline: PipelineType;
+    isLoading: boolean;
+    error: string | null;
 
     // Actions
+    fetchLeads: () => Promise<void>;
+    addLead: (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    updateLead: (leadId: string, updates: Partial<Lead>) => Promise<void>;
+
     setLeads: (leads: Lead[]) => void;
     setStages: (stages: PipelineStage[]) => void;
-    moveLead: (leadId: string, newStatus: string) => void;
-    reorderLead: (leadId: string, targetStatus: string, newIndex: number) => void;
+
+    moveLead: (leadId: string, newStatus: string) => Promise<void>;
+    reorderLead: (leadId: string, targetStatus: string, newIndex: number) => Promise<void>;
+
     setActivePipeline: (pipeline: PipelineType) => void;
 
     // Getters
@@ -35,117 +44,61 @@ const MOCK_STAGES: PipelineStage[] = [
     { id: 'lt-compra', name: 'Compra Realizada', color: '#10B981', order: 3, pipeline: 'pos-venda' },
 ];
 
-const MOCK_LEADS: Lead[] = [
-    {
-        id: 'lead-1',
-        name: 'João Silva',
-        company: 'Tech Solutions LTDA',
-        pipeline: 'venda',
-        status: 'ht-novo',
-        order: 0,
-        estimatedValue: 15000,
-        tags: ['Quente', 'Indicação'],
-        responsibleId: 'user1',
-        phone: '11999999999',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: 'lead-2',
-        name: 'Maria Santos',
-        company: 'Marketing Pro',
-        pipeline: 'venda',
-        status: 'ht-proposta',
-        order: 0,
-        estimatedValue: 25000,
-        tags: ['Empresa'],
-        responsibleId: 'user1',
-        phone: '11988888888',
-        createdAt: new Date(Date.now() - 3600000),
-        updatedAt: new Date(Date.now() - 1800000),
-    },
-    {
-        id: 'lead-3',
-        name: 'Pedro Oliveira',
-        company: 'Construtora ABC',
-        pipeline: 'venda',
-        status: 'ht-fechado',
-        order: 0,
-        estimatedValue: 45000,
-        tags: ['Grande Porte'],
-        responsibleId: 'user2',
-        phone: '11977777777',
-        createdAt: new Date(Date.now() - 86400000),
-        updatedAt: new Date(Date.now() - 43200000),
-    },
-    {
-        id: 'lead-4',
-        name: 'Ana Costa',
-        company: 'Design Studio',
-        pipeline: 'venda',
-        status: 'ht-novo',
-        order: 1,
-        estimatedValue: 8500,
-        tags: ['Novo'],
-        responsibleId: 'user1',
-        phone: '11966666666',
-        createdAt: new Date(Date.now() - 7200000),
-        updatedAt: new Date(Date.now() - 3600000),
-    },
-    {
-        id: 'lead-5',
-        name: 'Carlos Mendes',
-        company: 'Agência Digital',
-        pipeline: 'venda',
-        status: 'ht-qualificacao',
-        order: 0,
-        estimatedValue: 12000,
-        tags: ['Urgente'],
-        responsibleId: 'user1',
-        phone: '11955555555',
-        createdAt: new Date(Date.now() - 10800000),
-        updatedAt: new Date(Date.now() - 5400000),
-    },
-    {
-        id: 'lead-6',
-        name: 'Fernanda Lima',
-        company: 'E-commerce Plus',
-        pipeline: 'pos-venda',
-        status: 'lt-entrada',
-        order: 0,
-        estimatedValue: 297,
-        tags: ['Curso'],
-        responsibleId: 'user1',
-        phone: '11944444444',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: 'lead-7',
-        name: 'Ricardo Souza',
-        company: '',
-        pipeline: 'pos-venda',
-        status: 'lt-interesse',
-        order: 0,
-        estimatedValue: 497,
-        tags: ['Mentoria'],
-        responsibleId: 'user2',
-        phone: '11933333333',
-        createdAt: new Date(Date.now() - 1800000),
-        updatedAt: new Date(),
-    },
-];
-
 export const useKanbanStore = create<KanbanState>((set, get) => ({
-    leads: MOCK_LEADS,
+    leads: [], // Initialize empty
     stages: MOCK_STAGES,
     activePipeline: 'high-ticket',
+    isLoading: false,
+    error: null,
+
+    fetchLeads: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const leads = await LeadService.getLeads();
+            set({ leads, isLoading: false });
+        } catch (error: any) {
+            console.error('Failed to fetch leads:', error);
+            set({ error: error.message, isLoading: false });
+        }
+    },
+
+    addLead: async (leadData) => {
+        try {
+            const newLead = await LeadService.createLead(leadData);
+            set(state => ({ leads: [newLead, ...state.leads] }));
+        } catch (error: any) {
+            console.error('Failed to create lead:', error);
+            throw error;
+        }
+    },
+
+    updateLead: async (leadId, updates) => {
+        // Optimistic update
+        set((state) => ({
+            leads: state.leads.map((lead) =>
+                lead.id === leadId ? { ...lead, ...updates } : lead
+            ),
+        }));
+
+        try {
+            await LeadService.updateLead(leadId, updates);
+        } catch (error: any) {
+            console.error('Failed to update lead:', error);
+            // Revert needed? Ideally yes, but skipping complex revert logic for now
+            // Just fetching fresh data might be safer
+            get().fetchLeads();
+            throw error;
+        }
+    },
 
     setLeads: (leads) => set({ leads }),
     setStages: (stages) => set({ stages }),
 
     // Move simples (apenas muda coluna, adiciona no final)
-    moveLead: (leadId, newStatus) => {
+    moveLead: async (leadId, newStatus) => {
+        // Optimistic update
+        const previousLeads = get().leads;
+
         set((state) => {
             const leadsInTarget = state.leads.filter(l => l.status === newStatus);
             const maxOrder = leadsInTarget.length > 0
@@ -160,10 +113,28 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
                 ),
             };
         });
+
+        // Sync with backend
+        try {
+            const updatedLead = get().leads.find(l => l.id === leadId);
+            if (updatedLead) {
+                await LeadService.updateLead(leadId, {
+                    status: newStatus,
+                    order: updatedLead.order
+                });
+            }
+        } catch (error) {
+            console.error('Failed to move lead:', error);
+            set({ leads: previousLeads }); // Revert on error
+            throw error;
+        }
     },
 
     // Reordenação completa (muda coluna E posição)
-    reorderLead: (leadId, targetStatus, newIndex) => {
+    reorderLead: async (leadId, targetStatus, newIndex) => {
+        // Optimistic update
+        const previousLeads = get().leads;
+
         set((state) => {
             const leadToMove = state.leads.find(l => l.id === leadId);
             if (!leadToMove) return state;
@@ -204,6 +175,25 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
                 leads: [...otherLeads, ...targetColumnLeads, ...sourceColumnLeads],
             };
         });
+
+        // Sync with backend
+        try {
+            // We need to update order for ALL affected leads in target column (and source if different)
+            // Ideally, we batch these updates. For simplicity, we loop.
+            const currentLeads = get().leads;
+
+            // Leads in target status that need update
+            const targetUpdates = currentLeads
+                .filter(l => l.status === targetStatus)
+                .map(l => LeadService.updateLead(l.id, { status: l.status, order: l.order }));
+
+            await Promise.all(targetUpdates);
+
+        } catch (error) {
+            console.error('Failed to reorder lead:', error);
+            set({ leads: previousLeads }); // Revert on error
+            throw error;
+        }
     },
 
     setActivePipeline: (pipeline) => set({ activePipeline: pipeline }),

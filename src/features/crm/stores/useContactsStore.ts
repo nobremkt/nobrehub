@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import type { Lead, LossReason } from '@/types';
+import { LeadService } from '../services/LeadService';
 
 export interface ContactFilters {
     search: string;
@@ -31,6 +32,7 @@ export interface ContactsState {
     selectedIds: Set<string>;
     totalContacts: number;
     isLoading: boolean;
+    error: string | null;
 
     // Filters
     filters: ContactFilters;
@@ -44,6 +46,7 @@ export interface ContactsState {
     pageSize: number;
 
     // Actions
+    fetchContacts: () => Promise<void>;
     setContacts: (contacts: Lead[]) => void;
     setLoading: (loading: boolean) => void;
     toggleSelect: (id: string) => void;
@@ -69,6 +72,7 @@ export const useContactsStore = create<ContactsState>((set) => ({
     selectedIds: new Set(),
     totalContacts: 0,
     isLoading: false,
+    error: null,
     filters: defaultFilters,
     availableTags: [],
     availableLossReasons: [],
@@ -76,6 +80,27 @@ export const useContactsStore = create<ContactsState>((set) => ({
     pageSize: 50,
 
     // Actions
+    fetchContacts: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const contacts = await LeadService.getLeads();
+
+            // Extract tags for filter
+            const allTags = new Set<string>();
+            contacts.forEach(c => c.tags?.forEach(t => allTags.add(t)));
+
+            set({
+                contacts,
+                totalContacts: contacts.length,
+                availableTags: Array.from(allTags),
+                isLoading: false
+            });
+        } catch (error: any) {
+            console.error('Failed to fetch contacts:', error);
+            set({ error: error.message, isLoading: false });
+        }
+    },
+
     setContacts: (contacts) => set({
         contacts,
         totalContacts: contacts.length

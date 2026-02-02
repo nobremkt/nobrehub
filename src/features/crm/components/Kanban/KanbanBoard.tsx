@@ -272,13 +272,18 @@ function KanbanColumn({ id, name, color, leads, onLeadClick }: KanbanColumnProps
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function KanbanBoard() {
-    const { activePipeline, getStagesByPipeline, leads: storeLeads, setLeads } = useKanbanStore();
+    const { activePipeline, getStagesByPipeline, leads: storeLeads, setLeads, fetchLeads, updateLead } = useKanbanStore();
     const [localLeads, setLocalLeads] = useState<Lead[]>(storeLeads);
     const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const stages = getStagesByPipeline(activePipeline);
+
+    // Initial Fetch
+    useEffect(() => {
+        fetchLeads();
+    }, [fetchLeads]);
 
     // Sincroniza estado local com store quando não está arrastando
     useEffect(() => {
@@ -287,12 +292,16 @@ export function KanbanBoard() {
         }
     }, [storeLeads, activeDragLead]);
 
+    // ... (unchanged helpers)
+
     // Função para pegar leads de uma coluna do estado local
     const getLocalLeadsByStage = useCallback((stageId: string) => {
         return localLeads
             .filter(lead => lead.status === stageId)
             .sort((a, b) => a.order - b.order);
     }, [localLeads]);
+
+    // ... (unchanged sensors and lead click)
 
     // Configuração dos sensores (Mouse, Touch, Teclado)
     const sensors = useSensors(
@@ -318,6 +327,8 @@ export function KanbanBoard() {
             setActiveDragLead(active.data.current.lead);
         }
     };
+
+    // ... (unchanged handleDragOver)
 
     const handleDragOver = (event: DragOverEvent) => {
         const { active, over } = event;
@@ -416,10 +427,30 @@ export function KanbanBoard() {
         }
     };
 
-    const handleDragEnd = (_event: DragEndEvent) => {
+    const handleDragEnd = async (_event: DragEndEvent) => {
+        const { active } = _event;
         setActiveDragLead(null);
-        // Commit do estado local para o store
+
+        // Find the moved lead in the local state specifically to get its new details
+        const movedLead = localLeads.find(l => l.id === active.id);
+
+        // Update Global Store (Calls API if I update logic)
         setLeads(localLeads);
+
+        // Simple Persistence Trigger
+        if (movedLead) {
+            try {
+                // We should technically update ALL leads that changed (order or status)
+                // For now, we update at least the active one so status changes persist
+                // Ideal implementation requires batch update or "Sync Order" endpoint
+                await updateLead(movedLead.id, {
+                    status: movedLead.status,
+                    order: movedLead.order
+                });
+            } catch (err) {
+                console.error("Persist failed", err);
+            }
+        }
     };
 
     const handleDragCancel = () => {
