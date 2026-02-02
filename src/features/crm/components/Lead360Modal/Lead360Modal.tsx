@@ -9,8 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState } from 'react';
 import { Lead } from '@/types/lead.types';
 import styles from './Lead360Modal.module.css';
 import {
@@ -19,8 +18,8 @@ import {
     Briefcase,
     MessageSquare,
     History,
-    X,
 } from 'lucide-react';
+import { Modal } from '@/design-system';
 
 import { LeadHeader } from './components/LeadHeader/LeadHeader';
 import { AtividadeTab } from './tabs/AtividadeTab/AtividadeTab';
@@ -40,25 +39,7 @@ type TabType = 'ATIVIDADE' | 'INFORMAÇÕES' | 'NEGÓCIOS' | 'CONVERSAS' | 'HIST
 export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
 
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            onClose();
-        }
-    }, [onClose]);
-
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-            document.addEventListener('keydown', handleKeyDown);
-        } else {
-            document.body.style.overflow = '';
-        }
-
-        return () => {
-            document.body.style.overflow = '';
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, handleKeyDown]);
+    // KeyDown handled by Modal
 
     if (!isOpen || !lead) return null;
 
@@ -87,32 +68,16 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
         }
     };
 
-    const handleOverlayClick = (e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) {
-            onClose();
-        }
-    };
-
-    return createPortal(
-        <div
-            className={styles.overlay}
-            onClick={handleOverlayClick}
-            aria-modal="true"
-            role="dialog"
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Lead 360°"
+            size="full"
         >
-            <div className={styles.modal}>
-                {/* Close Button */}
-                <button
-                    className={styles.closeButton}
-                    onClick={onClose}
-                    aria-label="Fechar"
-                >
-                    <X size={20} />
-                </button>
-
+            <div className={styles.container}>
                 <LeadHeader lead={lead} />
 
-                {/* Tabs Navigation */}
                 <nav className={styles.tabsNav}>
                     {tabs.map((tab) => (
                         <button
@@ -126,12 +91,10 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
                     ))}
                 </nav>
 
-                {/* Content */}
                 <div className={styles.content}>
                     {renderTabContent()}
                 </div>
             </div>
-        </div>,
-        document.body
+        </Modal>
     );
 }
