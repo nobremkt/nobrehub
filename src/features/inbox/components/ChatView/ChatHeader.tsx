@@ -22,6 +22,8 @@ import {
 import { getInitials } from '@/utils';
 import styles from './ChatHeader.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
+import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 
 interface ChatHeaderProps {
     conversation: Conversation;
@@ -49,6 +51,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+    const teamStatus = useTeamStatus();
 
     useEffect(() => {
         // Load collaborators if not loaded
@@ -174,25 +177,32 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             )}
 
                             {/* Team members */}
-                            {collaborators.map(member => (
-                                <button
-                                    key={member.id}
-                                    className={`${styles.dropdownItem} ${member.id === conversation.assignedTo ? styles.activeItem : ''}`}
-                                    onClick={() => handleAssign(member.id)}
-                                >
-                                    <div className={styles.memberAvatar}>
-                                        {member.photoUrl ? (
-                                            <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            member.name.charAt(0)
+                            {collaborators.map(member => {
+                                const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
+
+                                return (
+                                    <button
+                                        key={member.id}
+                                        className={`${styles.dropdownItem} ${member.id === conversation.assignedTo ? styles.activeItem : ''}`}
+                                        onClick={() => handleAssign(member.id)}
+                                    >
+                                        <div className={styles.memberAvatar} style={{ position: 'relative' }}>
+                                            {member.photoUrl ? (
+                                                <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                member.name.charAt(0)
+                                            )}
+                                            <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
+                                                <UserStatusIndicator status={userStatus} size="sm" />
+                                            </div>
+                                        </div>
+                                        <span>{member.name}</span>
+                                        {member.id === conversation.assignedTo && (
+                                            <CheckCircle size={16} className={styles.checkIcon} />
                                         )}
-                                    </div>
-                                    <span>{member.name}</span>
-                                    {member.id === conversation.assignedTo && (
-                                        <CheckCircle size={16} className={styles.checkIcon} />
-                                    )}
-                                </button>
-                            ))}
+                                    </button>
+                                )
+                            })}
                         </div>
                     )}
                 </div>

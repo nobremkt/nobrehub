@@ -8,6 +8,7 @@ import { Search, User } from 'lucide-react';
 import { Collaborator } from '@/features/settings/types';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config';
+import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 
 export const MembersPage = () => {
     const { collaborators, fetchCollaborators, isLoading } = useCollaboratorStore();
@@ -15,6 +16,7 @@ export const MembersPage = () => {
     const { sectors, fetchSectors } = useSectorStore();
     const { user } = useAuthStore();
     const navigate = useNavigate();
+    const teamStatus = useTeamStatus(); // Realtime status
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -104,16 +106,25 @@ export const MembersPage = () => {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
-                                {group.collaborators.map(collaborator => (
-                                    <PersonCard
-                                        key={collaborator.id}
-                                        name={collaborator.name}
-                                        role={getRoleName(collaborator.roleId)}
-                                        imageUrl={collaborator.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(collaborator.name)}&background=random&size=512`}
-                                        isOnline={collaborator.active}
-                                        onViewProfile={() => navigate(ROUTES.team.member(collaborator.id))}
-                                    />
-                                ))}
+                                {group.collaborators.map((collaborator) => {
+                                    // Pega o status do Firebase Realtime, fallback para 'offline'
+                                    const userStatus = collaborator.authUid
+                                        ? teamStatus[collaborator.authUid]?.state
+                                        : 'offline';
+
+                                    const isOnline = userStatus === 'online';
+
+                                    return (
+                                        <PersonCard
+                                            key={collaborator.id}
+                                            name={collaborator.name}
+                                            role={getRoleName(collaborator.roleId)}
+                                            imageUrl={collaborator.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(collaborator.name)}&background=random&size=512`}
+                                            isOnline={isOnline}
+                                            onViewProfile={() => navigate(ROUTES.team.member(collaborator.id))}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}

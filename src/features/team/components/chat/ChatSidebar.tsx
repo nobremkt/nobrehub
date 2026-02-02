@@ -6,12 +6,15 @@ import { Plus, Search, User, Users, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewChatModal } from './NewChatModal';
+import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
+import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import '../../styles/chat.css';
 
 export const ChatSidebar = () => {
     const { chats, selectChat, activeChatId, isLoadingChats } = useTeamChatStore();
     const { user } = useAuthStore();
     const { collaborators } = useCollaboratorStore();
+    const teamStatus = useTeamStatus();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -127,6 +130,9 @@ export const ChatSidebar = () => {
                         const isActive = chat.id === activeChatId;
                         const lastMsg = chat.lastMessage;
 
+                        const otherId = chat.type !== 'group' && chat.participants?.find((uid: string) => uid !== currentAuthUid);
+                        const otherStatus = otherId ? teamStatus[otherId]?.state : 'offline';
+
                         return (
                             <button
                                 key={chat.id}
@@ -134,12 +140,18 @@ export const ChatSidebar = () => {
                                 className={`chat-item ${isActive ? 'active' : ''}`}
                             >
                                 {/* Avatar */}
-                                <div className="chat-avatar">
+                                <div className="chat-avatar relative">
                                     {photoUrl ? (
                                         <img src={photoUrl} alt={name} />
                                     ) : (
                                         <div className="chat-avatar-placeholder">
                                             {chat.type === 'group' ? <Users size={22} /> : <User size={22} />}
+                                        </div>
+                                    )}
+
+                                    {chat.type !== 'group' && (
+                                        <div className="absolute bottom-0 right-0 border-2 border-surface-primary rounded-full">
+                                            <UserStatusIndicator status={otherStatus} size="sm" />
                                         </div>
                                     )}
                                 </div>
