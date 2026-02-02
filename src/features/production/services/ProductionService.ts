@@ -10,7 +10,8 @@ import {
     where,
     orderBy,
     serverTimestamp,
-    Timestamp
+    Timestamp,
+    onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Project } from '@/types/project.types';
@@ -46,6 +47,53 @@ export const ProductionService = {
         } catch (error) {
             console.error('Error fetching projects:', error);
             throw error;
+        }
+    },
+
+    /**
+     * Busca projetos globalmente (pelo nome)
+     */
+    searchAllProjects: async (term: string): Promise<Project[]> => {
+        try {
+            // Firestore doesn't support full-text search natively.
+            // We use 'startAt' simulation for prefix search or just fetch active projects and filter (if small).
+            // For now, we will fetch recent projects and filter for better UX (ignoring huge scale for MVP).
+            // A better production approach is using a dedicated index or 'name' >= term query.
+
+            const projectsRef = collection(db, COLLECTION_NAME);
+            // Limit to last 100 or so for performance if no index, but let's try prefix query first.
+            // Note: Case sensitivity is an issue in Firestore.
+
+            // Simple approach: Get all active projects (not finished long ago) and filter in JS.
+            // This is safer for UX (case insensitive, partial match) until dataset > 1000.
+
+            const q = query(projectsRef,
+                orderBy('updatedAt', 'desc'), // Get most recent
+                // limit(500) // Optional limit
+            );
+
+            const snapshot = await getDocs(q);
+            const allProjects = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                    deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
+                } as Project;
+            });
+
+            const lowerTerm = term.toLowerCase();
+            return allProjects.filter(p =>
+                p.name.toLowerCase().includes(lowerTerm) ||
+                p.leadName.toLowerCase().includes(lowerTerm)
+            ).slice(0, 10); // Limit results
+
+        } catch (error) {
+            console.error('Error searching projects:', error);
+            return [];
         }
     },
 
@@ -92,5 +140,34 @@ export const ProductionService = {
             console.error('Error deleting project:', error);
             throw error;
         }
+    },
+
+    /**
+     * Inscreve-se para atualizações em tempo real dos projetos de um produtor
+     */
+    subscribeProjectsByProducer: (producerId: string, callback: (projects: Project[]) => void) => {
+        const projectsRef = collection(db, COLLECTION_NAME);
+        const q = query(
+            projectsRef,
+            where('producerId', '==', producerId),
+            orderBy('dueDate', 'asc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const projects = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                    deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
+                } as Project;
+            });
+            callback(projects);
+        }, (error) => {
+            console.error('Error listening to projects:', error);
+        });
     }
 };

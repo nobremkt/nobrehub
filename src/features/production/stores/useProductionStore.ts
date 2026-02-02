@@ -9,13 +9,19 @@ interface ProductionState {
     selectedProducerId: string | null;
     isLoading: boolean;
     error: string | null;
+    highlightedProjectId: string | null;
+
+    setHighlightedProjectId: (id: string | null) => void;
 
     setSelectedProducerId: (id: string | null) => void;
 
     fetchProjects: (producerId: string) => Promise<void>;
+    subscribeToProjects: (producerId: string) => void;
+    unsubscribeFromProjects: () => void;
     addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
+    unsubscribe: (() => void) | null;
 }
 
 export const useProductionStore = create<ProductionState>((set, get) => ({
@@ -23,15 +29,47 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
     selectedProducerId: null,
     isLoading: false,
     error: null,
+    highlightedProjectId: null,
+
+    setHighlightedProjectId: (id) => set({ highlightedProjectId: id }),
+
+    unsubscribe: null as (() => void) | null,
 
     setSelectedProducerId: (id) => {
-        set({ selectedProducerId: id, projects: [] }); // Limpa projetos ao trocar
+        const { unsubscribeFromProjects, subscribeToProjects } = get();
+
+        // Limpa subscrição anterior
+        unsubscribeFromProjects();
+
+        set({ selectedProducerId: id, projects: [] });
+
+        // Nova subscrição
         if (id) {
-            get().fetchProjects(id);
+            subscribeToProjects(id);
         }
     },
 
+    unsubscribeFromProjects: () => {
+        const { unsubscribe } = get();
+        if (unsubscribe) {
+            unsubscribe();
+            set({ unsubscribe: null });
+        }
+    },
+
+    subscribeToProjects: (producerId) => {
+        set({ isLoading: true, error: null });
+        const unsubscribe = ProductionService.subscribeProjectsByProducer(
+            producerId,
+            (projects: Project[]) => {
+                set({ projects, isLoading: false });
+            }
+        );
+        set((state) => ({ ...state, unsubscribe }));
+    },
+
     fetchProjects: async (producerId) => {
+        // Legacy fetch - mantido por compatibilidade, mas preferimos subscribe
         set({ isLoading: true, error: null });
         try {
             const projects = await ProductionService.getProjectsByProducer(producerId);
@@ -66,14 +104,6 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
         set({ isLoading: true });
         try {
             await ProductionService.updateProject(id, updates);
-
-            // Otimista
-            set(state => ({
-                projects: state.projects.map(p =>
-                    p.id === id ? { ...p, ...updates } : p
-                )
-            }));
-
             toast.success('Projeto atualizado!');
         } catch (error) {
             console.error('Error updating project:', error);
