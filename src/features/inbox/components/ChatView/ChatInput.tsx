@@ -15,16 +15,23 @@ interface ChatInputProps {
 // Templates now managed by useTemplateStore
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSelectTemplate, disabled }) => {
-    const { templates, fetchTemplates } = useTemplateStore();
+    const { templates, fetchTemplates, isLoading } = useTemplateStore();
     const [text, setText] = useState('');
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [templatesFetched, setTemplatesFetched] = useState(false);
 
-    React.useEffect(() => {
-        fetchTemplates();
-    }, [fetchTemplates]);
+    // Lazy load templates only when user opens templates panel
+    const handleOpenTemplates = () => {
+        if (!templatesFetched) {
+            fetchTemplates();
+            setTemplatesFetched(true);
+        }
+        setShowTemplates(!showTemplates);
+        setShowAttachMenu(false);
+    };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +146,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
                             <X size={18} />
                         </Button>
                     </div>
-                    {templates.length > 0 ? (
+                    {isLoading ? (
+                        <div className={styles.emptyState}>Carregando templates...</div>
+                    ) : templates.length > 0 ? (
                         templates.map(template => (
                             <div
                                 key={template.id}
@@ -210,10 +219,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onSel
 
             <Button
                 variant="ghost"
-                onClick={() => {
-                    setShowTemplates(!showTemplates);
-                    setShowAttachMenu(false);
-                }}
+                onClick={handleOpenTemplates}
                 title="Templates"
             >
                 <Zap size={20} />
