@@ -148,13 +148,18 @@ export const LeadService = {
                     existingPhones.add(normalizedPhone);
                     count++;
 
+                    // Determine pipeline based on source/channel
+                    const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
+                    const pipeline = isWhatsApp ? 'pos-venda' : 'venda';
+                    const status = isWhatsApp ? 'lt-entrada' : 'ht-novo';
+
                     newLeadsPromises.push(addDoc(collection(firestoreDb, COLLECTION_NAME), {
                         name: conv.leadName || normalizedPhone,
                         phone: conv.leadPhone,
                         email: conv.leadEmail || null,
                         company: conv.leadCompany || null,
-                        pipeline: 'venda', // Default pipeline
-                        status: 'ht-novo', // Default stage
+                        pipeline: pipeline,
+                        status: status,
                         order: 0,
                         estimatedValue: 0,
                         tags: ['Importado Inbox'],

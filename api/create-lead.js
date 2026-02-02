@@ -121,7 +121,9 @@ export default async function handler(req, res) {
             });
 
         } else {
-            // Create new conversation
+            const firestore = admin.firestore();
+
+            // Create new conversation (Realtime DB)
             const conversationsRef = db.ref('conversations');
             const newConvRef = conversationsRef.push();
             const conversationId = newConvRef.key;
@@ -145,6 +147,7 @@ export default async function handler(req, res) {
 
             // Create conversation
             const conversationData = {
+                // ... fields
                 leadId: `form_${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
                 leadName: leadData.name || 'Lead sem nome',
                 leadPhone: leadData.phone?.replace(/\D/g, '') || '',
@@ -156,7 +159,6 @@ export default async function handler(req, res) {
                 channel: 'form',
                 status: 'open',
                 source: leadData.source || 'website',
-                // Custom fields for qualification
                 customFields: {
                     teamSize: leadData.teamSize || null,
                     revenue: leadData.revenue || null,
@@ -169,6 +171,45 @@ export default async function handler(req, res) {
             };
 
             await newConvRef.set(conversationData);
+
+            // Create Lead in Firestore (CRM)
+            try {
+                const now = new Date();
+                const cleanPhone = conversationData.leadPhone;
+
+                // Only create if we have at least a name
+                if (conversationData.leadName) {
+                    const leadsRef = firestore.collection('leads');
+
+                    // Check duplicate by phone if exists
+                    let exists = false;
+                    if (cleanPhone) {
+                        const q = await leadsRef.where('phone', '==', cleanPhone).get();
+                        exists = !q.empty;
+                    }
+
+                    if (!exists) {
+                        await leadsRef.add({
+                            name: conversationData.leadName,
+                            phone: conversationData.leadPhone,
+                            email: conversationData.leadEmail,
+                            company: conversationData.leadCompany,
+                            pipeline: 'venda',
+                            status: 'ht-novo',
+                            order: 0,
+                            estimatedValue: 0,
+                            tags: conversationData.tags,
+                            responsibleId: 'admin',
+                            source: 'form',
+                            createdAt: now,
+                            updatedAt: now,
+                        });
+                        console.log(`Created new CRM lead from form: ${conversationData.leadName}`);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to auto-create CRM lead:', err);
+            }
 
             console.log(`Created new conversation ${conversationId}`);
 

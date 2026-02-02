@@ -19,6 +19,7 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
         phone: '',
         email: '',
         company: '',
+        pipeline: 'venda',
     });
 
     if (!isOpen) return null;
@@ -33,8 +34,8 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                 phone: formData.phone,
                 email: formData.email || undefined,
                 company: formData.company || undefined,
-                pipeline: 'venda',
-                status: 'ht-novo',
+                pipeline: formData.pipeline,
+                status: formData.pipeline === 'venda' ? 'ht-novo' : 'lt-entrada',
                 tags: ['Novo'],
                 order: 0,
                 estimatedValue: 0,
@@ -42,7 +43,7 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                 // Timestamps are handled by the service
             } as any);
 
-            setFormData({ name: '', phone: '', email: '', company: '' });
+            setFormData({ name: '', phone: '', email: '', company: '', pipeline: 'venda' });
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -92,6 +93,18 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             placeholder="email@exemplo.com"
                         />
+                    </div>
+
+                    <div className={styles.field}>
+                        <label>Pipeline</label>
+                        <select
+                            className={styles.select}
+                            value={formData.pipeline}
+                            onChange={(e) => setFormData({ ...formData, pipeline: e.target.value })}
+                        >
+                            <option value="venda">High Ticket</option>
+                            <option value="pos-venda">Low Ticket</option>
+                        </select>
                     </div>
 
                     <div className={styles.field}>

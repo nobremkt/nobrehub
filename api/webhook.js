@@ -110,6 +110,8 @@ async function processIncomingMessage(message, contact) {
         .equalTo(phoneNumber)
         .once('value');
 
+    const firestore = admin.firestore();
+
     let conversationId;
     let existingConversation = null;
 
@@ -123,13 +125,31 @@ async function processIncomingMessage(message, contact) {
         const newConvRef = conversationsRef.push();
         conversationId = newConvRef.key;
 
+        const now = new Date();
+        const leadData = {
+            name: contactName,
+            phone: phoneNumber,
+            email: '',
+            company: '',
+            pipeline: 'pos-venda', // WhatsApp -> Low Ticket
+            status: 'lt-entrada',
+            order: 0,
+            estimatedValue: 0,
+            tags: ['Novo', 'WhatsApp'],
+            responsibleId: 'admin',
+            source: 'whatsapp',
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        // 1. Create in Realtime DB (Inbox)
         await newConvRef.set({
             leadId: `whatsapp_${phoneNumber}`,
-            leadName: contactName,
-            leadPhone: phoneNumber,
-            leadEmail: '',
-            leadCompany: '',
-            tags: ['Novo'],
+            leadName: leadData.name,
+            leadPhone: leadData.phone,
+            leadEmail: leadData.email,
+            leadCompany: leadData.company,
+            tags: leadData.tags,
             notes: '',
             unreadCount: 1,
             channel: 'whatsapp',
@@ -137,6 +157,16 @@ async function processIncomingMessage(message, contact) {
             createdAt: timestamp,
             updatedAt: timestamp,
         });
+
+        // 2. Create in Firestore (CRM)
+        // Check if lead exists in Firestore first (by phone) to be safe
+        const leadsRef = firestore.collection('leads');
+        const leadQuery = await leadsRef.where('phone', '==', phoneNumber).get();
+
+        if (leadQuery.empty) {
+            await leadsRef.add(leadData);
+            console.log(`Created new CRM lead for ${phoneNumber}`);
+        }
     }
 
     // Create the message
