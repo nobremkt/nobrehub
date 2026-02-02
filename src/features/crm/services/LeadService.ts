@@ -120,20 +120,21 @@ export const LeadService = {
 
             const conversations = Object.values(conversationsData) as any[];
 
-            // 2. Get all existing leads (to check for duplicates by phone)
+            // 2. Get all existing leads (to check for duplicates and fix pipeline)
             const leadsQuery = await getDocs(collection(firestoreDb, COLLECTION_NAME));
-            const existingPhones = new Set<string>();
+            // Map phone -> { id, data }
+            const existingCtx = new Map<string, { id: string, data: any }>();
 
             leadsQuery.docs.forEach(doc => {
                 const data = doc.data();
                 if (data.phone) {
                     // Normalize phone for comparison (remove non-digits)
-                    existingPhones.add(data.phone.replace(/\D/g, ''));
+                    existingCtx.set(data.phone.replace(/\D/g, ''), { id: doc.id, data });
                 }
             });
 
-            // 3. Filter candidates for sync
-            const newLeadsPromises: Promise<any>[] = [];
+            // 3. Filter candidates for sync or update
+            const dataPromises: Promise<any>[] = [];
             const now = new Date();
             let count = 0;
 
@@ -141,25 +142,37 @@ export const LeadService = {
                 if (!conv.leadPhone) continue;
 
                 const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
+                const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
+                const correctPipeline = isWhatsApp ? 'pos-venda' : 'venda';
+                const correctStatus = isWhatsApp ? 'lt-entrada' : 'ht-novo';
 
-                if (!existingPhones.has(normalizedPhone)) {
+                if (existingCtx.has(normalizedPhone)) {
+                    // Lead exists - check if we need to fix the pipeline (Migration Fix)
+                    const { id, data } = existingCtx.get(normalizedPhone)!;
+
+                    // Only fix if it's currently in the default 'ht-novo' state and should be in Low Ticket
+                    // This prevents moving leads that were manually worked on
+                    if (isWhatsApp && data.pipeline === 'venda' && data.status === 'ht-novo') {
+                        dataPromises.push(updateDoc(doc(firestoreDb, COLLECTION_NAME, id), {
+                            pipeline: correctPipeline,
+                            status: correctStatus,
+                            updatedAt: Timestamp.fromDate(now)
+                        }));
+                        count++;
+                    }
+                } else {
                     // Create new lead
                     // Mark as added to avoid duplicates in same run if multiple convs exist for same phone
-                    existingPhones.add(normalizedPhone);
+                    existingCtx.set(normalizedPhone, { id: 'pending', data: {} });
                     count++;
 
-                    // Determine pipeline based on source/channel
-                    const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
-                    const pipeline = isWhatsApp ? 'pos-venda' : 'venda';
-                    const status = isWhatsApp ? 'lt-entrada' : 'ht-novo';
-
-                    newLeadsPromises.push(addDoc(collection(firestoreDb, COLLECTION_NAME), {
+                    dataPromises.push(addDoc(collection(firestoreDb, COLLECTION_NAME), {
                         name: conv.leadName || normalizedPhone,
                         phone: conv.leadPhone,
                         email: conv.leadEmail || null,
                         company: conv.leadCompany || null,
-                        pipeline: pipeline,
-                        status: status,
+                        pipeline: correctPipeline,
+                        status: correctStatus,
                         order: 0,
                         estimatedValue: 0,
                         tags: ['Importado Inbox'],
@@ -170,8 +183,8 @@ export const LeadService = {
                 }
             }
 
-            // 4. Execute creations
-            await Promise.all(newLeadsPromises);
+            // 4. Execute creations and updates
+            await Promise.all(dataPromises);
 
             return count;
         } catch (error) {
