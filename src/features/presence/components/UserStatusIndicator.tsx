@@ -17,18 +17,6 @@ export const UserStatusIndicator: React.FC<UserStatusIndicatorProps> = ({
     // idle -> warning
     // offline -> muted
 
-    const sizeClasses = {
-        sm: 'w-2 h-2',
-        md: 'w-3 h-3',
-        lg: 'w-4 h-4'
-    };
-
-    const colorClasses = {
-        online: 'bg-green-500 box-shadow-green',
-        idle: 'bg-yellow-500',
-        offline: 'bg-gray-400 opacity-50'
-    };
-
     // Status text em pt-BR
     const statusLabel = {
         online: 'Online',
