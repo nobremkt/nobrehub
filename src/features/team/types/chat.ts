@@ -41,4 +41,6 @@ export interface TeamChat {
     updatedAt: number;
     createdBy?: string;
     admins?: string[];
+    pinned?: boolean;
+    hidden?: boolean;
 }

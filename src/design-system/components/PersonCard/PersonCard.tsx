@@ -1,7 +1,7 @@
-
-import React from 'react';
 import { ArrowRight, BadgeCheck } from 'lucide-react';
 import styles from './PersonCard.module.css';
+import { LazyImage } from '../LazyImage';
+import { useOptimizedImage } from '@/hooks/useOptimizedImage';
 
 export interface PersonCardProps {
     /** Name of the person */
@@ -29,10 +29,13 @@ export const PersonCard: React.FC<PersonCardProps> = ({
     className,
     style
 }) => {
+    // Use medium size for cards (360x640)
+    const { src: optimizedSrc } = useOptimizedImage(imageUrl, '360x640');
+
     return (
         <div className={`${styles.card} ${className || ''}`} style={style}>
             {/* Background Image */}
-            <img src={imageUrl} alt={name} className={styles.image} />
+            <LazyImage src={optimizedSrc || imageUrl} alt={name} className={styles.image} />
 
             {/* Gradient Overlay */}
             <div className={styles.blurOverlay} />

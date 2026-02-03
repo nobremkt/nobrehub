@@ -169,7 +169,7 @@ export const AudioPlayer = ({ src, isMine = false }: AudioPlayerProps) => {
 
     return (
         <div className={`${styles.audioPlayerContainer} ${isMine ? styles.bubbleOut : ''}`}>
-            <audio ref={audioRef} src={src} preload="metadata" />
+            <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
 
             <button className={styles.playButton} onClick={togglePlay} disabled={isLoading}>
                 {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: '2px' }} />}

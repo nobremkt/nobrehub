@@ -10,6 +10,9 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 
+
+
+
 export const MembersPage = () => {
     const { collaborators, fetchCollaborators, isLoading } = useCollaboratorStore();
     const { roles, fetchRoles } = useRoleStore();
@@ -81,6 +84,9 @@ export const MembersPage = () => {
                     <p className="text-text-muted">Conheça a nossa equipe.</p>
                 </div>
             </div>
+
+
+
 
             <div className="w-full md:w-96">
                 <Input

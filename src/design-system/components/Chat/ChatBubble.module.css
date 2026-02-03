@@ -12,6 +12,15 @@
 
 .bubbleRowIn {
     justify-content: flex-start;
+    align-items: flex-end;
+    /* Align avatar to bottom */
+}
+
+.avatarWrapper {
+    margin-right: 8px;
+    margin-bottom: 4px;
+    /* Align with bubble bottom */
+    flex-shrink: 0;
 }
 
 /* Bubble Styling */
@@ -72,10 +81,15 @@
 /* Media Content Styles */
 .mediaImage {
     max-width: 100%;
+    max-height: 300px;
+    width: auto;
     border-radius: 12px;
     margin-bottom: 8px;
     cursor: pointer;
     display: block;
+    object-fit: contain;
+    background-color: rgba(0, 0, 0, 0.1);
+    /* Placeholder for transparent images */
 }
 
 .mediaAudio {
