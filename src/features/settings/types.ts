@@ -13,6 +13,7 @@ export interface LossReason {
     id: string;
     name: string;
     active: boolean;
+    order: number;
     createdAt: number;
     updatedAt: number;
 }

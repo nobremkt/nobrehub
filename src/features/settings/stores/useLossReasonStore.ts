@@ -11,6 +11,7 @@ interface LossReasonState {
     addLossReason: (reason: Omit<LossReason, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateLossReason: (id: string, updates: Partial<LossReason>) => Promise<void>;
     deleteLossReason: (id: string) => Promise<void>;
+    reorderLossReasons: (reorderedReasons: LossReason[]) => Promise<void>;
 }
 
 export const useLossReasonStore = create<LossReasonState>((set, get) => ({
@@ -76,6 +77,25 @@ export const useLossReasonStore = create<LossReasonState>((set, get) => ({
             set({ error: 'Erro ao excluir motivo de perda.' });
         } finally {
             set({ isLoading: false });
+        }
+    },
+
+    reorderLossReasons: async (reorderedReasons) => {
+        // Update local state immediately (optimistic update)
+        set({ lossReasons: reorderedReasons });
+
+        // Persist order to Firebase
+        try {
+            await Promise.all(
+                reorderedReasons.map((reason, index) =>
+                    LossReasonService.updateLossReason(reason.id, { order: index })
+                )
+            );
+        } catch (error) {
+            console.error('Error reordering loss reasons:', error);
+            set({ error: 'Erro ao reordenar motivos de perda.' });
+            // Refetch to get the correct order
+            await get().fetchLossReasons();
         }
     }
 }));

@@ -29,6 +29,7 @@ import {
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
 import { toast } from 'react-toastify';
 
 interface AccordionSectionProps {
@@ -75,6 +76,7 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 export const ProfilePanel: React.FC = () => {
     const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
 
     // Inline Editing State
     const [editingField, setEditingField] = useState<string | null>(null);
@@ -84,22 +86,17 @@ export const ProfilePanel: React.FC = () => {
     const [showLossModal, setShowLossModal] = useState(false);
     const [selectedLossReason, setSelectedLossReason] = useState<string>('');
 
-    // Motivos de perda predefinidos
-    const LOSS_REASONS = [
-        { value: 'price', label: 'Preço muito alto' },
-        { value: 'timing', label: 'Momento errado / Não é prioridade' },
-        { value: 'competitor', label: 'Escolheu concorrente' },
-        { value: 'no-budget', label: 'Sem orçamento' },
-        { value: 'no-response', label: 'Não respondeu / Sumiu' },
-        { value: 'wrong-fit', label: 'Não era o perfil ideal' },
-        { value: 'internal', label: 'Problema interno do lead' },
-        { value: 'other', label: 'Outro motivo' },
-    ];
+    // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
+    const LOSS_REASONS = [...lossReasons]
+        .filter(r => r.active)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+        .map(r => ({ value: r.id, label: r.name }));
 
-    // Load collaborators on mount
+    // Load collaborators and loss reasons on mount
     React.useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
-    }, [fetchCollaborators, collaborators.length]);
+        if (lossReasons.length === 0) fetchLossReasons();
+    }, [fetchCollaborators, collaborators.length, fetchLossReasons, lossReasons.length]);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
 

@@ -43,7 +43,8 @@ export const LossReasonModal = ({ isOpen, onClose, reasonToEdit }: LossReasonMod
             } else {
                 await addLossReason({
                     name,
-                    active
+                    active,
+                    order: 999 // Novo motivo vai ao final da lista
                 });
             }
             onClose();

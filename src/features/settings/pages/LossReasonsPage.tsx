@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 
-import { Card, CardBody, Button, Badge, Spinner, Input, ConfirmModal } from '@/design-system';
+import { Card, CardBody, Button, Badge, Spinner, Input, ConfirmModal, Modal, Dropdown } from '@/design-system';
 import { useLossReasonStore } from '../stores/useLossReasonStore';
 import { LossReasonModal } from '../components/LossReasonModal';
-import { Plus, Pencil, Trash2, Search, Archive } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Archive, GripVertical, Eye } from 'lucide-react';
 import { LossReason } from '../types';
 
 export const LossReasonsPage = () => {
-    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason } = useLossReasonStore();
+    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason, reorderLossReasons } = useLossReasonStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReason, setEditingReason] = useState<LossReason | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -17,9 +17,19 @@ export const LossReasonsPage = () => {
     const [reasonToDelete, setReasonToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Preview Modal State
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [previewSelectedReason, setPreviewSelectedReason] = useState<string>('');
+
+    // Drag and Drop State
+    const [draggedItem, setDraggedItem] = useState<LossReason | null>(null);
+
     useEffect(() => {
         fetchLossReasons();
     }, [fetchLossReasons]);
+
+    // Sorted reasons by order
+    const sortedReasons = [...lossReasons].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
     const handleCreate = () => {
         setEditingReason(null);
@@ -51,7 +61,40 @@ export const LossReasonsPage = () => {
         }
     };
 
-    const filteredReasons = lossReasons.filter(r =>
+    // Drag handlers
+    const handleDragStart = (e: React.DragEvent, reason: LossReason) => {
+        setDraggedItem(reason);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent, targetReason: LossReason) => {
+        e.preventDefault();
+        if (!draggedItem || draggedItem.id === targetReason.id) return;
+
+        const currentOrder = [...sortedReasons];
+        const draggedIndex = currentOrder.findIndex(r => r.id === draggedItem.id);
+        const targetIndex = currentOrder.findIndex(r => r.id === targetReason.id);
+
+        // Remove dragged item and insert at target position
+        currentOrder.splice(draggedIndex, 1);
+        currentOrder.splice(targetIndex, 0, draggedItem);
+
+        // Update order property
+        const reordered = currentOrder.map((reason, index) => ({ ...reason, order: index }));
+        reorderLossReasons(reordered);
+        setDraggedItem(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItem(null);
+    };
+
+    const filteredReasons = sortedReasons.filter(r =>
         r.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -60,11 +103,16 @@ export const LossReasonsPage = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary mb-1">Motivos de Perda</h1>
-                    <p className="text-text-muted">Gerencie os motivos pelos quais os negócios são perdidos.</p>
+                    <p className="text-text-muted">Gerencie os motivos pelos quais os negócios são perdidos. Arraste para reordenar.</p>
                 </div>
-                <Button onClick={handleCreate} leftIcon={<Plus size={18} />}>
-                    Novo Motivo
-                </Button>
+                <div className="flex gap-3">
+                    <Button variant="secondary" onClick={() => setIsPreviewOpen(true)} leftIcon={<Eye size={18} />}>
+                        Pré-visualizar
+                    </Button>
+                    <Button onClick={handleCreate} leftIcon={<Plus size={18} />}>
+                        Novo Motivo
+                    </Button>
+                </div>
             </div>
 
             <div className="w-full md:w-96">
@@ -84,9 +132,27 @@ export const LossReasonsPage = () => {
             ) : (
                 <div className="flex flex-col gap-3">
                     {filteredReasons.map(reason => (
-                        <Card key={reason.id} variant="elevated">
+                        <Card
+                            key={reason.id}
+                            variant="elevated"
+                            draggable
+                            onDragStart={(e: React.DragEvent) => handleDragStart(e, reason)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e: React.DragEvent) => handleDrop(e, reason)}
+                            onDragEnd={handleDragEnd}
+                            style={{
+                                opacity: draggedItem?.id === reason.id ? 0.5 : 1,
+                                cursor: 'grab'
+                            }}
+                        >
                             <CardBody className="p-4 flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
+                                    <div
+                                        className="p-2 rounded-lg text-text-muted cursor-grab hover:text-text-secondary transition-colors"
+                                        title="Arraste para reordenar"
+                                    >
+                                        <GripVertical size={20} />
+                                    </div>
                                     <div className="p-2 rounded-lg bg-surface-tertiary text-text-secondary">
                                         <Archive size={20} />
                                     </div>
@@ -140,6 +206,53 @@ export const LossReasonsPage = () => {
                 variant="danger"
                 isLoading={isDeleting}
             />
+
+            {/* Modal de Preview */}
+            <Modal
+                isOpen={isPreviewOpen}
+                onClose={() => {
+                    setIsPreviewOpen(false);
+                    setPreviewSelectedReason('');
+                }}
+                title="Motivo da Perda"
+                size="sm"
+                footer={
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setIsPreviewOpen(false);
+                                setPreviewSelectedReason('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="primary"
+                            disabled={!previewSelectedReason}
+                            onClick={() => {
+                                setIsPreviewOpen(false);
+                                setPreviewSelectedReason('');
+                            }}
+                        >
+                            Confirmar
+                        </Button>
+                    </div>
+                }
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o motivo pelo qual este lead foi perdido:
+                </p>
+                <Dropdown
+                    options={sortedReasons.filter(r => r.active).map(r => ({ label: r.name, value: r.id }))}
+                    value={previewSelectedReason}
+                    onChange={(val) => setPreviewSelectedReason(val as string)}
+                    placeholder="Selecione um motivo..."
+                />
+                <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                    ⬆️ Esta é uma pré-visualização do modal que aparece ao marcar um lead como perdido.
+                </p>
+            </Modal>
         </div>
     );
 };
