@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
-import { Tag, PhoneInput, Dropdown } from '@/design-system';
+import { Tag, PhoneInput, Dropdown, Modal, Button } from '@/design-system';
 import { formatPhone } from '@/utils';
 import { DealStatus } from '../../types';
 import {
@@ -79,6 +79,22 @@ export const ProfilePanel: React.FC = () => {
     // Inline Editing State
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
+
+    // Loss Reason Modal State
+    const [showLossModal, setShowLossModal] = useState(false);
+    const [selectedLossReason, setSelectedLossReason] = useState<string>('');
+
+    // Motivos de perda predefinidos
+    const LOSS_REASONS = [
+        { value: 'price', label: 'Preço muito alto' },
+        { value: 'timing', label: 'Momento errado / Não é prioridade' },
+        { value: 'competitor', label: 'Escolheu concorrente' },
+        { value: 'no-budget', label: 'Sem orçamento' },
+        { value: 'no-response', label: 'Não respondeu / Sumiu' },
+        { value: 'wrong-fit', label: 'Não era o perfil ideal' },
+        { value: 'internal', label: 'Problema interno do lead' },
+        { value: 'other', label: 'Outro motivo' },
+    ];
 
     // Load collaborators on mount
     React.useEffect(() => {
@@ -298,7 +314,7 @@ export const ProfilePanel: React.FC = () => {
                             </button>
                             <button
                                 className={`${styles.statusButton} ${styles.lost} ${conversation.dealStatus === 'lost' ? styles.active : ''}`}
-                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'lost' as DealStatus })}
+                                onClick={() => setShowLossModal(true)}
                             >
                                 Perdido
                             </button>
@@ -393,6 +409,55 @@ export const ProfilePanel: React.FC = () => {
                     </div>
                 </AccordionSection>
             </div>
+
+            {/* Modal de Motivo de Perda */}
+            <Modal
+                isOpen={showLossModal}
+                onClose={() => {
+                    setShowLossModal(false);
+                    setSelectedLossReason('');
+                }}
+                title="Motivo da Perda"
+                size="sm"
+                footer={
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowLossModal(false);
+                                setSelectedLossReason('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="primary"
+                            disabled={!selectedLossReason}
+                            onClick={() => {
+                                updateConversationDetails(conversation.id, {
+                                    dealStatus: 'lost' as DealStatus,
+                                    lossReason: selectedLossReason
+                                });
+                                setShowLossModal(false);
+                                setSelectedLossReason('');
+                                toast.success('Lead marcado como perdido');
+                            }}
+                        >
+                            Confirmar
+                        </Button>
+                    </div>
+                }
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o motivo pelo qual este lead foi perdido:
+                </p>
+                <Dropdown
+                    options={LOSS_REASONS}
+                    value={selectedLossReason}
+                    onChange={(val) => setSelectedLossReason(val as string)}
+                    placeholder="Selecione um motivo..."
+                />
+            </Modal>
         </div>
     );
 };

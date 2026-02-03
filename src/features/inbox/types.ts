@@ -19,6 +19,7 @@ export interface Conversation {
     pipeline?: string;
     stage?: string;
     dealStatus?: DealStatus;
+    lossReason?: string;
     createdAt: Date;
     updatedAt: Date;
 }
