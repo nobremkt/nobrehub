@@ -231,7 +231,6 @@
 
 .dealStage {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: var(--spacing-3);
 }
@@ -240,8 +239,10 @@
     flex-shrink: 0;
 }
 
-.dealStage :global(.dropdown) {
-    max-width: 160px;
+/* Override dropdown width to fit content */
+.dealStage>div {
+    width: auto;
+    flex: 0 0 auto;
 }
 
 .dealLabel {
