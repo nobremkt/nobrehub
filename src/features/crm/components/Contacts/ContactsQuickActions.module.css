@@ -68,3 +68,31 @@
 .deleteButton:hover {
     background: rgba(239, 68, 68, 0.1) !important;
 }
+
+/* Modal Content */
+.modalContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.modalDescription {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-2);
+}
+
+.noItems {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+    text-align: center;
+    padding: var(--spacing-4);
+}
