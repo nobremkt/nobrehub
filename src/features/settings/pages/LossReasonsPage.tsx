@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Card, CardBody, Button, Badge, Spinner, Input, ConfirmModal, Modal, Dropdown } from '@/design-system';
+import { Card, CardBody, Button, Badge, Spinner, Input, ConfirmModal, Modal } from '@/design-system';
 import { useLossReasonStore } from '../stores/useLossReasonStore';
 import { LossReasonModal } from '../components/LossReasonModal';
 import { Plus, Pencil, Trash2, Search, Archive, GripVertical, Eye } from 'lucide-react';
@@ -256,7 +256,7 @@ export const LossReasonsPage = () => {
                     setPreviewSelectedReason('');
                 }}
                 title="Motivo da Perda"
-                size="sm"
+                size="md"
                 footer={
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button
@@ -284,12 +284,39 @@ export const LossReasonsPage = () => {
                 <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
                     Selecione o motivo pelo qual este lead foi perdido:
                 </p>
-                <Dropdown
-                    options={sortedReasons.filter(r => r.active).map(r => ({ label: r.name, value: r.id }))}
-                    value={previewSelectedReason}
-                    onChange={(val) => setPreviewSelectedReason(val as string)}
-                    placeholder="Selecione um motivo..."
-                />
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                }}>
+                    {sortedReasons.filter(r => r.active).map((reason) => (
+                        <button
+                            key={reason.id}
+                            type="button"
+                            onClick={() => setPreviewSelectedReason(reason.id)}
+                            style={{
+                                padding: '14px 16px',
+                                borderRadius: '8px',
+                                border: previewSelectedReason === reason.id
+                                    ? '2px solid var(--color-primary-500)'
+                                    : '1px solid var(--color-border)',
+                                background: previewSelectedReason === reason.id
+                                    ? 'var(--color-primary-500-alpha-10, rgba(220, 38, 38, 0.1))'
+                                    : 'var(--color-surface)',
+                                color: previewSelectedReason === reason.id
+                                    ? 'var(--color-primary-500)'
+                                    : 'var(--color-text-primary)',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontSize: '14px',
+                                fontWeight: previewSelectedReason === reason.id ? 600 : 400,
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            {reason.name}
+                        </button>
+                    ))}
+                </div>
                 <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
                     ⬆️ Esta é uma pré-visualização do modal que aparece ao marcar um lead como perdido.
                 </p>

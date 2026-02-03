@@ -415,7 +415,7 @@ export const ProfilePanel: React.FC = () => {
                     setSelectedLossReason('');
                 }}
                 title="Motivo da Perda"
-                size="sm"
+                size="md"
                 footer={
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button
@@ -448,12 +448,39 @@ export const ProfilePanel: React.FC = () => {
                 <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
                     Selecione o motivo pelo qual este lead foi perdido:
                 </p>
-                <Dropdown
-                    options={LOSS_REASONS}
-                    value={selectedLossReason}
-                    onChange={(val) => setSelectedLossReason(val as string)}
-                    placeholder="Selecione um motivo..."
-                />
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                }}>
+                    {LOSS_REASONS.map((reason) => (
+                        <button
+                            key={reason.value}
+                            type="button"
+                            onClick={() => setSelectedLossReason(reason.value)}
+                            style={{
+                                padding: '14px 16px',
+                                borderRadius: '8px',
+                                border: selectedLossReason === reason.value
+                                    ? '2px solid var(--color-primary-500)'
+                                    : '1px solid var(--color-border)',
+                                background: selectedLossReason === reason.value
+                                    ? 'var(--color-primary-500-alpha-10, rgba(220, 38, 38, 0.1))'
+                                    : 'var(--color-surface)',
+                                color: selectedLossReason === reason.value
+                                    ? 'var(--color-primary-500)'
+                                    : 'var(--color-text-primary)',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontSize: '14px',
+                                fontWeight: selectedLossReason === reason.value ? 600 : 400,
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            {reason.label}
+                        </button>
+                    ))}
+                </div>
             </Modal>
         </div>
     );
