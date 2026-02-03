@@ -379,11 +379,11 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
                     ) : (
                         <>
                             <Input
+                                key="new-tag-input"
                                 placeholder="Nome da nova tag"
                                 value={newTagName}
                                 onChange={(e) => setNewTagName(e.target.value)}
                                 fullWidth
-                                autoFocus
                             />
                             <button
                                 className={styles.createNewButton}
