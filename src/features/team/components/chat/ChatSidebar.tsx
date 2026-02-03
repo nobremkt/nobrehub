@@ -1,23 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTeamChatStore } from '../../stores/useTeamChatStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
-import { Plus, Search, User, Users, MessageSquare } from 'lucide-react';
+import { Plus, Search, Users, MessageSquare, MoreVertical, Pin, PinOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewChatModal } from './NewChatModal';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
+import { Input, Avatar } from '@/design-system';
 import styles from './ChatSidebar.module.css';
 
 export const ChatSidebar = () => {
-    const { chats, selectChat, activeChatId, isLoadingChats } = useTeamChatStore();
+    const { chats, selectChat, activeChatId, isLoadingChats, togglePin } = useTeamChatStore();
     const { user } = useAuthStore();
     const { collaborators } = useCollaboratorStore();
     const teamStatus = useTeamStatus();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+
+    // State for the hover menu
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Get current user's authUid for consistent identification
     const currentAuthUid = user?.authUid || user?.id;
@@ -59,6 +63,29 @@ export const ChatSidebar = () => {
         }
     };
 
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openMenuId) {
+                setOpenMenuId(null);
+            }
+        };
+
+        if (openMenuId) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openMenuId]);
+
+    const handleTogglePin = (e: React.MouseEvent, chatId: string) => {
+        e.stopPropagation();
+        togglePin(chatId);
+        setOpenMenuId(null);
+    };
+
     return (
         <div className={styles.container}>
             {/* Header */}
@@ -78,16 +105,13 @@ export const ChatSidebar = () => {
                 </div>
 
                 <div className={styles.search}>
-                    <div className={styles.inputWrapper}>
-                        <Search size={16} className={styles.searchIcon} />
-                        <input
-                            type="text"
-                            placeholder="Buscar conversas..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className={styles.searchInput}
-                        />
-                    </div>
+                    <Input
+                        placeholder="Buscar conversas..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        leftIcon={<Search size={16} />}
+                        fullWidth
+                    />
                 </div>
             </div>
 
@@ -121,6 +145,7 @@ export const ChatSidebar = () => {
                         const photoUrl = getChatImage(chat);
                         const isActive = chat.id === activeChatId;
                         const lastMsg = chat.lastMessage;
+                        const isPinned = chat.pinned;
 
                         const otherId = chat.type !== 'group' && chat.participants?.find((uid: string) => uid !== currentAuthUid);
                         const otherStatus = otherId ? teamStatus[otherId]?.state : 'offline';
@@ -129,14 +154,22 @@ export const ChatSidebar = () => {
                             <div
                                 key={chat.id}
                                 onClick={() => selectChat(chat.id)}
-                                className={`${styles.item} ${isActive ? styles.itemActive : ''}`}
+                                className={`${styles.item} ${isActive ? styles.itemActive : ''} group relative`}
+                                style={{ zIndex: openMenuId === chat.id ? 50 : 1 }}
                             >
                                 {/* Avatar */}
-                                <div className={styles.avatar}>
-                                    {photoUrl ? (
-                                        <img src={photoUrl} alt={name} className={styles.avatarImg} />
+                                <div className={styles.avatarContainer}>
+                                    {chat.type === 'group' && !chat.photoUrl ? (
+                                        <div className={styles.groupAvatar}>
+                                            <Users size={20} />
+                                        </div>
                                     ) : (
-                                        chat.type === 'group' ? <Users size={20} /> : <User size={20} />
+                                        <Avatar
+                                            src={chat.type === 'group' ? chat.photoUrl : photoUrl}
+                                            alt={name}
+                                            size="md"
+                                            fallback={name?.substring(0, 2).toUpperCase()}
+                                        />
                                     )}
 
                                     {chat.type !== 'group' && (
@@ -149,7 +182,10 @@ export const ChatSidebar = () => {
                                 {/* Info */}
                                 <div className={styles.content}>
                                     <div className={styles.rowTop}>
-                                        <span className={styles.name}>{name}</span>
+                                        <span className={styles.name}>
+                                            {isPinned && <Pin size={12} className="text-text-muted rotate-45 mr-1 inline" fill="currentColor" />}
+                                            {name}
+                                        </span>
                                         {lastMsg && (
                                             <span className={styles.time}>
                                                 {formatTime(lastMsg.createdAt)}
@@ -166,6 +202,35 @@ export const ChatSidebar = () => {
                                             <span style={{ fontStyle: 'italic', opacity: 0.7 }}>Nova conversa</span>
                                         )}
                                     </div>
+                                </div>
+
+                                {/* 3-dot Menu Trigger (Visible on Hover or if Menu Open) */}
+                                <div className={`absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity ${openMenuId === chat.id ? 'opacity-100' : ''}`}>
+                                    <button
+                                        className="p-1.5 rounded-full hover:bg-surface-tertiary text-text-muted hover:text-text-primary bg-surface-secondary shadow-sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOpenMenuId(openMenuId === chat.id ? null : chat.id);
+                                        }}
+                                    >
+                                        <MoreVertical size={16} />
+                                    </button>
+
+                                    {/* Simple Dropdown Menu */}
+                                    {openMenuId === chat.id && (
+                                        <div
+                                            className="absolute right-0 top-full mt-1 w-32 bg-surface-primary border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <button
+                                                className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-surface-hover flex items-center gap-2"
+                                                onClick={(e) => handleTogglePin(e, chat.id)}
+                                            >
+                                                {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                                                {isPinned ? 'Desanexar' : 'Anexar'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

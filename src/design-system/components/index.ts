@@ -9,6 +9,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
+// Display
+export { Avatar } from './Avatar';
+export type { AvatarProps } from './Avatar';
+
 // Buttons & Actions
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
@@ -64,3 +68,6 @@ export type { ScrollAreaProps } from './ScrollArea';
 
 export { PersonCard } from './PersonCard';
 export type { PersonCardProps } from './PersonCard';
+
+export { LazyImage } from './LazyImage';
+export type { LazyImageProps } from './LazyImage';

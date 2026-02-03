@@ -1,6 +1,7 @@
 import { FileText, Check, Clock } from 'lucide-react';
 import styles from './ChatBubble.module.css';
 import { AudioPlayer } from './AudioPlayer';
+import { Avatar } from '@/design-system';
 
 export interface ChatBubbleProps {
     content: string; // URL for media/file
@@ -8,6 +9,7 @@ export interface ChatBubbleProps {
     isMine: boolean;
     senderName?: string;
     showSender?: boolean;
+    senderAvatar?: string | null; // New prop
     time: string;
     status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
@@ -26,6 +28,7 @@ export const ChatBubble = ({
     isMine,
     senderName,
     showSender = false,
+    senderAvatar,
     time,
     status,
     fileName = "Documento",
@@ -44,6 +47,19 @@ export const ChatBubble = ({
 
     return (
         <div className={`${styles.bubbleRow} ${isMine ? styles.bubbleRowOut : styles.bubbleRowIn}`}>
+
+            {/* Sender Avatar (Only for incoming messages in groups) */}
+            {!isMine && showSender && (
+                <div className={styles.avatarWrapper}>
+                    <Avatar
+                        src={senderAvatar}
+                        alt={senderName}
+                        size="sm"
+                        fallback={senderName?.substring(0, 2).toUpperCase()}
+                    />
+                </div>
+            )}
+
             <div className={`${styles.bubble} ${isMine ? styles.bubbleOut : styles.bubbleIn}`}>
                 {!isMine && showSender && senderName && (
                     <span className={styles.messageSender}>{senderName}</span>

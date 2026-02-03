@@ -33,6 +33,17 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
         };
     }, []);
 
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [pendingFileType, setPendingFileType] = useState<'image' | 'file' | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    // Clean up preview URL
+    useEffect(() => {
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [previewUrl]);
+
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -93,18 +104,46 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
         }
     };
 
-    const handleSendText = () => {
-        if (!message.trim() || disabled) return;
-        onSend(message, 'text');
-        setMessage('');
+    const handleSendText = async () => {
+        if ((!message.trim() && !pendingFile) || disabled) return;
+
+        // Send file if exists
+        if (pendingFile && pendingFileType) {
+            onSend(pendingFile, pendingFileType);
+            setPendingFile(null);
+            setPendingFileType(null);
+            setPreviewUrl(null);
+        }
+
+        // Send text if exists
+        if (message.trim()) {
+            onSend(message, 'text');
+            setMessage('');
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            onSend(file, type);
-            e.target.value = ''; // Reset input
+            setPendingFile(file);
+            setPendingFileType(type);
+
+            // Create preview for images
+            if (type === 'image') {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
+            } else {
+                setPreviewUrl(null);
+            }
+
+            e.target.value = ''; // Reset input so same file can be selected again if needed
         }
+    };
+
+    const clearAttachment = () => {
+        setPendingFile(null);
+        setPendingFileType(null);
+        setPreviewUrl(null);
     };
 
     const attachmentOptions: AttachmentOption[] = [
@@ -123,7 +162,86 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
     ];
 
     return (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+            {/* Attachment Preview */}
+            {pendingFile && (
+                <div style={{
+                    padding: '12px 16px',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    animation: 'slideUp 0.2s ease-out'
+                }}>
+                    <div style={{ position: 'relative' }}>
+                        {pendingFileType === 'image' && previewUrl ? (
+                            <img
+                                src={previewUrl}
+                                alt="Preview"
+                                style={{
+                                    width: '60px',
+                                    height: '60px',
+                                    objectFit: 'cover',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--color-border)'
+                                }}
+                            />
+                        ) : (
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '8px',
+                                backgroundColor: 'var(--color-surface)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid var(--color-border)'
+                            }}>
+                                <FileText size={24} color="var(--color-text-secondary)" />
+                            </div>
+                        )}
+                        <button
+                            onClick={clearAttachment}
+                            style={{
+                                position: 'absolute',
+                                top: '-6px',
+                                right: '-6px',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--color-danger-500)',
+                                color: 'white',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: 'var(--color-text-primary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }}>
+                            {pendingFile.name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                            {(pendingFile.size / 1024).toFixed(1)} KB • {pendingFileType === 'image' ? 'Imagem' : 'Documento'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <input
                 type="file"
                 ref={imageInputRef}
@@ -147,9 +265,9 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
                 onStopRecording={() => stopRecording(true)}
                 onCancelRecording={() => stopRecording(false)}
                 disabled={disabled}
-                placeholder={placeholder}
+                placeholder={pendingFile ? "Adicione uma legenda..." : placeholder}
                 attachmentOptions={attachmentOptions}
             />
-        </>
+        </div>
     );
 };

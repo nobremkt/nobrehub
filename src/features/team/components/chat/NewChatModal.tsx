@@ -114,20 +114,26 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                 <div className="flex gap-1 p-1 bg-surface-secondary rounded-xl">
                     <button
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${!isGroupMode
-                                ? 'bg-white shadow-sm text-primary-600'
-                                : 'text-text-muted hover:text-text-primary'
+                            ? 'bg-white shadow-sm text-primary-600'
+                            : 'text-text-muted hover:text-text-primary'
                             }`}
-                        onClick={() => setIsGroupMode(false)}
+                        onClick={() => {
+                            setIsGroupMode(false);
+                            setSelectedUsers([]);
+                        }}
                     >
                         <MessageCircle size={16} />
                         Conversa Privada
                     </button>
                     <button
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isGroupMode
-                                ? 'bg-white shadow-sm text-primary-600'
-                                : 'text-text-muted hover:text-text-primary'
+                            ? 'bg-white shadow-sm text-primary-600'
+                            : 'text-text-muted hover:text-text-primary'
                             }`}
-                        onClick={() => setIsGroupMode(true)}
+                        onClick={() => {
+                            setIsGroupMode(true);
+                            setSelectedUsers([]);
+                        }}
                     >
                         <UsersRound size={16} />
                         Grupo
@@ -148,16 +154,13 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                 )}
 
                 {/* Search */}
-                <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                    <input
-                        type="text"
-                        placeholder="Buscar pessoas..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface-secondary border border-border rounded-xl text-sm focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100 transition-all duration-200"
-                    />
-                </div>
+                <Input
+                    leftIcon={<Search size={16} />}
+                    placeholder="Buscar pessoas..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth
+                />
 
                 {/* User List */}
                 <div className="max-h-72 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
@@ -179,11 +182,11 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                                     key={collab.id}
                                     className={`
                                         flex items-center gap-3 p-3.5 transition-all duration-200 cursor-pointer
-                                        ${isSelected
-                                            ? 'bg-primary-50 hover:bg-primary-100'
-                                            : 'hover:bg-surface-hover'
-                                        }
+                                        ${!isSelected ? 'hover:bg-surface-hover' : ''}
                                     `}
+                                    style={{
+                                        backgroundColor: isSelected ? 'rgba(239, 17, 54, 0.15)' : undefined
+                                    }}
                                     onClick={() => {
                                         if (isGroupMode) {
                                             handleUserSelect(collab.authUid!);

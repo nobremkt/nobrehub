@@ -23,6 +23,11 @@ interface TeamChatState {
     sendMessage: (content: string | File | Blob, type?: 'text' | 'image' | 'file' | 'audio') => Promise<void>;
     createPrivateChat: (otherUser: ChatParticipant) => Promise<string>;
     createGroupChat: (name: string, participants: ChatParticipant[]) => Promise<string>;
+    updateGroupInfo: (chatId: string, updates: { name?: string; photo?: File | string }) => Promise<void>;
+    addParticipants: (chatId: string, participants: string[]) => Promise<void>;
+    removeParticipant: (chatId: string, userId: string) => Promise<void>;
+    toggleAdminStatus: (chatId: string, userId: string, isAdmin: boolean) => Promise<void>;
+    togglePin: (chatId: string) => Promise<void>;
     cleanup: () => void;
 }
 
@@ -166,6 +171,45 @@ export const useTeamChatStore = create<TeamChatState>((set, get) => ({
         const chatId = await TeamChatService.createGroupChat(currentUserId, name, participants);
         get().selectChat(chatId);
         return chatId;
+    },
+
+    updateGroupInfo: async (chatId, updates) => {
+        let photoUrl: string | undefined = undefined;
+
+        if (updates.photo) {
+            if (updates.photo instanceof File) {
+                const path = `chats/${chatId}/group_photo_${Date.now()}`;
+                photoUrl = await TeamChatService.uploadAttachment(updates.photo, path);
+            } else {
+                photoUrl = updates.photo;
+            }
+        }
+
+        await TeamChatService.updateGroupInfo(chatId, {
+            name: updates.name,
+            photoUrl
+        });
+    },
+
+    addParticipants: async (chatId, participants) => {
+        await TeamChatService.addParticipants(chatId, participants);
+    },
+
+    removeParticipant: async (chatId, userId) => {
+        await TeamChatService.removeParticipant(chatId, userId);
+    },
+
+    toggleAdminStatus: async (chatId, userId, isAdmin) => {
+        await TeamChatService.toggleAdminStatus(chatId, userId, isAdmin);
+    },
+
+    togglePin: async (chatId: string) => {
+        const { currentUserId, chats } = get();
+        if (!currentUserId) return;
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+            await TeamChatService.togglePinChat(currentUserId, chatId, !chat.pinned);
+        }
     },
 
     cleanup: () => {

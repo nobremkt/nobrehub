@@ -201,12 +201,27 @@ export const TeamChatService = {
                 .map((c: any) => c as TeamChat)
                 // @ts-ignore
                 .filter(c => !c.hidden)
-                .sort((a, b) => b.updatedAt - a.updatedAt);
+                .filter(c => !c.hidden)
+                .sort((a, b) => {
+                    if (a.pinned && !b.pinned) return -1;
+                    if (!a.pinned && b.pinned) return 1;
+                    return b.updatedAt - a.updatedAt;
+                });
 
             callback(chats);
         });
 
         return unsubscribe;
+    },
+
+    /**
+     * Toggle Pin Chat
+     */
+    togglePinChat: async (userId: string, chatId: string, pinned: boolean) => {
+        const db = getRealtimeDb();
+        const updates: Record<string, any> = {};
+        updates[`/${DB_USER_CHATS}/${userId}/${chatId}/pinned`] = pinned;
+        await update(ref(db), updates);
     },
 
     /**
@@ -239,5 +254,148 @@ export const TeamChatService = {
      */
     markAsRead: async (_chatId: string, _userId: string) => {
         // Implementation for read receipts would go here
+    },
+
+    /**
+     * Update Group Info (Name, Photo)
+     */
+    updateGroupInfo: async (chatId: string, updates: { name?: string; photoUrl?: string }) => {
+        const db = getRealtimeDb();
+        const chatRef = ref(db, `${DB_CHATS}/${chatId}`);
+        const chatSnap = await get(chatRef);
+
+        if (!chatSnap.exists()) throw new Error("Chat not found");
+        const chatData = chatSnap.val() as TeamChat;
+
+        const dbUpdates: Record<string, any> = {};
+
+        // 1. Update main chat
+        if (updates.name) dbUpdates[`/${DB_CHATS}/${chatId}/name`] = updates.name;
+        if (updates.photoUrl) dbUpdates[`/${DB_CHATS}/${chatId}/photoUrl`] = updates.photoUrl;
+
+        // 2. Update all participants
+        chatData.participants.forEach(uid => {
+            if (updates.name) dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/name`] = updates.name;
+            if (updates.photoUrl) dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/photoUrl`] = updates.photoUrl;
+        });
+
+        await update(ref(db), dbUpdates);
+    },
+
+    /**
+     * Add Participants to Group
+     */
+    addParticipants: async (chatId: string, newParticipantIds: string[]) => {
+        const db = getRealtimeDb();
+        const chatRef = ref(db, `${DB_CHATS}/${chatId}`);
+        const chatSnap = await get(chatRef);
+
+        if (!chatSnap.exists()) throw new Error("Chat not found");
+        const chatData = chatSnap.val() as TeamChat;
+
+        const currentParticipants = chatData.participants || [];
+        // Filter out already existing
+        const uniqueNewIds = newParticipantIds.filter(id => !currentParticipants.includes(id));
+        if (uniqueNewIds.length === 0) return;
+
+        const updatedParticipants = [...currentParticipants, ...uniqueNewIds];
+
+        const dbUpdates: Record<string, any> = {};
+
+        // 1. Update main chat participants list
+        dbUpdates[`/${DB_CHATS}/${chatId}/participants`] = updatedParticipants;
+
+        // 2. Add chat to new participants' list
+        const updatedChatObj = { ...chatData, participants: updatedParticipants };
+        uniqueNewIds.forEach(uid => {
+            dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}`] = updatedChatObj;
+        });
+
+        // 3. Update existing participants' chat object to include new members
+        currentParticipants.forEach(uid => {
+            dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/participants`] = updatedParticipants;
+        });
+
+        await update(ref(db), dbUpdates);
+    },
+
+    /**
+     * Remove Participant from Group
+     */
+    removeParticipant: async (chatId: string, userIdToRemove: string) => {
+        const db = getRealtimeDb();
+        const chatRef = ref(db, `${DB_CHATS}/${chatId}`);
+        const chatSnap = await get(chatRef);
+
+        if (!chatSnap.exists()) throw new Error("Chat not found");
+        const chatData = chatSnap.val() as TeamChat;
+
+        const currentParticipants = chatData.participants || [];
+        const updatedParticipants = currentParticipants.filter(id => id !== userIdToRemove);
+
+        // Remove admins entitlement if removed
+        const currentAdmins = chatData.admins || [];
+        const updatedAdmins = currentAdmins.filter(id => id !== userIdToRemove);
+
+        const dbUpdates: Record<string, any> = {};
+
+        if (updatedParticipants.length === 0) {
+            // DELETE GROUP: No participants left
+            dbUpdates[`/${DB_CHATS}/${chatId}`] = null;
+            dbUpdates[`/${DB_MESSAGES}/${chatId}`] = null; // Optional: Clean up messages
+            dbUpdates[`/${DB_USER_CHATS}/${userIdToRemove}/${chatId}`] = null;
+        } else {
+            // NORMAL REMOVAL
+
+            // 1. Update main chat
+            dbUpdates[`/${DB_CHATS}/${chatId}/participants`] = updatedParticipants;
+            dbUpdates[`/${DB_CHATS}/${chatId}/admins`] = updatedAdmins;
+
+            // 2. Remove chat from the removed user
+            dbUpdates[`/${DB_USER_CHATS}/${userIdToRemove}/${chatId}`] = null;
+
+            // 3. Update remaining participants
+            updatedParticipants.forEach(uid => {
+                dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/participants`] = updatedParticipants;
+                dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/admins`] = updatedAdmins;
+            });
+        }
+
+        await update(ref(db), dbUpdates);
+    },
+
+    /**
+     * Toggle Admin Status
+     */
+    toggleAdminStatus: async (chatId: string, userId: string, isAdmin: boolean) => {
+        const db = getRealtimeDb();
+        const chatRef = ref(db, `${DB_CHATS}/${chatId}`);
+        const chatSnap = await get(chatRef);
+
+        if (!chatSnap.exists()) throw new Error("Chat not found");
+        const chatData = chatSnap.val() as TeamChat;
+
+        const currentAdmins = chatData.admins || [];
+        let updatedAdmins = [];
+
+        if (isAdmin) {
+            if (!currentAdmins.includes(userId)) updatedAdmins = [...currentAdmins, userId];
+            else updatedAdmins = currentAdmins;
+        } else {
+            updatedAdmins = currentAdmins.filter(id => id !== userId);
+        }
+
+        const dbUpdates: Record<string, any> = {};
+
+        // 1. Update main chat
+        dbUpdates[`/${DB_CHATS}/${chatId}/admins`] = updatedAdmins;
+
+        // 2. Update all participants
+        const participants = chatData.participants || [];
+        participants.forEach(uid => {
+            dbUpdates[`/${DB_USER_CHATS}/${uid}/${chatId}/admins`] = updatedAdmins;
+        });
+
+        await update(ref(db), dbUpdates);
     }
 };

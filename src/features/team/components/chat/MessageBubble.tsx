@@ -8,9 +8,10 @@ import { ChatBubble } from '@/design-system/components/Chat';
 interface MessageBubbleProps {
     message: TeamMessage;
     showSender?: boolean;
+    onImageClick?: (url: string) => void;
 }
 
-export const MessageBubble = ({ message, showSender = false }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, showSender = false, onImageClick }: MessageBubbleProps) => {
     const { user } = useAuthStore();
     const { collaborators } = useCollaboratorStore();
 
@@ -55,9 +56,10 @@ export const MessageBubble = ({ message, showSender = false }: MessageBubbleProp
             isMine={isMine}
             senderName={senderName}
             showSender={showSender}
+            senderAvatar={sender?.photoUrl}
             time={formatMessageTime(message.createdAt)}
             fileName={fileName}
-            onImageClick={(url) => window.open(url, '_blank')}
+            onImageClick={(url) => onImageClick ? onImageClick(url) : window.open(url, '_blank')}
             onFileClick={(url) => window.open(url, '_blank')}
         />
     );
