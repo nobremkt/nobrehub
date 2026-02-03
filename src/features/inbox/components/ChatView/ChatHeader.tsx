@@ -19,7 +19,7 @@ import {
     // Icons para canal
     Smartphone
 } from 'lucide-react';
-import { getInitials } from '@/utils';
+import { getInitials, formatPhone } from '@/utils';
 import styles from './ChatHeader.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
@@ -111,7 +111,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     </span>
                 </div>
                 <div className={styles.subRow}>
-                    <span className={styles.phone}>{conversation.leadPhone}</span>
+                    <span className={styles.phone}>{formatPhone(conversation.leadPhone || '')}</span>
                     {conversation.leadCompany && (
                         <>
                             <span className={styles.separator}>•</span>

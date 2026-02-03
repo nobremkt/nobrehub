@@ -89,10 +89,13 @@ export function formatPhone(phone: string): string {
     // Se já vier formatado bonitinho (ex: Google Contacts), retorna
     if (phone.includes('(') && phone.includes(')')) return phone;
 
+    // Remove espaços extras que podem vir do banco (ex: "+55 4784125338")
+    const normalizedPhone = phone.replace(/\s+/g, '');
+
     // Tenta usar a lib para formatação internacional padrão
     try {
         // Adiciona + se não tiver, para a lib entender
-        const phoneWithPlus = phone.startsWith('+') ? phone : `+${phone}`;
+        const phoneWithPlus = normalizedPhone.startsWith('+') ? normalizedPhone : `+${normalizedPhone}`;
         const formatted = formatPhoneNumberIntl(phoneWithPlus);
         if (formatted) return formatted;
     } catch (e) {
@@ -100,7 +103,7 @@ export function formatPhone(phone: string): string {
     }
 
     // Fallback manual (mantendo lógica antiga melhorada)
-    const cleaned = phone.replace(/\D/g, '');
+    const cleaned = normalizedPhone.replace(/\D/g, '');
 
     // Brasil com DDI (12 ou 13 dígitos começando com 55)
     if (cleaned.startsWith('55') && (cleaned.length === 12 || cleaned.length === 13)) {
