@@ -1,0 +1,25 @@
+.container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4) var(--spacing-2);
+    margin: var(--spacing-2) 0;
+}
+
+.line {
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+.label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--spacing-1) var(--spacing-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+}

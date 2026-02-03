@@ -1,14 +1,24 @@
 import { useNavigate } from 'react-router-dom';
 import { Lead } from '@/types/lead.types';
-import { Tag } from '@/design-system/components/Tag/Tag';
-import { Phone, MessageSquare, Mail, CalendarClock, StickyNote, Building2 } from 'lucide-react';
+import { Dropdown } from '@/design-system';
+import {
+    Phone,
+    MessageSquare,
+    Mail,
+    Star,
+    Pin,
+    Grid3X3,
+    Maximize2
+} from 'lucide-react';
 import styles from './LeadHeader.module.css';
-import { getInitials, getTagVariant } from '../../utils/helpers';
+import { getInitials } from '../../utils/helpers';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
 import { toast } from 'react-toastify';
+import { useState } from 'react';
 
 interface LeadHeaderProps {
     lead: Lead;
+    onStatusChange?: (status: 'won' | 'lost' | 'open') => void;
 }
 
 // Normaliza telefone para comparação
@@ -16,9 +26,11 @@ const normalizePhone = (phone: string): string => {
     return phone?.replace(/\D/g, '') || '';
 };
 
-export function LeadHeader({ lead }: LeadHeaderProps) {
+export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
     const navigate = useNavigate();
     const { conversations, selectConversation, init } = useInboxStore();
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isPinned, setIsPinned] = useState(false);
 
     // Handler para ligar
     const handleCall = () => {
@@ -67,15 +79,24 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
         }
     };
 
-    // Handler para agendar
-    const handleSchedule = () => {
-        toast.info('Funcionalidade de agendamento em breve!');
+    // Handler para favorito
+    const handleFavorite = () => {
+        setIsFavorite(!isFavorite);
+        toast.success(isFavorite ? 'Removido dos favoritos' : 'Adicionado aos favoritos');
     };
 
-    // Handler para notas
-    const handleNotes = () => {
-        toast.info('Funcionalidade de notas em breve!');
+    // Handler para fixar
+    const handlePin = () => {
+        setIsPinned(!isPinned);
+        toast.success(isPinned ? 'Fixação removida' : 'Contato fixado');
     };
+
+    // Status options
+    const statusOptions = [
+        { value: 'won', label: 'Ganho' },
+        { value: 'lost', label: 'Perdido' },
+        { value: 'open', label: 'Aberto' },
+    ];
 
     return (
         <header className={styles.header}>
@@ -87,66 +108,73 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
                 <div className={styles.onlineIndicator} />
             </div>
 
-            {/* Lead Info */}
-            <div className={styles.leadInfo}>
-                <div className={styles.leadNameRow}>
-                    <h1 className={styles.leadName}>{lead.name}</h1>
+            {/* Lead Name */}
+            <h1 className={styles.leadName}>{lead.name}</h1>
 
-                    {/* Action Buttons */}
-                    <div className={styles.actionButtons}>
-                        <button
-                            className={`${styles.actionBtn} ${styles.call}`}
-                            data-tooltip="Ligar"
-                            onClick={handleCall}
-                        >
-                            <Phone size={18} />
-                        </button>
-                        <button
-                            className={`${styles.actionBtn} ${styles.whatsapp}`}
-                            data-tooltip="WhatsApp"
-                            onClick={handleWhatsApp}
-                        >
-                            <MessageSquare size={18} />
-                        </button>
-                        <button
-                            className={`${styles.actionBtn} ${styles.email}`}
-                            data-tooltip="Enviar Email"
-                            onClick={handleEmail}
-                        >
-                            <Mail size={18} />
-                        </button>
-                        <button
-                            className={`${styles.actionBtn} ${styles.schedule}`}
-                            data-tooltip="Agendar"
-                            onClick={handleSchedule}
-                        >
-                            <CalendarClock size={18} />
-                        </button>
-                        <button
-                            className={`${styles.actionBtn} ${styles.notes}`}
-                            data-tooltip="Notas"
-                            onClick={handleNotes}
-                        >
-                            <StickyNote size={18} />
-                        </button>
-                    </div>
-                </div>
+            {/* Quick Action Icons */}
+            <div className={styles.actionIcons}>
+                <button
+                    className={styles.iconBtn}
+                    onClick={handleCall}
+                    title="Ligar"
+                >
+                    <Phone size={16} />
+                </button>
+                <button
+                    className={styles.iconBtn}
+                    onClick={handleWhatsApp}
+                    title="WhatsApp"
+                >
+                    <MessageSquare size={16} />
+                </button>
+                <button
+                    className={styles.iconBtn}
+                    onClick={handleEmail}
+                    title="Email"
+                >
+                    <Mail size={16} />
+                </button>
+                <button
+                    className={`${styles.iconBtn} ${isFavorite ? styles.active : ''}`}
+                    onClick={handleFavorite}
+                    title="Favorito"
+                >
+                    <Star size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+                </button>
+                <button
+                    className={`${styles.iconBtn} ${isPinned ? styles.active : ''}`}
+                    onClick={handlePin}
+                    title="Fixar"
+                >
+                    <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} />
+                </button>
+            </div>
 
-                {lead.company && (
-                    <div className={styles.leadCompany}>
-                        <Building2 size={16} />
-                        {lead.company}
-                    </div>
-                )}
+            {/* Separator */}
+            <div className={styles.separator} />
 
-                {/* Tags */}
-                <div className={styles.tagsContainer}>
-                    {lead.tags.map((tag, index) => (
-                        <Tag key={index} variant={getTagVariant(tag)} size="sm">
-                            {tag}
-                        </Tag>
-                    ))}
-                </div>
+            {/* Status Dropdowns */}
+            <div className={styles.statusSection}>
+                <Dropdown
+                    options={statusOptions}
+                    value={lead.status || 'open'}
+                    onChange={(val) => onStatusChange?.(val as 'won' | 'lost' | 'open')}
+                    placeholder="Status"
+                    noSound
+                />
+            </div>
+
+            {/* Separator */}
+            <div className={styles.separator} />
+
+            {/* Grid/Expand Icons */}
+            <div className={styles.viewIcons}>
+                <button className={styles.iconBtn} title="Visualização em Grade">
+                    <Grid3X3 size={16} />
+                </button>
+                <button className={styles.iconBtn} title="Expandir">
+                    <Maximize2 size={16} />
+                </button>
             </div>
         </header>
     );

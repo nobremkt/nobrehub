@@ -24,7 +24,10 @@ import {
     Plus,
     Edit2,
     Check,
-    X
+    X,
+    Bell,
+    ArrowRightLeft,
+    MessagesSquare
 } from 'lucide-react';
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
@@ -271,6 +274,20 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <MessageSquare size={18} />
                 </button>
+                <button
+                    className={styles.actionButton}
+                    onClick={() => {/* TODO: Notificar */ }}
+                    title="Notificar"
+                >
+                    <Bell size={18} />
+                </button>
+                <button
+                    className={styles.actionButton}
+                    onClick={() => {/* TODO: Transferir */ }}
+                    title="Transferir"
+                >
+                    <ArrowRightLeft size={18} />
+                </button>
             </div>
 
             {/* Accordion Sections */}
@@ -332,9 +349,17 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <div className={styles.fieldList}>
                         {renderEditableField('name', 'Nome', conversation.leadName)}
-                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
                         {renderEditableField('email', 'Email', conversation.leadEmail)}
-                        {renderEditableField('company', 'Empresa', conversation.leadCompany)}
+                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
+                        {renderEditableField('instagram', 'Instagram', conversation.instagram, '@username')}
+                        <div className={styles.field}>
+                            <span className={styles.fieldLabel}>Tags</span>
+                            <div className={styles.tagsInline}>
+                                {conversation.tags?.map(tag => (
+                                    <Tag key={tag} variant="default" size="sm">{tag}</Tag>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </AccordionSection>
 
@@ -402,6 +427,32 @@ export const ProfilePanel: React.FC = () => {
                                 <span className={styles.historyText}>Lead criado via WhatsApp</span>
                                 <span className={styles.historyTime}>Hoje, 14:28</span>
                             </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+
+                {/* Conversas */}
+                <AccordionSection
+                    title="Conversas"
+                    icon={<MessagesSquare size={16} />}
+                    badge={1}
+                >
+                    <div className={styles.conversationsSection}>
+                        <div className={styles.conversationItem}>
+                            <div className={styles.conversationIcon}>
+                                <MessageSquare size={14} />
+                            </div>
+                            <div className={styles.conversationInfo}>
+                                <span className={styles.conversationChannel}>
+                                    {conversation.channel === 'whatsapp' ? 'WhatsApp' : conversation.channel}
+                                </span>
+                                <span className={styles.conversationDate}>
+                                    {new Date(conversation.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                            </div>
+                            <span className={styles.conversationStatus}>
+                                {conversation.status === 'open' ? 'Aberta' : 'Fechada'}
+                            </span>
                         </div>
                     </div>
                 </AccordionSection>

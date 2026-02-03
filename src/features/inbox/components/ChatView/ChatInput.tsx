@@ -1,18 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
-import { Image as ImageIcon, Video, FileText } from 'lucide-react';
+import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar } from 'lucide-react';
+import { ScheduleMessagePopup } from './ScheduleMessagePopup';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
     onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document') => void;
-    // Removing onSelectTemplate as simplification was requested
+    onOpenTemplate?: () => void;
+    onScheduleMessage?: (text: string, scheduledFor: Date) => void;
     disabled?: boolean;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, disabled }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onScheduleMessage, disabled }) => {
     const [message, setMessage] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
+    const [showSchedulePopup, setShowSchedulePopup] = useState(false);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -103,6 +106,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, disab
         setMessage('');
     };
 
+    const handleSchedule = (scheduledFor: Date) => {
+        if (!message.trim() || !onScheduleMessage) return;
+        onScheduleMessage(message, scheduledFor);
+        setMessage('');
+        setShowSchedulePopup(false);
+    };
+
+    const handleOpenSchedule = () => {
+        if (!message.trim()) {
+            alert('Digite uma mensagem antes de agendar');
+            return;
+        }
+        setShowSchedulePopup(true);
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'document') => {
         const file = e.target.files?.[0];
         if (!file || !onSendMedia) return;
@@ -113,6 +131,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, disab
     };
 
     const attachmentOptions: AttachmentOption[] = [
+        {
+            id: 'template',
+            label: 'Template',
+            icon: <ClipboardList size={18} />,
+            onClick: () => onOpenTemplate?.()
+        },
+        {
+            id: 'schedule',
+            label: 'Agendar',
+            icon: <Calendar size={18} />,
+            onClick: handleOpenSchedule
+        },
         {
             id: 'image',
             label: 'Imagem',
@@ -167,6 +197,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, disab
                 disabled={disabled}
                 placeholder="Digite sua mensagem..."
                 attachmentOptions={attachmentOptions}
+            />
+
+            <ScheduleMessagePopup
+                isOpen={showSchedulePopup}
+                onClose={() => setShowSchedulePopup(false)}
+                onSchedule={handleSchedule}
+                messagePreview={message}
             />
         </>
     );

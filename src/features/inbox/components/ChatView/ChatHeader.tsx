@@ -16,6 +16,8 @@ import {
     User,
     X,
     MessageCircle,
+    Star,
+    Pin,
     // Icons para canal
     Smartphone
 } from 'lucide-react';
@@ -29,6 +31,8 @@ interface ChatHeaderProps {
     conversation: Conversation;
     onAssign?: (userId: string | null) => void;
     onCloseConversation?: () => void;
+    onToggleFavorite?: () => void;
+    onTogglePin?: () => void;
 }
 
 // WhatsApp Icon Component
@@ -47,7 +51,9 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
     conversation,
     onAssign,
-    onCloseConversation
+    onCloseConversation,
+    onToggleFavorite,
+    onTogglePin
 }) => {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
@@ -141,6 +147,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
             {/* Actions */}
             <div className={styles.actions}>
+                {/* Favorite Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleFavorite}
+                    title={conversation.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                    className={conversation.isFavorite ? styles.favoriteActive : ''}
+                >
+                    <Star size={18} fill={conversation.isFavorite ? 'currentColor' : 'none'} />
+                </Button>
+
+                {/* Pin Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onTogglePin}
+                    title={conversation.isPinned ? 'Desafixar' : 'Fixar no topo'}
+                    className={conversation.isPinned ? styles.pinActive : ''}
+                >
+                    <Pin size={18} fill={conversation.isPinned ? 'currentColor' : 'none'} />
+                </Button>
+
                 {/* Assign Button */}
                 <div className={styles.actionWrapper}>
                     <Button

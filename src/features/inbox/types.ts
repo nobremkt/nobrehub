@@ -7,6 +7,7 @@ export interface Conversation {
     leadPhone: string;
     leadEmail?: string;
     leadCompany?: string;
+    instagram?: string;
     leadAvatar?: string;
     tags?: string[];
     notes?: string;
@@ -20,6 +21,9 @@ export interface Conversation {
     stage?: string;
     dealStatus?: DealStatus;
     lossReason?: string;
+    // Quick actions
+    isFavorite?: boolean;
+    isPinned?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
