@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { ContactsTable } from '../components/Contacts/ContactsTable';
 import { ContactsFilterBar } from '../components/Contacts/ContactsFilterBar';
+import { ContactsQuickActions } from '../components/Contacts/ContactsQuickActions';
 import { useContactsStore, useFilteredContacts } from '../stores/useContactsStore';
 import { Button } from '@/design-system';
 import { Plus, Users, RefreshCw } from 'lucide-react';
@@ -24,6 +25,7 @@ export const ContactsPage: React.FC = () => {
         setAvailableLossReasons,
         isLoading,
         selectedIds,
+        clearSelection,
     } = useContactsStore();
 
     const filteredContacts = useFilteredContacts();
@@ -62,6 +64,8 @@ export const ContactsPage: React.FC = () => {
         }
     };
 
+    const hasSelection = selectedIds.size > 0;
+
     return (
         <div className={styles.container}>
             {/* Header */}
@@ -90,8 +94,15 @@ export const ContactsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Barra de Filtros */}
-            <ContactsFilterBar />
+            {/* Barra de Filtros OU Quick Actions */}
+            {hasSelection ? (
+                <ContactsQuickActions
+                    selectedCount={selectedIds.size}
+                    onClearSelection={clearSelection}
+                />
+            ) : (
+                <ContactsFilterBar />
+            )}
 
             {/* Contador e Seleção */}
             <div className={styles.tableHeader}>

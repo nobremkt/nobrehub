@@ -208,11 +208,54 @@
     .table th:nth-child(4),
     .table td:nth-child(4),
     .table th:nth-child(5),
-    .table td:nth-child(5) {
+    .table td:nth-child(5),
+    .table th:nth-child(6),
+    .table td:nth-child(6),
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
         display: none;
     }
 
     .nameCell {
         min-width: 150px;
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * SORTABLE HEADERS
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.sortableHeader {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    transition: color var(--duration-fast) var(--ease-out);
+}
+
+.sortableHeader:hover {
+    color: var(--color-text-primary);
+}
+
+.sortIconInactive {
+    opacity: 0.3;
+    transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.sortableHeader:hover .sortIconInactive {
+    opacity: 0.6;
+}
+
+.sortIconActive {
+    color: var(--color-primary-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * PERSON NAME (Vendedora / Pós-Venda)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.personName {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
 }
