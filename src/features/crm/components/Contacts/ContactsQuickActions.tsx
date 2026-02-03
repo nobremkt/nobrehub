@@ -5,10 +5,11 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
 import { useKanbanStore, PipelineType } from '../../stores/useKanbanStore';
-import { Button, Modal, ConfirmModal, Dropdown, Input } from '@/design-system';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
+import { Button, Modal, ConfirmModal, Dropdown, Input, Checkbox } from '@/design-system';
 import {
     Tag as TagIcon,
     Tags,
@@ -44,7 +45,7 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     selectedCount,
     onClearSelection,
 }) => {
-    const { selectedIds, contacts, availableTags, availableLossReasons, setAvailableTags } = useContactsStore();
+    const { selectedIds, contacts, availableTags, setAvailableTags } = useContactsStore();
     const { getStagesByPipeline } = useKanbanStore();
 
     // Modal states
@@ -58,13 +59,26 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
 
     // Selected values
     const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined);
+    const [selectedTagsToRemove, setSelectedTagsToRemove] = useState<Set<string>>(new Set());
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingNewTag, setIsCreatingNewTag] = useState(false);
     const [selectedVendedora, setSelectedVendedora] = useState<string | undefined>(undefined);
     const [selectedPosVenda, setSelectedPosVenda] = useState<string | undefined>(undefined);
     const [selectedPipeline, setSelectedPipeline] = useState<PipelineType | undefined>(undefined);
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined);
-    const [selectedLossReason, setSelectedLossReason] = useState<string | undefined>(undefined);
+    const [selectedLossReason, setSelectedLossReason] = useState<string>('');
+
+    // Loss reasons from store
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
+
+    useEffect(() => {
+        if (lossReasons.length === 0) fetchLossReasons();
+    }, [lossReasons.length, fetchLossReasons]);
+
+    const LOSS_REASONS = [...lossReasons]
+        .filter(r => r.active)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+        .map(r => ({ value: r.id, label: r.name }));
 
     // Get selected contacts
     const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
@@ -141,20 +155,32 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     };
 
     const handleRemoveTag = () => {
-        if (!selectedTag) return;
+        if (selectedTagsToRemove.size === 0) return;
 
         // TODO: Implement bulk remove tag via API
-        console.log('Removing tag:', selectedTag, 'from contacts:', Array.from(selectedIds));
+        console.log('Removing tags:', Array.from(selectedTagsToRemove), 'from contacts:', Array.from(selectedIds));
 
         // Update local state for selected contacts
         selectedContacts.forEach(contact => {
             if (contact.tags) {
-                contact.tags = contact.tags.filter(t => t !== selectedTag);
+                contact.tags = contact.tags.filter(t => !selectedTagsToRemove.has(t));
             }
         });
 
         setShowRemoveTagModal(false);
-        setSelectedTag(undefined);
+        setSelectedTagsToRemove(new Set());
+    };
+
+    const toggleTagToRemove = (tag: string) => {
+        setSelectedTagsToRemove(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(tag)) {
+                newSet.delete(tag);
+            } else {
+                newSet.add(tag);
+            }
+            return newSet;
+        });
     };
 
     const handleAssignVendedora = () => {
@@ -187,7 +213,7 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         // TODO: Implement bulk mark as lost via API
         console.log('Marking as lost with reason:', selectedLossReason, 'contacts:', Array.from(selectedIds));
         setShowLostModal(false);
-        setSelectedLossReason(undefined);
+        setSelectedLossReason('');
     };
 
     const handleDelete = () => {
@@ -367,21 +393,26 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
              * ═══════════════════════════════════════════════════════════════════════════ */}
             <Modal
                 isOpen={showRemoveTagModal}
-                onClose={() => { setShowRemoveTagModal(false); setSelectedTag(undefined); }}
-                title="Remover Tag"
+                onClose={() => { setShowRemoveTagModal(false); setSelectedTagsToRemove(new Set()); }}
+                title="Remover Tags"
                 size="sm"
             >
                 <div className={styles.modalContent}>
                     <p className={styles.modalDescription}>
-                        Selecione a tag para remover dos {selectedCount} contatos.
+                        Selecione as tags para remover dos {selectedCount} contatos.
                     </p>
                     {tagsInSelection.length > 0 ? (
-                        <Dropdown
-                            placeholder="Selecione uma tag"
-                            value={selectedTag}
-                            onChange={(val) => setSelectedTag(val as string)}
-                            options={tagsInSelection.map(tag => ({ value: tag, label: tag }))}
-                        />
+                        <div className={styles.tagCheckboxList}>
+                            {tagsInSelection.map(tag => (
+                                <Checkbox
+                                    key={tag}
+                                    id={`tag-remove-${tag}`}
+                                    label={tag}
+                                    checked={selectedTagsToRemove.has(tag)}
+                                    onChange={() => toggleTagToRemove(tag)}
+                                />
+                            ))}
+                        </div>
                     ) : (
                         <p className={styles.noItems}>Nenhuma tag encontrada nos contatos selecionados.</p>
                     )}
@@ -389,8 +420,8 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
                         <Button variant="ghost" onClick={() => setShowRemoveTagModal(false)}>
                             Cancelar
                         </Button>
-                        <Button variant="danger" onClick={handleRemoveTag} disabled={!selectedTag}>
-                            Remover
+                        <Button variant="danger" onClick={handleRemoveTag} disabled={selectedTagsToRemove.size === 0}>
+                            Remover {selectedTagsToRemove.size > 0 && `(${selectedTagsToRemove.size})`}
                         </Button>
                     </div>
                 </div>
@@ -507,28 +538,60 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
              * ═══════════════════════════════════════════════════════════════════════════ */}
             <Modal
                 isOpen={showLostModal}
-                onClose={() => { setShowLostModal(false); setSelectedLossReason(undefined); }}
-                title="Marcar como Perdido"
-                size="sm"
-            >
-                <div className={styles.modalContent}>
-                    <p className={styles.modalDescription}>
-                        Selecione o motivo de perda para os {selectedCount} contatos.
-                    </p>
-                    <Dropdown
-                        placeholder="Selecione o motivo"
-                        value={selectedLossReason}
-                        onChange={(val) => setSelectedLossReason(val as string)}
-                        options={availableLossReasons.filter(r => r.isActive).map(r => ({ value: r.id, label: r.name }))}
-                    />
-                    <div className={styles.modalFooter}>
-                        <Button variant="ghost" onClick={() => setShowLostModal(false)}>
+                onClose={() => { setShowLostModal(false); setSelectedLossReason(''); }}
+                title="Motivo da Perda"
+                size="auto"
+                footer={
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowLostModal(false);
+                                setSelectedLossReason('');
+                            }}
+                        >
                             Cancelar
                         </Button>
-                        <Button variant="danger" onClick={handleMarkLost} disabled={!selectedLossReason}>
-                            Marcar como Perdido
+                        <Button
+                            variant="primary"
+                            disabled={!selectedLossReason}
+                            onClick={handleMarkLost}
+                        >
+                            Confirmar
                         </Button>
                     </div>
+                }
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o motivo pelo qual {selectedCount > 1 ? 'estes leads foram perdidos' : 'este lead foi perdido'}:
+                </p>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                }}>
+                    {LOSS_REASONS.map((reason) => (
+                        <Button
+                            key={reason.value}
+                            variant={selectedLossReason === reason.value ? 'primary' : 'ghost'}
+                            onClick={() => setSelectedLossReason(reason.value)}
+                            fullWidth
+                            style={{
+                                height: '60px',
+                                justifyContent: 'flex-start',
+                                textAlign: 'left',
+                                opacity: selectedLossReason && selectedLossReason !== reason.value ? 0.5 : 1,
+                                border: selectedLossReason === reason.value
+                                    ? 'none'
+                                    : '1px solid var(--color-border)',
+                                boxShadow: selectedLossReason === reason.value
+                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
+                                    : 'none',
+                            }}
+                        >
+                            {reason.label}
+                        </Button>
+                    ))}
                 </div>
             </Modal>
 
