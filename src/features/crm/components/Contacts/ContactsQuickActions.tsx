@@ -5,9 +5,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
-import { Button, Modal, ConfirmModal, Dropdown } from '@/design-system';
+import { useKanbanStore, PipelineType } from '../../stores/useKanbanStore';
+import { Button, Modal, ConfirmModal, Dropdown, Input } from '@/design-system';
 import {
     Tag as TagIcon,
     Tags,
@@ -16,21 +17,10 @@ import {
     XCircle,
     Download,
     Trash2,
-    X
+    X,
+    Plus
 } from 'lucide-react';
 import styles from './ContactsQuickActions.module.css';
-
-// Pipeline stages from existing data
-const PIPELINE_STAGES = [
-    { id: 'base', label: 'Base' },
-    { id: 'prospeccao', label: 'Prospecção' },
-    { id: 'conexao', label: 'Conexão' },
-    { id: 'noshow', label: 'No-show' },
-    { id: 'reuniao', label: 'Reunião' },
-    { id: 'proposta', label: 'Proposta' },
-    { id: 'negociacao', label: 'Negociação' },
-    { id: 'finalizada', label: 'Finalizada' },
-];
 
 // Mock team members (TODO: fetch from API)
 const TEAM_MEMBERS = [
@@ -38,6 +28,11 @@ const TEAM_MEMBERS = [
     { id: '2', name: 'Maria Santos', sector: 'Vendas' },
     { id: '3', name: 'Carlos Oliveira', sector: 'Pós-Venda' },
     { id: '4', name: 'Julia Costa', sector: 'Pós-Venda' },
+];
+
+const PIPELINE_OPTIONS = [
+    { value: 'high-ticket', label: 'High Ticket' },
+    { value: 'low-ticket', label: 'Low Ticket' },
 ];
 
 interface ContactsQuickActionsProps {
@@ -49,8 +44,10 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     selectedCount,
     onClearSelection,
 }) => {
-    const { selectedIds, contacts, availableTags, availableLossReasons } = useContactsStore();
+    const { selectedIds, contacts, availableTags, availableLossReasons, setAvailableTags } = useContactsStore();
+    const { getStagesByPipeline } = useKanbanStore();
 
+    // Modal states
     const [showAddTagModal, setShowAddTagModal] = useState(false);
     const [showRemoveTagModal, setShowRemoveTagModal] = useState(false);
     const [showAssignVendedoraModal, setShowAssignVendedoraModal] = useState(false);
@@ -59,10 +56,13 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     const [showLostModal, setShowLostModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    // Selected values for each modal
+    // Selected values
     const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined);
+    const [newTagName, setNewTagName] = useState('');
+    const [isCreatingNewTag, setIsCreatingNewTag] = useState(false);
     const [selectedVendedora, setSelectedVendedora] = useState<string | undefined>(undefined);
     const [selectedPosVenda, setSelectedPosVenda] = useState<string | undefined>(undefined);
+    const [selectedPipeline, setSelectedPipeline] = useState<PipelineType | undefined>(undefined);
     const [selectedStage, setSelectedStage] = useState<string | undefined>(undefined);
     const [selectedLossReason, setSelectedLossReason] = useState<string | undefined>(undefined);
 
@@ -70,9 +70,22 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
 
     // Get tags from selected contacts for removal
-    const tagsInSelection = Array.from(
-        new Set(selectedContacts.flatMap(c => c.tags || []))
+    const tagsInSelection = useMemo(() =>
+        Array.from(new Set(selectedContacts.flatMap(c => c.tags || []))),
+        [selectedContacts]
     );
+
+    // Get stages for selected pipeline
+    const stagesForPipeline = useMemo(() => {
+        if (!selectedPipeline) return [];
+        return getStagesByPipeline(selectedPipeline);
+    }, [selectedPipeline, getStagesByPipeline]);
+
+    // Reset stage when pipeline changes
+    const handlePipelineChange = (val: string | number | undefined) => {
+        setSelectedPipeline(val as PipelineType);
+        setSelectedStage(undefined);
+    };
 
     const handleExportCSV = () => {
         const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Tags'];
@@ -99,24 +112,54 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     };
 
     const handleAddTag = () => {
-        if (!selectedTag) return;
-        // TODO: Implement bulk add tag
-        console.log('Adding tag:', selectedTag, 'to contacts:', Array.from(selectedIds));
+        const tagToAdd = isCreatingNewTag ? newTagName.trim() : selectedTag;
+        if (!tagToAdd) return;
+
+        // Add new tag to available tags if creating
+        if (isCreatingNewTag && !availableTags.includes(tagToAdd)) {
+            setAvailableTags([...availableTags, tagToAdd]);
+        }
+
+        // TODO: Implement bulk add tag via API
+        console.log('Adding tag:', tagToAdd, 'to contacts:', Array.from(selectedIds));
+
+        // Update local state for selected contacts
+        selectedContacts.forEach(contact => {
+            if (!contact.tags?.includes(tagToAdd)) {
+                contact.tags = [...(contact.tags || []), tagToAdd];
+            }
+        });
+
+        resetAddTagModal();
+    };
+
+    const resetAddTagModal = () => {
         setShowAddTagModal(false);
         setSelectedTag(undefined);
+        setNewTagName('');
+        setIsCreatingNewTag(false);
     };
 
     const handleRemoveTag = () => {
         if (!selectedTag) return;
-        // TODO: Implement bulk remove tag
+
+        // TODO: Implement bulk remove tag via API
         console.log('Removing tag:', selectedTag, 'from contacts:', Array.from(selectedIds));
+
+        // Update local state for selected contacts
+        selectedContacts.forEach(contact => {
+            if (contact.tags) {
+                contact.tags = contact.tags.filter(t => t !== selectedTag);
+            }
+        });
+
         setShowRemoveTagModal(false);
         setSelectedTag(undefined);
     };
 
     const handleAssignVendedora = () => {
         if (!selectedVendedora) return;
-        // TODO: Implement bulk assign vendedora
+        // TODO: Implement bulk assign vendedora via API
         console.log('Assigning vendedora:', selectedVendedora, 'to contacts:', Array.from(selectedIds));
         setShowAssignVendedoraModal(false);
         setSelectedVendedora(undefined);
@@ -124,30 +167,31 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
 
     const handleAssignPosVenda = () => {
         if (!selectedPosVenda) return;
-        // TODO: Implement bulk assign pós-venda
+        // TODO: Implement bulk assign pós-venda via API
         console.log('Assigning pós-venda:', selectedPosVenda, 'to contacts:', Array.from(selectedIds));
         setShowAssignPosVendaModal(false);
         setSelectedPosVenda(undefined);
     };
 
     const handleMoveStage = () => {
-        if (!selectedStage) return;
-        // TODO: Implement bulk move stage
-        console.log('Moving to stage:', selectedStage, 'contacts:', Array.from(selectedIds));
+        if (!selectedPipeline || !selectedStage) return;
+        // TODO: Implement bulk move stage via API
+        console.log('Moving to pipeline:', selectedPipeline, 'stage:', selectedStage, 'contacts:', Array.from(selectedIds));
         setShowMoveStageModal(false);
+        setSelectedPipeline(undefined);
         setSelectedStage(undefined);
     };
 
     const handleMarkLost = () => {
         if (!selectedLossReason) return;
-        // TODO: Implement bulk mark as lost
+        // TODO: Implement bulk mark as lost via API
         console.log('Marking as lost with reason:', selectedLossReason, 'contacts:', Array.from(selectedIds));
         setShowLostModal(false);
         setSelectedLossReason(undefined);
     };
 
     const handleDelete = () => {
-        // TODO: Implement bulk delete
+        // TODO: Implement bulk delete via API
         console.log('Deleting contacts:', Array.from(selectedIds));
         setShowDeleteConfirm(false);
         onClearSelection();
@@ -256,29 +300,62 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════════════════
-             * MODAL: Adicionar Tag
+             * MODAL: Adicionar Tag (com opção de criar nova)
              * ═══════════════════════════════════════════════════════════════════════════ */}
             <Modal
                 isOpen={showAddTagModal}
-                onClose={() => { setShowAddTagModal(false); setSelectedTag(undefined); }}
+                onClose={resetAddTagModal}
                 title="Adicionar Tag"
                 size="sm"
             >
                 <div className={styles.modalContent}>
                     <p className={styles.modalDescription}>
-                        Selecione a tag para adicionar aos {selectedCount} contatos.
+                        Selecione uma tag existente ou crie uma nova para adicionar aos {selectedCount} contatos.
                     </p>
-                    <Dropdown
-                        placeholder="Selecione uma tag"
-                        value={selectedTag}
-                        onChange={(val) => setSelectedTag(val as string)}
-                        options={availableTags.map(tag => ({ value: tag, label: tag }))}
-                    />
+
+                    {!isCreatingNewTag ? (
+                        <>
+                            <Dropdown
+                                placeholder="Selecione uma tag"
+                                value={selectedTag}
+                                onChange={(val) => setSelectedTag(val as string)}
+                                options={availableTags.map(tag => ({ value: tag, label: tag }))}
+                            />
+                            <button
+                                className={styles.createNewButton}
+                                onClick={() => setIsCreatingNewTag(true)}
+                            >
+                                <Plus size={14} />
+                                Criar nova tag
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Input
+                                placeholder="Nome da nova tag"
+                                value={newTagName}
+                                onChange={(e) => setNewTagName(e.target.value)}
+                                fullWidth
+                                autoFocus
+                            />
+                            <button
+                                className={styles.createNewButton}
+                                onClick={() => setIsCreatingNewTag(false)}
+                            >
+                                Voltar para tags existentes
+                            </button>
+                        </>
+                    )}
+
                     <div className={styles.modalFooter}>
-                        <Button variant="ghost" onClick={() => setShowAddTagModal(false)}>
+                        <Button variant="ghost" onClick={resetAddTagModal}>
                             Cancelar
                         </Button>
-                        <Button variant="primary" onClick={handleAddTag} disabled={!selectedTag}>
+                        <Button
+                            variant="primary"
+                            onClick={handleAddTag}
+                            disabled={isCreatingNewTag ? !newTagName.trim() : !selectedTag}
+                        >
                             Adicionar
                         </Button>
                     </div>
@@ -312,7 +389,7 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
                         <Button variant="ghost" onClick={() => setShowRemoveTagModal(false)}>
                             Cancelar
                         </Button>
-                        <Button variant="primary" onClick={handleRemoveTag} disabled={!selectedTag}>
+                        <Button variant="danger" onClick={handleRemoveTag} disabled={!selectedTag}>
                             Remover
                         </Button>
                     </div>
@@ -380,29 +457,45 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
             </Modal>
 
             {/* ═══════════════════════════════════════════════════════════════════════════
-             * MODAL: Mover para Etapa
+             * MODAL: Mover para Etapa (com seleção de pipeline)
              * ═══════════════════════════════════════════════════════════════════════════ */}
             <Modal
                 isOpen={showMoveStageModal}
-                onClose={() => { setShowMoveStageModal(false); setSelectedStage(undefined); }}
+                onClose={() => { setShowMoveStageModal(false); setSelectedPipeline(undefined); setSelectedStage(undefined); }}
                 title="Mover para Etapa"
                 size="sm"
             >
                 <div className={styles.modalContent}>
                     <p className={styles.modalDescription}>
-                        Selecione a etapa para mover os {selectedCount} contatos.
+                        Selecione o pipeline e a etapa para mover os {selectedCount} contatos.
                     </p>
-                    <Dropdown
-                        placeholder="Selecione uma etapa"
-                        value={selectedStage}
-                        onChange={(val) => setSelectedStage(val as string)}
-                        options={PIPELINE_STAGES.map(s => ({ value: s.id, label: s.label }))}
-                    />
+
+                    <div className={styles.fieldGroup}>
+                        <label className={styles.fieldLabel}>Pipeline</label>
+                        <Dropdown
+                            placeholder="Selecione o pipeline"
+                            value={selectedPipeline}
+                            onChange={handlePipelineChange}
+                            options={PIPELINE_OPTIONS}
+                        />
+                    </div>
+
+                    <div className={styles.fieldGroup}>
+                        <label className={styles.fieldLabel}>Etapa</label>
+                        <Dropdown
+                            placeholder={selectedPipeline ? "Selecione a etapa" : "Selecione o pipeline primeiro"}
+                            value={selectedStage}
+                            onChange={(val) => setSelectedStage(val as string)}
+                            options={stagesForPipeline.map(s => ({ value: s.id, label: s.name }))}
+                            disabled={!selectedPipeline}
+                        />
+                    </div>
+
                     <div className={styles.modalFooter}>
                         <Button variant="ghost" onClick={() => setShowMoveStageModal(false)}>
                             Cancelar
                         </Button>
-                        <Button variant="primary" onClick={handleMoveStage} disabled={!selectedStage}>
+                        <Button variant="primary" onClick={handleMoveStage} disabled={!selectedPipeline || !selectedStage}>
                             Mover
                         </Button>
                     </div>
