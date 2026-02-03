@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Modal, Button, Input } from '@/design-system';
 import { useTeamChatStore } from '../../stores/useTeamChatStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
-import { useAuthStore } from '@/stores/useAuthStore';
+
 import { Camera, Trash2, Crown, UserPlus, MoreVertical, X, Shield, ShieldOff, LogOut, User, UsersRound } from 'lucide-react';
 import { TeamChat } from '../../types/chat';
 
