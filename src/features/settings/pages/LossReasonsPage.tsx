@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 
-import { Card, CardBody, Button, Badge, Spinner, Input, ConfirmModal, Modal } from '@/design-system';
+import { Card, CardBody, Button, Spinner, Input, ConfirmModal, Modal, Switch } from '@/design-system';
 import { useLossReasonStore } from '../stores/useLossReasonStore';
 import { LossReasonModal } from '../components/LossReasonModal';
 import { Plus, Pencil, Trash2, Search, Archive, GripVertical, Eye } from 'lucide-react';
 import { LossReason } from '../types';
 
 export const LossReasonsPage = () => {
-    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason, reorderLossReasons, addLossReason } = useLossReasonStore();
+    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason, reorderLossReasons, addLossReason, updateLossReason } = useLossReasonStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReason, setEditingReason] = useState<LossReason | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -194,15 +194,13 @@ export const LossReasonsPage = () => {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-text-secondary hidden md:inline">
-                                            {reason.active ? 'Ativo' : 'Inativo'}
-                                        </span>
-                                        <Badge variant={reason.active ? 'success' : 'default'} dot />
-                                    </div>
+                                    <Switch
+                                        checked={reason.active}
+                                        onChange={(checked) => updateLossReason(reason.id, { active: checked })}
+                                    />
 
                                     <div className="flex gap-2 pl-4 border-l border-border">
-                                        <Button variant="ghost" size="sm" onClick={() => handleEdit(reason)} title="Editar">
+                                        <Button variant="ghost" size="sm" onClick={() => handleEdit(reason)} title="Editar nome">
                                             <Pencil size={16} />
                                         </Button>
                                         <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(reason.id)} title="Excluir" className="text-danger-500 hover:text-danger-600">
