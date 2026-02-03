@@ -292,15 +292,19 @@ export const LossReasonsPage = () => {
                     {sortedReasons.filter(r => r.active).map((reason) => (
                         <Button
                             key={reason.id}
-                            variant={previewSelectedReason === reason.id ? 'secondary' : 'primary'}
+                            variant={previewSelectedReason === reason.id ? 'primary' : 'ghost'}
                             onClick={() => setPreviewSelectedReason(reason.id)}
                             fullWidth
                             style={{
                                 height: '60px',
                                 justifyContent: 'flex-start',
                                 textAlign: 'left',
+                                opacity: previewSelectedReason && previewSelectedReason !== reason.id ? 0.5 : 1,
                                 border: previewSelectedReason === reason.id
-                                    ? '2px solid var(--color-text-primary)'
+                                    ? 'none'
+                                    : '1px solid var(--color-border)',
+                                boxShadow: previewSelectedReason === reason.id
+                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
                                     : 'none',
                             }}
                         >

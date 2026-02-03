@@ -456,15 +456,19 @@ export const ProfilePanel: React.FC = () => {
                     {LOSS_REASONS.map((reason) => (
                         <Button
                             key={reason.value}
-                            variant={selectedLossReason === reason.value ? 'secondary' : 'primary'}
+                            variant={selectedLossReason === reason.value ? 'primary' : 'ghost'}
                             onClick={() => setSelectedLossReason(reason.value)}
                             fullWidth
                             style={{
                                 height: '60px',
                                 justifyContent: 'flex-start',
                                 textAlign: 'left',
+                                opacity: selectedLossReason && selectedLossReason !== reason.value ? 0.5 : 1,
                                 border: selectedLossReason === reason.value
-                                    ? '2px solid var(--color-text-primary)'
+                                    ? 'none'
+                                    : '1px solid var(--color-border)',
+                                boxShadow: selectedLossReason === reason.value
+                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
                                     : 'none',
                             }}
                         >
