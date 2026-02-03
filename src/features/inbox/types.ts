@@ -1,3 +1,5 @@
+export type DealStatus = 'open' | 'won' | 'lost';
+
 export interface Conversation {
     id: string;
     leadId: string;
@@ -13,6 +15,10 @@ export interface Conversation {
     assignedTo?: string; // userId
     channel: 'whatsapp' | 'internal';
     status: 'open' | 'closed';
+    // Deal/Negócio fields
+    pipeline?: string;
+    stage?: string;
+    dealStatus?: DealStatus;
     createdAt: Date;
     updatedAt: Date;
 }

@@ -7,8 +7,9 @@
 
 import React, { useState } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
-import { Tag, PhoneInput } from '@/design-system';
+import { Tag, PhoneInput, Dropdown } from '@/design-system';
 import { formatPhone } from '@/utils';
+import { DealStatus } from '../../types';
 import {
     Phone,
     Mail,
@@ -270,23 +271,41 @@ export const ProfilePanel: React.FC = () => {
                     <div className={styles.dealSection}>
                         <div className={styles.dealPipeline}>
                             <span className={styles.dealLabel}>Pipeline</span>
-                            <span className={styles.dealValue}>Vendas HT</span>
+                            <span className={styles.dealValue}>{conversation.pipeline === 'low-ticket' ? 'Vendas LT' : 'Vendas HT'}</span>
                         </div>
                         <div className={styles.dealStage}>
                             <span className={styles.dealLabel}>Etapa</span>
-                            <div className={styles.stageIndicator}>
-                                <span className={styles.stageDot} />
-                                Prospecção
-                            </div>
+                            <Dropdown
+                                options={[
+                                    { label: 'Prospecção', value: 'prospeccao' },
+                                    { label: 'Qualificação', value: 'qualificacao' },
+                                    { label: 'Apresentação', value: 'apresentacao' },
+                                    { label: 'Negociação', value: 'negociacao' },
+                                    { label: 'Fechamento', value: 'fechamento' },
+                                ]}
+                                value={conversation.stage || 'prospeccao'}
+                                onChange={(val) => updateConversationDetails(conversation.id, { stage: val as string })}
+                                placeholder="Selecione a etapa"
+                                noSound
+                            />
                         </div>
                         <div className={styles.dealStatus}>
-                            <button className={`${styles.statusButton} ${styles.won}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.won} ${conversation.dealStatus === 'won' ? styles.active : ''}`}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'won' as DealStatus })}
+                            >
                                 Ganho
                             </button>
-                            <button className={`${styles.statusButton} ${styles.lost}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.lost} ${conversation.dealStatus === 'lost' ? styles.active : ''}`}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'lost' as DealStatus })}
+                            >
                                 Perdido
                             </button>
-                            <button className={`${styles.statusButton} ${styles.open} ${styles.active}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.open} ${(!conversation.dealStatus || conversation.dealStatus === 'open') ? styles.active : ''}`}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'open' as DealStatus })}
+                            >
                                 Aberto
                             </button>
                         </div>
