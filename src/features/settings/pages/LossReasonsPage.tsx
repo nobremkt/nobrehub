@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash2, Search, Archive, GripVertical, Eye } from 'lucide
 import { LossReason } from '../types';
 
 export const LossReasonsPage = () => {
-    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason, reorderLossReasons } = useLossReasonStore();
+    const { lossReasons, fetchLossReasons, isLoading, deleteLossReason, reorderLossReasons, addLossReason } = useLossReasonStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReason, setEditingReason] = useState<LossReason | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +92,38 @@ export const LossReasonsPage = () => {
 
     const handleDragEnd = () => {
         setDraggedItem(null);
+    };
+
+    // Estado para seed dos motivos padrão
+    const [isSeeding, setIsSeeding] = useState(false);
+
+    const DEFAULT_LOSS_REASONS = [
+        { name: 'Preço muito alto', order: 0 },
+        { name: 'Momento errado / Não é prioridade', order: 1 },
+        { name: 'Escolheu concorrente', order: 2 },
+        { name: 'Sem orçamento', order: 3 },
+        { name: 'Não respondeu / Sumiu', order: 4 },
+        { name: 'Não era o perfil ideal', order: 5 },
+        { name: 'Problema interno do lead', order: 6 },
+        { name: 'Outro motivo', order: 7 },
+    ];
+
+    const handleSeedDefaults = async () => {
+        setIsSeeding(true);
+        try {
+            for (const reason of DEFAULT_LOSS_REASONS) {
+                await addLossReason({
+                    name: reason.name,
+                    active: true,
+                    order: reason.order
+                });
+            }
+            await fetchLossReasons();
+        } catch (error) {
+            console.error('Erro ao criar motivos padrão:', error);
+        } finally {
+            setIsSeeding(false);
+        }
     };
 
     const filteredReasons = sortedReasons.filter(r =>
@@ -183,8 +215,17 @@ export const LossReasonsPage = () => {
                     ))}
 
                     {filteredReasons.length === 0 && (
-                        <div className="text-center py-12 text-text-muted">
-                            Nenhum motivo encontrado.
+                        <div className="text-center py-12">
+                            <p className="text-text-muted mb-4">Nenhum motivo encontrado.</p>
+                            {lossReasons.length === 0 && (
+                                <Button
+                                    onClick={handleSeedDefaults}
+                                    isLoading={isSeeding}
+                                    variant="secondary"
+                                >
+                                    Carregar Motivos Padrão
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
