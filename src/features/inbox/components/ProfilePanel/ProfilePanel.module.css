@@ -223,11 +223,21 @@
     gap: var(--spacing-3);
 }
 
-.dealPipeline,
+.dealPipeline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .dealStage {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-3);
+}
+
+.dealStage .dealLabel {
+    flex-shrink: 0;
 }
 
 .dealLabel {
