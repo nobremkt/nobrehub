@@ -154,7 +154,10 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
             toast.error('Erro ao adicionar tag');
         }
 
-        resetAddTagModal();
+        // Reset form but keep modal open for adding more tags
+        setSelectedTag(undefined);
+        setNewTagName('');
+        setIsCreatingNewTag(false);
     };
 
     const resetAddTagModal = () => {
