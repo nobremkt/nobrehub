@@ -54,6 +54,12 @@
     max-width: 900px;
 }
 
+.auto {
+    width: fit-content;
+    max-width: 90vw;
+    min-width: 400px;
+}
+
 .full {
     width: calc(100vw - var(--spacing-8));
     max-width: none;

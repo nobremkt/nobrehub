@@ -256,7 +256,7 @@ export const LossReasonsPage = () => {
                     setPreviewSelectedReason('');
                 }}
                 title="Motivo da Perda"
-                size="md"
+                size="auto"
                 footer={
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button
