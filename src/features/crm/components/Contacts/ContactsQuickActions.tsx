@@ -47,7 +47,7 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     selectedCount,
     onClearSelection,
 }) => {
-    const { selectedIds, contacts, availableTags, setAvailableTags } = useContactsStore();
+    const { selectedIds, contacts, availableTags, setAvailableTags, setContacts } = useContactsStore();
     const { getStagesByPipeline } = useKanbanStore();
 
     // Modal states
@@ -139,12 +139,14 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         try {
             await LeadService.bulkAddTag(Array.from(selectedIds), tagToAdd, contacts);
 
-            // Update local state for selected contacts
-            selectedContacts.forEach(contact => {
-                if (!contact.tags?.includes(tagToAdd)) {
-                    contact.tags = [...(contact.tags || []), tagToAdd];
+            // Update store state immutably for real-time UI update
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id) && !contact.tags?.includes(tagToAdd)) {
+                    return { ...contact, tags: [...(contact.tags || []), tagToAdd] };
                 }
+                return contact;
             });
+            setContacts(updatedContacts);
 
             toast.success(`Tag "${tagToAdd}" adicionada a ${selectedCount} contato(s)`);
         } catch (error) {
@@ -166,16 +168,19 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         if (selectedTagsToRemove.size === 0) return;
 
         const tagsArray = Array.from(selectedTagsToRemove);
+        const tagsSet = new Set(tagsArray);
 
         try {
             await LeadService.bulkRemoveTags(Array.from(selectedIds), tagsArray, contacts);
 
-            // Update local state for selected contacts
-            selectedContacts.forEach(contact => {
-                if (contact.tags) {
-                    contact.tags = contact.tags.filter(t => !selectedTagsToRemove.has(t));
+            // Update store state immutably for real-time UI update
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id) && contact.tags) {
+                    return { ...contact, tags: contact.tags.filter(t => !tagsSet.has(t)) };
                 }
+                return contact;
             });
+            setContacts(updatedContacts);
 
             toast.success(`${tagsArray.length} tag(s) removida(s) de ${selectedCount} contato(s)`);
         } catch (error) {

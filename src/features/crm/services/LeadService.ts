@@ -111,11 +111,29 @@ export const LeadService = {
             const db = getFirestoreDb();
             const tagsSet = new Set(tagsToRemove);
 
+            console.log('[bulkRemoveTags] Starting removal:', {
+                leadIds,
+                tagsToRemove,
+                contactsCount: currentContacts.length
+            });
+
             const updatePromises = leadIds.map(id => {
                 const contact = currentContacts.find(c => c.id === id);
-                if (!contact) return Promise.resolve();
+                if (!contact) {
+                    console.warn('[bulkRemoveTags] Contact not found:', id);
+                    return Promise.resolve();
+                }
 
-                const newTags = (contact.tags || []).filter(t => !tagsSet.has(t));
+                const oldTags = contact.tags || [];
+                const newTags = oldTags.filter(t => !tagsSet.has(t));
+
+                console.log('[bulkRemoveTags] Updating contact:', {
+                    id,
+                    oldTags,
+                    newTags,
+                    tagsRemoved: oldTags.length - newTags.length
+                });
+
                 return updateDoc(doc(db, COLLECTION_NAME, id), {
                     tags: newTags,
                     updatedAt: Timestamp.fromDate(new Date())
@@ -123,6 +141,7 @@ export const LeadService = {
             });
 
             await Promise.all(updatePromises);
+            console.log('[bulkRemoveTags] Completed successfully');
         } catch (error) {
             console.error('Error bulk removing tags:', error);
             throw error;
