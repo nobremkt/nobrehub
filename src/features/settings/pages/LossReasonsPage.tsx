@@ -290,31 +290,22 @@ export const LossReasonsPage = () => {
                     gap: '12px'
                 }}>
                     {sortedReasons.filter(r => r.active).map((reason) => (
-                        <button
+                        <Button
                             key={reason.id}
-                            type="button"
+                            variant={previewSelectedReason === reason.id ? 'secondary' : 'primary'}
                             onClick={() => setPreviewSelectedReason(reason.id)}
+                            fullWidth
                             style={{
-                                padding: '14px 16px',
-                                borderRadius: '8px',
-                                border: previewSelectedReason === reason.id
-                                    ? '2px solid var(--color-primary-500)'
-                                    : '1px solid var(--color-border)',
-                                background: previewSelectedReason === reason.id
-                                    ? 'var(--color-primary-500-alpha-10, rgba(220, 38, 38, 0.1))'
-                                    : 'var(--color-surface)',
-                                color: previewSelectedReason === reason.id
-                                    ? 'var(--color-primary-500)'
-                                    : 'var(--color-text-primary)',
-                                cursor: 'pointer',
+                                height: '60px',
+                                justifyContent: 'flex-start',
                                 textAlign: 'left',
-                                fontSize: '14px',
-                                fontWeight: previewSelectedReason === reason.id ? 600 : 400,
-                                transition: 'all 0.15s ease',
+                                border: previewSelectedReason === reason.id
+                                    ? '2px solid var(--color-text-primary)'
+                                    : 'none',
                             }}
                         >
                             {reason.name}
-                        </button>
+                        </Button>
                     ))}
                 </div>
                 <p style={{ marginTop: '16px', fontSize: '12px', color: 'var(--color-text-muted)' }}>

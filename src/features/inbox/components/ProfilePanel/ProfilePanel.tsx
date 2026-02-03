@@ -454,31 +454,22 @@ export const ProfilePanel: React.FC = () => {
                     gap: '12px'
                 }}>
                     {LOSS_REASONS.map((reason) => (
-                        <button
+                        <Button
                             key={reason.value}
-                            type="button"
+                            variant={selectedLossReason === reason.value ? 'secondary' : 'primary'}
                             onClick={() => setSelectedLossReason(reason.value)}
+                            fullWidth
                             style={{
-                                padding: '14px 16px',
-                                borderRadius: '8px',
-                                border: selectedLossReason === reason.value
-                                    ? '2px solid var(--color-primary-500)'
-                                    : '1px solid var(--color-border)',
-                                background: selectedLossReason === reason.value
-                                    ? 'var(--color-primary-500-alpha-10, rgba(220, 38, 38, 0.1))'
-                                    : 'var(--color-surface)',
-                                color: selectedLossReason === reason.value
-                                    ? 'var(--color-primary-500)'
-                                    : 'var(--color-text-primary)',
-                                cursor: 'pointer',
+                                height: '60px',
+                                justifyContent: 'flex-start',
                                 textAlign: 'left',
-                                fontSize: '14px',
-                                fontWeight: selectedLossReason === reason.value ? 600 : 400,
-                                transition: 'all 0.15s ease',
+                                border: selectedLossReason === reason.value
+                                    ? '2px solid var(--color-text-primary)'
+                                    : 'none',
                             }}
                         >
                             {reason.label}
-                        </button>
+                        </Button>
                     ))}
                 </div>
             </Modal>
