@@ -18,7 +18,7 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
         phone: '',
         email: '',
         company: '',
-        pipeline: 'venda',
+        pipeline: 'high-ticket',
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -32,14 +32,14 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                 email: formData.email || undefined,
                 company: formData.company || undefined,
                 pipeline: formData.pipeline,
-                status: formData.pipeline === 'venda' ? 'ht-novo' : 'lt-entrada',
+                status: formData.pipeline === 'high-ticket' ? 'ht-novo' : 'lt-entrada',
                 tags: ['Novo'],
                 order: 0,
                 estimatedValue: 0,
                 responsibleId: 'admin',
             } as any);
 
-            setFormData({ name: '', phone: '', email: '', company: '', pipeline: 'venda' });
+            setFormData({ name: '', phone: '', email: '', company: '', pipeline: 'high-ticket' });
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -51,8 +51,8 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
     };
 
     const pipelineOptions = [
-        { value: 'venda', label: 'High Ticket' },
-        { value: 'pos-venda', label: 'Low Ticket' },
+        { value: 'high-ticket', label: 'High Ticket' },
+        { value: 'low-ticket', label: 'Low Ticket' },
     ];
 
     return (

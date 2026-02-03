@@ -10,7 +10,7 @@ export interface Lead {
     email?: string;
     phone: string;
     company?: string;
-    pipeline: 'venda' | 'pos-venda';
+    pipeline: 'high-ticket' | 'low-ticket';
     status: string;
     order: number; // Posição do lead dentro da coluna
     estimatedValue?: number;
@@ -39,7 +39,7 @@ export interface PipelineStage {
     name: string;
     color: string;
     order: number;
-    pipeline: 'venda' | 'pos-venda';
+    pipeline: 'high-ticket' | 'low-ticket';
     isDefault?: boolean;
 }
 

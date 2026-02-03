@@ -143,7 +143,7 @@ export const LeadService = {
 
                 const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
                 const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
-                const correctPipeline = isWhatsApp ? 'pos-venda' : 'venda';
+                const correctPipeline = isWhatsApp ? 'low-ticket' : 'high-ticket';
                 const correctStatus = isWhatsApp ? 'lt-entrada' : 'ht-novo';
 
                 if (existingCtx.has(normalizedPhone)) {
@@ -152,7 +152,7 @@ export const LeadService = {
 
                     // Only fix if it's currently in the default 'ht-novo' state and should be in Low Ticket
                     // This prevents moving leads that were manually worked on
-                    if (isWhatsApp && data.pipeline === 'venda' && data.status === 'ht-novo') {
+                    if (isWhatsApp && data.pipeline === 'high-ticket' && data.status === 'ht-novo') {
                         dataPromises.push(updateDoc(doc(firestoreDb, COLLECTION_NAME, id), {
                             pipeline: correctPipeline,
                             status: correctStatus,

@@ -31,17 +31,17 @@ interface KanbanState {
 
 const MOCK_STAGES: PipelineStage[] = [
     // High Ticket Pipeline
-    { id: 'ht-novo', name: 'Novo Lead', color: '#6366F1', order: 0, pipeline: 'venda' },
-    { id: 'ht-qualificacao', name: 'Qualificação', color: '#F59E0B', order: 1, pipeline: 'venda' },
-    { id: 'ht-proposta', name: 'Proposta Enviada', color: '#8B5CF6', order: 2, pipeline: 'venda' },
-    { id: 'ht-negociacao', name: 'Em Negociação', color: '#EC4899', order: 3, pipeline: 'venda' },
-    { id: 'ht-fechado', name: 'Fechado Ganho', color: '#10B981', order: 4, pipeline: 'venda' },
+    { id: 'ht-novo', name: 'Novo Lead', color: '#6366F1', order: 0, pipeline: 'high-ticket' },
+    { id: 'ht-qualificacao', name: 'Qualificação', color: '#F59E0B', order: 1, pipeline: 'high-ticket' },
+    { id: 'ht-proposta', name: 'Proposta Enviada', color: '#8B5CF6', order: 2, pipeline: 'high-ticket' },
+    { id: 'ht-negociacao', name: 'Em Negociação', color: '#EC4899', order: 3, pipeline: 'high-ticket' },
+    { id: 'ht-fechado', name: 'Fechado Ganho', color: '#10B981', order: 4, pipeline: 'high-ticket' },
 
     // Low Ticket Pipeline
-    { id: 'lt-entrada', name: 'Entrada', color: '#3B82F6', order: 0, pipeline: 'pos-venda' },
-    { id: 'lt-interesse', name: 'Demonstrou Interesse', color: '#F59E0B', order: 1, pipeline: 'pos-venda' },
-    { id: 'lt-carrinho', name: 'Carrinho', color: '#8B5CF6', order: 2, pipeline: 'pos-venda' },
-    { id: 'lt-compra', name: 'Compra Realizada', color: '#10B981', order: 3, pipeline: 'pos-venda' },
+    { id: 'lt-entrada', name: 'Entrada', color: '#3B82F6', order: 0, pipeline: 'low-ticket' },
+    { id: 'lt-interesse', name: 'Demonstrou Interesse', color: '#F59E0B', order: 1, pipeline: 'low-ticket' },
+    { id: 'lt-carrinho', name: 'Carrinho', color: '#8B5CF6', order: 2, pipeline: 'low-ticket' },
+    { id: 'lt-compra', name: 'Compra Realizada', color: '#10B981', order: 3, pipeline: 'low-ticket' },
 ];
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
@@ -199,9 +199,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     setActivePipeline: (pipeline) => set({ activePipeline: pipeline }),
 
     getStagesByPipeline: (pipeline) => {
-        const pipelineKey = pipeline === 'high-ticket' ? 'venda' : 'pos-venda';
         return get().stages
-            .filter(stage => stage.pipeline === pipelineKey)
+            .filter(stage => stage.pipeline === pipeline)
             .sort((a, b) => a.order - b.order);
     },
 

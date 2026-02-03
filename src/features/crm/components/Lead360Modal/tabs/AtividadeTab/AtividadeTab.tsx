@@ -1,44 +1,68 @@
 
 import { useState } from 'react';
 import { Activity, Copy } from 'lucide-react';
+import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
 
-export function AtividadeTab() {
-    const [currentStageIndex, setCurrentStageIndex] = useState(0);
-    const [completedActivities, setCompletedActivities] = useState(0);
 
-    const currentActivityId = completedActivities + 1;
-    const currentScript = SCRIPTS[currentActivityId] || SCRIPTS[1];
+export function AtividadeTab() {
+    const [completedActivities, setCompletedActivities] = useState(0);
+    // Estado para controlar qual atividade está selecionada para visualização (script)
+    const [selectedActivityId, setSelectedActivityId] = useState<number>(1);
+
+    // O script exibido baseia-se na atividade explicitamente selecionada OU na próxima atividade lógica
+    const activeId = selectedActivityId || (completedActivities + 1);
+    const currentScript = SCRIPTS[activeId] || SCRIPTS[1];
+
+    // LÓGICA DE PROGRESSO VISUAL (Timeline)
+    // O estágio ativo na timeline deve ser baseado na PRÓXIMA atividade a fazer (completedActivities + 1)
+    const nextActivityId = completedActivities + 1;
+    const nextActivity = ACTIVITIES.find(a => a.id === nextActivityId);
+
+    // Se não houver próxima (tudo completo), o progresso vai até o fim.
+    const currentRealStageId = nextActivity ? nextActivity.stage : PIPELINE_STAGES[PIPELINE_STAGES.length - 1].id;
+    const currentRealStageIndex = PIPELINE_STAGES.findIndex(s => s.id === currentRealStageId);
+
+    // Se tudo estiver concluído, podemos querer mostrar tudo cheio ou manter no último estágio
+    const displayStageIndex = currentRealStageIndex !== -1 ? currentRealStageIndex : (PIPELINE_STAGES.length - 1);
 
     const handleStageClick = (index: number) => {
-        setCurrentStageIndex(index);
+        // Clicar no estágio foca a primeira atividade daquele estágio para leitura, sem alterar progresso
         const stageId = PIPELINE_STAGES[index].id;
         const firstActivityOfStage = ACTIVITIES.findIndex(a => a.stage === stageId);
         if (firstActivityOfStage !== -1) {
-            setCompletedActivities(firstActivityOfStage);
+            setSelectedActivityId(ACTIVITIES[firstActivityOfStage].id);
         }
     };
 
-    const handleActivityClick = (activityId: number) => {
+    const toggleCompletion = (activityId: number) => {
+        // Lógica de alternar conclusão apenas
         if (activityId <= completedActivities) {
+            // Desmarcar: volta para o estágio anterior
             setCompletedActivities(activityId - 1);
         } else {
+            // Marcar: avança até esta atividade
             setCompletedActivities(activityId);
         }
 
-        const activity = ACTIVITIES.find(a => a.id === activityId);
-        if (activity) {
-            const stageIndex = PIPELINE_STAGES.findIndex(s => s.id === activity.stage);
-            if (stageIndex !== -1) {
-                setCurrentStageIndex(stageIndex);
+        // Ao concluir, auto-seleciona a próxima atividade para leitura
+        if (activityId > completedActivities) {
+            const nextId = activityId + 1;
+            if (SCRIPTS[nextId]) {
+                setSelectedActivityId(nextId);
             }
         }
     };
 
-    // Calculate progress width - stops at the center of each stage dot
+    const selectActivity = (activityId: number) => {
+        setSelectedActivityId(activityId);
+        // Não altera mais o progresso visual (timeline)
+    };
+
+    // Calculate progress width based on displayStageIndex (Completed Activities)
     const totalStages = PIPELINE_STAGES.length;
-    const progressPercent = currentStageIndex === 0 ? 0 : (currentStageIndex / (totalStages - 1)) * 100;
+    const progressPercent = displayStageIndex === 0 ? 0 : (displayStageIndex / (totalStages - 1)) * 100;
 
     return (
         <div className={styles.tabContent}>
@@ -52,10 +76,11 @@ export function AtividadeTab() {
                     />
                 </div>
 
+                {/* Usando displayStageIndex para classes ativas */}
                 {PIPELINE_STAGES.map((stage, index) => (
                     <button
                         key={stage.id}
-                        className={`${styles.pipelineStage} ${index <= currentStageIndex ? styles.pipelineStageActive : ''} ${index === currentStageIndex ? styles.pipelineStageCurrent : ''}`}
+                        className={`${styles.pipelineStage} ${index <= displayStageIndex ? styles.pipelineStageActive : ''} ${index === displayStageIndex ? styles.pipelineStageCurrent : ''}`}
                         onClick={() => handleStageClick(index)}
                     >
                         <span className={styles.pipelineDot}>{index + 1}</span>
@@ -75,23 +100,28 @@ export function AtividadeTab() {
                     <div className={styles.activitiesList}>
                         {ACTIVITIES.map((activity) => {
                             const isCompleted = activity.id <= completedActivities;
-                            const isCurrent = activity.id === completedActivities + 1;
+                            // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
+                            const isSelected = activity.id === activeId;
+
+                            // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
+                            // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
 
                             return (
-                                <button
+                                <div
                                     key={activity.id}
-                                    className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isCurrent ? styles.activityCurrent : ''}`}
-                                    onClick={() => handleActivityClick(activity.id)}
+                                    className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
+                                    onClick={() => selectActivity(activity.id)}
                                 >
-                                    <span className={styles.activityCheckbox}>
-                                        {isCompleted && (
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                <polyline points="20 6 9 17 4 12" />
-                                            </svg>
-                                        )}
-                                    </span>
+                                    {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
+                                    <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
+                                        <Checkbox
+                                            checked={isCompleted}
+                                            onChange={() => toggleCompletion(activity.id)}
+                                            noSound={false}
+                                        />
+                                    </div>
                                     <span className={styles.activityLabel}>{activity.label}</span>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
@@ -103,7 +133,10 @@ export function AtividadeTab() {
                         <button className={styles.copyScriptBtn} title="Copiar Script">
                             <Copy size={14} />
                         </button>
-                        <h4 className={styles.scriptTitle}>{currentScript.title}</h4>
+                        <h4 className={styles.scriptTitle}>
+                            <span className={styles.scriptNumber}>{activeId}. </span>
+                            {currentScript.title}
+                        </h4>
                         <pre className={styles.scriptContent}>{currentScript.content}</pre>
                     </div>
                 </div>
