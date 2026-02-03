@@ -22,6 +22,8 @@ import {
     Plus
 } from 'lucide-react';
 import styles from './ContactsQuickActions.module.css';
+import { LeadService } from '../../services/LeadService';
+import { toast } from 'react-toastify';
 
 // Mock team members (TODO: fetch from API)
 const TEAM_MEMBERS = [
@@ -125,7 +127,7 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         URL.revokeObjectURL(url);
     };
 
-    const handleAddTag = () => {
+    const handleAddTag = async () => {
         const tagToAdd = isCreatingNewTag ? newTagName.trim() : selectedTag;
         if (!tagToAdd) return;
 
@@ -134,15 +136,21 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
             setAvailableTags([...availableTags, tagToAdd]);
         }
 
-        // TODO: Implement bulk add tag via API
-        console.log('Adding tag:', tagToAdd, 'to contacts:', Array.from(selectedIds));
+        try {
+            await LeadService.bulkAddTag(Array.from(selectedIds), tagToAdd, contacts);
 
-        // Update local state for selected contacts
-        selectedContacts.forEach(contact => {
-            if (!contact.tags?.includes(tagToAdd)) {
-                contact.tags = [...(contact.tags || []), tagToAdd];
-            }
-        });
+            // Update local state for selected contacts
+            selectedContacts.forEach(contact => {
+                if (!contact.tags?.includes(tagToAdd)) {
+                    contact.tags = [...(contact.tags || []), tagToAdd];
+                }
+            });
+
+            toast.success(`Tag "${tagToAdd}" adicionada a ${selectedCount} contato(s)`);
+        } catch (error) {
+            console.error('Error adding tag:', error);
+            toast.error('Erro ao adicionar tag');
+        }
 
         resetAddTagModal();
     };
@@ -154,18 +162,26 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         setIsCreatingNewTag(false);
     };
 
-    const handleRemoveTag = () => {
+    const handleRemoveTag = async () => {
         if (selectedTagsToRemove.size === 0) return;
 
-        // TODO: Implement bulk remove tag via API
-        console.log('Removing tags:', Array.from(selectedTagsToRemove), 'from contacts:', Array.from(selectedIds));
+        const tagsArray = Array.from(selectedTagsToRemove);
 
-        // Update local state for selected contacts
-        selectedContacts.forEach(contact => {
-            if (contact.tags) {
-                contact.tags = contact.tags.filter(t => !selectedTagsToRemove.has(t));
-            }
-        });
+        try {
+            await LeadService.bulkRemoveTags(Array.from(selectedIds), tagsArray, contacts);
+
+            // Update local state for selected contacts
+            selectedContacts.forEach(contact => {
+                if (contact.tags) {
+                    contact.tags = contact.tags.filter(t => !selectedTagsToRemove.has(t));
+                }
+            });
+
+            toast.success(`${tagsArray.length} tag(s) removida(s) de ${selectedCount} contato(s)`);
+        } catch (error) {
+            console.error('Error removing tags:', error);
+            toast.error('Erro ao remover tags');
+        }
 
         setShowRemoveTagModal(false);
         setSelectedTagsToRemove(new Set());

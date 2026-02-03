@@ -104,6 +104,59 @@ export const LeadService = {
     },
 
     /**
+     * Remove tags from multiple leads.
+     */
+    bulkRemoveTags: async (leadIds: string[], tagsToRemove: string[], currentContacts: Lead[]): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const tagsSet = new Set(tagsToRemove);
+
+            const updatePromises = leadIds.map(id => {
+                const contact = currentContacts.find(c => c.id === id);
+                if (!contact) return Promise.resolve();
+
+                const newTags = (contact.tags || []).filter(t => !tagsSet.has(t));
+                return updateDoc(doc(db, COLLECTION_NAME, id), {
+                    tags: newTags,
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk removing tags:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Add a tag to multiple leads.
+     */
+    bulkAddTag: async (leadIds: string[], tagToAdd: string, currentContacts: Lead[]): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+
+            const updatePromises = leadIds.map(id => {
+                const contact = currentContacts.find(c => c.id === id);
+                if (!contact) return Promise.resolve();
+
+                const currentTags = contact.tags || [];
+                if (currentTags.includes(tagToAdd)) return Promise.resolve(); // Already has tag
+
+                return updateDoc(doc(db, COLLECTION_NAME, id), {
+                    tags: [...currentTags, tagToAdd],
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk adding tag:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Sync leads from Inbox conversations.
      * Creates new leads for conversations that have a phone number but no corresponding lead in Firestore.
      */
