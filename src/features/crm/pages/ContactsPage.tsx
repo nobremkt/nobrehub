@@ -10,6 +10,7 @@ import { ContactsTable } from '../components/Contacts/ContactsTable';
 import { ContactsFilterBar } from '../components/Contacts/ContactsFilterBar';
 import { ContactsQuickActions } from '../components/Contacts/ContactsQuickActions';
 import { useContactsStore, useFilteredContacts } from '../stores/useContactsStore';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
 import { Button } from '@/design-system';
 import { Plus, Users, RefreshCw } from 'lucide-react';
 import { CreateLeadModal } from '../components/CreateLeadModal/CreateLeadModal';
@@ -28,6 +29,7 @@ export const ContactsPage: React.FC = () => {
         clearSelection,
     } = useContactsStore();
 
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
     const filteredContacts = useFilteredContacts();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -35,16 +37,18 @@ export const ContactsPage: React.FC = () => {
     // Carregar contatos reais
     useEffect(() => {
         fetchContacts();
+        fetchLossReasons();
+    }, [fetchContacts, fetchLossReasons]);
 
-        // Motivos de perda (TODO: buscar do backend se necessário)
-        setAvailableLossReasons([
-            { id: '1', name: 'Não informar', isActive: true },
-            { id: '2', name: 'Sem dinheiro', isActive: true },
-            { id: '3', name: 'Comprou produto concorrente', isActive: true },
-            { id: '4', name: 'Blacklist', isActive: true },
-            { id: '5', name: 'Sem visto', isActive: true },
-        ]);
-    }, [fetchContacts, setAvailableLossReasons]);
+    // Sync loss reasons from store to contacts store
+    useEffect(() => {
+        if (lossReasons.length > 0) {
+            const mappedReasons = lossReasons
+                .filter(r => r.active)
+                .map(r => ({ id: r.id, name: r.name, isActive: r.active }));
+            setAvailableLossReasons(mappedReasons);
+        }
+    }, [lossReasons, setAvailableLossReasons]);
 
     const handleNewContact = () => {
         setIsCreateModalOpen(true);
