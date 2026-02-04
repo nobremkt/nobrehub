@@ -20,6 +20,9 @@ import {
     Pin,
     Archive,
     ExternalLink,
+    Copy,
+    Ban,
+    RefreshCw,
     // Icons para canal
     Smartphone
 } from 'lucide-react';
@@ -293,7 +296,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     </Button>
 
                     {showOptionsDropdown && (
-                        <div className={styles.dropdown} style={{ right: 0, minWidth: '180px' }}>
+                        <div className={styles.dropdown} style={{ right: 0, minWidth: '200px' }}>
                             <button
                                 className={styles.dropdownItem}
                                 onClick={() => {
@@ -308,24 +311,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             <button
                                 className={styles.dropdownItem}
                                 onClick={() => {
-                                    if (onToggleFavorite) onToggleFavorite();
+                                    navigator.clipboard.writeText(conversation.leadPhone);
                                     setShowOptionsDropdown(false);
                                 }}
                             >
-                                <Star size={16} />
-                                <span>{conversation.isFavorite ? 'Remover favorito' : 'Favoritar'}</span>
+                                <Copy size={16} />
+                                <span>Copiar telefone</span>
                             </button>
+                            <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
                             <button
                                 className={styles.dropdownItem}
                                 onClick={() => {
-                                    if (onTogglePin) onTogglePin();
+                                    // Reopen conversation if closed
+                                    if (conversation.status === 'closed' && onCloseConversation) {
+                                        onCloseConversation();
+                                    }
                                     setShowOptionsDropdown(false);
                                 }}
+                                disabled={conversation.status === 'open'}
                             >
-                                <Pin size={16} />
-                                <span>{conversation.isPinned ? 'Desafixar' : 'Fixar no topo'}</span>
+                                <RefreshCw size={16} />
+                                <span>Reabrir conversa</span>
                             </button>
-                            <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
                             <button
                                 className={styles.dropdownItem}
                                 onClick={() => {
@@ -335,6 +342,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             >
                                 <Archive size={16} />
                                 <span>Arquivar conversa</span>
+                            </button>
+                            <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+                            <button
+                                className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                                onClick={() => {
+                                    // TODO: Implement block functionality
+                                    setShowOptionsDropdown(false);
+                                }}
+                            >
+                                <Ban size={16} />
+                                <span>Bloquear contato</span>
                             </button>
                         </div>
                     )}

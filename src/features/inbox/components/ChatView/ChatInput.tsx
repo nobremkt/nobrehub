@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
 import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar } from 'lucide-react';
 import { ScheduleMessagePopup } from './ScheduleMessagePopup';
+import { MediaPreviewModal } from './MediaPreviewModal';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
-    onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document') => void;
+    onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string) => void;
     onOpenTemplate?: () => void;
     onScheduleMessage?: (text: string, scheduledFor: Date) => void;
     disabled?: boolean;
@@ -16,6 +17,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [showSchedulePopup, setShowSchedulePopup] = useState(false);
+
+    // Media Preview State
+    const [showMediaPreview, setShowMediaPreview] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFileType, setSelectedFileType] = useState<'image' | 'video' | 'document'>('image');
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -123,11 +129,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'document') => {
         const file = e.target.files?.[0];
-        if (!file || !onSendMedia) return;
+        if (!file) return;
 
-        // Force correct type if input gave use wrong one, but usually input restrict by accept
-        onSendMedia(file, type as any);
+        // Open preview modal instead of sending directly
+        setSelectedFile(file);
+        setSelectedFileType(type);
+        setShowMediaPreview(true);
         e.target.value = '';
+    };
+
+    const handleSendMedia = (file: File, caption: string) => {
+        if (!onSendMedia) return;
+        onSendMedia(file, selectedFileType, caption || undefined);
+        setSelectedFile(null);
+        setShowMediaPreview(false);
     };
 
     const attachmentOptions: AttachmentOption[] = [
@@ -204,6 +219,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
                 onClose={() => setShowSchedulePopup(false)}
                 onSchedule={handleSchedule}
                 messagePreview={message}
+            />
+
+            <MediaPreviewModal
+                isOpen={showMediaPreview}
+                onClose={() => {
+                    setShowMediaPreview(false);
+                    setSelectedFile(null);
+                }}
+                onSend={handleSendMedia}
+                file={selectedFile}
+                fileType={selectedFileType}
             />
         </>
     );
