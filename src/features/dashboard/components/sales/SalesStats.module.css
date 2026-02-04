@@ -1,0 +1,177 @@
+/* SalesStats.module.css */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.mainGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .mainGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Left column */
+.leftColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.leftRowTop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.leftRowMiddle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.leftRowBottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+
+    .leftRowTop,
+    .leftRowMiddle,
+    .leftRowBottom {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Right column */
+.rightColumn {
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .rightColumn {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .rightColumn {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Common card styles */
+.card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardTitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Summary card styles */
+.summaryCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.summaryIcon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.summaryValue {
+    font-size: 2.5rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.summarySubtext {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+/* Seller ranking */
+.sellerItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    transition: background 0.2s;
+}
+
+.sellerItem:hover {
+    background: var(--color-surface);
+}
+
+.sellerRank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.75rem;
+}
+
+.sellerInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.sellerName {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sellerDeals {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.sellerValue {
+    font-weight: bold;
+    font-size: 0.875rem;
+    color: var(--color-success-500);
+}
+
+/* Remove Recharts focus outlines */
+:global(.recharts-wrapper:focus),
+:global(.recharts-surface:focus),
+:global(.recharts-layer:focus) {
+    outline: none !important;
+}

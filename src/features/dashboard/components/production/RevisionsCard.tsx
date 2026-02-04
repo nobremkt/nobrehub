@@ -5,7 +5,8 @@ import { useDashboardStore } from '../../stores/useDashboardStore';
 
 export function RevisionsCard() {
     const { metrics } = useDashboardStore();
-    const count = metrics?.pendingRevisions ?? 0;
+    // Show total alterations in the selected period
+    const count = metrics?.totalAlterations ?? 0;
 
     return (
         <Card variant="default" className={`${styles.card} ${styles.revisionsArea}`}>

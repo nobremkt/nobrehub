@@ -76,14 +76,21 @@ export interface ProductionMetrics {
     alterationsRanking: { name: string; count: number }[];
     totalActiveProjects: number;
     pendingRevisions: number;
+    totalAlterations: number;
     activeProducers: number;
     totalPoints: number;
-    mvpProducer: { name: string; projects: number } | null;
-    fastestProducer: { name: string; avgDays: number } | null;
-    topPointsProducer: { name: string; points: number } | null;
-    topProjectsProducer: { name: string; count: number } | null;
-    rocketProducer: { name: string; points: number; inDays: number } | null;
-    finisherProducer: { name: string; count: number; inDays: number } | null;
+    mvpProducer: {
+        name: string;
+        projects: number;
+        points: number;
+        avgDays: number;
+        approvalRate: number;
+        photoUrl?: string
+    } | null;
+    topPointsProducer: { name: string; points: number; photoUrl?: string } | null;
+    topProjectsProducer: { name: string; count: number; photoUrl?: string } | null;
+    rocketProducer: { name: string; points: number; inDays: number; photoUrl?: string } | null;
+    finisherProducer: { name: string; count: number; inDays: number; photoUrl?: string } | null;
 }
 
 /** Sales/CRM metrics */
@@ -169,6 +176,66 @@ function getDateRange(filter: DateFilter): { start: Date; end: Date } {
     }
 }
 
+/** 
+ * Get date range for GOAL calculation (FULL period, not "up to today")
+ * This is separate from getDateRange which is used for filtering data
+ */
+function getGoalDateRange(filter: DateFilter): { start: Date; end: Date } {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (filter) {
+        case 'today':
+            return { start: today, end: today };
+        case 'yesterday': {
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return { start: yesterday, end: yesterday };
+        }
+        case 'week': {
+            // Current week: Monday to Friday (5 workdays)
+            const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const monday = new Date(today);
+            // Go back to Monday of current week
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            monday.setDate(today.getDate() - daysFromMonday);
+
+            const friday = new Date(monday);
+            friday.setDate(monday.getDate() + 4);
+
+            return { start: monday, end: friday };
+        }
+        case 'month': {
+            // Full month: first day to last day
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of month
+            return { start: monthStart, end: monthEnd };
+        }
+        case 'year': {
+            // Full year: Jan 1 to Dec 31
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            const yearEnd = new Date(now.getFullYear(), 11, 31);
+            return { start: yearStart, end: yearEnd };
+        }
+        case 'quarter': {
+            // Current quarter
+            const currentMonth = now.getMonth();
+            const quarterStartMonth = Math.floor(currentMonth / 3) * 3;
+            const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
+            const quarterEnd = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+            return { start: quarterStart, end: quarterEnd };
+        }
+        case 'janeiro_2026': {
+            // Fixed range for imported historical data
+            const jan2026Start = new Date(2026, 0, 1);
+            const jan2026End = new Date(2026, 0, 31);
+            return { start: jan2026Start, end: jan2026End };
+        }
+        default:
+            return { start: today, end: today };
+    }
+}
+
 /** Parse date from various formats */
 function parseDate(value: unknown): Date | undefined {
     if (!value) return undefined;
@@ -181,6 +248,7 @@ function parseDate(value: unknown): Date | undefined {
 /** Collaborators data with name map and producer count */
 interface CollaboratorsData {
     nameMap: Record<string, string>;
+    photoMap: Record<string, string>;
     producerCount: number;
 }
 
@@ -197,14 +265,17 @@ async function getCollaboratorsData(): Promise<CollaboratorsData> {
     const snapshot = await getDocs(collabRef);
 
     const nameMap: Record<string, string> = {};
+    const photoMap: Record<string, string> = {};
     let producerCount = 0;
 
     snapshot.docs.forEach(docSnap => {
         const data = docSnap.data();
         const name = data.name || data.displayName || 'Desconhecido';
+        const photoUrl = data.photoUrl || '';
 
-        // Add to name map (all collaborators)
+        // Add to maps (all collaborators)
         nameMap[docSnap.id] = name;
+        photoMap[docSnap.id] = photoUrl;
 
         // Count producers: sectorId = Produção AND roleId != Líder
         const sectorId = data.sectorId || '';
@@ -215,7 +286,7 @@ async function getCollaboratorsData(): Promise<CollaboratorsData> {
         }
     });
 
-    return { nameMap, producerCount };
+    return { nameMap, photoMap, producerCount };
 }
 
 /** Goal configuration interface */
@@ -254,17 +325,10 @@ async function getGoalConfig(): Promise<GoalConfig> {
 }
 
 /** 
- * Calculate actual workdays in a period, excluding non-working days and holidays 
- * @param startDate - Start of period
- * @param endDate - End of period
- * @param workdaysPerWeek - How many days the team works per week (5 = Mon-Fri, 6 = Mon-Sat)
- * Returns the number of workdays (excluding holidays)
+ * Calculate actual workdays in a period, excluding weekends and holidays 
+ * Returns the number of workdays (Mon-Fri, excluding holidays)
  */
-async function getWorkdaysInPeriod(
-    startDate: Date,
-    endDate: Date,
-    workdaysPerWeek: number = 5
-): Promise<number> {
+async function getWorkdaysInPeriod(startDate: Date, endDate: Date): Promise<number> {
     // Get holidays for the years covered by the period
     const startYear = startDate.getFullYear();
     const endYear = endDate.getFullYear();
@@ -287,19 +351,12 @@ async function getWorkdaysInPeriod(
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    // Determine max day of week based on config
-    // Sunday = 0, Monday = 1, ... Saturday = 6
-    // If workdaysPerWeek = 5 -> Mon-Fri (1-5)
-    // If workdaysPerWeek = 6 -> Mon-Sat (1-6)
-    const maxDayOfWeek = workdaysPerWeek >= 6 ? 6 : 5;
-
     while (current <= end) {
         const dayOfWeek = current.getDay();
         const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD
 
-        // Check if it's a workday (Mon=1 to maxDay) and not a holiday
-        // Sunday (0) is always a day off
-        if (dayOfWeek >= 1 && dayOfWeek <= maxDayOfWeek && !holidayDates.has(dateStr)) {
+        // Check if it's a weekday (Mon=1 to Fri=5) and not a holiday
+        if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidayDates.has(dateStr)) {
             workdays++;
         }
 
@@ -322,12 +379,12 @@ async function calculateGoalForPeriod(
 ): Promise<number> {
     // For "today" or "yesterday", check if it's a workday
     if (period === 'today' || period === 'yesterday') {
-        const workdays = await getWorkdaysInPeriod(startDate, endDate, config.workdaysPerWeek);
+        const workdays = await getWorkdaysInPeriod(startDate, endDate);
         return workdays > 0 ? config.dailyProductionGoal : 0;
     }
 
-    // For other periods, calculate actual workdays using config
-    const workdays = await getWorkdaysInPeriod(startDate, endDate, config.workdaysPerWeek);
+    // For other periods, calculate actual workdays
+    const workdays = await getWorkdaysInPeriod(startDate, endDate);
     return config.dailyProductionGoal * workdays;
 }
 
@@ -338,8 +395,8 @@ export const DashboardAnalyticsService = {
     getMetrics: async (filter: DateFilter = 'month'): Promise<DashboardMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Fetch collaborators for name resolution and producer count
-        const { nameMap: collaboratorsMap, producerCount } = await getCollaboratorsData();
+        // Fetch collaborators for name resolution, photos, and producer count
+        const { nameMap: collaboratorsMap, photoMap: collaboratorsPhotoMap, producerCount } = await getCollaboratorsData();
 
         // Fetch all projects
         const projectsRef = collection(db, PROJECTS_COLLECTION);
@@ -393,8 +450,10 @@ export const DashboardAnalyticsService = {
 
         // Fetch goal from Firebase (individual goal per producer)
         const goalConfig = await getGoalConfig();
-        // Team goal = Individual goal × Total producers × Workdays in period (excluding holidays)
-        const individualGoalForPeriod = await calculateGoalForPeriod(goalConfig, filter, start, end);
+        // Team goal = Individual goal × Total producers × Workdays in FULL period (excluding holidays)
+        // Use getGoalDateRange to get the FULL period (entire week/month) not "up to today"
+        const goalPeriod = getGoalDateRange(filter);
+        const individualGoalForPeriod = await calculateGoalForPeriod(goalConfig, filter, goalPeriod.start, goalPeriod.end);
         const goalTarget = individualGoalForPeriod * producersForGoal;
         const goalPercentage = goalTarget > 0 ? Math.round((totalPointsInPeriod / goalTarget) * 100) : 0;
         const goalStatus: 'below' | 'on-track' | 'above' =
@@ -412,11 +471,11 @@ export const DashboardAnalyticsService = {
             color: CATEGORY_COLORS[name] || CATEGORY_COLORS['Outro']
         }));
 
-        // Producer ranking by POINTS
-        const producerPointsMap: Record<string, { name: string; points: number; count: number }> = {};
+        // Producer ranking by POINTS (include id for photo lookup)
+        const producerPointsMap: Record<string, { id: string; name: string; points: number; count: number }> = {};
         deliveredProjects.forEach(p => {
             if (!producerPointsMap[p.producerId]) {
-                producerPointsMap[p.producerId] = { name: p.producerName || 'Desconhecido', points: 0, count: 0 };
+                producerPointsMap[p.producerId] = { id: p.producerId, name: p.producerName || 'Desconhecido', points: 0, count: 0 };
             }
             producerPointsMap[p.producerId].points += p.points;
             producerPointsMap[p.producerId].count += 1;
@@ -441,53 +500,137 @@ export const DashboardAnalyticsService = {
         const activeProjects = projects.filter(p => !p.deliveredAt && !p.isHistorical);
         const totalActiveProjects = activeProjects.length;
         const pendingRevisions = projects.filter(p => p.status === 'a-revisar').length;
+        // Total alterations in the period
+        const totalAlterations = alteracoesInPeriod.length;
         // Use total registered producers from database for consistency
         const activeProducers = producersForGoal;
 
-        // Highlights - MVP (most points)
-        const mvpEntry = producerRanking[0];
-        const mvpProducer = mvpEntry
-            ? { name: mvpEntry.name, projects: mvpEntry.count }
-            : null;
+        // Calculate per-producer delivery times
+        const producerDeliveryTimes: Record<string, { id: string; name: string; totalDays: number; deliveryCount: number }> = {};
+        deliveredProjects.forEach(p => {
+            if (p.deliveredAt && p.createdAt) {
+                const days = Math.max(0, Math.ceil((p.deliveredAt.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+                if (!producerDeliveryTimes[p.producerId]) {
+                    producerDeliveryTimes[p.producerId] = { id: p.producerId, name: p.producerName || 'Desconhecido', totalDays: 0, deliveryCount: 0 };
+                }
+                producerDeliveryTimes[p.producerId].totalDays += days;
+                producerDeliveryTimes[p.producerId].deliveryCount += 1;
+            }
+        });
 
-        // Top points producer
+        // Calculate per-producer alterations for approval rate
+        const producerAlterations: Record<string, number> = {};
+        alteracoesInPeriod.forEach(a => {
+            producerAlterations[a.producerId] = (producerAlterations[a.producerId] || 0) + 1;
+        });
+
+        // Highlights - MVP (most points) with all stats
+        const mvpEntry = producerRanking[0];
+        let mvpProducer = null;
+        if (mvpEntry) {
+            const mvpDeliveryData = producerDeliveryTimes[mvpEntry.id];
+            const mvpAlterations = producerAlterations[mvpEntry.id] || 0;
+            const mvpAvgDays = mvpDeliveryData && mvpDeliveryData.deliveryCount > 0
+                ? Math.round(mvpDeliveryData.totalDays / mvpDeliveryData.deliveryCount)
+                : 0;
+            // ApprovalRate = projects / (projects + alterations) * 100
+            const totalProductions = mvpEntry.count + mvpAlterations;
+            const mvpApprovalRate = totalProductions > 0
+                ? Math.round((mvpEntry.count / totalProductions) * 100)
+                : 100;
+
+            mvpProducer = {
+                name: mvpEntry.name,
+                projects: mvpEntry.count,
+                points: mvpEntry.points,
+                avgDays: mvpAvgDays,
+                approvalRate: mvpApprovalRate,
+                photoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined
+            };
+        }
+
+        // Top points producer (same as MVP for now)
         const topPointsProducer = mvpEntry
-            ? { name: mvpEntry.name, points: mvpEntry.points }
+            ? { name: mvpEntry.name, points: mvpEntry.points, photoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined }
             : null;
 
         // Top projects producer (by count)
         const topProjectsEntry = Object.values(producerPointsMap)
             .sort((a, b) => b.count - a.count)[0];
         const topProjectsProducer = topProjectsEntry
-            ? { name: topProjectsEntry.name, count: topProjectsEntry.count }
+            ? { name: topProjectsEntry.name, count: topProjectsEntry.count, photoUrl: collaboratorsPhotoMap[topProjectsEntry.id] || undefined }
             : null;
 
-        // Fastest producer (lowest avg delivery time)
-        const producerDeliveryTimes: Record<string, { name: string; totalDays: number; count: number }> = {};
-        deliveredProjects.forEach(p => {
-            if (p.deliveredAt && p.createdAt) {
-                const days = Math.max(0, Math.ceil((p.deliveredAt.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)));
-                if (!producerDeliveryTimes[p.producerId]) {
-                    producerDeliveryTimes[p.producerId] = { name: p.producerName || 'Desconhecido', totalDays: 0, count: 0 };
+        // Rocket (record for most POINTS in a SINGLE day - based on MONTH of the selected period)
+        // Group deliveries by producer + date to find daily records
+        const dailyPointsRecords: Record<string, { id: string; name: string; date: string; points: number }> = {};
+
+        // Get all delivered projects for the MONTH of the selected period (based on filter's start date)
+        const filterMonthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+        const filterMonthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
+
+        const monthProjects = projects.filter((p: InternalProject) => {
+            const deliveryDate = p.deliveredAt;
+            return deliveryDate && deliveryDate >= filterMonthStart && deliveryDate <= filterMonthEnd;
+        });
+
+        monthProjects.forEach(p => {
+            if (p.deliveredAt) {
+                const dateKey = p.deliveredAt.toISOString().split('T')[0]; // YYYY-MM-DD
+                const recordKey = `${p.producerId}_${dateKey}`;
+
+                if (!dailyPointsRecords[recordKey]) {
+                    dailyPointsRecords[recordKey] = {
+                        id: p.producerId,
+                        name: p.producerName || 'Desconhecido',
+                        date: dateKey,
+                        points: 0
+                    };
                 }
-                producerDeliveryTimes[p.producerId].totalDays += days;
-                producerDeliveryTimes[p.producerId].count += 1;
+                dailyPointsRecords[recordKey].points += p.points;
             }
         });
-        const fastestProducerEntry = Object.values(producerDeliveryTimes)
-            .filter(p => p.count > 0)
-            .map(p => ({ name: p.name, avgDays: Math.round(p.totalDays / p.count) }))
-            .sort((a, b) => a.avgDays - b.avgDays)[0];
-        const fastestProducer = fastestProducerEntry || null;
 
-        // Rocket (most points in shortest time)
-        const rocketProducer = topPointsProducer && fastestProducer
-            ? { name: topPointsProducer.name, points: topPointsProducer.points, inDays: fastestProducer.avgDays || 1 }
+        const rocketEntry = Object.values(dailyPointsRecords)
+            .sort((a, b) => b.points - a.points)[0];
+        const rocketProducer = rocketEntry
+            ? {
+                name: rocketEntry.name,
+                points: rocketEntry.points,
+                inDays: 1, // It's a single day record
+                photoUrl: collaboratorsPhotoMap[rocketEntry.id] || undefined
+            }
             : null;
 
-        // Finisher (most projects in shortest time)
-        const finisherProducer = topProjectsProducer
-            ? { name: topProjectsProducer.name, count: topProjectsProducer.count, inDays: 1 }
+        // Finisher (record for most PROJECTS delivered in a SINGLE day)
+        const dailyProjectRecords: Record<string, { id: string; name: string; date: string; count: number }> = {};
+
+        monthProjects.forEach(p => {
+            if (p.deliveredAt) {
+                const dateKey = p.deliveredAt.toISOString().split('T')[0];
+                const recordKey = `${p.producerId}_${dateKey}`;
+
+                if (!dailyProjectRecords[recordKey]) {
+                    dailyProjectRecords[recordKey] = {
+                        id: p.producerId,
+                        name: p.producerName || 'Desconhecido',
+                        date: dateKey,
+                        count: 0
+                    };
+                }
+                dailyProjectRecords[recordKey].count += 1;
+            }
+        });
+
+        const finisherEntry = Object.values(dailyProjectRecords)
+            .sort((a, b) => b.count - a.count)[0];
+        const finisherProducer = finisherEntry
+            ? {
+                name: finisherEntry.name,
+                count: finisherEntry.count,
+                inDays: 1, // It's a single day record
+                photoUrl: collaboratorsPhotoMap[finisherEntry.id] || undefined
+            }
             : null;
 
         return {
@@ -500,10 +643,10 @@ export const DashboardAnalyticsService = {
             alterationsRanking,
             totalActiveProjects,
             pendingRevisions,
+            totalAlterations,
             activeProducers,
             totalPoints: totalPointsInPeriod,
             mvpProducer,
-            fastestProducer,
             topPointsProducer,
             topProjectsProducer,
             rocketProducer,
@@ -639,7 +782,7 @@ export const DashboardAnalyticsService = {
             totalProjects: production.totalActiveProjects + production.deliveredProjects,
             totalDelivered: production.deliveredProjects,
             conversionRate: sales.conversionRate,
-            avgDeliveryTime: production.fastestProducer?.avgDays || 0
+            avgDeliveryTime: production.mvpProducer?.avgDays || 0
         };
 
         return {
