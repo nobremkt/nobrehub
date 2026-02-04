@@ -231,6 +231,19 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pinnedIcon {
+    color: var(--color-primary-500);
+    flex-shrink: 0;
+}
+
+.favoriteIcon {
+    color: #fbbf24;
+    flex-shrink: 0;
 }
 
 .time {

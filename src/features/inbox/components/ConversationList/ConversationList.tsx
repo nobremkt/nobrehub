@@ -149,9 +149,10 @@ export const ConversationList: React.FC = () => {
                 <button
                     className={`${styles.filterTab} ${assignmentFilter === 'unassigned' && !showFavoritesOnly ? styles.active : ''}`}
                     onClick={() => { setAssignmentFilter('unassigned'); setShowFavoritesOnly(false); }}
+                    title="Conversas sem atribuição"
                 >
                     <Users size={14} />
-                    Não atribuídos
+                    Novos
                     {unassignedCount > 0 && <span className={styles.filterCount}>{unassignedCount}</span>}
                 </button>
 
@@ -186,7 +187,7 @@ export const ConversationList: React.FC = () => {
                                 : assignmentFilter === 'mine'
                                     ? 'Nenhuma conversa atribuída a você'
                                     : assignmentFilter === 'unassigned'
-                                        ? 'Nenhuma conversa não atribuída'
+                                        ? 'Nenhuma conversa nova'
                                         : 'Nenhuma conversa encontrada'
                             }
                         </span>

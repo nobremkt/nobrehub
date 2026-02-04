@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { Conversation } from '../../types';
 import { formatRelativeTime, getInitials } from '@/utils';
+import { Pin, Star } from 'lucide-react';
 import styles from './ConversationList.module.css';
 
 interface ConversationItemProps {
@@ -40,7 +41,17 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 
             <div className={styles.content}>
                 <div className={styles.rowTop}>
-                    <span className={styles.name}>{conversation.leadName}</span>
+                    <span className={styles.name}>
+                        {/* Pinned indicator */}
+                        {conversation.isPinned && (
+                            <Pin size={12} className={styles.pinnedIcon} />
+                        )}
+                        {conversation.leadName}
+                        {/* Favorite indicator */}
+                        {conversation.isFavorite && (
+                            <Star size={12} className={styles.favoriteIcon} fill="currentColor" />
+                        )}
+                    </span>
                     <span className={styles.time}>{lastMessageTime}</span>
                 </div>
 
