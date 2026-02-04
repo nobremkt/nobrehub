@@ -18,6 +18,8 @@ import {
     MessageCircle,
     Star,
     Pin,
+    Archive,
+    ExternalLink,
     // Icons para canal
     Smartphone
 } from 'lucide-react';
@@ -59,6 +61,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const { sectors, fetchSectors } = useSectorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+    const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
     const teamStatus = useTeamStatus();
 
     useEffect(() => {
@@ -279,9 +282,63 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     <Phone size={18} />
                 </Button>
 
-                <Button variant="ghost" size="sm">
-                    <MoreVertical size={18} />
-                </Button>
+                <div style={{ position: 'relative' }}>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
+                        title="Mais opções"
+                    >
+                        <MoreVertical size={18} />
+                    </Button>
+
+                    {showOptionsDropdown && (
+                        <div className={styles.dropdown} style={{ right: 0, minWidth: '180px' }}>
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    const phone = conversation.leadPhone.replace(/\D/g, '');
+                                    window.open(`https://wa.me/${phone}`, '_blank');
+                                    setShowOptionsDropdown(false);
+                                }}
+                            >
+                                <ExternalLink size={16} />
+                                <span>Abrir no WhatsApp</span>
+                            </button>
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    if (onToggleFavorite) onToggleFavorite();
+                                    setShowOptionsDropdown(false);
+                                }}
+                            >
+                                <Star size={16} />
+                                <span>{conversation.isFavorite ? 'Remover favorito' : 'Favoritar'}</span>
+                            </button>
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    if (onTogglePin) onTogglePin();
+                                    setShowOptionsDropdown(false);
+                                }}
+                            >
+                                <Pin size={16} />
+                                <span>{conversation.isPinned ? 'Desafixar' : 'Fixar no topo'}</span>
+                            </button>
+                            <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+                            <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                    if (onCloseConversation) onCloseConversation();
+                                    setShowOptionsDropdown(false);
+                                }}
+                            >
+                                <Archive size={16} />
+                                <span>Arquivar conversa</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

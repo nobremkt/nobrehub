@@ -1,11 +1,4 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - PROFILE PANEL (Painel Direito do Inbox)
- * Painel de detalhes com Accordion colapsável
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { Tag, PhoneInput, Dropdown, Modal, Button } from '@/design-system';
 import { formatPhone } from '@/utils';
@@ -32,7 +25,10 @@ import {
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
+import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
+import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { toast } from 'react-toastify';
 
 interface AccordionSectionProps {
@@ -79,7 +75,9 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 export const ProfilePanel: React.FC = () => {
     const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
+    const { sectors, fetchSectors } = useSectorStore();
     const { lossReasons, fetchLossReasons } = useLossReasonStore();
+    const teamStatus = useTeamStatus();
 
     // Inline Editing State
     const [editingField, setEditingField] = useState<string | null>(null);
@@ -89,21 +87,48 @@ export const ProfilePanel: React.FC = () => {
     const [showLossModal, setShowLossModal] = useState(false);
     const [selectedLossReason, setSelectedLossReason] = useState<string>('');
 
+    // Transfer Modal State
+    const [showTransferModal, setShowTransferModal] = useState(false);
+
     // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
     const LOSS_REASONS = [...lossReasons]
         .filter(r => r.active)
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
         .map(r => ({ value: r.id, label: r.name }));
 
-    // Load collaborators and loss reasons on mount
+    // Filter: only sales sector + online/idle
+    const salesCollaborators = useMemo(() => {
+        const salesSectorIds = sectors
+            .filter(s => s.name.toLowerCase().includes('vendas'))
+            .map(s => s.id);
+
+        return collaborators.filter(member => {
+            if (!member.active || !salesSectorIds.includes(member.sectorId || '')) {
+                return false;
+            }
+            const status = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
+            return status === 'online' || status === 'idle';
+        });
+    }, [collaborators, sectors, teamStatus]);
+
+    // Load collaborators, sectors and loss reasons on mount
     React.useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
+        if (sectors.length === 0) fetchSectors();
         if (lossReasons.length === 0) fetchLossReasons();
-    }, [fetchCollaborators, collaborators.length, fetchLossReasons, lossReasons.length]);
+    }, [fetchCollaborators, collaborators.length, fetchSectors, sectors.length, fetchLossReasons, lossReasons.length]);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
 
     const assignedMember = conversation ? collaborators.find(c => c.id === conversation.assignedTo) : null;
+
+    const handleTransfer = (userId: string) => {
+        if (!selectedConversationId) return;
+        updateConversationDetails(selectedConversationId, { assignedTo: userId });
+        setShowTransferModal(false);
+        const member = collaborators.find(c => c.id === userId);
+        toast.success(`Transferido para ${member?.name || 'vendedor'}`);
+    };
 
     if (!selectedConversationId || !conversation) {
         return (
@@ -269,21 +294,24 @@ export const ProfilePanel: React.FC = () => {
                 </button>
                 <button
                     className={styles.actionButton}
-                    onClick={() => {/* TODO: Abrir WhatsApp Web */ }}
+                    onClick={() => {
+                        const phone = conversation.leadPhone.replace(/\D/g, '');
+                        window.open(`https://wa.me/${phone}`, '_blank');
+                    }}
                     title="WhatsApp"
                 >
                     <MessageSquare size={18} />
                 </button>
                 <button
                     className={styles.actionButton}
-                    onClick={() => {/* TODO: Notificar */ }}
+                    onClick={() => toast.info('Função de notificações em breve')}
                     title="Notificar"
                 >
                     <Bell size={18} />
                 </button>
                 <button
                     className={styles.actionButton}
-                    onClick={() => {/* TODO: Transferir */ }}
+                    onClick={() => setShowTransferModal(true)}
                     title="Transferir"
                 >
                     <ArrowRightLeft size={18} />
@@ -526,6 +554,92 @@ export const ProfilePanel: React.FC = () => {
                             {reason.label}
                         </Button>
                     ))}
+                </div>
+            </Modal>
+
+            {/* Modal de Transferência */}
+            <Modal
+                isOpen={showTransferModal}
+                onClose={() => setShowTransferModal(false)}
+                title="Transferir Conversa"
+                size="auto"
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o vendedor para transferir esta conversa:
+                </p>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    maxHeight: '300px',
+                    overflowY: 'auto'
+                }}>
+                    {salesCollaborators.length === 0 ? (
+                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '20px' }}>
+                            Nenhum vendedor disponível no momento
+                        </p>
+                    ) : (
+                        salesCollaborators.map(member => {
+                            const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
+                            const isCurrentAssigned = member.id === conversation.assignedTo;
+
+                            return (
+                                <button
+                                    key={member.id}
+                                    onClick={() => handleTransfer(member.id)}
+                                    disabled={isCurrentAssigned}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '12px',
+                                        background: isCurrentAssigned ? 'var(--color-primary-500)' : 'var(--color-surface)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        cursor: isCurrentAssigned ? 'not-allowed' : 'pointer',
+                                        opacity: isCurrentAssigned ? 0.7 : 1,
+                                        transition: 'all 0.15s ease',
+                                        width: '100%',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '50%',
+                                        background: 'var(--color-primary-500)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontWeight: 600,
+                                        fontSize: '14px',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        {member.photoUrl ? (
+                                            <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            getInitials(member.name)
+                                        )}
+                                        <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
+                                            <UserStatusIndicator status={userStatus} size="sm" />
+                                        </div>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                                            {member.name}
+                                        </div>
+                                        {isCurrentAssigned && (
+                                            <div style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
+                                                Atribuído atualmente
+                                            </div>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
                 </div>
             </Modal>
         </div>
