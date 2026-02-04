@@ -5,7 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Conversation } from '../../types';
 import { Button, Tag } from '@/design-system';
 import {
@@ -24,6 +24,7 @@ import {
 import { getInitials, formatPhone } from '@/utils';
 import styles from './ChatHeader.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 
@@ -56,17 +57,38 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     onTogglePin
 }) => {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
+    const { sectors, fetchSectors } = useSectorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
     const teamStatus = useTeamStatus();
 
     useEffect(() => {
-        // Load collaborators if not loaded
+        // Load collaborators and sectors if not loaded
         if (collaborators.length === 0) {
             fetchCollaborators();
         }
-    }, [fetchCollaborators]);
+        if (sectors.length === 0) {
+            fetchSectors();
+        }
+    }, [fetchCollaborators, fetchSectors]);
 
     const assignedMember = collaborators.find(m => m.id === conversation.assignedTo);
+
+    // Filter: only sales sector (Vendas) + online or away
+    const salesCollaborators = useMemo(() => {
+        const salesSectorIds = sectors
+            .filter(s => s.name.toLowerCase().includes('vendas'))
+            .map(s => s.id);
+
+        return collaborators.filter(member => {
+            // Must be active and in sales sector
+            if (!member.active || !salesSectorIds.includes(member.sectorId || '')) {
+                return false;
+            }
+            // Must be online or away (not offline)
+            const status = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
+            return status === 'online' || status === 'idle';
+        });
+    }, [collaborators, sectors, teamStatus]);
 
     const handleAssign = (userId: string | null) => {
         if (onAssign) {
@@ -193,44 +215,52 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                                 </button>
                             </div>
 
-                            {/* Remove assignment */}
-                            {conversation.assignedTo && (
-                                <button
-                                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                                    onClick={() => handleAssign(null)}
-                                >
-                                    <X size={16} />
-                                    <span>Remover atribuição</span>
-                                </button>
-                            )}
-
-                            {/* Team members */}
-                            {collaborators.map(member => {
-                                const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
-
-                                return (
+                            <div className={styles.dropdownList}>
+                                {/* Remove assignment */}
+                                {conversation.assignedTo && (
                                     <button
-                                        key={member.id}
-                                        className={`${styles.dropdownItem} ${member.id === conversation.assignedTo ? styles.activeItem : ''}`}
-                                        onClick={() => handleAssign(member.id)}
+                                        className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                                        onClick={() => handleAssign(null)}
                                     >
-                                        <div className={styles.memberAvatar} style={{ position: 'relative' }}>
-                                            {member.photoUrl ? (
-                                                <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            ) : (
-                                                member.name.charAt(0)
-                                            )}
-                                            <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
-                                                <UserStatusIndicator status={userStatus} size="sm" />
-                                            </div>
-                                        </div>
-                                        <span>{member.name}</span>
-                                        {member.id === conversation.assignedTo && (
-                                            <CheckCircle size={16} className={styles.checkIcon} />
-                                        )}
+                                        <X size={16} />
+                                        <span>Remover atribuição</span>
                                     </button>
-                                )
-                            })}
+                                )}
+
+                                {/* Sales team members (online/idle only) */}
+                                {salesCollaborators.length === 0 ? (
+                                    <div className={styles.dropdownItem} style={{ color: 'var(--color-text-muted)', cursor: 'default' }}>
+                                        <span>Nenhum vendedor disponível</span>
+                                    </div>
+                                ) : (
+                                    salesCollaborators.map(member => {
+                                        const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
+
+                                        return (
+                                            <button
+                                                key={member.id}
+                                                className={`${styles.dropdownItem} ${member.id === conversation.assignedTo ? styles.activeItem : ''}`}
+                                                onClick={() => handleAssign(member.id)}
+                                            >
+                                                <div className={styles.memberAvatar} style={{ position: 'relative' }}>
+                                                    {member.photoUrl ? (
+                                                        <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        member.name.charAt(0)
+                                                    )}
+                                                    <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
+                                                        <UserStatusIndicator status={userStatus} size="sm" />
+                                                    </div>
+                                                </div>
+                                                <span>{member.name}</span>
+                                                {member.id === conversation.assignedTo && (
+                                                    <CheckCircle size={16} className={styles.checkIcon} />
+                                                )}
+                                            </button>
+                                        )
+                                    })
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
