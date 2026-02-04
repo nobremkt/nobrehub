@@ -105,15 +105,32 @@
 /* Favorite Toggle - positioned at end */
 .favoriteToggle {
     margin-left: auto;
+    flex-shrink: 0;
 }
 
-.favoriteToggle.active {
-    background: #fbbf24;
-    color: #1a1a1a;
+.favoriteActive {
+    background: #fbbf24 !important;
+    color: #1a1a1a !important;
 }
 
-.favoriteToggle.active:hover {
-    background: #f59e0b;
+.favoriteActive:hover {
+    background: #f59e0b !important;
+}
+
+/* Section Headers & Dividers */
+.sectionHeader {
+    padding: var(--spacing-2) var(--spacing-4);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sectionDivider {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--spacing-2) var(--spacing-4);
 }
 
 /* Lista de Conversas */
@@ -222,6 +239,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-2);
 }
 
 .name {
@@ -234,6 +252,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
 }
 
 .pinnedIcon {
@@ -251,6 +271,7 @@
     color: var(--color-text-muted);
     white-space: nowrap;
     font-weight: 500;
+    flex-shrink: 0;
 }
 
 .rowBottom {

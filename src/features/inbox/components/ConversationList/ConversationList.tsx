@@ -75,7 +75,7 @@ export const ConversationList: React.FC = () => {
                 if (c.assignedTo) return false;
             }
 
-            // Filter by favorites
+            // Filter by favorites (overlay - applies on top of assignment filter)
             if (showFavoritesOnly && !c.isFavorite) return false;
 
             // Filter by Query
@@ -91,6 +91,15 @@ export const ConversationList: React.FC = () => {
         });
     }, [sortedConversations, assignmentFilter, currentCollaboratorId, showFavoritesOnly, filters.query]);
 
+    // Separate pinned from unpinned for visual division
+    const pinnedConversations = useMemo(() => {
+        return filteredConversations.filter(c => c.isPinned);
+    }, [filteredConversations]);
+
+    const unpinnedConversations = useMemo(() => {
+        return filteredConversations.filter(c => !c.isPinned);
+    }, [filteredConversations]);
+
     // Count by assignment
     const mineCount = useMemo(() => {
         if (!currentCollaboratorId) return 0;
@@ -101,7 +110,8 @@ export const ConversationList: React.FC = () => {
         return conversations.filter(c => !c.assignedTo).length;
     }, [conversations]);
 
-    const favoritesCount = useMemo(() => {
+    // Total favorites count - for badge display
+    const totalFavoritesCount = useMemo(() => {
         return conversations.filter(c => c.isFavorite).length;
     }, [conversations]);
 
@@ -133,22 +143,22 @@ export const ConversationList: React.FC = () => {
             {/* Filter Tabs */}
             <div className={styles.filterTabs}>
                 <button
-                    className={`${styles.filterTab} ${assignmentFilter === 'all' && !showFavoritesOnly ? styles.active : ''}`}
-                    onClick={() => { setAssignmentFilter('all'); setShowFavoritesOnly(false); }}
+                    className={`${styles.filterTab} ${assignmentFilter === 'all' ? styles.active : ''}`}
+                    onClick={() => setAssignmentFilter('all')}
                 >
                     Todos
                 </button>
                 <button
-                    className={`${styles.filterTab} ${assignmentFilter === 'mine' && !showFavoritesOnly ? styles.active : ''}`}
-                    onClick={() => { setAssignmentFilter('mine'); setShowFavoritesOnly(false); }}
+                    className={`${styles.filterTab} ${assignmentFilter === 'mine' ? styles.active : ''}`}
+                    onClick={() => setAssignmentFilter('mine')}
                 >
                     <User size={14} />
                     Meus
                     {mineCount > 0 && <span className={styles.filterCount}>{mineCount}</span>}
                 </button>
                 <button
-                    className={`${styles.filterTab} ${assignmentFilter === 'unassigned' && !showFavoritesOnly ? styles.active : ''}`}
-                    onClick={() => { setAssignmentFilter('unassigned'); setShowFavoritesOnly(false); }}
+                    className={`${styles.filterTab} ${assignmentFilter === 'unassigned' ? styles.active : ''}`}
+                    onClick={() => setAssignmentFilter('unassigned')}
                     title="Conversas sem atribuição"
                 >
                     <Users size={14} />
@@ -156,28 +166,51 @@ export const ConversationList: React.FC = () => {
                     {unassignedCount > 0 && <span className={styles.filterCount}>{unassignedCount}</span>}
                 </button>
 
-                {/* Favorites Toggle */}
+                {/* Favorites Toggle - overlay filter, doesn't change assignment tab */}
                 <button
-                    className={`${styles.filterTab} ${styles.favoriteToggle} ${showFavoritesOnly ? styles.active : ''}`}
+                    className={`${styles.filterTab} ${styles.favoriteToggle} ${showFavoritesOnly ? styles.favoriteActive : ''}`}
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    title={showFavoritesOnly ? 'Mostrar todos' : 'Mostrar favoritos'}
+                    title={showFavoritesOnly ? 'Mostrar todos' : 'Filtrar favoritos'}
                 >
                     <Star size={14} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
-                    {favoritesCount > 0 && showFavoritesOnly && <span className={styles.filterCount}>{favoritesCount}</span>}
+                    {totalFavoritesCount > 0 && <span className={styles.filterCount}>{totalFavoritesCount}</span>}
                 </button>
             </div>
 
             {/* Conversation List */}
             <div className={styles.list}>
                 {filteredConversations.length > 0 ? (
-                    filteredConversations.map(conv => (
-                        <ConversationItem
-                            key={conv.id}
-                            conversation={conv}
-                            isActive={selectedConversationId === conv.id}
-                            onClick={() => selectConversation(conv.id)}
-                        />
-                    ))
+                    <>
+                        {/* Pinned Section */}
+                        {pinnedConversations.length > 0 && (
+                            <>
+                                <div className={styles.sectionHeader}>
+                                    📌 Fixados
+                                </div>
+                                {pinnedConversations.map(conv => (
+                                    <ConversationItem
+                                        key={conv.id}
+                                        conversation={conv}
+                                        isActive={selectedConversationId === conv.id}
+                                        onClick={() => selectConversation(conv.id)}
+                                    />
+                                ))}
+                                {unpinnedConversations.length > 0 && (
+                                    <div className={styles.sectionDivider} />
+                                )}
+                            </>
+                        )}
+
+                        {/* Regular Section */}
+                        {unpinnedConversations.map(conv => (
+                            <ConversationItem
+                                key={conv.id}
+                                conversation={conv}
+                                isActive={selectedConversationId === conv.id}
+                                onClick={() => selectConversation(conv.id)}
+                            />
+                        ))}
+                    </>
                 ) : (
                     <div className={styles.emptyState}>
                         <MessageSquare size={32} strokeWidth={1.5} />
