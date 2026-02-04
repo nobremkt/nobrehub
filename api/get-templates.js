@@ -31,7 +31,12 @@ export default async function handler(req, res) {
     */
 
     // Normalize url: remove trailing slash
-    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+    let cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+
+    // Add /v1 if not present (360Dialog standard)
+    if (!cleanBaseUrl.includes('/v1')) {
+        cleanBaseUrl = `${cleanBaseUrl}/v1`;
+    }
 
     // Construct URL. Note: Some APIs might differ, but this is standard for D360
     const url = `${cleanBaseUrl}/configs/templates`;
