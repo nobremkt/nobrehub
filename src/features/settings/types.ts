@@ -2,8 +2,10 @@ export interface Product {
     id: string;
     name: string;
     description?: string;
-    price: number;
+    price?: number; // Opcional - pode não ter preço
     category: string; // ex: 'Assinatura', 'Serviço Único', 'Consultoria'
+    points?: number; // Pontos de produção (ex: Website = 2pts, E-commerce = 5pts)
+    durationPoints?: { '30s': number; '60s': number; '60plus': number }; // Pontos por duração (só para categoria Vídeo)
     active: boolean;
     createdAt: number;
     updatedAt: number;

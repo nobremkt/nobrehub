@@ -13,7 +13,8 @@ import {
     ProductionMetrics,
     SalesMetrics,
     GeneralMetrics,
-    AdminMetrics
+    AdminMetrics,
+    FinancialMetrics
 } from '../services/DashboardAnalyticsService';
 import { toast } from 'react-toastify';
 
@@ -37,6 +38,7 @@ interface DashboardState {
     getSalesMetrics: () => SalesMetrics | null;
     getProductionMetrics: () => ProductionMetrics | null;
     getAdminMetrics: () => AdminMetrics | null;
+    getFinancialMetrics: () => FinancialMetrics | null;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -75,5 +77,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     getSalesMetrics: () => get().unifiedMetrics?.sales ?? null,
     getProductionMetrics: () => get().unifiedMetrics?.production ?? null,
     getAdminMetrics: () => get().unifiedMetrics?.admin ?? null,
+    getFinancialMetrics: () => get().unifiedMetrics?.financial ?? null,
 }));
 

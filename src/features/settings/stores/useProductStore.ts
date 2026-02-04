@@ -10,6 +10,7 @@ interface ProductState {
     fetchProducts: () => Promise<void>;
     addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+    updateProductPoints: (updates: { id: string; points: number }[]) => Promise<void>;
     deleteProduct: (id: string) => Promise<void>;
 }
 
@@ -58,6 +59,31 @@ export const useProductStore = create<ProductState>((set, get) => ({
         } catch (error) {
             console.error('Error updating product:', error);
             set({ error: 'Erro ao atualizar produto.' });
+            throw error;
+        } finally {
+            set({ isLoading: false });
+        }
+    },
+
+    updateProductPoints: async (updates) => {
+        set({ isLoading: true, error: null });
+        try {
+            // Batch update all product points
+            await Promise.all(
+                updates.map(({ id, points }) =>
+                    ProductService.updateProduct(id, { points })
+                )
+            );
+            // Optimistic update local state
+            set(state => ({
+                products: state.products.map(p => {
+                    const update = updates.find(u => u.id === p.id);
+                    return update ? { ...p, points: update.points } : p;
+                })
+            }));
+        } catch (error) {
+            console.error('Error updating product points:', error);
+            set({ error: 'Erro ao atualizar pontos.' });
             throw error;
         } finally {
             set({ isLoading: false });

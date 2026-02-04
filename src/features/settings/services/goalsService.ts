@@ -10,17 +10,31 @@ import { db } from '@/config/firebase';
 
 const SETTINGS_DOC = 'settings/goals';
 
+export interface VideoDurationPoints {
+    '30s': number;
+    '60s': number;
+    '60plus': number;
+}
+
 export interface GoalsConfig {
     dailyProductionGoal: number; // Meta diária em pontos
     workdaysPerWeek: number; // Dias úteis por semana (padrão 5)
     workdaysPerMonth: number; // Dias úteis estimados por mês (padrão 22)
+    videoDurationPoints: VideoDurationPoints; // Pontos por duração de vídeo
     updatedAt: Date;
 }
+
+const DEFAULT_VIDEO_DURATION_POINTS: VideoDurationPoints = {
+    '30s': 1,
+    '60s': 2,
+    '60plus': 3
+};
 
 const DEFAULT_CONFIG: GoalsConfig = {
     dailyProductionGoal: 100,
     workdaysPerWeek: 5,
     workdaysPerMonth: 22,
+    videoDurationPoints: DEFAULT_VIDEO_DURATION_POINTS,
     updatedAt: new Date()
 };
 
@@ -39,6 +53,7 @@ export const GoalsService = {
                     dailyProductionGoal: data.dailyProductionGoal ?? DEFAULT_CONFIG.dailyProductionGoal,
                     workdaysPerWeek: data.workdaysPerWeek ?? DEFAULT_CONFIG.workdaysPerWeek,
                     workdaysPerMonth: data.workdaysPerMonth ?? DEFAULT_CONFIG.workdaysPerMonth,
+                    videoDurationPoints: data.videoDurationPoints ?? DEFAULT_VIDEO_DURATION_POINTS,
                     updatedAt: data.updatedAt?.toDate?.() ?? new Date()
                 };
             }

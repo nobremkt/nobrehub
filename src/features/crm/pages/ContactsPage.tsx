@@ -18,7 +18,6 @@ import { Lead360Modal } from '../components/Lead360Modal/Lead360Modal';
 import { Lead } from '@/types/lead.types';
 import styles from './ContactsPage.module.css';
 
-// Mock data para desenvolvimento
 export const ContactsPage: React.FC = () => {
     const {
         fetchContacts,
