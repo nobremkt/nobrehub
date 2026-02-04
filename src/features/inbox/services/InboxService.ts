@@ -342,7 +342,8 @@ export const InboxService = {
         mediaUrl: string,
         mediaType: 'image' | 'video' | 'audio' | 'document',
         mediaName?: string,
-        senderId: string = 'agent'
+        senderId: string = 'agent',
+        viewOnce?: boolean
     ) => {
         const db = getRealtimeDb();
 
@@ -405,7 +406,8 @@ export const InboxService = {
                         to: phone,
                         mediaType: mediaType,
                         mediaUrl: mediaUrl,
-                        caption: mediaName
+                        caption: mediaName,
+                        viewOnce: viewOnce // View Once support
                     })
                 });
 

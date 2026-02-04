@@ -76,7 +76,7 @@ export const ChatView: React.FC = () => {
         await sendMessage(text);
     };
 
-    const handleSendMedia = async (file: File, type: 'image' | 'video' | 'audio' | 'document') => {
+    const handleSendMedia = async (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string, viewOnce?: boolean) => {
         if (!selectedConversationId) return;
 
         // Validate file size
@@ -93,12 +93,14 @@ export const ChatView: React.FC = () => {
             // Upload to Firebase Storage
             const mediaUrl = await StorageService.uploadMedia(selectedConversationId, file);
 
-            // Send the media message
+            // Send the media message with caption and viewOnce support
             await InboxService.sendMediaMessage(
                 selectedConversationId,
                 mediaUrl,
                 type,
-                file.name
+                caption || file.name,
+                'agent',
+                viewOnce
             );
         } catch (error) {
             console.error('Upload failed:', error);

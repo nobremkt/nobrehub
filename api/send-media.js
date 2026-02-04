@@ -13,9 +13,9 @@ export default async function handler(req, res) {
         return;
     }
 
-    const { apiKey, baseUrl, to, mediaType, mediaUrl, caption } = req.body;
+    const { apiKey, baseUrl, to, mediaType, mediaUrl, caption, viewOnce } = req.body;
 
-    console.log('Received media request:', { baseUrl, to, mediaType, hasApiKey: !!apiKey });
+    console.log('Received media request:', { baseUrl, to, mediaType, viewOnce, hasApiKey: !!apiKey });
 
     if (!apiKey || !baseUrl || !to || !mediaType || !mediaUrl) {
         return res.status(400).json({
@@ -40,10 +40,12 @@ export default async function handler(req, res) {
         case 'image':
             payload.image = { link: mediaUrl };
             if (caption) payload.image.caption = caption;
+            if (viewOnce) payload.image.view_once = true; // View Once support
             break;
         case 'video':
             payload.video = { link: mediaUrl };
             if (caption) payload.video.caption = caption;
+            if (viewOnce) payload.video.view_once = true; // View Once support
             break;
         case 'audio':
             payload.audio = { link: mediaUrl };

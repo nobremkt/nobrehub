@@ -6,7 +6,7 @@ import { MediaPreviewModal } from './MediaPreviewModal';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
-    onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string) => void;
+    onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string, viewOnce?: boolean) => void;
     onOpenTemplate?: () => void;
     onScheduleMessage?: (text: string, scheduledFor: Date) => void;
     disabled?: boolean;
@@ -138,9 +138,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
         e.target.value = '';
     };
 
-    const handleSendMedia = (file: File, caption: string) => {
+    const handleSendMedia = (file: File, caption: string, viewOnce?: boolean) => {
         if (!onSendMedia) return;
-        onSendMedia(file, selectedFileType, caption || undefined);
+        onSendMedia(file, selectedFileType, caption || undefined, viewOnce);
         setSelectedFile(null);
         setShowMediaPreview(false);
     };

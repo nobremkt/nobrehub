@@ -162,3 +162,41 @@
     align-items: center;
     gap: var(--spacing-2);
 }
+
+/* View Once Section */
+.viewOnceSection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.viewOnceLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.viewOnceLabel>svg {
+    color: var(--color-text-muted);
+}
+
+.viewOnceText {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.viewOnceTitle {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.viewOnceDescription {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}

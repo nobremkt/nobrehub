@@ -6,14 +6,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Modal, Button } from '@/design-system';
-import { Send, FileText, AlertCircle } from 'lucide-react';
+import { Modal, Button, Switch } from '@/design-system';
+import { Send, FileText, AlertCircle, Eye } from 'lucide-react';
 import styles from './MediaPreviewModal.module.css';
 
 interface MediaPreviewModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSend: (file: File, caption: string) => void;
+    onSend: (file: File, caption: string, viewOnce?: boolean) => void;
     file: File | null;
     fileType: 'image' | 'video' | 'document';
 }
@@ -27,6 +27,7 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
 }) => {
     const [caption, setCaption] = useState('');
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [viewOnce, setViewOnce] = useState(false);
 
     // Generate preview URL when file changes
     useEffect(() => {
@@ -42,13 +43,15 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
     useEffect(() => {
         if (!isOpen) {
             setCaption('');
+            setViewOnce(false);
         }
     }, [isOpen]);
 
     const handleSend = () => {
         if (file) {
-            onSend(file, caption);
+            onSend(file, caption, viewOnce);
             setCaption('');
+            setViewOnce(false);
             onClose();
         }
     };
@@ -151,13 +154,34 @@ export const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                     </div>
                 )}
 
+                {/* View Once Toggle (only for image/video) */}
+                {(fileType === 'image' || fileType === 'video') && (
+                    <div className={styles.viewOnceSection}>
+                        <div className={styles.viewOnceLabel}>
+                            <Eye size={18} />
+                            <div className={styles.viewOnceText}>
+                                <span className={styles.viewOnceTitle}>Visualização única</span>
+                                <span className={styles.viewOnceDescription}>
+                                    A mídia só pode ser vista uma vez
+                                </span>
+                            </div>
+                        </div>
+                        <Switch
+                            checked={viewOnce}
+                            onChange={setViewOnce}
+                        />
+                    </div>
+                )}
+
                 {/* Info Banner */}
                 <div className={styles.infoBanner}>
                     <AlertCircle size={16} />
                     <span>
                         {fileType === 'document'
                             ? 'O documento será enviado como anexo.'
-                            : 'A mídia será enviada para o contato.'}
+                            : viewOnce
+                                ? 'A mídia será deletada após ser visualizada.'
+                                : 'A mídia será enviada para o contato.'}
                     </span>
                 </div>
             </div>
