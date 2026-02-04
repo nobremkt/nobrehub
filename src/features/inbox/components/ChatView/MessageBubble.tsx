@@ -47,6 +47,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             status={message.status}
             time={timeString}
             fileName={fileName}
+            viewOnce={message.viewOnce}
             onImageClick={(url) => window.open(url, '_blank')}
             onFileClick={(url) => window.open(url, '_blank')}
         />

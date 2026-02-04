@@ -38,6 +38,7 @@ export interface Message {
     senderId?: string; // userId if direction is out
     mediaUrl?: string;
     mediaName?: string;
+    viewOnce?: boolean; // View once media (image/video)
     scheduledFor?: Date;
     createdAt: Date;
 }

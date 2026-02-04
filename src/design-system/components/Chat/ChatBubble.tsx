@@ -1,7 +1,8 @@
-import { FileText, Check, Clock } from 'lucide-react';
+import { FileText, Check, Clock, Eye } from 'lucide-react';
 import styles from './ChatBubble.module.css';
 import { AudioPlayer } from './AudioPlayer';
 import { Avatar } from '@/design-system';
+import { useState } from 'react';
 
 export interface ChatBubbleProps {
     content: string; // URL for media/file
@@ -16,6 +17,7 @@ export interface ChatBubbleProps {
     // File/Media Metadata
     fileName?: string;
     fileSize?: string;
+    viewOnce?: boolean; // View once indicator
 
     // Handlers
     onImageClick?: (url: string) => void;
@@ -33,9 +35,11 @@ export const ChatBubble = ({
     status,
     fileName = "Documento",
     fileSize,
+    viewOnce,
     onImageClick,
     onFileClick
 }: ChatBubbleProps) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
 
     const handleFileOpen = () => {
         if (onFileClick) {
@@ -67,19 +71,43 @@ export const ChatBubble = ({
 
                 {/* Content Rendering based on Type */}
                 {type === 'image' ? (
-                    <img
-                        src={content}
-                        alt="Imagem"
-                        className={styles.mediaImage}
-                        onClick={() => onImageClick && onImageClick(content)}
-                    />
+                    <div className={styles.mediaWrapper}>
+                        {!imageLoaded && (
+                            <div className={styles.imagePlaceholder}>
+                                <div className={styles.imageLoader} />
+                            </div>
+                        )}
+                        <img
+                            src={content}
+                            alt="Imagem"
+                            className={`${styles.mediaImage} ${imageLoaded ? styles.imageLoaded : styles.imageLoading}`}
+                            loading="lazy"
+                            onLoad={() => setImageLoaded(true)}
+                            onClick={() => onImageClick && onImageClick(content)}
+                        />
+                        {viewOnce && (
+                            <div className={styles.viewOnceBadge}>
+                                <Eye size={12} />
+                                <span>1</span>
+                            </div>
+                        )}
+                    </div>
                 ) : type === 'video' ? (
-                    <video
-                        src={content}
-                        controls
-                        className={styles.mediaImage}
-                        style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px' }}
-                    />
+                    <div className={styles.mediaWrapper}>
+                        <video
+                            src={content}
+                            controls
+                            className={styles.mediaImage}
+                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px' }}
+                            preload="metadata"
+                        />
+                        {viewOnce && (
+                            <div className={styles.viewOnceBadge}>
+                                <Eye size={12} />
+                                <span>1</span>
+                            </div>
+                        )}
+                    </div>
                 ) : type === 'audio' ? (
                     <div className={styles.mediaAudio}>
                         <AudioPlayer src={content} isMine={isMine} />

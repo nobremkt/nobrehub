@@ -378,7 +378,8 @@ export const InboxService = {
             status: 'pending',
             type: mediaType,
             mediaUrl: mediaUrl,
-            mediaName: mediaName
+            mediaName: mediaName,
+            ...(viewOnce && { viewOnce: true }) // Only add if true
         };
 
         // Batch update
