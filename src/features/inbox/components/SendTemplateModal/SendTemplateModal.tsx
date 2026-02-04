@@ -308,9 +308,20 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
                                         <span className={styles.templateName}>{selectedTemplate.name}</span>
                                     </div>
                                     <div className={styles.previewBody}>
-                                        {previewText.split(/(\{\{\d+\}\})/).map((part, index) => {
-                                            const isPlaceholder = /\{\{\d+\}\}/.test(part);
-                                            if (isPlaceholder) {
+                                        {selectedTemplate.content.split(/(\{\{\d+\}\})/).map((part, index) => {
+                                            const match = part.match(/\{\{(\d+)\}\}/);
+                                            if (match) {
+                                                const varIndex = parseInt(match[1], 10);
+                                                const value = variableValues[varIndex];
+                                                if (value) {
+                                                    // Filled variable - still highlighted
+                                                    return (
+                                                        <span key={index} className={styles.filledVariable}>
+                                                            {value}
+                                                        </span>
+                                                    );
+                                                }
+                                                // Empty placeholder
                                                 return (
                                                     <span key={index} className={styles.variablePlaceholder}>
                                                         {part}
