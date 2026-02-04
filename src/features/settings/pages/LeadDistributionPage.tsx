@@ -117,12 +117,19 @@ export const LeadDistributionPage = () => {
 
     const getSectorName = (id?: string) => sectors.find(s => s.id === id)?.name || 'Sem setor';
 
-    // Sort collaborators by lead count (least first)
+    // Get sales sector IDs (Vendas HT, Vendas LT)
+    const salesSectorIds = useMemo(() => {
+        return sectors
+            .filter(s => s.name.toLowerCase().includes('vendas'))
+            .map(s => s.id);
+    }, [sectors]);
+
+    // Sort collaborators by lead count (least first) - ONLY sales sector
     const sortedCollaborators = useMemo(() => {
         return [...collaborators]
-            .filter(c => c.active)
+            .filter(c => c.active && salesSectorIds.includes(c.sectorId || ''))
             .sort((a, b) => (leadCounts[a.id] || 0) - (leadCounts[b.id] || 0));
-    }, [collaborators, leadCounts]);
+    }, [collaborators, leadCounts, salesSectorIds]);
 
     if (isLoading || loadingCollaborators) {
         return (
@@ -200,9 +207,9 @@ export const LeadDistributionPage = () => {
                     <div className="flex items-center gap-3">
                         <Users size={20} className="text-primary-500" />
                         <div>
-                            <h2 className="text-lg font-semibold text-text-primary">Participantes</h2>
+                            <h2 className="text-lg font-semibold text-text-primary">Vendedores</h2>
                             <p className="text-sm text-text-muted">
-                                Selecione quem receberá leads. A distribuição usa estratégia "Least Loaded" (quem tem menos recebe).
+                                Colaboradores do setor de Vendas. A distribuição usa estratégia "Least Loaded" (quem tem menos recebe).
                             </p>
                         </div>
                     </div>
