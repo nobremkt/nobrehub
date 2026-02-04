@@ -1,0 +1,183 @@
+/* DashboardPage.module.css */
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * WELCOME SECTION
+ * ───────────────────────────────────────────────────────────────────────────── */
+.welcome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.welcomeTitle {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.welcomeSubtitle {
+    font-size: var(--font-size-base);
+    color: var(--color-text-muted);
+    margin: var(--space-1) 0 0 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FILTERS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.filterGroup {
+    position: relative;
+    min-width: 160px;
+}
+
+.sectionTrigger {
+    width: 100%;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between !important;
+    padding: var(--space-2) var(--space-3) !important;
+    background-color: var(--color-bg-primary) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-in-out);
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary) !important;
+}
+
+/* Make the label take all available space so icon goes to the right */
+.sectionTrigger>span:first-child {
+    flex: 1;
+    text-align: left;
+}
+
+.sectionTrigger:hover {
+    border-color: var(--color-border-hover) !important;
+    background-color: var(--color-bg-primary) !important;
+}
+
+.sectionTrigger:focus-visible {
+    border-color: var(--color-primary-500) !important;
+    box-shadow: 0 0 10px var(--color-primary-500) !important;
+    outline: none;
+}
+
+.sectionTrigger svg {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.sectionDropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-1);
+    z-index: 100;
+    box-shadow: var(--shadow-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    animation: scaleIn var(--duration-fast) var(--ease-out);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.sectionOption {
+    padding: var(--space-1) 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SECTIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.sectionTitle {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+    padding-left: var(--space-1);
+    border-left: 4px solid var(--color-primary-500);
+    line-height: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SECTION ANIMATIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.animatedSection {
+    transition:
+        opacity 0.3s ease-in-out,
+        max-height 0.4s ease-in-out,
+        margin 0.3s ease-in-out;
+}
+
+.visible {
+    opacity: 1;
+    max-height: 2000px;
+    margin-bottom: 0;
+}
+
+.hidden {
+    opacity: 0;
+    max-height: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * STATS GRID (Shared with components)
+ * ───────────────────────────────────────────────────────────────────────────── */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+}

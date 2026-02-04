@@ -1,0 +1,1 @@
+export { SendTemplateModal } from './SendTemplateModal';

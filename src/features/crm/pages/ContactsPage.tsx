@@ -8,7 +8,9 @@
 import React, { useEffect, useState } from 'react';
 import { ContactsTable } from '../components/Contacts/ContactsTable';
 import { ContactsFilterBar } from '../components/Contacts/ContactsFilterBar';
+import { ContactsQuickActions } from '../components/Contacts/ContactsQuickActions';
 import { useContactsStore, useFilteredContacts } from '../stores/useContactsStore';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
 import { Button } from '@/design-system';
 import { Plus, Users, RefreshCw } from 'lucide-react';
 import { CreateLeadModal } from '../components/CreateLeadModal/CreateLeadModal';
@@ -24,8 +26,10 @@ export const ContactsPage: React.FC = () => {
         setAvailableLossReasons,
         isLoading,
         selectedIds,
+        clearSelection,
     } = useContactsStore();
 
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
     const filteredContacts = useFilteredContacts();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -33,16 +37,18 @@ export const ContactsPage: React.FC = () => {
     // Carregar contatos reais
     useEffect(() => {
         fetchContacts();
+        fetchLossReasons();
+    }, [fetchContacts, fetchLossReasons]);
 
-        // Motivos de perda (TODO: buscar do backend se necessário)
-        setAvailableLossReasons([
-            { id: '1', name: 'Não informar', isActive: true },
-            { id: '2', name: 'Sem dinheiro', isActive: true },
-            { id: '3', name: 'Comprou produto concorrente', isActive: true },
-            { id: '4', name: 'Blacklist', isActive: true },
-            { id: '5', name: 'Sem visto', isActive: true },
-        ]);
-    }, [fetchContacts, setAvailableLossReasons]);
+    // Sync loss reasons from store to contacts store
+    useEffect(() => {
+        if (lossReasons.length > 0) {
+            const mappedReasons = lossReasons
+                .filter(r => r.active)
+                .map(r => ({ id: r.id, name: r.name, isActive: r.active }));
+            setAvailableLossReasons(mappedReasons);
+        }
+    }, [lossReasons, setAvailableLossReasons]);
 
     const handleNewContact = () => {
         setIsCreateModalOpen(true);
@@ -61,6 +67,8 @@ export const ContactsPage: React.FC = () => {
             alert('Nenhum novo contato encontrado no Inbox.');
         }
     };
+
+    const hasSelection = selectedIds.size > 0;
 
     return (
         <div className={styles.container}>
@@ -90,8 +98,15 @@ export const ContactsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Barra de Filtros */}
-            <ContactsFilterBar />
+            {/* Barra de Filtros OU Quick Actions */}
+            {hasSelection ? (
+                <ContactsQuickActions
+                    selectedCount={selectedIds.size}
+                    onClearSelection={clearSelection}
+                />
+            ) : (
+                <ContactsFilterBar />
+            )}
 
             {/* Contador e Seleção */}
             <div className={styles.tableHeader}>

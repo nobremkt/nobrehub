@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import styles from './Modal.module.css';
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'auto';
 
 export interface ModalProps {
     /** Se o modal está aberto */
@@ -70,11 +70,6 @@ export const Modal = ({
             previousActiveElement.current = document.activeElement as HTMLElement;
             document.body.style.overflow = 'hidden';
             document.addEventListener('keydown', handleKeyDown);
-
-            // Focus first focusable element
-            setTimeout(() => {
-                modalRef.current?.focus();
-            }, 0);
         } else {
             document.body.style.overflow = '';
             document.removeEventListener('keydown', handleKeyDown);

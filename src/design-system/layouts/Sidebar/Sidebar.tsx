@@ -33,7 +33,10 @@ import {
     UserCog,
     Moon,
     Bug,
-    UserCheck
+    UserCheck,
+    Upload,
+    Target,
+    CalendarDays
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -108,6 +111,7 @@ const navCategories: NavCategory[] = [
         permission: PERMISSIONS.VIEW_ADMIN, // Restrito a admin
         subItems: [
             { id: 'debug-ui', label: 'DEBUG UI', path: ROUTES.debug_ui, icon: <Palette size={18} /> },
+            { id: 'data-import', label: 'Importar Dados', path: ROUTES.data_import, icon: <Upload size={18} /> },
         ]
     },
     {
@@ -126,6 +130,8 @@ const navCategories: NavCategory[] = [
             { id: 'sectors', label: 'Setores', path: ROUTES.settings.sectors, icon: <Briefcase size={18} /> },
             { id: 'roles', label: 'Cargos', path: ROUTES.settings.roles, icon: <UserCog size={18} /> },
             { id: 'collaborators', label: 'Colaboradores', path: ROUTES.settings.collaborators, icon: <UserCheck size={18} /> },
+            { id: 'goals', label: 'Metas', path: ROUTES.settings.goals, icon: <Target size={18} /> },
+            { id: 'holidays', label: 'Feriados & Folgas', path: ROUTES.settings.holidays, icon: <CalendarDays size={18} /> },
         ]
     },
     {

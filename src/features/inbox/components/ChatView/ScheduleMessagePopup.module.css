@@ -1,0 +1,272 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.popup {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 380px;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.headerTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--color-text-primary);
+}
+
+.headerTitle svg {
+    color: var(--color-primary-500);
+}
+
+.closeBtn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    padding: var(--spacing-1);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.closeBtn:hover {
+    background: var(--color-hover);
+    color: var(--color-text-primary);
+}
+
+.preview {
+    padding: var(--spacing-3) var(--spacing-4);
+}
+
+.previewBox {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+}
+
+.previewText {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.previewT {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-primary-500);
+    background: rgba(220, 38, 38, 0.1);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+/* Media Toolbar - matching CLINT spec */
+.mediaBar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.mediaIcon {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    padding: var(--spacing-2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.mediaIcon:hover {
+    background: var(--color-hover);
+    color: var(--color-text-primary);
+}
+
+.addBtn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.addBtn:hover {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+    color: white;
+}
+
+.quickOptions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-2);
+    padding: var(--spacing-4);
+}
+
+.quickOption {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quickOption:hover {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: 0 var(--spacing-4);
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+}
+
+.divider span {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.dateTimeRow {
+    display: flex;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4);
+}
+
+.inputGroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.inputGroup label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.dateInput,
+.timeInput {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    width: 100%;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.dateInput:focus,
+.timeInput:focus {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Style native date/time picker icons */
+.dateInput::-webkit-calendar-picker-indicator,
+.timeInput::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-4);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}

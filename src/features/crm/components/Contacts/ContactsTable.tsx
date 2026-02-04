@@ -1,15 +1,14 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - CONTACTS TABLE
- * Tabela de contatos seguindo análise do Clint CRM:
- * Colunas: Checkbox | Avatar | Nome | Telefone | Email | Qtd Negócios | Tags
+ * Tabela de contatos com colunas ordenáveis e novas colunas de associação
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
 import { Checkbox, Tag, Spinner } from '@/design-system';
-import { Phone, Mail, Building2 } from 'lucide-react';
+import { Phone, Mail, Building2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { getInitials, formatPhone } from '@/utils';
 import styles from './ContactsTable.module.css';
 
@@ -21,6 +20,8 @@ interface Contact {
     company?: string;
     tags: string[];
     dealsCount?: number;
+    vendedora?: string;
+    posVenda?: string;
 }
 
 interface ContactsTableProps {
@@ -29,12 +30,18 @@ interface ContactsTableProps {
     onContactClick?: (contact: Contact) => void;
 }
 
+type SortColumn = 'name' | 'phone' | 'email' | 'vendedora' | 'posVenda' | 'dealsCount' | null;
+type SortDirection = 'asc' | 'desc' | null;
+
 export const ContactsTable: React.FC<ContactsTableProps> = ({
     contacts,
     isLoading = false,
     onContactClick,
 }) => {
     const { selectedIds, toggleSelect, selectAll, clearSelection } = useContactsStore();
+
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
     const allSelected = contacts.length > 0 && selectedIds.size === contacts.length;
     const someSelected = selectedIds.size > 0 && selectedIds.size < contacts.length;
@@ -57,6 +64,72 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
         e.stopPropagation();
         toggleSelect(id);
     };
+
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn !== column) {
+            // New column: start with ascending
+            setSortColumn(column);
+            setSortDirection('asc');
+        } else if (sortDirection === 'asc') {
+            // Same column, was asc: switch to desc
+            setSortDirection('desc');
+        } else if (sortDirection === 'desc') {
+            // Same column, was desc: clear sort
+            setSortColumn(null);
+            setSortDirection(null);
+        }
+    };
+
+    const getSortIcon = (column: SortColumn) => {
+        if (sortColumn !== column) {
+            return <ChevronsUpDown size={14} className={styles.sortIconInactive} />;
+        }
+        if (sortDirection === 'asc') {
+            return <ChevronUp size={14} className={styles.sortIconActive} />;
+        }
+        return <ChevronDown size={14} className={styles.sortIconActive} />;
+    };
+
+    // Sort contacts
+    const sortedContacts = useMemo(() => {
+        if (!sortColumn || !sortDirection) return contacts;
+
+        return [...contacts].sort((a, b) => {
+            let aVal: string | number = '';
+            let bVal: string | number = '';
+
+            switch (sortColumn) {
+                case 'name':
+                    aVal = a.name.toLowerCase();
+                    bVal = b.name.toLowerCase();
+                    break;
+                case 'phone':
+                    aVal = a.phone;
+                    bVal = b.phone;
+                    break;
+                case 'email':
+                    aVal = a.email?.toLowerCase() || '';
+                    bVal = b.email?.toLowerCase() || '';
+                    break;
+                case 'vendedora':
+                    aVal = a.vendedora?.toLowerCase() || '';
+                    bVal = b.vendedora?.toLowerCase() || '';
+                    break;
+                case 'posVenda':
+                    aVal = a.posVenda?.toLowerCase() || '';
+                    bVal = b.posVenda?.toLowerCase() || '';
+                    break;
+                case 'dealsCount':
+                    aVal = a.dealsCount || 0;
+                    bVal = b.dealsCount || 0;
+                    break;
+            }
+
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [contacts, sortColumn, sortDirection]);
 
     const getTagVariant = (tag: string) => {
         const lowerTag = tag.toLowerCase();
@@ -97,15 +170,29 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                                 onChange={handleSelectAll}
                             />
                         </th>
-                        <th>Nome</th>
-                        <th>Telefone</th>
-                        <th>Email</th>
-                        <th>Negócios</th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('name')}>
+                            Nome {getSortIcon('name')}
+                        </th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('phone')}>
+                            Telefone {getSortIcon('phone')}
+                        </th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('email')}>
+                            Email {getSortIcon('email')}
+                        </th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('vendedora')}>
+                            Vendedora {getSortIcon('vendedora')}
+                        </th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('posVenda')}>
+                            Pós-Venda {getSortIcon('posVenda')}
+                        </th>
+                        <th className={styles.sortableHeader} onClick={() => handleSort('dealsCount')}>
+                            Negócios {getSortIcon('dealsCount')}
+                        </th>
                         <th>Tags</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {contacts.map((contact) => (
+                    {sortedContacts.map((contact) => (
                         <tr
                             key={contact.id}
                             className={`${selectedIds.has(contact.id) ? styles.selectedRow : ''} ${styles.clickableRow}`}
@@ -152,6 +239,24 @@ export const ContactsTable: React.FC<ContactsTableProps> = ({
                                         <Mail size={14} className={styles.infoIcon} />
                                         <span>{contact.email}</span>
                                     </div>
+                                ) : (
+                                    <span className={styles.noData}>—</span>
+                                )}
+                            </td>
+
+                            {/* Vendedora */}
+                            <td>
+                                {contact.vendedora ? (
+                                    <span className={styles.personName}>{contact.vendedora}</span>
+                                ) : (
+                                    <span className={styles.noData}>—</span>
+                                )}
+                            </td>
+
+                            {/* Pós-Venda */}
+                            <td>
+                                {contact.posVenda ? (
+                                    <span className={styles.personName}>{contact.posVenda}</span>
                                 ) : (
                                     <span className={styles.noData}>—</span>
                                 )}

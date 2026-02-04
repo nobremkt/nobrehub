@@ -19,13 +19,13 @@
 }
 
 .inputWrapper {
-    position: relative;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     background-color: var(--color-bg-primary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     transition: all 0.2s ease;
+    overflow: hidden;
 }
 
 .inputWrapper:focus-within {
@@ -55,88 +55,45 @@
     color: var(--color-danger-500);
 }
 
-/* React Phone Number Input Overrides */
-.libInput {
-    display: flex;
-    align-items: center;
-    width: 100%;
+/* Country Dropdown Container */
+.countryDropdown {
+    flex-shrink: 0;
+    border-right: 1px solid var(--color-border);
 }
 
-:global(.PhoneInputCountry) {
-    display: flex;
-    align-items: center;
-    padding-left: 0.75rem;
-    margin-right: 0.5rem;
-    position: relative;
+/* Override Dropdown styles for compact look inside PhoneInput */
+.countryDropdown>div {
+    min-width: auto;
 }
 
-:global(.PhoneInputCountrySelect) {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    z-index: 1;
-    border: 0;
-    opacity: 0;
-    cursor: pointer;
-    background: var(--color-surface);
-    color: var(--color-text-primary);
+.countryDropdown :global(.dropdown-trigger),
+.countryDropdown button {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 0.5rem 0.75rem !important;
+    min-width: 90px;
+    box-shadow: none !important;
 }
 
-/* Hack para as opções do select nativo ficarem escuras no dark mode (se suportado pelo browser) */
-:global(.PhoneInputCountrySelect) option {
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
+.countryDropdown :global(.dropdown-trigger):focus,
+.countryDropdown button:focus {
+    box-shadow: none !important;
 }
 
-:global(.PhoneInputCountryIcon) {
-    width: 24px;
-    height: 18px;
-    display: block;
-    box-shadow: 0 0 0 1px var(--color-border);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-:global(.PhoneInputCountryIcon--border) {
-    box-shadow: 0 0 0 1px var(--color-border);
-    background-color: var(--color-bg-secondary);
-}
-
-:global(.PhoneInputCountryIconImg) {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-:global(.PhoneInputCountrySelectArrow) {
-    display: block;
-    width: 0.5rem;
-    height: 0.5rem;
-    margin-left: 0.5rem;
-    border-right: 2px solid var(--color-text-muted);
-    border-bottom: 2px solid var(--color-text-muted);
-    transform: rotate(45deg);
-    opacity: 0.7;
-    margin-top: -4px;
-    /* ajuste fino visual */
-}
-
-.nativeInput {
+/* Phone number input */
+.input {
     flex: 1;
     width: 100%;
     background: transparent;
     border: none;
     padding: 0.625rem 0.75rem;
-    /* ~10px 12px */
-    padding-left: 0;
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     outline: none;
+    font-family: inherit;
 }
 
-.nativeInput::placeholder {
+.input::placeholder {
     color: var(--color-text-muted);
 }

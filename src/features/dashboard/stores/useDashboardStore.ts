@@ -1,39 +1,79 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - DASHBOARD STORE
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * Zustand store for dashboard state management with unified metrics
+ */
+
 import { create } from 'zustand';
-import { DashboardAnalyticsService, ProductionMetrics, DateFilter } from '../services/DashboardAnalyticsService';
+import {
+    DashboardAnalyticsService,
+    UnifiedDashboardMetrics,
+    DateFilter,
+    ProductionMetrics,
+    SalesMetrics,
+    GeneralMetrics,
+    AdminMetrics
+} from '../services/DashboardAnalyticsService';
+import { toast } from 'react-toastify';
 
 interface DashboardState {
-    dateFilter: DateFilter;
+    // Unified metrics (contains all sections)
+    unifiedMetrics: UnifiedDashboardMetrics | null;
+
+    // Legacy alias for backward compatibility
     metrics: ProductionMetrics | null;
+
     isLoading: boolean;
     error: string | null;
-    setDateFilter: (filter: DateFilter) => void;
+    dateFilter: DateFilter;
+
+    // Actions
     fetchMetrics: () => Promise<void>;
+    setDateFilter: (filter: DateFilter) => void;
+
+    // Selectors for each section
+    getGeneralMetrics: () => GeneralMetrics | null;
+    getSalesMetrics: () => SalesMetrics | null;
+    getProductionMetrics: () => ProductionMetrics | null;
+    getAdminMetrics: () => AdminMetrics | null;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
-    dateFilter: 'month',
+    unifiedMetrics: null,
     metrics: null,
     isLoading: false,
     error: null,
+    dateFilter: 'month',
 
-    setDateFilter: (filter) => {
+    fetchMetrics: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const { dateFilter } = get();
+            const unifiedMetrics = await DashboardAnalyticsService.getAllMetrics(dateFilter);
+            set({
+                unifiedMetrics,
+                // Keep legacy metrics for backward compatibility
+                metrics: unifiedMetrics.production
+            });
+        } catch (error) {
+            console.error('Error fetching dashboard metrics:', error);
+            set({ error: 'Erro ao carregar métricas do dashboard.' });
+            toast.error('Erro ao carregar dados do dashboard.');
+        } finally {
+            set({ isLoading: false });
+        }
+    },
+
+    setDateFilter: (filter: DateFilter) => {
         set({ dateFilter: filter });
         get().fetchMetrics();
     },
 
-    fetchMetrics: async () => {
-        const { dateFilter } = get();
-        set({ isLoading: true, error: null });
-
-        try {
-            const metrics = await DashboardAnalyticsService.getMetrics(dateFilter);
-            set({ metrics, isLoading: false });
-        } catch (error) {
-            console.error('Error fetching dashboard metrics:', error);
-            set({
-                error: error instanceof Error ? error.message : 'Erro ao carregar métricas',
-                isLoading: false
-            });
-        }
-    },
+    // Selectors
+    getGeneralMetrics: () => get().unifiedMetrics?.general ?? null,
+    getSalesMetrics: () => get().unifiedMetrics?.sales ?? null,
+    getProductionMetrics: () => get().unifiedMetrics?.production ?? null,
+    getAdminMetrics: () => get().unifiedMetrics?.admin ?? null,
 }));
+

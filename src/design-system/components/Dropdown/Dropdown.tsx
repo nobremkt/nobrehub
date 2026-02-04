@@ -53,16 +53,26 @@ export function Dropdown({
         }
     }, [isOpen]);
 
+    // Handler para scroll que ignora scrolls dentro do menu
+    const handleExternalScroll = useCallback((event: Event) => {
+        const menu = document.getElementById('dropdown-menu-portal');
+        // Ignora scroll se originado dentro do menu (scroll da própria lista)
+        if (menu && menu.contains(event.target as Node)) {
+            return;
+        }
+        updatePosition();
+    }, [updatePosition]);
+
     useEffect(() => {
         updatePosition();
         window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true); // true para capture scroll de ancestrais
+        window.addEventListener('scroll', handleExternalScroll, true);
 
         return () => {
             window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('scroll', handleExternalScroll, true);
         };
-    }, [updatePosition]);
+    }, [updatePosition, handleExternalScroll]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

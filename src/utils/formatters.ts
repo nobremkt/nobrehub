@@ -81,7 +81,7 @@ export function formatNumber(value: number): string {
 /**
  * Formata telefone brasileiro, suportando DDI (+55)
  */
-import { formatPhoneNumberIntl } from 'react-phone-number-input';
+
 
 export function formatPhone(phone: string): string {
     if (!phone) return '';
@@ -89,34 +89,43 @@ export function formatPhone(phone: string): string {
     // Se já vier formatado bonitinho (ex: Google Contacts), retorna
     if (phone.includes('(') && phone.includes(')')) return phone;
 
-    // Tenta usar a lib para formatação internacional padrão
-    try {
-        // Adiciona + se não tiver, para a lib entender
-        const phoneWithPlus = phone.startsWith('+') ? phone : `+${phone}`;
-        const formatted = formatPhoneNumberIntl(phoneWithPlus);
-        if (formatted) return formatted;
-    } catch (e) {
-        // Fallback para formatação manual se falhar
-    }
+    // Remove espaços extras que podem vir do banco (ex: "+55 4784125338")
+    const normalizedPhone = phone.replace(/\s+/g, '');
 
-    // Fallback manual (mantendo lógica antiga melhorada)
-    const cleaned = phone.replace(/\D/g, '');
+    // Fallback manual - não usar lib pois ela pode formatar errado
+    const cleaned = normalizedPhone.replace(/\D/g, '');
+
+    // Helper para formatar número local (sem DDD)
+    const formatLocalNumber = (num: string): string => {
+        // Celular brasileiro: 9 dígitos, começa com 9 → formato 5-4
+        if (num.length === 9 && num.startsWith('9')) {
+            return `${num.slice(0, 5)}-${num.slice(5)}`;
+        }
+        // Fixo brasileiro: 8 dígitos → formato 4-4
+        if (num.length === 8) {
+            return `${num.slice(0, 4)}-${num.slice(4)}`;
+        }
+        // Fallback: retorna como está
+        return num;
+    };
 
     // Brasil com DDI (12 ou 13 dígitos começando com 55)
     if (cleaned.startsWith('55') && (cleaned.length === 12 || cleaned.length === 13)) {
         const ddd = cleaned.slice(2, 4);
         const number = cleaned.slice(4);
-        const part1 = number.length === 9 ? number.slice(0, 5) : number.slice(0, 4);
-        const part2 = number.length === 9 ? number.slice(5) : number.slice(4);
-        return `+55 (${ddd}) ${part1}-${part2}`;
+        return `+55 (${ddd}) ${formatLocalNumber(number)}`;
     }
 
-    // Apenas DDD + Numero (10 ou 11) -> Assume Brasil +55 implícito na visualização ou apenas (XX)
+    // Apenas DDD + Numero (10 ou 11 dígitos)
     if (cleaned.length === 11) {
-        return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        const ddd = cleaned.slice(0, 2);
+        const number = cleaned.slice(2);
+        return `(${ddd}) ${formatLocalNumber(number)}`;
     }
     if (cleaned.length === 10) {
-        return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        const ddd = cleaned.slice(0, 2);
+        const number = cleaned.slice(2);
+        return `(${ddd}) ${formatLocalNumber(number)}`;
     }
 
     return phone;

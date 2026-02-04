@@ -60,7 +60,7 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
             case 'NEGÓCIOS':
                 return <NegociosTab lead={lead} />;
             case 'CONVERSAS':
-                return <ConversasTab />;
+                return <ConversasTab lead={lead} />;
             case 'HISTÓRICO':
                 return <HistoricoTab lead={lead} />;
             default:

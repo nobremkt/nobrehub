@@ -1,11 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { InboxService } from '../../services/InboxService';
 import { StorageService } from '../../services/StorageService';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+import { DateSeparator } from './DateSeparator';
+import { SessionWarning } from './SessionWarning';
+import { SendTemplateModal } from '../SendTemplateModal';
 import styles from './ChatView.module.css';
+
+/**
+ * Helper to get date key for grouping (YYYY-MM-DD)
+ */
+const getDateKey = (date: Date | number | string): string => {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export const ChatView: React.FC = () => {
     const {
@@ -17,11 +28,40 @@ export const ChatView: React.FC = () => {
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const currentMessages = selectedConversationId ? messages[selectedConversationId] || [] : [];
+
+    // Group messages by date for rendering separators
+    const messagesWithSeparators = useMemo(() => {
+        const result: { type: 'separator' | 'message'; date?: Date; message?: typeof currentMessages[0] }[] = [];
+        let lastDateKey = '';
+
+        for (const msg of currentMessages) {
+            const msgDate = msg.createdAt ? new Date(msg.createdAt) : new Date();
+            const dateKey = getDateKey(msgDate);
+
+            if (dateKey !== lastDateKey) {
+                result.push({ type: 'separator', date: msgDate });
+                lastDateKey = dateKey;
+            }
+
+            result.push({ type: 'message', message: msg });
+        }
+
+        return result;
+    }, [currentMessages]);
+
+    // Find last inbound message for WhatsApp 24h window calculation
+    const lastInboundAt = useMemo(() => {
+        const inboundMessages = currentMessages.filter(m => m.direction === 'in');
+        if (inboundMessages.length === 0) return undefined;
+        const lastInbound = inboundMessages[inboundMessages.length - 1];
+        return lastInbound.createdAt ? new Date(lastInbound.createdAt) : undefined;
+    }, [currentMessages]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,6 +109,22 @@ export const ChatView: React.FC = () => {
         }
     };
 
+    const handleSendTemplate = async (
+        templateName: string,
+        language: string,
+        components: any[],
+        previewText: string
+    ) => {
+        if (!selectedConversationId) return;
+        await InboxService.sendTemplateMessage(
+            selectedConversationId,
+            templateName,
+            language,
+            components,
+            previewText
+        );
+    };
+
     const handleAssign = async (userId: string | null) => {
         if (!selectedConversationId) return;
         await InboxService.assignConversation(selectedConversationId, userId);
@@ -77,6 +133,21 @@ export const ChatView: React.FC = () => {
     const handleCloseConversation = async () => {
         if (!selectedConversationId) return;
         await InboxService.toggleConversationStatus(selectedConversationId);
+    };
+
+    const handleToggleFavorite = async () => {
+        if (!selectedConversationId) return;
+        await InboxService.toggleFavorite(selectedConversationId);
+    };
+
+    const handleTogglePin = async () => {
+        if (!selectedConversationId) return;
+        await InboxService.togglePin(selectedConversationId);
+    };
+
+    const handleScheduleMessage = async (text: string, scheduledFor: Date) => {
+        if (!selectedConversationId) return;
+        await InboxService.scheduleMessage(selectedConversationId, text, scheduledFor);
     };
 
     if (!selectedConversationId || !conversation) {
@@ -95,12 +166,26 @@ export const ChatView: React.FC = () => {
                 conversation={conversation}
                 onAssign={handleAssign}
                 onCloseConversation={handleCloseConversation}
+                onToggleFavorite={handleToggleFavorite}
+                onTogglePin={handleTogglePin}
             />
 
+            {/* WhatsApp 24h Session Warning */}
+            {conversation.channel === 'whatsapp' && (
+                <SessionWarning
+                    lastInboundAt={lastInboundAt}
+                    onSendTemplate={() => setIsTemplateModalOpen(true)}
+                />
+            )}
+
             <div className={styles.messagesArea}>
-                {currentMessages.map(msg => (
-                    <MessageBubble key={msg.id} message={msg} />
-                ))}
+                {messagesWithSeparators.map((item, index) =>
+                    item.type === 'separator' ? (
+                        <DateSeparator key={`sep-${index}`} date={item.date!} />
+                    ) : (
+                        <MessageBubble key={item.message!.id} message={item.message!} />
+                    )
+                )}
                 <div ref={messagesEndRef} />
             </div>
 
@@ -147,7 +232,17 @@ export const ChatView: React.FC = () => {
             <ChatInput
                 onSend={handleSendMessage}
                 onSendMedia={handleSendMedia}
+                onOpenTemplate={() => setIsTemplateModalOpen(true)}
+                onScheduleMessage={handleScheduleMessage}
                 disabled={isUploading}
+            />
+
+            {/* Send Template Modal */}
+            <SendTemplateModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                onSend={handleSendTemplate}
+                conversation={conversation}
             />
         </div>
     );

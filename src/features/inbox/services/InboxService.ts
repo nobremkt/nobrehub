@@ -169,6 +169,167 @@ export const InboxService = {
     },
 
     /**
+     * Send a template message via WhatsApp.
+     */
+    sendTemplateMessage: async (
+        conversationId: string,
+        templateName: string,
+        language: string,
+        components: any[],
+        previewText: string,
+        senderId: string = 'agent'
+    ) => {
+        const db = getRealtimeDb();
+
+        // 0. Get Conversation
+        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
+        const conversation = conversationRefSnapshot.val() as Conversation;
+
+        if (!conversation) {
+            throw new Error('Conversation not found');
+        }
+
+        // 1. Create message in Firebase IMMEDIATELY
+        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
+        const newMessageRef = push(messagesRef);
+        const messageId = newMessageRef.key!;
+
+        const timestamp = serverTimestamp();
+
+        const messageData = {
+            id: messageId,
+            content: previewText,
+            senderId,
+            timestamp: timestamp,
+            direction: 'out',
+            status: 'pending',
+            type: 'template',
+            templateName: templateName
+        };
+
+        // Batch update
+        const updates: Record<string, any> = {};
+        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0;
+        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+
+        await update(ref(db), updates);
+
+        // 2. Send to WhatsApp
+        const { whatsapp } = useSettingsStore.getState();
+
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+            try {
+                const phone = conversation.leadPhone.replace(/\D/g, '');
+
+                const response = await fetch('/api/send-template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        apiKey: whatsapp.apiKey,
+                        baseUrl: whatsapp.baseUrl,
+                        to: phone,
+                        templateName: templateName,
+                        language: language,
+                        components: components
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('360Dialog Template Error:', errorData);
+                    throw new Error('Failed to send template via WhatsApp');
+                }
+
+                const responseData = await response.json();
+                const whatsappMessageId = responseData.messages?.[0]?.id;
+
+                // 3. Update success
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'sent',
+                    whatsappMessageId: whatsappMessageId
+                });
+
+            } catch (error) {
+                console.error('Failed to send WhatsApp template:', error);
+                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                    status: 'error'
+                });
+            }
+        } else {
+            // If no WhatsApp config, mark as sent
+            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                status: 'sent'
+            });
+        }
+
+        return messageId;
+    },
+
+    /**
+     * Toggle favorite status for a conversation.
+     */
+    toggleFavorite: async (conversationId: string) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+
+        const snapshot = await get(conversationRef);
+        const conversation = snapshot.val() as Conversation;
+
+        await update(conversationRef, {
+            isFavorite: !conversation?.isFavorite
+        });
+    },
+
+    /**
+     * Toggle pinned status for a conversation.
+     */
+    togglePin: async (conversationId: string) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+
+        const snapshot = await get(conversationRef);
+        const conversation = snapshot.val() as Conversation;
+
+        await update(conversationRef, {
+            isPinned: !conversation?.isPinned
+        });
+    },
+
+    /**
+     * Schedule a message for future delivery.
+     * The message is saved with status 'scheduled' and a scheduledFor timestamp.
+     * A separate cron/cloud function should process and send scheduled messages.
+     */
+    scheduleMessage: async (
+        conversationId: string,
+        content: string,
+        scheduledFor: Date,
+        senderId: string = 'agent'
+    ) => {
+        const db = getRealtimeDb();
+        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
+        const newMessageRef = push(messagesRef);
+        const messageId = newMessageRef.key!;
+
+        const messageData = {
+            id: messageId,
+            content,
+            senderId,
+            timestamp: serverTimestamp(),
+            scheduledFor: scheduledFor.getTime(),
+            direction: 'out',
+            status: 'scheduled',
+            type: 'text'
+        };
+
+        await set(newMessageRef, messageData);
+
+        return messageId;
+    },
+
+    /**
      * Send a media message (image, video, audio, document).
      */
     sendMediaMessage: async (

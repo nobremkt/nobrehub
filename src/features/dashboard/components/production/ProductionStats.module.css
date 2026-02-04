@@ -1,0 +1,139 @@
+/* ProductionStats.module.css */
+
+.mainGrid {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .mainGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Left components: Goal, Highlights, etc. */
+.leftColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.leftRowTop {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-4);
+    height: 100%;
+}
+
+.leftRowBottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    height: 100%;
+}
+
+@media (max-width: 1400px) {
+    .leftRowTop {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+    }
+
+    .leftRowBottom {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+    }
+}
+
+
+
+/* Right components: The stack of 4 cards */
+.rightColumn {
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .rightColumn {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .rightColumn {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Common Card Styles */
+.card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardTitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.chartContainer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+/* Parent Container */
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* Podium Section */
+.podiumGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 1200px) {
+    .podiumGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .podiumGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.podiumCard {
+    height: 100%;
+}
+
+/* Remove default focus outline from Recharts */
+:global(.recharts-wrapper:focus) {
+    outline: none !important;
+}
+
+/* Also ensure SVG inner elements doesn't get it */
+:global(.recharts-surface:focus),
+:global(.recharts-layer:focus),
+:global(.recharts-sector:focus),
+:global(.recharts-rectangle:focus),
+:global(path:focus),
+:global(rect:focus),
+:global(g:focus) {
+    outline: none !important;
+}

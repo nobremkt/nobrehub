@@ -16,10 +16,12 @@ import {
     User,
     X,
     MessageCircle,
+    Star,
+    Pin,
     // Icons para canal
     Smartphone
 } from 'lucide-react';
-import { getInitials } from '@/utils';
+import { getInitials, formatPhone } from '@/utils';
 import styles from './ChatHeader.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
@@ -29,6 +31,8 @@ interface ChatHeaderProps {
     conversation: Conversation;
     onAssign?: (userId: string | null) => void;
     onCloseConversation?: () => void;
+    onToggleFavorite?: () => void;
+    onTogglePin?: () => void;
 }
 
 // WhatsApp Icon Component
@@ -47,7 +51,9 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
     conversation,
     onAssign,
-    onCloseConversation
+    onCloseConversation,
+    onToggleFavorite,
+    onTogglePin
 }) => {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
@@ -111,7 +117,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     </span>
                 </div>
                 <div className={styles.subRow}>
-                    <span className={styles.phone}>{conversation.leadPhone}</span>
+                    <span className={styles.phone}>{formatPhone(conversation.leadPhone || '')}</span>
                     {conversation.leadCompany && (
                         <>
                             <span className={styles.separator}>•</span>
@@ -141,6 +147,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
             {/* Actions */}
             <div className={styles.actions}>
+                {/* Favorite Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleFavorite}
+                    title={conversation.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                    className={conversation.isFavorite ? styles.favoriteActive : ''}
+                >
+                    <Star size={18} fill={conversation.isFavorite ? 'currentColor' : 'none'} />
+                </Button>
+
+                {/* Pin Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onTogglePin}
+                    title={conversation.isPinned ? 'Desafixar' : 'Fixar no topo'}
+                    className={conversation.isPinned ? styles.pinActive : ''}
+                >
+                    <Pin size={18} fill={conversation.isPinned ? 'currentColor' : 'none'} />
+                </Button>
+
                 {/* Assign Button */}
                 <div className={styles.actionWrapper}>
                     <Button

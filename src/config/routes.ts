@@ -20,6 +20,7 @@ export const ROUTES = {
     // Main
     dashboard: '/',
     debug_ui: '/debug-ui',
+    data_import: '/data-import',
 
     // CRM
     crm: {
@@ -74,6 +75,8 @@ export const ROUTES = {
         roles: '/configuracoes/cargos',
         appearance: '/configuracoes/aparencia',
         collaborators: '/configuracoes/colaboradores',
+        goals: '/configuracoes/metas',
+        holidays: '/configuracoes/feriados',
     },
 } as const;
 

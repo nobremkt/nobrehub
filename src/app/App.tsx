@@ -15,16 +15,16 @@ import { useUIStore, useAuthStore } from '@/stores';
 import { initFirebase } from '@/config/firebase';
 import { ROUTES } from '@/config';
 import { LoginPage } from '@/features/auth';
-import { DashboardPage } from '@/pages';
+import { DashboardPage } from '@/features/dashboard';
 import { AppearancePage } from '@/features/settings/pages';
 import { IntegrationsPage } from '@/features/settings/pages/IntegrationsPage';
 import { CRMPage } from '@/features/crm/pages/CRMPage';
-import { DebugUIPage } from '@/pages';
+import { DebugUIPage, DataImportPage } from '@/pages';
 import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { ProductionPage } from '@/features/production/pages/ProductionPage';
-import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage } from '@/features/settings/pages';
+import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
@@ -129,6 +129,7 @@ export function App() {
                     <Route path={ROUTES.dashboard} element={<DashboardPage />} />
 
                     <Route path={ROUTES.debug_ui} element={<DebugUIPage />} />
+                    <Route path={ROUTES.data_import} element={<DataImportPage />} />
 
                     <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
 
@@ -166,6 +167,10 @@ export function App() {
                     <Route path={ROUTES.settings.roles} element={<RolesPage />} />
 
                     <Route path={ROUTES.settings.permissions} element={<PermissionsPage />} />
+
+                    <Route path={ROUTES.settings.goals} element={<GoalsPage />} />
+
+                    <Route path={ROUTES.settings.holidays} element={<HolidaysPage />} />
                 </Route>
 
                 {/* Catch-all redirect */}

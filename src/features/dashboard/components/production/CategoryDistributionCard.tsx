@@ -22,9 +22,6 @@ export function CategoryDistributionCard() {
     const { metrics } = useDashboardStore();
     const data = metrics?.categoryDistribution ?? [];
 
-    // Sort by value descending for the legend
-    const sortedData = [...data].sort((a, b) => b.value - a.value);
-
     return (
         <Card variant="default" className={`${styles.card} ${styles.categoriesArea}`}>
             <CardBody style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -33,78 +30,34 @@ export function CategoryDistributionCard() {
                     CATEGORIAS
                 </div>
 
-                {/* Horizontal layout: Chart + Legend */}
-                <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    gap: '0.75rem',
-                    alignItems: 'center',
-                    minHeight: '180px'
-                }}>
-                    {/* Donut Chart - Left side (bigger) */}
-                    <div style={{ flex: 1, height: '180px', minWidth: '140px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={50}
-                                    outerRadius={80}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Vertical Legend - Right side (narrower, no scroll) */}
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.125rem',
-                        maxWidth: '120px'
-                    }}>
-                        {sortedData.map((item, index) => (
-                            <div
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0.125rem 0'
-                                }}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                                stroke="none"
                             >
-                                <div style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    background: item.color,
-                                    borderRadius: '2px',
-                                    flexShrink: 0
-                                }} />
-                                <span style={{
-                                    fontSize: '0.625rem',
-                                    color: 'var(--color-text-secondary)',
-                                    flex: 1,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                }}>
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+                        </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* Legend */}
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1rem' }}>
+                        {data.map((item, index) => (
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ width: '12px', height: '12px', background: item.color, borderRadius: '2px' }} />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                                     {item.name}
-                                </span>
-                                <span style={{
-                                    fontSize: '0.625rem',
-                                    fontWeight: 700,
-                                    color: 'var(--color-text-primary)',
-                                    fontFamily: 'monospace'
-                                }}>
-                                    {item.value}
                                 </span>
                             </div>
                         ))}

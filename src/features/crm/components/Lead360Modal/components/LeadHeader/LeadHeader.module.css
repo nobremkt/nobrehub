@@ -1,181 +1,152 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * LEAD HEADER - Aligned with CLINT CRM Spec
+ * Layout: Avatar | Name | [Icons] | Status | [View Icons]
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 .header {
     display: flex;
-    align-items: flex-start;
-    gap: 1.5rem;
-    padding: 1.25rem 2rem;
-    background: linear-gradient(135deg,
-            var(--color-bg-secondary, #f8fafc) 0%,
-            var(--color-bg-primary, #ffffff) 100%);
-    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    align-items: center;
+    gap: var(--spacing-4);
+    padding: var(--spacing-3) var(--spacing-6);
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
 }
 
+/* Avatar */
 .avatar {
     position: relative;
     flex-shrink: 0;
 }
 
 .avatarImage {
-    width: 4.5rem;
-    height: 4.5rem;
-    border-radius: 1rem;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
     object-fit: cover;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-500) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    border: 3px solid var(--color-bg-primary, #ffffff);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid var(--color-surface);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .onlineIndicator {
     position: absolute;
-    bottom: 0.25rem;
-    right: 0.25rem;
-    width: 0.875rem;
-    height: 0.875rem;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
     background: #22c55e;
-    border: 3px solid var(--color-bg-primary, #ffffff);
+    border: 2px solid var(--color-surface);
     border-radius: 50%;
 }
 
-.leadInfo {
-    flex: 1;
-    min-width: 0;
-}
-
-.leadNameRow {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.375rem;
-}
-
+/* Lead Name */
 .leadName {
-    font-size: 1.375rem;
-    font-weight: 700;
-    color: var(--color-text-primary, #0f172a);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
     margin: 0;
-    line-height: 1.2;
+    white-space: nowrap;
 }
 
-.leadCompany {
+/* Action Icons - Inline buttons */
+.actionIcons {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--color-text-secondary, #64748b);
-    margin-bottom: 0.5rem;
+    gap: var(--spacing-1);
 }
 
-.leadCompany svg {
-    opacity: 0.6;
-}
-
-.tagsContainer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-/* Action Buttons */
-.actionButtons {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-.actionBtn {
+.iconBtn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 32px;
+    height: 32px;
     padding: 0;
-    background: var(--color-bg-primary, #ffffff);
-    border: 1px solid var(--color-border, #e2e8f0);
-    border-radius: 0.625rem;
-    color: var(--color-text-secondary, #64748b);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
+    transition: all 0.15s ease;
 }
 
-.actionBtn:hover {
-    background: var(--color-primary-50, #eff6ff);
-    border-color: var(--color-primary-200, #bfdbfe);
-    color: var(--color-primary-600, #2563eb);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+.iconBtn:hover {
+    background: var(--color-hover);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
 }
 
-.actionBtn.call:hover {
-    background: #ecfdf5;
-    border-color: #6ee7b7;
-    color: #059669;
+.iconBtn.active {
+    color: var(--color-warning-500);
+    background: rgba(251, 191, 36, 0.1);
 }
 
-.actionBtn.whatsapp:hover {
-    background: #ecfdf5;
-    border-color: #6ee7b7;
-    color: #22c55e;
+/* Separator */
+.separator {
+    width: 1px;
+    height: 24px;
+    background: var(--color-border);
+    flex-shrink: 0;
 }
 
-.actionBtn.email:hover {
-    background: #fef3c7;
-    border-color: #fcd34d;
-    color: #d97706;
+/* Status Section */
+.statusSection {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
 }
 
-.actionBtn.schedule:hover {
-    background: #f3e8ff;
-    border-color: #c4b5fd;
-    color: #7c3aed;
+/* View Icons */
+.viewIcons {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-left: auto;
 }
 
-.actionBtn.notes:hover {
-    background: #fef2f2;
-    border-color: #fca5a5;
-    color: #dc2626;
+/* Tags */
+.tagsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
 }
 
-/* Tooltip */
-.actionBtn::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.375rem 0.75rem;
-    background: var(--color-text-primary, #0f172a);
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 0.5rem;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 100;
-}
-
-.actionBtn:hover::after {
-    opacity: 1;
-    visibility: visible;
-}
-
+/* Responsive */
 @media (max-width: 768px) {
     .header {
-        flex-direction: column;
-        padding: 1rem;
+        flex-wrap: wrap;
+        padding: var(--spacing-3);
+        gap: var(--spacing-3);
     }
 
-    .actionButtons {
-        width: 100%;
-        justify-content: flex-start;
+    .leadName {
+        order: 1;
+        flex: 1;
+        min-width: 100%;
+    }
+
+    .actionIcons {
+        order: 2;
+    }
+
+    .separator {
+        display: none;
+    }
+
+    .statusSection {
+        order: 3;
+    }
+
+    .viewIcons {
+        order: 4;
     }
 }

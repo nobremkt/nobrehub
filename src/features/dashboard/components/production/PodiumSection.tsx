@@ -13,18 +13,14 @@ interface PodiumItemProps {
     highlightColor: string;
 }
 
-function PodiumCard({ icon, title, name, stat, description, highlightColor, avatarUrl }: PodiumItemProps) {
+function PodiumCard({ icon, title, name, stat, description, highlightColor }: PodiumItemProps) {
     return (
         <Card variant="elevated" className={styles.podiumCard}>
             <CardBody style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '0.75rem', padding: '1.5rem 1rem' }}>
                 {/* Avatar with Ring */}
                 <div style={{ padding: '2px', borderRadius: '50%', border: `2px solid ${highlightColor}` }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{name.charAt(0)}</span>
-                        )}
+                        <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{name.charAt(0)}</span>
                     </div>
                 </div>
 
@@ -66,7 +62,6 @@ export function PodiumSection() {
                 stat={`${topPoints?.points ?? 0} pts`}
                 description=""
                 highlightColor="var(--color-warning-500)"
-                avatarUrl={topPoints?.photoUrl}
             />
             <PodiumCard
                 icon={<Folder size={14} color="#3b82f6" />}
@@ -75,25 +70,22 @@ export function PodiumSection() {
                 stat={`${topProjects?.count ?? 0} proj`}
                 description=""
                 highlightColor="#3b82f6"
-                avatarUrl={topProjects?.photoUrl}
             />
             <PodiumCard
                 icon={<Rocket size={14} color="#f43f5e" />}
                 title="FOGUETE"
                 name={rocket?.name ?? '—'}
                 stat={`${rocket?.points ?? 0} pts`}
-                description="em 1 dia"
+                description={rocket ? `em ${rocket.inDays} dia${rocket.inDays !== 1 ? 's' : ''}` : ''}
                 highlightColor="#f43f5e"
-                avatarUrl={rocket?.photoUrl}
             />
             <PodiumCard
                 icon={<CheckCircle size={14} color="#22c55e" />}
                 title="FINALIZADOR"
                 name={finisher?.name ?? '—'}
                 stat={`${finisher?.count ?? 0} proj`}
-                description="em 1 dia"
+                description={finisher ? `em ${finisher.inDays} dia${finisher.inDays !== 1 ? 's' : ''}` : ''}
                 highlightColor="#22c55e"
-                avatarUrl={finisher?.photoUrl}
             />
         </div>
     );

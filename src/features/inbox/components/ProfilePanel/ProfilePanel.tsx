@@ -7,8 +7,9 @@
 
 import React, { useState } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
-import { Tag, PhoneInput } from '@/design-system';
+import { Tag, PhoneInput, Dropdown, Modal, Button } from '@/design-system';
 import { formatPhone } from '@/utils';
+import { DealStatus } from '../../types';
 import {
     Phone,
     Mail,
@@ -23,11 +24,15 @@ import {
     Plus,
     Edit2,
     Check,
-    X
+    X,
+    Bell,
+    ArrowRightLeft,
+    MessagesSquare
 } from 'lucide-react';
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
 import { toast } from 'react-toastify';
 
 interface AccordionSectionProps {
@@ -74,15 +79,27 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 export const ProfilePanel: React.FC = () => {
     const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
 
     // Inline Editing State
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
 
-    // Load collaborators on mount
+    // Loss Reason Modal State
+    const [showLossModal, setShowLossModal] = useState(false);
+    const [selectedLossReason, setSelectedLossReason] = useState<string>('');
+
+    // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
+    const LOSS_REASONS = [...lossReasons]
+        .filter(r => r.active)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+        .map(r => ({ value: r.id, label: r.name }));
+
+    // Load collaborators and loss reasons on mount
     React.useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
-    }, [fetchCollaborators, collaborators.length]);
+        if (lossReasons.length === 0) fetchLossReasons();
+    }, [fetchCollaborators, collaborators.length, fetchLossReasons, lossReasons.length]);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -257,6 +274,20 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <MessageSquare size={18} />
                 </button>
+                <button
+                    className={styles.actionButton}
+                    onClick={() => {/* TODO: Notificar */ }}
+                    title="Notificar"
+                >
+                    <Bell size={18} />
+                </button>
+                <button
+                    className={styles.actionButton}
+                    onClick={() => {/* TODO: Transferir */ }}
+                    title="Transferir"
+                >
+                    <ArrowRightLeft size={18} />
+                </button>
             </div>
 
             {/* Accordion Sections */}
@@ -270,23 +301,41 @@ export const ProfilePanel: React.FC = () => {
                     <div className={styles.dealSection}>
                         <div className={styles.dealPipeline}>
                             <span className={styles.dealLabel}>Pipeline</span>
-                            <span className={styles.dealValue}>Vendas HT</span>
+                            <span className={styles.dealValue}>{conversation.pipeline === 'low-ticket' ? 'Vendas LT' : 'Vendas HT'}</span>
                         </div>
                         <div className={styles.dealStage}>
                             <span className={styles.dealLabel}>Etapa</span>
-                            <div className={styles.stageIndicator}>
-                                <span className={styles.stageDot} />
-                                Prospecção
-                            </div>
+                            <Dropdown
+                                options={[
+                                    { label: 'Prospecção', value: 'prospeccao' },
+                                    { label: 'Qualificação', value: 'qualificacao' },
+                                    { label: 'Apresentação', value: 'apresentacao' },
+                                    { label: 'Negociação', value: 'negociacao' },
+                                    { label: 'Fechamento', value: 'fechamento' },
+                                ]}
+                                value={conversation.stage || 'prospeccao'}
+                                onChange={(val) => updateConversationDetails(conversation.id, { stage: val as string })}
+                                placeholder="Selecione a etapa"
+                                noSound
+                            />
                         </div>
                         <div className={styles.dealStatus}>
-                            <button className={`${styles.statusButton} ${styles.won}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.won} ${conversation.dealStatus === 'won' ? styles.active : ''}`}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'won' as DealStatus })}
+                            >
                                 Ganho
                             </button>
-                            <button className={`${styles.statusButton} ${styles.lost}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.lost} ${conversation.dealStatus === 'lost' ? styles.active : ''}`}
+                                onClick={() => setShowLossModal(true)}
+                            >
                                 Perdido
                             </button>
-                            <button className={`${styles.statusButton} ${styles.open} ${styles.active}`}>
+                            <button
+                                className={`${styles.statusButton} ${styles.open} ${(!conversation.dealStatus || conversation.dealStatus === 'open') ? styles.active : ''}`}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'open' as DealStatus })}
+                            >
                                 Aberto
                             </button>
                         </div>
@@ -300,9 +349,17 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <div className={styles.fieldList}>
                         {renderEditableField('name', 'Nome', conversation.leadName)}
-                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
                         {renderEditableField('email', 'Email', conversation.leadEmail)}
-                        {renderEditableField('company', 'Empresa', conversation.leadCompany)}
+                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
+                        {renderEditableField('instagram', 'Instagram', conversation.instagram, '@username')}
+                        <div className={styles.field}>
+                            <span className={styles.fieldLabel}>Tags</span>
+                            <div className={styles.tagsInline}>
+                                {conversation.tags?.map(tag => (
+                                    <Tag key={tag} variant="default" size="sm">{tag}</Tag>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </AccordionSection>
 
@@ -373,7 +430,104 @@ export const ProfilePanel: React.FC = () => {
                         </div>
                     </div>
                 </AccordionSection>
+
+                {/* Conversas */}
+                <AccordionSection
+                    title="Conversas"
+                    icon={<MessagesSquare size={16} />}
+                    badge={1}
+                >
+                    <div className={styles.conversationsSection}>
+                        <div className={styles.conversationItem}>
+                            <div className={styles.conversationIcon}>
+                                <MessageSquare size={14} />
+                            </div>
+                            <div className={styles.conversationInfo}>
+                                <span className={styles.conversationChannel}>
+                                    {conversation.channel === 'whatsapp' ? 'WhatsApp' : conversation.channel}
+                                </span>
+                                <span className={styles.conversationDate}>
+                                    {new Date(conversation.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                            </div>
+                            <span className={styles.conversationStatus}>
+                                {conversation.status === 'open' ? 'Aberta' : 'Fechada'}
+                            </span>
+                        </div>
+                    </div>
+                </AccordionSection>
             </div>
+
+            {/* Modal de Motivo de Perda */}
+            <Modal
+                isOpen={showLossModal}
+                onClose={() => {
+                    setShowLossModal(false);
+                    setSelectedLossReason('');
+                }}
+                title="Motivo da Perda"
+                size="auto"
+                footer={
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowLossModal(false);
+                                setSelectedLossReason('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="primary"
+                            disabled={!selectedLossReason}
+                            onClick={() => {
+                                updateConversationDetails(conversation.id, {
+                                    dealStatus: 'lost' as DealStatus,
+                                    lossReason: selectedLossReason
+                                });
+                                setShowLossModal(false);
+                                setSelectedLossReason('');
+                                toast.success('Lead marcado como perdido');
+                            }}
+                        >
+                            Confirmar
+                        </Button>
+                    </div>
+                }
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o motivo pelo qual este lead foi perdido:
+                </p>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                }}>
+                    {LOSS_REASONS.map((reason) => (
+                        <Button
+                            key={reason.value}
+                            variant={selectedLossReason === reason.value ? 'primary' : 'ghost'}
+                            onClick={() => setSelectedLossReason(reason.value)}
+                            fullWidth
+                            style={{
+                                height: '60px',
+                                justifyContent: 'flex-start',
+                                textAlign: 'left',
+                                opacity: selectedLossReason && selectedLossReason !== reason.value ? 0.5 : 1,
+                                border: selectedLossReason === reason.value
+                                    ? 'none'
+                                    : '1px solid var(--color-border)',
+                                boxShadow: selectedLossReason === reason.value
+                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
+                                    : 'none',
+                            }}
+                        >
+                            {reason.label}
+                        </Button>
+                    ))}
+                </div>
+            </Modal>
         </div>
     );
 };

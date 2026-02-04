@@ -2,7 +2,7 @@ import React from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { Button, Tag } from '@/design-system';
 import { Mail, Phone, User, ExternalLink } from 'lucide-react';
-import { getInitials } from '@/utils';
+import { getInitials, formatPhone } from '@/utils';
 import styles from './LeadSidebar.module.css';
 
 export const LeadSidebar: React.FC = () => {
@@ -41,7 +41,7 @@ export const LeadSidebar: React.FC = () => {
 
                 <div className={styles.infoRow}>
                     <Phone size={16} />
-                    <span>{conversation.leadPhone}</span>
+                    <span>{formatPhone(conversation.leadPhone || '')}</span>
                     <Button
                         variant="ghost"
                         size="sm"

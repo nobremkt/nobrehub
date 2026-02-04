@@ -7,3 +7,5 @@ export * from './SectorsPage';
 export * from './RolesPage';
 export * from './CollaboratorsPage';
 export * from './PermissionsPage';
+export * from './GoalsPage';
+export * from './HolidaysPage';

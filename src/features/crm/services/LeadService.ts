@@ -104,6 +104,78 @@ export const LeadService = {
     },
 
     /**
+     * Remove tags from multiple leads.
+     */
+    bulkRemoveTags: async (leadIds: string[], tagsToRemove: string[], currentContacts: Lead[]): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const tagsSet = new Set(tagsToRemove);
+
+            console.log('[bulkRemoveTags] Starting removal:', {
+                leadIds,
+                tagsToRemove,
+                contactsCount: currentContacts.length
+            });
+
+            const updatePromises = leadIds.map(id => {
+                const contact = currentContacts.find(c => c.id === id);
+                if (!contact) {
+                    console.warn('[bulkRemoveTags] Contact not found:', id);
+                    return Promise.resolve();
+                }
+
+                const oldTags = contact.tags || [];
+                const newTags = oldTags.filter(t => !tagsSet.has(t));
+
+                console.log('[bulkRemoveTags] Updating contact:', {
+                    id,
+                    oldTags,
+                    newTags,
+                    tagsRemoved: oldTags.length - newTags.length
+                });
+
+                return updateDoc(doc(db, COLLECTION_NAME, id), {
+                    tags: newTags,
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await Promise.all(updatePromises);
+            console.log('[bulkRemoveTags] Completed successfully');
+        } catch (error) {
+            console.error('Error bulk removing tags:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Add a tag to multiple leads.
+     */
+    bulkAddTag: async (leadIds: string[], tagToAdd: string, currentContacts: Lead[]): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+
+            const updatePromises = leadIds.map(id => {
+                const contact = currentContacts.find(c => c.id === id);
+                if (!contact) return Promise.resolve();
+
+                const currentTags = contact.tags || [];
+                if (currentTags.includes(tagToAdd)) return Promise.resolve(); // Already has tag
+
+                return updateDoc(doc(db, COLLECTION_NAME, id), {
+                    tags: [...currentTags, tagToAdd],
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk adding tag:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Sync leads from Inbox conversations.
      * Creates new leads for conversations that have a phone number but no corresponding lead in Firestore.
      */
@@ -143,7 +215,7 @@ export const LeadService = {
 
                 const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
                 const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
-                const correctPipeline = isWhatsApp ? 'pos-venda' : 'venda';
+                const correctPipeline = isWhatsApp ? 'low-ticket' : 'high-ticket';
                 const correctStatus = isWhatsApp ? 'lt-entrada' : 'ht-novo';
 
                 if (existingCtx.has(normalizedPhone)) {
@@ -152,7 +224,7 @@ export const LeadService = {
 
                     // Only fix if it's currently in the default 'ht-novo' state and should be in Low Ticket
                     // This prevents moving leads that were manually worked on
-                    if (isWhatsApp && data.pipeline === 'venda' && data.status === 'ht-novo') {
+                    if (isWhatsApp && data.pipeline === 'high-ticket' && data.status === 'ht-novo') {
                         dataPromises.push(updateDoc(doc(firestoreDb, COLLECTION_NAME, id), {
                             pipeline: correctPipeline,
                             status: correctStatus,
