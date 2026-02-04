@@ -43,11 +43,32 @@ export function IntegrationsPage() {
             apiKey
         });
 
-        // Small delay for UX feedback
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Test the connection by fetching templates from 360Dialog
+        try {
+            const response = await fetch('/api/get-templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey, baseUrl })
+            });
 
-        setLastTestResult('success');
-        setIsTesting(false);
+            if (response.ok) {
+                const data = await response.json();
+                // Check if we got templates back (valid connection)
+                if (data.waba_templates !== undefined) {
+                    setLastTestResult('success');
+                } else {
+                    setLastTestResult('error');
+                }
+            } else {
+                console.error('API Error:', await response.text());
+                setLastTestResult('error');
+            }
+        } catch (error) {
+            console.error('Connection test failed:', error);
+            setLastTestResult('error');
+        } finally {
+            setIsTesting(false);
+        }
     };
 
     // Determine badge status
