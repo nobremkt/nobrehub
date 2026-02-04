@@ -55,10 +55,15 @@ export const InboxService = {
                 return;
             }
 
-            const messages: Message[] = Object.keys(data).map((key) => ({
-                id: key,
-                ...data[key],
-            }));
+            const messages: Message[] = Object.keys(data).map((key) => {
+                const msg = data[key];
+                return {
+                    id: key,
+                    ...msg,
+                    // Map Firebase 'timestamp' to 'createdAt' that the Message type expects
+                    createdAt: msg.timestamp ? new Date(msg.timestamp) : new Date(msg.createdAt || Date.now()),
+                };
+            });
 
             callback(messages);
         });

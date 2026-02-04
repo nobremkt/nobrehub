@@ -6,8 +6,15 @@ interface MessageBubbleProps {
     message: Message;
 }
 
-const formatMessageTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatMessageTime = (date: Date | number | string | undefined | null): string => {
+    if (!date) return '';
+
+    const d = date instanceof Date ? date : new Date(date);
+
+    // Check for invalid date
+    if (isNaN(d.getTime())) return '';
+
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
@@ -29,9 +36,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     // Use mediaName for filename if available
     const fileName = message.mediaName || (message.type === 'document' ? 'Documento' : undefined);
 
-    const timeString = message.createdAt instanceof Date
-        ? formatMessageTime(message.createdAt)
-        : formatMessageTime(new Date(message.createdAt));
+    const timeString = formatMessageTime(message.createdAt);
 
     return (
         <ChatBubble

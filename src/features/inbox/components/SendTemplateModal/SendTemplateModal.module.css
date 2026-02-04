@@ -111,7 +111,162 @@
 }
 
 .templateSelector {
-    margin-bottom: var(--spacing-4);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Template List */
+.templateList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    overflow-y: auto;
+    flex: 1;
+    padding-right: var(--spacing-2);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.templateList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.templateList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.templateList::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.templateItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.templateItem:hover {
+    background: var(--color-hover);
+    border-color: var(--color-border-hover);
+}
+
+.templateItem.selected {
+    background: rgba(239, 17, 54, 0.08);
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 1px var(--color-primary-500);
+}
+
+.templateItemIcon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.templateItem.selected .templateItemIcon {
+    color: var(--color-primary-500);
+}
+
+.templateItemInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.templateItemName {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.templateItemCategory {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.templateItemCheck {
+    color: var(--color-primary-500);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.templateItem.selected .templateItemCheck {
+    opacity: 1;
+}
+
+/* Error State */
+.errorState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-6);
+    text-align: center;
+    flex: 1;
+}
+
+.errorIcon {
+    color: var(--color-danger-500);
+}
+
+.errorText {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.retryButton {
+    font-size: var(--font-size-sm);
+    color: var(--color-primary-500);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius-md);
+    transition: background 0.2s;
+}
+
+.retryButton:hover {
+    background: rgba(239, 17, 54, 0.1);
+}
+
+/* Empty Config State */
+.emptyConfig {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-6);
+    text-align: center;
+    flex: 1;
+}
+
+.emptyConfigIcon {
+    color: var(--color-warning-500);
+}
+
+.emptyConfigTitle {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.emptyConfigText {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
 }
 
 .variablesSection {

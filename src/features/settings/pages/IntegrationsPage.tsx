@@ -1,8 +1,7 @@
-
 import { Card, CardHeader, CardBody, Input, Button, Badge } from '@/design-system';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { useState, useEffect } from 'react';
-import { Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 export function IntegrationsPage() {
     const { whatsapp, setWhatsappConfig } = useSettingsStore();
@@ -12,34 +11,72 @@ export function IntegrationsPage() {
     const [apiKey, setApiKey] = useState(whatsapp.apiKey);
     const [provider, setProvider] = useState(whatsapp.provider);
 
-    // Status simulation for UX
-    const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+    // Testing state
+    const [isTesting, setIsTesting] = useState(false);
+    const [lastTestResult, setLastTestResult] = useState<'success' | 'error' | null>(null);
 
-    // Sync from store on mount
+    // Determine if already configured from persisted store
+    const isConfigured = Boolean(whatsapp.baseUrl && whatsapp.apiKey && whatsapp.provider === '360dialog');
+
+    // Sync from store on mount (handles hydration from localStorage)
     useEffect(() => {
         setBaseUrl(whatsapp.baseUrl);
         setApiKey(whatsapp.apiKey);
         setProvider(whatsapp.provider);
     }, [whatsapp]);
 
-    const handleSave = () => {
-        setStatus('testing');
+    const handleSave = async () => {
+        setIsTesting(true);
+        setLastTestResult(null);
 
-        // Save to store
+        // Save to store (this persists to localStorage via zustand persist)
         setWhatsappConfig({
             provider: provider,
             baseUrl,
             apiKey
         });
 
-        // Simulate connection test
-        setTimeout(() => {
-            if (baseUrl && apiKey) {
-                setStatus('success');
+        // Test the connection by fetching templates
+        try {
+            if (baseUrl && apiKey && provider === '360dialog') {
+                const response = await fetch('/api/get-templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiKey, baseUrl })
+                });
+
+                if (response.ok) {
+                    setLastTestResult('success');
+                } else {
+                    setLastTestResult('error');
+                }
             } else {
-                setStatus('error');
+                // Missing fields or not 360dialog
+                setLastTestResult('error');
             }
-        }, 1500);
+        } catch (error) {
+            console.error('Connection test failed:', error);
+            setLastTestResult('error');
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
+    // Determine badge status
+    const getBadgeStatus = () => {
+        if (isTesting) {
+            return <Badge variant="warning">Testando...</Badge>;
+        }
+        if (lastTestResult === 'success') {
+            return <Badge variant="success">Conectado</Badge>;
+        }
+        if (lastTestResult === 'error') {
+            return <Badge variant="danger">Erro na conexão</Badge>;
+        }
+        if (isConfigured) {
+            return <Badge variant="success">Configurado</Badge>;
+        }
+        return <Badge variant="default">Não configurado</Badge>;
     };
 
     return (
@@ -52,15 +89,7 @@ export function IntegrationsPage() {
             <Card>
                 <CardHeader
                     title="WhatsApp (360Dialog)"
-                    action={
-                        status === 'success' ? (
-                            <Badge variant="success">Conectado</Badge>
-                        ) : status === 'error' ? (
-                            <Badge variant="danger">Erro</Badge>
-                        ) : (
-                            <Badge variant="default">Não configurado</Badge>
-                        )
-                    }
+                    action={getBadgeStatus()}
                 />
                 <CardBody className="space-y-6">
                     <div className="flex gap-4 p-4 bg-surface-tertiary rounded-lg border border-border">
@@ -111,10 +140,30 @@ export function IntegrationsPage() {
                         </div>
                     </div>
 
+                    {/* Test Result Feedback */}
+                    {lastTestResult && (
+                        <div className={`flex items-center gap-2 p-3 rounded-lg ${lastTestResult === 'success'
+                                ? 'bg-success-500/10 text-success-500'
+                                : 'bg-danger-500/10 text-danger-500'
+                            }`}>
+                            {lastTestResult === 'success' ? (
+                                <>
+                                    <CheckCircle2 size={18} />
+                                    <span className="text-sm font-medium">Conexão estabelecida com sucesso!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <XCircle size={18} />
+                                    <span className="text-sm font-medium">Falha na conexão. Verifique suas credenciais.</span>
+                                </>
+                            )}
+                        </div>
+                    )}
+
                     <div className="pt-4 flex justify-end">
                         <Button
                             onClick={handleSave}
-                            isLoading={status === 'testing'}
+                            isLoading={isTesting}
                             leftIcon={<Save size={16} />}
                         >
                             Salvar e Testar Conexão
@@ -122,6 +171,11 @@ export function IntegrationsPage() {
                     </div>
                 </CardBody>
             </Card>
+
+            {/* Info about persistence */}
+            <div className="text-xs text-text-muted text-center">
+                As configurações são salvas localmente no navegador (localStorage).
+            </div>
         </div>
     );
 }

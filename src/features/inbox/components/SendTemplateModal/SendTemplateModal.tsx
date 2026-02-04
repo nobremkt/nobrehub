@@ -6,11 +6,12 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, FileText, Send, Loader2 } from 'lucide-react';
-import { Button, Dropdown, Input, Spinner } from '@/design-system';
+import { X, FileText, Send, Loader2, Check, AlertCircle, Settings2, MessageSquareText } from 'lucide-react';
+import { Button, Input, Spinner } from '@/design-system';
 import { TemplateService } from '@/features/settings/services/TemplateService';
 import { MessageTemplate } from '@/features/settings/types';
 import { Conversation } from '../../types';
+import { useSettingsStore } from '@/features/settings/stores/useSettingsStore';
 import styles from './SendTemplateModal.module.css';
 
 interface SendTemplateModalProps {
@@ -31,21 +32,28 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     const [variableValues, setVariableValues] = useState<Record<number, string>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const { whatsapp } = useSettingsStore();
+    const isConfigured = whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl;
 
     // Fetch templates on mount
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && isConfigured) {
             loadTemplates();
         }
-    }, [isOpen]);
+    }, [isOpen, isConfigured]);
 
     const loadTemplates = async () => {
         setIsLoading(true);
+        setError(null);
         try {
             const fetchedTemplates = await TemplateService.getTemplates();
             setTemplates(fetchedTemplates);
-        } catch (error) {
-            console.error('Error loading templates:', error);
+            console.log('[SendTemplateModal] Loaded templates:', fetchedTemplates.length);
+        } catch (err) {
+            console.error('Error loading templates:', err);
+            setError('Erro ao carregar templates. Verifique a configuração.');
         } finally {
             setIsLoading(false);
         }
@@ -146,15 +154,86 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
         }
     };
 
-    const handleTemplateSelect = (templateId: string | number) => {
-        const template = templates.find(t => t.id === String(templateId));
-        setSelectedTemplate(template || null);
+    const handleTemplateSelect = (template: MessageTemplate) => {
+        setSelectedTemplate(template);
     };
 
     // Check if all variables are filled
     const allVariablesFilled = variables.every(v => variableValues[v]?.trim());
 
     if (!isOpen) return null;
+
+    // Render content based on state
+    const renderTemplateList = () => {
+        // Not configured
+        if (!isConfigured) {
+            return (
+                <div className={styles.emptyConfig}>
+                    <Settings2 size={40} className={styles.emptyConfigIcon} />
+                    <span className={styles.emptyConfigTitle}>API não configurada</span>
+                    <span className={styles.emptyConfigText}>
+                        Configure a integração 360Dialog em Configurações → Integrações para usar templates.
+                    </span>
+                </div>
+            );
+        }
+
+        // Loading
+        if (isLoading) {
+            return (
+                <div className={styles.loading}>
+                    <Spinner size="md" />
+                </div>
+            );
+        }
+
+        // Error
+        if (error) {
+            return (
+                <div className={styles.errorState}>
+                    <AlertCircle size={40} className={styles.errorIcon} />
+                    <span className={styles.errorText}>{error}</span>
+                    <button className={styles.retryButton} onClick={loadTemplates}>
+                        Tentar novamente
+                    </button>
+                </div>
+            );
+        }
+
+        // No templates
+        if (templates.length === 0) {
+            return (
+                <div className={styles.emptyState}>
+                    <FileText size={40} className={styles.emptyIcon} />
+                    <span className={styles.emptyConfigText}>
+                        Nenhum template aprovado encontrado.
+                    </span>
+                </div>
+            );
+        }
+
+        // Template list
+        return (
+            <div className={styles.templateList}>
+                {templates.map((template) => (
+                    <div
+                        key={template.id}
+                        className={`${styles.templateItem} ${selectedTemplate?.id === template.id ? styles.selected : ''}`}
+                        onClick={() => handleTemplateSelect(template)}
+                    >
+                        <MessageSquareText size={18} className={styles.templateItemIcon} />
+                        <div className={styles.templateItemInfo}>
+                            <span className={styles.templateItemName}>{template.name}</span>
+                            {template.category && (
+                                <span className={styles.templateItemCategory}>{template.category}</span>
+                            )}
+                        </div>
+                        <Check size={18} className={styles.templateItemCheck} />
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div className={styles.overlay} onClick={onClose}>
@@ -172,25 +251,11 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
 
                 {/* Content - Split View */}
                 <div className={styles.content}>
-                    {/* Left Panel - Variables Editor */}
+                    {/* Left Panel - Template List & Variables */}
                     <div className={styles.leftPanel}>
                         <div className={styles.templateSelector}>
-                            <span className={styles.sectionTitle}>Template</span>
-                            {isLoading ? (
-                                <div className={styles.loading}>
-                                    <Spinner size="sm" />
-                                </div>
-                            ) : (
-                                <Dropdown
-                                    value={selectedTemplate?.id}
-                                    onChange={handleTemplateSelect}
-                                    placeholder="Selecione um template"
-                                    options={templates.map(t => ({
-                                        value: t.id,
-                                        label: t.name
-                                    }))}
-                                />
-                            )}
+                            <span className={styles.sectionTitle}>Templates</span>
+                            {renderTemplateList()}
                         </div>
 
                         {selectedTemplate && variables.length > 0 && (
