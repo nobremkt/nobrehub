@@ -1,9 +1,10 @@
 
 import { useState } from 'react';
-import { Activity, Copy, Phone } from 'lucide-react';
+import { Activity, Copy, Phone, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
+import { toast } from 'react-toastify';
 
 // Helper to get stage number from stage id
 const getStageNumber = (stageId: string) => {
@@ -155,7 +156,6 @@ export function AtividadeTab() {
                     </div>
                 </div>
 
-                {/* Right Column: Script */}
                 <div className={styles.scriptSection}>
                     <div className={styles.scriptCard}>
                         <button className={styles.copyScriptBtn} title="Copiar Script">
@@ -167,6 +167,18 @@ export function AtividadeTab() {
                             {currentScript.title}
                         </h4>
                         <div className={styles.scriptContent}>{highlightVariables(currentScript.content)}</div>
+
+                        {/* Botão Enviar Template */}
+                        <button
+                            className={styles.sendTemplateBtn}
+                            onClick={() => {
+                                // TODO: Navegar para Inbox com template pré-selecionado
+                                toast.info('Em breve: Envio de template pelo Inbox');
+                            }}
+                        >
+                            <Send size={16} />
+                            Enviar Template ao Cliente
+                        </button>
                     </div>
                 </div>
             </div>

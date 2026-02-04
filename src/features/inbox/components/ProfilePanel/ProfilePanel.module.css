@@ -96,6 +96,35 @@
     color: var(--color-primary-500);
 }
 
+/* Lead 360 Button */
+.lead360Btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    margin-top: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.lead360Btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.lead360Btn:active {
+    transform: translateY(0);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * QUICK ACTIONS
  * ───────────────────────────────────────────────────────────────────────────── */

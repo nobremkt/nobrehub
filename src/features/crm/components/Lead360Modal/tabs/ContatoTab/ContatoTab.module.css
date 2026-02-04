@@ -1,5 +1,5 @@
 /**
- * NegociosTab Styles
+ * ContatoTab Styles
  */
 
 .container {
@@ -18,17 +18,10 @@
 }
 
 .title {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
     font-size: 1rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0;
-}
-
-.title svg {
-    color: var(--color-primary-500);
 }
 
 .editBtn {
@@ -90,62 +83,6 @@
     background: var(--color-primary-600);
 }
 
-/* Summary Card */
-.summaryCard {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-4);
-    padding: var(--spacing-4);
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-}
-
-.summaryItem {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-1);
-    text-align: center;
-}
-
-.summaryLabel {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.summaryValue {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #16a34a;
-}
-
-.statusBadge {
-    display: inline-block;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.statusBadge.open {
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
-}
-
-.statusBadge.won {
-    background: rgba(22, 163, 74, 0.15);
-    color: #16a34a;
-}
-
-.statusBadge.lost {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-}
-
-/* Form */
 .form {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -183,32 +120,29 @@
 .textarea {
     width: 100%;
     padding: var(--spacing-3);
-    background: var(--color-bg-secondary);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-primary);
     font-size: 0.875rem;
     font-family: inherit;
     resize: vertical;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: all 0.15s ease;
 }
 
 .textarea:focus {
     outline: none;
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 10px var(--color-primary-500);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
 .textarea:disabled {
-    opacity: 0.6;
+    background: var(--color-bg-secondary);
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
 @media (max-width: 768px) {
-    .summaryCard {
-        grid-template-columns: 1fr;
-    }
-
     .form {
         grid-template-columns: 1fr;
     }

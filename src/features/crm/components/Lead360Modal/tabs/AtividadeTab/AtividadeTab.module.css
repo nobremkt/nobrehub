@@ -360,3 +360,33 @@
     color: var(--color-primary-500, #dc2626);
     flex-shrink: 0;
 }
+
+/* Send Template Button */
+.sendTemplateBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.sendTemplateBtn:hover {
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700, #991b1b));
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    transform: translateY(-1px);
+}
+
+.sendTemplateBtn:active {
+    transform: translateY(0);
+}

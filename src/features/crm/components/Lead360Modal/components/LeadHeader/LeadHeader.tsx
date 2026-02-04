@@ -1,14 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Lead } from '@/types/lead.types';
-import { Dropdown } from '@/design-system';
 import {
     Phone,
     MessageSquare,
     Mail,
     Star,
     Pin,
-    Grid3X3,
-    Maximize2
+    CheckCircle,
+    XCircle
 } from 'lucide-react';
 import styles from './LeadHeader.module.css';
 import { getInitials } from '../../utils/helpers';
@@ -91,12 +90,17 @@ export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
         toast.success(isPinned ? 'Fixação removida' : 'Contato fixado');
     };
 
-    // Status options
-    const statusOptions = [
-        { value: 'won', label: 'Ganho' },
-        { value: 'lost', label: 'Perdido' },
-        { value: 'open', label: 'Aberto' },
-    ];
+    // Handler para Ganho
+    const handleWon = () => {
+        onStatusChange?.('won');
+        toast.success('Lead marcado como GANHO!');
+    };
+
+    // Handler para Perdido
+    const handleLost = () => {
+        onStatusChange?.('lost');
+        toast.info('Lead marcado como perdido');
+    };
 
     return (
         <header className={styles.header}>
@@ -153,27 +157,23 @@ export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
             {/* Separator */}
             <div className={styles.separator} />
 
-            {/* Status Dropdowns */}
-            <div className={styles.statusSection}>
-                <Dropdown
-                    options={statusOptions}
-                    value={lead.status || 'open'}
-                    onChange={(val) => onStatusChange?.(val as 'won' | 'lost' | 'open')}
-                    placeholder="Status"
-                    noSound
-                />
-            </div>
-
-            {/* Separator */}
-            <div className={styles.separator} />
-
-            {/* Grid/Expand Icons */}
-            <div className={styles.viewIcons}>
-                <button className={styles.iconBtn} title="Visualização em Grade">
-                    <Grid3X3 size={16} />
+            {/* Status Buttons - Ganho/Perdido */}
+            <div className={styles.statusButtons}>
+                <button
+                    className={`${styles.wonBtn} ${lead.status === 'won' ? styles.active : ''}`}
+                    onClick={handleWon}
+                    title="Marcar como Ganho"
+                >
+                    <CheckCircle size={16} />
+                    <span>Ganho</span>
                 </button>
-                <button className={styles.iconBtn} title="Expandir">
-                    <Maximize2 size={16} />
+                <button
+                    className={`${styles.lostBtn} ${lead.status === 'lost' ? styles.active : ''}`}
+                    onClick={handleLost}
+                    title="Marcar como Perdido"
+                >
+                    <XCircle size={16} />
+                    <span>Perdido</span>
                 </button>
             </div>
         </header>

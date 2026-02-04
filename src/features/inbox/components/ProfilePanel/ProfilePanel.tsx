@@ -20,7 +20,8 @@ import {
     X,
     Bell,
     ArrowRightLeft,
-    MessagesSquare
+    MessagesSquare,
+    ExternalLink
 } from 'lucide-react';
 import { getInitials } from '@/utils';
 import styles from './ProfilePanel.module.css';
@@ -30,6 +31,7 @@ import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStor
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { toast } from 'react-toastify';
+import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 
 interface AccordionSectionProps {
     title: string;
@@ -93,6 +95,9 @@ export const ProfilePanel: React.FC = () => {
     // Notes Editing State
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteValue, setNoteValue] = useState('');
+
+    // Lead360 Modal State
+    const [showLead360Modal, setShowLead360Modal] = useState(false);
 
     // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
     const LOSS_REASONS = [...lossReasons]
@@ -270,6 +275,15 @@ export const ProfilePanel: React.FC = () => {
                         Adicionar
                     </button>
                 </div>
+
+                {/* Botão Lead 360° */}
+                <button
+                    className={styles.lead360Btn}
+                    onClick={() => setShowLead360Modal(true)}
+                >
+                    <ExternalLink size={14} />
+                    <span>Lead 360°</span>
+                </button>
             </div>
 
             {/* Ações Rápidas */}
@@ -691,6 +705,26 @@ export const ProfilePanel: React.FC = () => {
                     )}
                 </div>
             </Modal>
+
+            {/* Lead 360° Modal */}
+            <Lead360Modal
+                isOpen={showLead360Modal}
+                onClose={() => setShowLead360Modal(false)}
+                lead={{
+                    id: conversation.id,
+                    name: conversation.leadName,
+                    phone: conversation.leadPhone,
+                    email: conversation.leadEmail || '',
+                    company: conversation.leadCompany || '',
+                    status: conversation.dealStatus || 'open',
+                    pipeline: 'high-ticket',
+                    order: 0,
+                    responsibleId: conversation.assignedTo || '',
+                    createdAt: conversation.createdAt,
+                    updatedAt: conversation.updatedAt,
+                    tags: conversation.tags || [],
+                }}
+            />
         </div>
     );
 };
