@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand';
-import { GoalsService, GoalsConfig } from '../services/goalsService';
+import { GoalsService, GoalsConfig, VideoDurationPoints } from '../services/goalsService';
 import { toast } from 'react-toastify';
 
 interface GoalsState {
@@ -19,6 +19,7 @@ interface GoalsState {
     init: () => Promise<void>;
     setDailyGoal: (goal: number) => Promise<void>;
     setWorkdays: (perWeek: number, perMonth: number) => Promise<void>;
+    setVideoDurationPoints: (points: VideoDurationPoints) => Promise<void>;
     calculateGoal: (period: string) => number;
 }
 
@@ -76,6 +77,22 @@ export const useGoalsStore = create<GoalsState>((set, get) => ({
             toast.success('Dias úteis atualizados!');
         } catch (error) {
             console.error('Error saving workdays:', error);
+            toast.error('Erro ao salvar configuração');
+        } finally {
+            set({ isSaving: false });
+        }
+    },
+
+    setVideoDurationPoints: async (points: VideoDurationPoints) => {
+        set({ isSaving: true });
+        try {
+            await GoalsService.saveConfig({ videoDurationPoints: points });
+            set(state => ({
+                config: state.config ? { ...state.config, videoDurationPoints: points } : null
+            }));
+            toast.success('Pontos de vídeo atualizados!');
+        } catch (error) {
+            console.error('Error saving video duration points:', error);
             toast.error('Erro ao salvar configuração');
         } finally {
             set({ isSaving: false });

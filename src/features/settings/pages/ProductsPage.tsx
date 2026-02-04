@@ -110,7 +110,10 @@ export const ProductsPage = () => {
                                     <div className="flex flex-col">
                                         <span className="text-xs text-text-muted uppercase font-bold">Preço</span>
                                         <span className="font-bold text-lg text-text-primary">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+                                            {product.price != null
+                                                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)
+                                                : '—'
+                                            }
                                         </span>
                                     </div>
 

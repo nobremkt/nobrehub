@@ -4,11 +4,12 @@
  * Barra de ações em massa que aparece quando contatos estão selecionados
  * ═══════════════════════════════════════════════════════════════════════════════
  */
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
 import { useKanbanStore, PipelineType } from '../../stores/useKanbanStore';
 import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { Button, Modal, ConfirmModal, Dropdown, Input, Checkbox } from '@/design-system';
 import {
     Tag as TagIcon,
@@ -24,14 +25,6 @@ import {
 import styles from './ContactsQuickActions.module.css';
 import { LeadService } from '../../services/LeadService';
 import { toast } from 'react-toastify';
-
-// Mock team members (TODO: fetch from API)
-const TEAM_MEMBERS = [
-    { id: '1', name: 'Ana Silva', sector: 'Vendas' },
-    { id: '2', name: 'Maria Santos', sector: 'Vendas' },
-    { id: '3', name: 'Carlos Oliveira', sector: 'Pós-Venda' },
-    { id: '4', name: 'Julia Costa', sector: 'Pós-Venda' },
-];
 
 const PIPELINE_OPTIONS = [
     { value: 'high-ticket', label: 'High Ticket' },
@@ -49,6 +42,10 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
 }) => {
     const { selectedIds, contacts, availableTags, setAvailableTags, setContacts } = useContactsStore();
     const { getStagesByPipeline } = useKanbanStore();
+
+    // Team members from stores
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
+    const { sectors, fetchSectors } = useSectorStore();
 
     // Modal states
     const [showAddTagModal, setShowAddTagModal] = useState(false);
@@ -73,9 +70,38 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
     // Loss reasons from store
     const { lossReasons, fetchLossReasons } = useLossReasonStore();
 
+    // Fetch collaborators and sectors on mount
+    useEffect(() => {
+        if (collaborators.length === 0) fetchCollaborators();
+        if (sectors.length === 0) fetchSectors();
+    }, [collaborators.length, sectors.length, fetchCollaborators, fetchSectors]);
+
     useEffect(() => {
         if (lossReasons.length === 0) fetchLossReasons();
     }, [lossReasons.length, fetchLossReasons]);
+
+    // Build sector name map for filtering
+    const sectorNameMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        sectors.forEach(s => { map[s.id] = s.name; });
+        return map;
+    }, [sectors]);
+
+    // Filter collaborators by sector
+    const vendedoras = useMemo(() =>
+        collaborators
+            .filter(c => c.active !== false && sectorNameMap[c.sectorId || '']?.toLowerCase().includes('venda'))
+            .filter(c => !sectorNameMap[c.sectorId || '']?.toLowerCase().includes('pós'))
+            .map(c => ({ id: c.id, name: c.name, sector: sectorNameMap[c.sectorId || ''] || 'Vendas' })),
+        [collaborators, sectorNameMap]
+    );
+
+    const posVendaMembers = useMemo(() =>
+        collaborators
+            .filter(c => c.active !== false && sectorNameMap[c.sectorId || '']?.toLowerCase().includes('pós'))
+            .map(c => ({ id: c.id, name: c.name, sector: sectorNameMap[c.sectorId || ''] || 'Pós-Venda' })),
+        [collaborators, sectorNameMap]
+    );
 
     const LOSS_REASONS = [...lossReasons]
         .filter(r => r.active)
@@ -246,9 +272,6 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         setShowDeleteConfirm(false);
         onClearSelection();
     };
-
-    const vendedoras = TEAM_MEMBERS.filter(m => m.sector === 'Vendas');
-    const posVendaMembers = TEAM_MEMBERS.filter(m => m.sector === 'Pós-Venda');
 
     return (
         <div className={styles.container}>

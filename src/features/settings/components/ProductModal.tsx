@@ -10,10 +10,11 @@ interface ProductModalProps {
 }
 
 const CATEGORY_OPTIONS = [
-    { label: 'Produto', value: 'Produto' },
-    { label: 'Serviço', value: 'Serviço' },
-    { label: 'Assinatura', value: 'Assinatura' },
     { label: 'Consultoria', value: 'Consultoria' },
+    { label: 'Gestão', value: 'Gestão' },
+    { label: 'Assinatura', value: 'Assinatura' },
+    { label: 'Vídeo', value: 'Vídeo' },
+    { label: 'Arte', value: 'Arte' },
 ];
 
 export const ProductModal = ({ isOpen, onClose, productToEdit }: ProductModalProps) => {
@@ -30,7 +31,7 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }: ProductModalPro
         if (productToEdit) {
             setName(productToEdit.name);
             setDescription(productToEdit.description || '');
-            setPrice(productToEdit.price.toString());
+            setPrice(productToEdit.price?.toString() || '');
             setCategory(productToEdit.category);
             setActive(productToEdit.active);
         } else {
@@ -46,29 +47,26 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }: ProductModalPro
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const priceNum = parseFloat(price.replace(',', '.'));
-        if (!name || isNaN(priceNum)) {
-            alert('Preencha nome e preço válido');
+        const priceNum = price ? parseFloat(price.replace(',', '.')) : undefined;
+        if (!name) {
+            alert('Preencha o nome do produto');
             return;
         }
 
+        // Build product data - only include price if set (Firebase doesn't accept undefined)
+        const productData = {
+            name,
+            description,
+            category: category as string,
+            active,
+            ...(priceNum !== undefined && !isNaN(priceNum) ? { price: priceNum } : {})
+        };
+
         try {
             if (productToEdit) {
-                await updateProduct(productToEdit.id, {
-                    name,
-                    description,
-                    price: priceNum,
-                    category: category as string,
-                    active
-                });
+                await updateProduct(productToEdit.id, productData);
             } else {
-                await addProduct({
-                    name,
-                    description,
-                    price: priceNum,
-                    category: category as string,
-                    active
-                });
+                await addProduct(productData);
             }
             onClose();
         } catch (error) {
