@@ -6,9 +6,8 @@ import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Search, User } from 'lucide-react';
 import { Collaborator } from '@/features/settings/types';
-import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '@/config';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
+import { CollaboratorProfileModal } from '../components/CollaboratorProfileModal';
 
 
 
@@ -18,10 +17,11 @@ export const MembersPage = () => {
     const { roles, fetchRoles } = useRoleStore();
     const { sectors, fetchSectors } = useSectorStore();
     const { user } = useAuthStore();
-    const navigate = useNavigate();
     const teamStatus = useTeamStatus(); // Realtime status
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCollaborator, setSelectedCollaborator] = useState<Collaborator | null>(null);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     useEffect(() => {
         fetchCollaborators();
@@ -30,6 +30,17 @@ export const MembersPage = () => {
     }, [fetchCollaborators, fetchRoles, fetchSectors]);
 
     const getRoleName = (id?: string) => roles.find(r => r.id === id)?.name || 'Sem cargo';
+    const getSectorName = (id?: string) => sectors.find(s => s.id === id)?.name;
+
+    const handleViewProfile = (collaborator: Collaborator) => {
+        setSelectedCollaborator(collaborator);
+        setIsProfileModalOpen(true);
+    };
+
+    const handleCloseProfileModal = () => {
+        setIsProfileModalOpen(false);
+        setSelectedCollaborator(null);
+    };
 
     // Sort logic: active collaborators, sorted by name
     const activeCollaborators = collaborators
@@ -127,7 +138,7 @@ export const MembersPage = () => {
                                             role={getRoleName(collaborator.roleId)}
                                             imageUrl={collaborator.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(collaborator.name)}&background=random&size=512`}
                                             isOnline={isOnline}
-                                            onViewProfile={() => navigate(ROUTES.team.member(collaborator.id))}
+                                            onViewProfile={() => handleViewProfile(collaborator)}
                                         />
                                     );
                                 })}
@@ -143,6 +154,15 @@ export const MembersPage = () => {
                     )}
                 </div>
             )}
+
+            {/* Profile Modal */}
+            <CollaboratorProfileModal
+                collaborator={selectedCollaborator}
+                isOpen={isProfileModalOpen}
+                onClose={handleCloseProfileModal}
+                sectorName={selectedCollaborator ? getSectorName(selectedCollaborator.sectorId) : undefined}
+                roleName={selectedCollaborator ? getRoleName(selectedCollaborator.roleId) : undefined}
+            />
         </div>
     );
 };

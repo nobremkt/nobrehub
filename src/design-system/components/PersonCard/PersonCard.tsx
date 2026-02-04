@@ -54,13 +54,11 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 </div>
 
                 <div className={styles.footer}>
-                    {/* Status Pill */}
-                    {isOnline && (
-                        <div className={styles.status}>
-                            <div className={styles.statusDot} />
-                            <span className={styles.statusText}>Online</span>
-                        </div>
-                    )}
+                    {/* Status Pill - Always visible */}
+                    <div className={`${styles.status} ${isOnline ? styles.statusOnline : styles.statusOffline}`}>
+                        <div className={`${styles.statusDot} ${isOnline ? styles.dotOnline : styles.dotOffline}`} />
+                        <span className={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</span>
+                    </div>
 
                     {/* Action Button */}
                     <button onClick={onViewProfile} className={styles.button}>
