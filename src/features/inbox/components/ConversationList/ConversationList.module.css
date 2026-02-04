@@ -102,6 +102,20 @@
     color: var(--color-text-muted);
 }
 
+/* Favorite Toggle - positioned at end */
+.favoriteToggle {
+    margin-left: auto;
+}
+
+.favoriteToggle.active {
+    background: #fbbf24;
+    color: #1a1a1a;
+}
+
+.favoriteToggle.active:hover {
+    background: #f59e0b;
+}
+
 /* Lista de Conversas */
 .list {
     flex: 1;

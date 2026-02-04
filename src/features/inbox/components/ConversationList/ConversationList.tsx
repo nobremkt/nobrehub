@@ -1,18 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - CONVERSATION LIST (REFACTORED)
- * Lista de conversas com filtros e busca
+ * Lista de conversas com filtros por atribuição e busca
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { ConversationItem } from './ConversationItem';
 import { Input } from '@/design-system';
-import { Search, MessageSquare, CheckCircle, Clock } from 'lucide-react';
+import { Search, MessageSquare, User, Users, Star } from 'lucide-react';
 import styles from './ConversationList.module.css';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 
-type StatusFilter = 'all' | 'open' | 'closed' | 'unread';
+type AssignmentFilter = 'all' | 'mine' | 'unassigned';
 
 export const ConversationList: React.FC = () => {
     const {
@@ -23,8 +25,26 @@ export const ConversationList: React.FC = () => {
         setFilter
     } = useInboxStore();
 
+    const { user } = useAuthStore();
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
+
     const [tempSearch, setTempSearch] = useState(filters.query);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+    // Load collaborators on mount (needed to find current user's collaborator ID)
+    useEffect(() => {
+        if (collaborators.length === 0) {
+            fetchCollaborators();
+        }
+    }, [fetchCollaborators]);
+
+    // Find current user's collaborator ID (user.id is Firebase Auth UID, need to find matching collaborator)
+    const currentCollaboratorId = useMemo(() => {
+        if (!user?.id) return null;
+        const currentCollaborator = collaborators.find(c => c.authUid === user.id);
+        return currentCollaborator?.id || null;
+    }, [user?.id, collaborators]);
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -32,36 +52,58 @@ export const ConversationList: React.FC = () => {
         setFilter({ query });
     };
 
-    const handleStatusFilter = (status: StatusFilter) => {
-        setStatusFilter(status);
-        if (status === 'unread') {
-            setFilter({ status: 'unread' });
-        } else {
-            setFilter({ status: 'all' });
-        }
-    };
+    // Sort conversations: pinned first, then by updatedAt
+    const sortedConversations = useMemo(() => {
+        return [...conversations].sort((a, b) => {
+            // Pinned items first
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
 
-    const filteredConversations = conversations.filter(c => {
-        // Filter by Status
-        if (statusFilter === 'unread' && c.unreadCount === 0) return false;
-        if (statusFilter === 'open' && c.status === 'closed') return false;
-        if (statusFilter === 'closed' && c.status !== 'closed') return false;
+            // Then by updatedAt (most recent first)
+            const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : a.updatedAt;
+            const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : b.updatedAt;
+            return bTime - aTime;
+        });
+    }, [conversations]);
 
-        // Filter by Query
-        if (filters.query) {
-            const q = filters.query.toLowerCase();
-            return (
-                c.leadName.toLowerCase().includes(q) ||
-                c.leadPhone.includes(q)
-            );
-        }
+    const filteredConversations = useMemo(() => {
+        return sortedConversations.filter(c => {
+            // Filter by assignment
+            if (assignmentFilter === 'mine') {
+                if (!currentCollaboratorId || c.assignedTo !== currentCollaboratorId) return false;
+            } else if (assignmentFilter === 'unassigned') {
+                if (c.assignedTo) return false;
+            }
 
-        return true;
-    });
+            // Filter by favorites
+            if (showFavoritesOnly && !c.isFavorite) return false;
 
-    // Count by status
-    const openCount = conversations.filter(c => c.status !== 'closed').length;
-    const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
+            // Filter by Query
+            if (filters.query) {
+                const q = filters.query.toLowerCase();
+                return (
+                    c.leadName.toLowerCase().includes(q) ||
+                    c.leadPhone.includes(q)
+                );
+            }
+
+            return true;
+        });
+    }, [sortedConversations, assignmentFilter, currentCollaboratorId, showFavoritesOnly, filters.query]);
+
+    // Count by assignment
+    const mineCount = useMemo(() => {
+        if (!currentCollaboratorId) return 0;
+        return conversations.filter(c => c.assignedTo === currentCollaboratorId).length;
+    }, [conversations, currentCollaboratorId]);
+
+    const unassignedCount = useMemo(() => {
+        return conversations.filter(c => !c.assignedTo).length;
+    }, [conversations]);
+
+    const favoritesCount = useMemo(() => {
+        return conversations.filter(c => c.isFavorite).length;
+    }, [conversations]);
 
     return (
         <div className={styles.container}>
@@ -91,32 +133,36 @@ export const ConversationList: React.FC = () => {
             {/* Filter Tabs */}
             <div className={styles.filterTabs}>
                 <button
-                    className={`${styles.filterTab} ${statusFilter === 'all' ? styles.active : ''}`}
-                    onClick={() => handleStatusFilter('all')}
+                    className={`${styles.filterTab} ${assignmentFilter === 'all' && !showFavoritesOnly ? styles.active : ''}`}
+                    onClick={() => { setAssignmentFilter('all'); setShowFavoritesOnly(false); }}
                 >
-                    Todas
+                    Todos
                 </button>
                 <button
-                    className={`${styles.filterTab} ${statusFilter === 'open' ? styles.active : ''}`}
-                    onClick={() => handleStatusFilter('open')}
+                    className={`${styles.filterTab} ${assignmentFilter === 'mine' && !showFavoritesOnly ? styles.active : ''}`}
+                    onClick={() => { setAssignmentFilter('mine'); setShowFavoritesOnly(false); }}
                 >
-                    <Clock size={14} />
-                    Abertas
-                    {openCount > 0 && <span className={styles.filterCount}>{openCount}</span>}
+                    <User size={14} />
+                    Meus
+                    {mineCount > 0 && <span className={styles.filterCount}>{mineCount}</span>}
                 </button>
                 <button
-                    className={`${styles.filterTab} ${statusFilter === 'unread' ? styles.active : ''}`}
-                    onClick={() => handleStatusFilter('unread')}
+                    className={`${styles.filterTab} ${assignmentFilter === 'unassigned' && !showFavoritesOnly ? styles.active : ''}`}
+                    onClick={() => { setAssignmentFilter('unassigned'); setShowFavoritesOnly(false); }}
                 >
-                    Não lidas
-                    {unreadCount > 0 && <span className={styles.filterCount}>{unreadCount}</span>}
+                    <Users size={14} />
+                    Não atribuídos
+                    {unassignedCount > 0 && <span className={styles.filterCount}>{unassignedCount}</span>}
                 </button>
+
+                {/* Favorites Toggle */}
                 <button
-                    className={`${styles.filterTab} ${statusFilter === 'closed' ? styles.active : ''}`}
-                    onClick={() => handleStatusFilter('closed')}
+                    className={`${styles.filterTab} ${styles.favoriteToggle} ${showFavoritesOnly ? styles.active : ''}`}
+                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                    title={showFavoritesOnly ? 'Mostrar todos' : 'Mostrar favoritos'}
                 >
-                    <CheckCircle size={14} />
-                    Fechadas
+                    <Star size={14} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                    {favoritesCount > 0 && showFavoritesOnly && <span className={styles.filterCount}>{favoritesCount}</span>}
                 </button>
             </div>
 
@@ -134,7 +180,16 @@ export const ConversationList: React.FC = () => {
                 ) : (
                     <div className={styles.emptyState}>
                         <MessageSquare size={32} strokeWidth={1.5} />
-                        <span>Nenhuma conversa encontrada</span>
+                        <span>
+                            {showFavoritesOnly
+                                ? 'Nenhum favorito encontrado'
+                                : assignmentFilter === 'mine'
+                                    ? 'Nenhuma conversa atribuída a você'
+                                    : assignmentFilter === 'unassigned'
+                                        ? 'Nenhuma conversa não atribuída'
+                                        : 'Nenhuma conversa encontrada'
+                            }
+                        </span>
                     </div>
                 )}
             </div>
