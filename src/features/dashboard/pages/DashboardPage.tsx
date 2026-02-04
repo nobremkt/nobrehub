@@ -80,7 +80,7 @@ export function DashboardPage() {
                         Olá, {user?.name?.split(' ')[0] || 'Visitante'}! 👋
                     </h1>
                     <p className={styles.welcomeSubtitle}>
-                        Visão geral do seu negócio.
+                        Visão geral das métricas
                     </p>
                 </div>
 
