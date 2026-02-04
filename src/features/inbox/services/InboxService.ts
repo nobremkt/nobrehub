@@ -601,5 +601,139 @@ export const InboxService = {
         }
 
         console.log('Database seeded successfully!');
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // LEAD DISTRIBUTION (Round Robin - Least Loaded)
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Get lead distribution settings.
+     */
+    getDistributionSettings: async (): Promise<{
+        enabled: boolean;
+        mode: 'auto' | 'manual';
+        participants: string[];
+    }> => {
+        const db = getRealtimeDb();
+        const settingsRef = ref(db, 'settings/leadDistribution');
+        const snapshot = await get(settingsRef);
+
+        if (!snapshot.exists()) {
+            return {
+                enabled: false,
+                mode: 'manual',
+                participants: []
+            };
+        }
+
+        return snapshot.val();
+    },
+
+    /**
+     * Save lead distribution settings.
+     */
+    saveDistributionSettings: async (settings: {
+        enabled: boolean;
+        mode: 'auto' | 'manual';
+        participants: string[];
+    }): Promise<void> => {
+        const db = getRealtimeDb();
+        const settingsRef = ref(db, 'settings/leadDistribution');
+        await set(settingsRef, {
+            ...settings,
+            updatedAt: serverTimestamp()
+        });
+    },
+
+    /**
+     * Get count of active (open) leads per collaborator.
+     */
+    getActiveLeadsCount: async (): Promise<Record<string, number>> => {
+        const db = getRealtimeDb();
+        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+        const snapshot = await get(conversationsRef);
+
+        if (!snapshot.exists()) {
+            return {};
+        }
+
+        const counts: Record<string, number> = {};
+        const data = snapshot.val();
+
+        Object.values(data).forEach((conv: any) => {
+            if (conv.assignedTo && conv.status !== 'closed') {
+                counts[conv.assignedTo] = (counts[conv.assignedTo] || 0) + 1;
+            }
+        });
+
+        return counts;
+    },
+
+    /**
+     * Get the next collaborator to assign based on "Least Loaded" strategy.
+     * Returns the participant with the fewest active leads.
+     */
+    getNextCollaborator: async (participants: string[]): Promise<string | null> => {
+        if (!participants || participants.length === 0) {
+            return null;
+        }
+
+        const counts = await InboxService.getActiveLeadsCount();
+
+        // Map participants to their lead counts
+        const participantCounts = participants.map(id => ({
+            id,
+            count: counts[id] || 0
+        }));
+
+        // Sort by count ascending (least loaded first)
+        participantCounts.sort((a, b) => a.count - b.count);
+
+        return participantCounts[0]?.id || null;
+    },
+
+    /**
+     * Distribute all unassigned leads to participants.
+     * Returns the number of leads distributed.
+     */
+    distributeUnassignedLeads: async (): Promise<{ distributed: number; errors: number }> => {
+        const db = getRealtimeDb();
+        const settings = await InboxService.getDistributionSettings();
+
+        if (!settings.enabled || settings.participants.length === 0) {
+            return { distributed: 0, errors: 0 };
+        }
+
+        // Get all unassigned conversations
+        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+        const snapshot = await get(conversationsRef);
+
+        if (!snapshot.exists()) {
+            return { distributed: 0, errors: 0 };
+        }
+
+        const data = snapshot.val();
+        const unassigned = Object.entries(data)
+            .filter(([_, conv]: [string, any]) => !conv.assignedTo && conv.status !== 'closed')
+            .map(([id]) => id);
+
+        let distributed = 0;
+        let errors = 0;
+
+        for (const conversationId of unassigned) {
+            try {
+                const nextCollaborator = await InboxService.getNextCollaborator(settings.participants);
+                if (nextCollaborator) {
+                    await InboxService.assignConversation(conversationId, nextCollaborator);
+                    distributed++;
+                }
+            } catch (error) {
+                console.error(`Error distributing conversation ${conversationId}:`, error);
+                errors++;
+            }
+        }
+
+        return { distributed, errors };
     }
 };

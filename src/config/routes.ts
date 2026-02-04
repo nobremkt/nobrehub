@@ -77,6 +77,7 @@ export const ROUTES = {
         collaborators: '/configuracoes/colaboradores',
         goals: '/configuracoes/metas',
         holidays: '/configuracoes/feriados',
+        leadDistribution: '/configuracoes/distribuicao-leads',
     },
 } as const;
 

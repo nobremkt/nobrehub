@@ -9,3 +9,4 @@ export * from './CollaboratorsPage';
 export * from './PermissionsPage';
 export * from './GoalsPage';
 export * from './HolidaysPage';
+export * from './LeadDistributionPage';

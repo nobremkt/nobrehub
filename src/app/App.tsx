@@ -24,7 +24,7 @@ import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { ProductionPage } from '@/features/production/pages/ProductionPage';
-import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage } from '@/features/settings/pages';
+import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
@@ -171,6 +171,8 @@ export function App() {
                     <Route path={ROUTES.settings.goals} element={<GoalsPage />} />
 
                     <Route path={ROUTES.settings.holidays} element={<HolidaysPage />} />
+
+                    <Route path={ROUTES.settings.leadDistribution} element={<LeadDistributionPage />} />
                 </Route>
 
                 {/* Catch-all redirect */}

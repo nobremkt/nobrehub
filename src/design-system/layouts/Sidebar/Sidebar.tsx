@@ -36,7 +36,8 @@ import {
     UserCheck,
     Upload,
     Target,
-    CalendarDays
+    CalendarDays,
+    Shuffle
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -120,18 +121,28 @@ const navCategories: NavCategory[] = [
         icon: <Shield size={20} />,
         permission: PERMISSIONS.VIEW_ADMIN,
         subItems: [
+            // Organização
             { id: 'organization', label: 'Organização', path: ROUTES.settings.organization, icon: <Building2 size={18} /> },
-            { id: 'pipeline', label: 'Pipeline', path: ROUTES.settings.pipeline, icon: <Kanban size={18} /> },
-            { id: 'products', label: 'Produtos', path: ROUTES.settings.products, icon: <Tag size={18} /> },
-            { id: 'lossReasons', label: 'Motivos de Perda', path: ROUTES.settings.lossReasons, icon: <FileText size={18} /> },
-            { id: 'customFields', label: 'Campos Customizados', path: ROUTES.settings.customFields, icon: <Palette size={18} /> },
-            { id: 'integrations', label: 'Integrações', path: ROUTES.settings.integrations, icon: <Plug size={18} /> },
-            { id: 'permissions', label: 'Permissões', path: ROUTES.settings.permissions, icon: <Shield size={18} /> },
+
+            // Equipe
             { id: 'sectors', label: 'Setores', path: ROUTES.settings.sectors, icon: <Briefcase size={18} /> },
             { id: 'roles', label: 'Cargos', path: ROUTES.settings.roles, icon: <UserCog size={18} /> },
             { id: 'collaborators', label: 'Colaboradores', path: ROUTES.settings.collaborators, icon: <UserCheck size={18} /> },
+            { id: 'permissions', label: 'Permissões', path: ROUTES.settings.permissions, icon: <Shield size={18} /> },
+
+            // CRM / Vendas
+            { id: 'pipeline', label: 'Pipeline', path: ROUTES.settings.pipeline, icon: <Kanban size={18} /> },
+            { id: 'products', label: 'Produtos', path: ROUTES.settings.products, icon: <Tag size={18} /> },
+            { id: 'lossReasons', label: 'Motivos de Perda', path: ROUTES.settings.lossReasons, icon: <FileText size={18} /> },
+            { id: 'leadDistribution', label: 'Distribuição de Leads', path: ROUTES.settings.leadDistribution, icon: <Shuffle size={18} /> },
+
+            // Operacional
             { id: 'goals', label: 'Metas', path: ROUTES.settings.goals, icon: <Target size={18} /> },
             { id: 'holidays', label: 'Feriados & Folgas', path: ROUTES.settings.holidays, icon: <CalendarDays size={18} /> },
+
+            // Técnico
+            { id: 'customFields', label: 'Campos Customizados', path: ROUTES.settings.customFields, icon: <Palette size={18} /> },
+            { id: 'integrations', label: 'Integrações', path: ROUTES.settings.integrations, icon: <Plug size={18} /> },
         ]
     },
     {
