@@ -5,7 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Conversation } from '../../types';
 import { Button, Tag } from '@/design-system';
 import {
@@ -66,6 +66,23 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
     const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
     const teamStatus = useTeamStatus();
+    const optionsDropdownRef = useRef<HTMLDivElement>(null);
+    const assignDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (optionsDropdownRef.current && !optionsDropdownRef.current.contains(event.target as Node)) {
+                setShowOptionsDropdown(false);
+            }
+            if (assignDropdownRef.current && !assignDropdownRef.current.contains(event.target as Node)) {
+                setShowAssignDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         // Load collaborators and sectors if not loaded
@@ -198,7 +215,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </Button>
 
                 {/* Assign Button */}
-                <div className={styles.actionWrapper}>
+                <div className={styles.actionWrapper} ref={assignDropdownRef}>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -285,7 +302,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     <Phone size={18} />
                 </Button>
 
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative' }} ref={optionsDropdownRef}>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -336,12 +353,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             <button
                                 className={styles.dropdownItem}
                                 onClick={() => {
-                                    if (onCloseConversation) onCloseConversation();
+                                    // TODO: Implement archive/unarchive
                                     setShowOptionsDropdown(false);
                                 }}
                             >
                                 <Archive size={16} />
-                                <span>Arquivar conversa</span>
+                                <span>{conversation.isArchived ? 'Desarquivar conversa' : 'Arquivar conversa'}</span>
                             </button>
                             <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
                             <button

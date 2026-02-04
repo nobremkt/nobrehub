@@ -1,9 +1,34 @@
 
 import { useState } from 'react';
-import { Activity, Copy } from 'lucide-react';
+import { Activity, Copy, Phone } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
+
+// Helper to get stage number from stage id
+const getStageNumber = (stageId: string) => {
+    const index = PIPELINE_STAGES.findIndex(s => s.id === stageId);
+    return index !== -1 ? index + 1 : null;
+};
+
+// Helper to highlight variables in script content
+const highlightVariables = (content: string) => {
+    // Match patterns like [NOME], [EMPRESA], [BENEFÍCIO], etc.
+    const regex = /\[([A-ZÁÉÍÓÚÂÊÔÀÃÕÇ\/\s]+)\]/g;
+    const parts = content.split(regex);
+
+    return parts.map((part, index) => {
+        // Odd indices are matches (variable names)
+        if (index % 2 === 1) {
+            return (
+                <span key={index} className={styles.variable}>
+                    {'{'}{part}{'}'}
+                </span>
+            );
+        }
+        return part;
+    });
+};
 
 
 export function AtividadeTab() {
@@ -121,6 +146,9 @@ export function AtividadeTab() {
                                         />
                                     </div>
                                     <span className={styles.activityLabel}>{activity.label}</span>
+                                    <span className={styles.stageBadge}>
+                                        {getStageNumber(activity.stage)}
+                                    </span>
                                 </div>
                             );
                         })}
@@ -134,10 +162,11 @@ export function AtividadeTab() {
                             <Copy size={14} />
                         </button>
                         <h4 className={styles.scriptTitle}>
+                            <Phone size={16} className={styles.scriptIcon} />
                             <span className={styles.scriptNumber}>{activeId}. </span>
                             {currentScript.title}
                         </h4>
-                        <pre className={styles.scriptContent}>{currentScript.content}</pre>
+                        <div className={styles.scriptContent}>{highlightVariables(currentScript.content)}</div>
                     </div>
                 </div>
             </div>

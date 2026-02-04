@@ -90,6 +90,10 @@ export const ProfilePanel: React.FC = () => {
     // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
 
+    // Notes Editing State
+    const [isEditingNote, setIsEditingNote] = useState(false);
+    const [noteValue, setNoteValue] = useState('');
+
     // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
     const LOSS_REASONS = [...lossReasons]
         .filter(r => r.active)
@@ -418,21 +422,66 @@ export const ProfilePanel: React.FC = () => {
                     </div>
                 </AccordionSection>
 
-                {/* Notas */}
                 <AccordionSection
                     title="Notas"
                     icon={<FileText size={16} />}
                 >
                     <div className={styles.notesSection}>
-                        {conversation.notes ? (
-                            <p className={styles.notesText}>{conversation.notes}</p>
+                        {isEditingNote ? (
+                            <>
+                                <textarea
+                                    className={styles.noteTextarea}
+                                    value={noteValue}
+                                    onChange={(e) => setNoteValue(e.target.value)}
+                                    placeholder="Digite sua nota aqui..."
+                                    autoFocus
+                                    rows={4}
+                                />
+                                <div className={styles.noteActions}>
+                                    <button
+                                        className={styles.noteCancelBtn}
+                                        onClick={() => {
+                                            setIsEditingNote(false);
+                                            setNoteValue(conversation?.notes || '');
+                                        }}
+                                    >
+                                        <X size={14} />
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        className={styles.noteSaveBtn}
+                                        onClick={() => {
+                                            if (selectedConversationId) {
+                                                updateConversationDetails(selectedConversationId, { notes: noteValue });
+                                                toast.success('Nota salva!');
+                                            }
+                                            setIsEditingNote(false);
+                                        }}
+                                    >
+                                        <Check size={14} />
+                                        Salvar
+                                    </button>
+                                </div>
+                            </>
                         ) : (
-                            <p className={styles.notesEmpty}>Nenhuma nota adicionada</p>
+                            <>
+                                {conversation.notes ? (
+                                    <p className={styles.notesText}>{conversation.notes}</p>
+                                ) : (
+                                    <p className={styles.notesEmpty}>Nenhuma nota adicionada</p>
+                                )}
+                                <button
+                                    className={styles.addNoteButton}
+                                    onClick={() => {
+                                        setNoteValue(conversation.notes || '');
+                                        setIsEditingNote(true);
+                                    }}
+                                >
+                                    <Plus size={14} />
+                                    {conversation.notes ? 'Editar nota' : 'Adicionar nota'}
+                                </button>
+                            </>
                         )}
-                        <button className={styles.addNoteButton}>
-                            <Plus size={14} />
-                            Adicionar nota
-                        </button>
                     </div>
                 </AccordionSection>
 

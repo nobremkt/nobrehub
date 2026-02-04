@@ -24,6 +24,7 @@ export interface Conversation {
     // Quick actions
     isFavorite?: boolean;
     isPinned?: boolean;
+    isArchived?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
