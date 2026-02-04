@@ -18,7 +18,7 @@
  * PAINEL ESQUERDO - LISTA DE CONVERSAS
  * ───────────────────────────────────────────────────────────────────────────── */
 .conversationListWrapper {
-    width: 320px;
+    width: 360px;
     flex-shrink: 0;
     height: 100%;
     background: var(--color-bg-primary);
@@ -80,7 +80,7 @@
 /* Tablet: Esconde sidebar, mostra lista + chat */
 @media (max-width: 1023px) {
     .conversationListWrapper {
-        width: 280px;
+        width: 320px;
     }
 }
 
