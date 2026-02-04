@@ -42,17 +42,18 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <div className={styles.content}>
                 <div className={styles.rowTop}>
                     <span className={styles.name}>
-                        {/* Pinned indicator */}
-                        {conversation.isPinned && (
-                            <Pin size={12} className={styles.pinnedIcon} />
-                        )}
                         {conversation.leadName}
-                        {/* Favorite indicator */}
+                    </span>
+                    <div className={styles.indicators}>
+                        {/* Status indicators - always visible */}
                         {conversation.isFavorite && (
                             <Star size={12} className={styles.favoriteIcon} fill="currentColor" />
                         )}
-                    </span>
-                    <span className={styles.time}>{lastMessageTime}</span>
+                        {conversation.isPinned && (
+                            <Pin size={12} className={styles.pinnedIcon} />
+                        )}
+                        <span className={styles.time}>{lastMessageTime}</span>
+                    </div>
                 </div>
 
                 <div className={styles.rowBottom}>

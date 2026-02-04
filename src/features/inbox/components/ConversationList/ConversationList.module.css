@@ -249,11 +249,15 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
     flex: 1;
     min-width: 0;
+}
+
+.indicators {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .pinnedIcon {
@@ -271,7 +275,6 @@
     color: var(--color-text-muted);
     white-space: nowrap;
     font-weight: 500;
-    flex-shrink: 0;
 }
 
 .rowBottom {
