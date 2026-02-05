@@ -129,11 +129,26 @@
 .activitiesList {
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
     background: var(--color-bg-primary, #ffffff);
     border: 1px solid var(--color-border, #e2e8f0);
     border-radius: 0.875rem;
     padding: 0.75rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Título dentro da lista */
+.activitiesList .sectionTitle {
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Container interno com scroll */
+.activitiesListInner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
     flex: 1;
     overflow-y: auto;
     min-height: 0;
@@ -325,7 +340,6 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: var(--color-text-muted, #94a3b8);
-    margin-left: auto;
     flex-shrink: 0;
 }
 

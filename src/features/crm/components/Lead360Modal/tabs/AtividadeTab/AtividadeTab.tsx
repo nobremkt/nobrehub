@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Activity, Copy, Phone, Send } from 'lucide-react';
+import { Activity, Copy, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
@@ -119,40 +119,43 @@ export function AtividadeTab() {
             <div className={styles.activityColumns}>
                 {/* Left Column: Activities Checklist */}
                 <div className={styles.activitiesSection}>
-                    <h3 className={styles.sectionTitle}>
-                        <Activity size={18} />
-                        Próximas Atividades
-                    </h3>
                     <div className={styles.activitiesList}>
-                        {ACTIVITIES.map((activity) => {
-                            const isCompleted = activity.id <= completedActivities;
-                            // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
-                            const isSelected = activity.id === activeId;
+                        <h3 className={styles.sectionTitle}>
+                            <Activity size={18} />
+                            Próximas Atividades
+                        </h3>
+                        <div className={styles.activitiesListInner}>
+                            {ACTIVITIES.map((activity) => {
+                                const isCompleted = activity.id <= completedActivities;
+                                // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
+                                const isSelected = activity.id === activeId;
 
-                            // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
-                            // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
+                                // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
+                                // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
+                                const stageNumber = getStageNumber(activity.stage);
 
-                            return (
-                                <div
-                                    key={activity.id}
-                                    className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
-                                    onClick={() => selectActivity(activity.id)}
-                                >
-                                    {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
-                                    <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
-                                        <Checkbox
-                                            checked={isCompleted}
-                                            onChange={() => toggleCompletion(activity.id)}
-                                            noSound={false}
-                                        />
+                                return (
+                                    <div
+                                        key={activity.id}
+                                        className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
+                                        onClick={() => selectActivity(activity.id)}
+                                    >
+                                        {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
+                                        <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
+                                            <Checkbox
+                                                checked={isCompleted}
+                                                onChange={() => toggleCompletion(activity.id)}
+                                                noSound={false}
+                                            />
+                                        </div>
+                                        <span className={styles.stageBadge}>
+                                            {stageNumber}
+                                        </span>
+                                        <span className={styles.activityLabel}>{activity.label}</span>
                                     </div>
-                                    <span className={styles.activityLabel}>{activity.label}</span>
-                                    <span className={styles.stageBadge}>
-                                        {getStageNumber(activity.stage)}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
@@ -162,7 +165,6 @@ export function AtividadeTab() {
                             <Copy size={14} />
                         </button>
                         <h4 className={styles.scriptTitle}>
-                            <Phone size={16} className={styles.scriptIcon} />
                             <span className={styles.scriptNumber}>{activeId}. </span>
                             {currentScript.title}
                         </h4>
