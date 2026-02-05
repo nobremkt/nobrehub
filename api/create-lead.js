@@ -45,10 +45,20 @@ export default async function handler(req, res) {
             data = Object.fromEntries(params.entries());
         }
 
-        console.log('Lead received:', data);
+        console.log('=== CREATE-LEAD API DEBUG ===');
+        console.log('RAW Data received:', JSON.stringify(data, null, 2));
 
         // Extract and normalize fields from different form formats
         const leadData = normalizeLeadData(data);
+        console.log('NORMALIZED leadData:', JSON.stringify(leadData, null, 2));
+        console.log('CustomFields going to save:', {
+            instagram: leadData.instagram,
+            segment: leadData.segment,
+            teamSize: leadData.teamSize,
+            revenue: leadData.revenue,
+            formOrigin: leadData.formOrigin,
+            source: leadData.source
+        });
 
         if (!leadData.name && !leadData.phone && !leadData.email) {
             return res.status(400).json({
