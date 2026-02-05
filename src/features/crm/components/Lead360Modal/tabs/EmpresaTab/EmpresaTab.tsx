@@ -23,19 +23,7 @@ const CATEGORY_OPTIONS = [
     { value: 'services', label: 'Serviços' },
 ];
 
-const SEGMENT_OPTIONS = [
-    { value: '', label: 'Selecione...' },
-    { value: 'tech', label: 'Tecnologia' },
-    { value: 'health', label: 'Saúde' },
-    { value: 'education', label: 'Educação' },
-    { value: 'finance', label: 'Finanças' },
-    { value: 'retail', label: 'Varejo' },
-    { value: 'real_estate', label: 'Imobiliário' },
-    { value: 'food', label: 'Alimentação' },
-    { value: 'automotive', label: 'Automotivo' },
-    { value: 'beauty', label: 'Beleza' },
-    { value: 'other', label: 'Outro' },
-];
+
 
 export function EmpresaTab({ lead }: EmpresaTabProps) {
     // Extrair dados de customFields se existirem
@@ -159,11 +147,10 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         <Tag size={14} />
                         Segmento
                     </label>
-                    <Dropdown
-                        options={SEGMENT_OPTIONS}
+                    <Input
                         value={formData.segment}
-                        onChange={(val) => handleChange('segment', String(val))}
-                        placeholder="Selecione..."
+                        onChange={(e) => handleChange('segment', e.target.value)}
+                        placeholder="Ex: Restaurante, Clínica, Loja..."
                         disabled={!isEditing}
                     />
                 </div>
@@ -174,10 +161,9 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         Nº de Funcionários
                     </label>
                     <Input
-                        type="number"
                         value={formData.employeeCount}
                         onChange={(e) => handleChange('employeeCount', e.target.value)}
-                        placeholder="Ex: 50"
+                        placeholder="Ex: 10-50"
                         disabled={!isEditing}
                     />
                 </div>
