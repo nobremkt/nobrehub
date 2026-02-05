@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Lead } from '@/types/lead.types';
 import { Input, Dropdown } from '@/design-system';
-import { Save, X, Pencil, Building2, Globe, MapPin, Tag, Users, Database } from 'lucide-react';
+import { Save, X, Pencil, Building2, Globe, MapPin, Tag, Users, Database, DollarSign } from 'lucide-react';
 import styles from './EmpresaTab.module.css';
 import { toast } from 'react-toastify';
 
@@ -38,15 +38,19 @@ const SEGMENT_OPTIONS = [
 ];
 
 export function EmpresaTab({ lead }: EmpresaTabProps) {
+    // Extrair dados de customFields se existirem
+    const customFields = lead.customFields || {};
+
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         companyName: lead.company || '',
-        website: '',
-        location: '',
-        category: '',
-        segment: '',
-        employeeCount: '',
-        crm: '',
+        website: (customFields.website as string) || '',
+        location: (customFields.location as string) || '',
+        category: (customFields.category as string) || '',
+        segment: (customFields.segment as string) || '',
+        employeeCount: (customFields.teamSize as string) || '',
+        revenue: (customFields.revenue as string) || '',
+        crm: (customFields.crm as string) || '',
     });
 
     const handleChange = (field: string, value: string) => {
@@ -61,12 +65,13 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
     const handleCancel = () => {
         setFormData({
             companyName: lead.company || '',
-            website: '',
-            location: '',
-            category: '',
-            segment: '',
-            employeeCount: '',
-            crm: '',
+            website: (customFields.website as string) || '',
+            location: (customFields.location as string) || '',
+            category: (customFields.category as string) || '',
+            segment: (customFields.segment as string) || '',
+            employeeCount: (customFields.teamSize as string) || '',
+            revenue: (customFields.revenue as string) || '',
+            crm: (customFields.crm as string) || '',
         });
         setIsEditing(false);
     };
@@ -173,6 +178,19 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         value={formData.employeeCount}
                         onChange={(e) => handleChange('employeeCount', e.target.value)}
                         placeholder="Ex: 50"
+                        disabled={!isEditing}
+                    />
+                </div>
+
+                <div className={styles.field}>
+                    <label className={styles.label}>
+                        <DollarSign size={14} />
+                        Faturamento
+                    </label>
+                    <Input
+                        value={formData.revenue}
+                        onChange={(e) => handleChange('revenue', e.target.value)}
+                        placeholder="Ex: R$ 100.000/mês"
                         disabled={!isEditing}
                     />
                 </div>

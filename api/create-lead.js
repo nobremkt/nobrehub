@@ -200,7 +200,13 @@ export default async function handler(req, res) {
                             estimatedValue: 0,
                             tags: conversationData.tags,
                             responsibleId: 'admin',
-                            source: 'form',
+                            source: leadData.source || 'form',
+                            customFields: {
+                                teamSize: leadData.teamSize || null,
+                                revenue: leadData.revenue || null,
+                                challenge: leadData.challenge || null,
+                                formOrigin: leadData.formOrigin || 'website'
+                            },
                             createdAt: now,
                             updatedAt: now,
                         });
