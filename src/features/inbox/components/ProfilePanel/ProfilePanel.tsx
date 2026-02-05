@@ -755,7 +755,6 @@ export const ProfilePanel: React.FC = () => {
             <CreateProjectModal
                 isOpen={showCreateProjectModal}
                 onClose={() => setShowCreateProjectModal(false)}
-                initialLeadId={conversation.leadId}
                 initialLeadName={conversation.leadName}
             />
 

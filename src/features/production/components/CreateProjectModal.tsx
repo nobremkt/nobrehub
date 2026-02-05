@@ -102,8 +102,12 @@ export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLead
 
     // Pré-preenche com lead inicial (quando vindo do CRM/Inbox)
     useEffect(() => {
-        if (isOpen && initialLeadId && initialLeadName) {
-            setSelectedLeadId(initialLeadId);
+        if (isOpen && initialLeadName) {
+            // Se tiver leadId, seleciona o lead existente
+            if (initialLeadId) {
+                setSelectedLeadId(initialLeadId);
+            }
+            // Sempre preenche o nome do cliente
             setLeadName(initialLeadName);
         }
     }, [isOpen, initialLeadId, initialLeadName]);
