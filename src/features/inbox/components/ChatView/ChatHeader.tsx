@@ -39,6 +39,7 @@ interface ChatHeaderProps {
     onCloseConversation?: () => void;
     onToggleFavorite?: () => void;
     onTogglePin?: () => void;
+    onOpenLead360?: () => void;
 }
 
 // WhatsApp Icon Component
@@ -54,13 +55,14 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
     </svg>
 );
 
-export const ChatHeader: React.FC<ChatHeaderProps> = ({
+export function ChatHeader({
     conversation,
     onAssign,
     onCloseConversation,
     onToggleFavorite,
-    onTogglePin
-}) => {
+    onTogglePin,
+    onOpenLead360
+}: ChatHeaderProps) {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
     const { sectors, fetchSectors } = useSectorStore();
     const [showAssignDropdown, setShowAssignDropdown] = useState(false);
@@ -137,8 +139,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
     return (
         <div className={styles.header}>
-            {/* Avatar */}
-            <div className={styles.avatar}>
+            {/* Avatar - Clickable to open Lead360 */}
+            <div
+                className={styles.avatar}
+                onClick={onOpenLead360}
+                style={{ cursor: onOpenLead360 ? 'pointer' : 'default' }}
+                title="Abrir perfil completo"
+            >
                 {conversation.leadAvatar ? (
                     <img src={conversation.leadAvatar} alt="" className={styles.avatarImg} />
                 ) : (
@@ -151,7 +158,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             {/* Info */}
             <div className={styles.info}>
                 <div className={styles.nameRow}>
-                    <span className={styles.name}>{conversation.leadName}</span>
+                    <span
+                        className={styles.name}
+                        onClick={onOpenLead360}
+                        style={{ cursor: onOpenLead360 ? 'pointer' : 'default' }}
+                        title="Abrir perfil completo"
+                    >
+                        {conversation.leadName}
+                    </span>
                     {/* Channel Badge */}
                     <span
                         className={styles.channelBadge}

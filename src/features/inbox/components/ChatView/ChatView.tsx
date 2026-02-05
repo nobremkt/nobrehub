@@ -8,6 +8,7 @@ import { ChatInput } from './ChatInput';
 import { DateSeparator } from './DateSeparator';
 import { SessionWarning } from './SessionWarning';
 import { SendTemplateModal } from '../SendTemplateModal';
+import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 import styles from './ChatView.module.css';
 
 /**
@@ -29,6 +30,7 @@ export const ChatView: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [showLead360Modal, setShowLead360Modal] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -170,6 +172,7 @@ export const ChatView: React.FC = () => {
                 onCloseConversation={handleCloseConversation}
                 onToggleFavorite={handleToggleFavorite}
                 onTogglePin={handleTogglePin}
+                onOpenLead360={() => setShowLead360Modal(true)}
             />
 
             {/* WhatsApp 24h Session Warning */}
@@ -245,6 +248,26 @@ export const ChatView: React.FC = () => {
                 onClose={() => setIsTemplateModalOpen(false)}
                 onSend={handleSendTemplate}
                 conversation={conversation}
+            />
+
+            {/* Lead360 Modal */}
+            <Lead360Modal
+                isOpen={showLead360Modal}
+                onClose={() => setShowLead360Modal(false)}
+                lead={{
+                    id: conversation.id,
+                    name: conversation.leadName,
+                    phone: conversation.leadPhone,
+                    email: conversation.leadEmail || '',
+                    company: conversation.leadCompany || '',
+                    status: conversation.dealStatus || 'open',
+                    pipeline: 'high-ticket',
+                    order: 0,
+                    responsibleId: conversation.assignedTo || '',
+                    createdAt: conversation.createdAt,
+                    updatedAt: conversation.updatedAt,
+                    tags: conversation.tags || []
+                }}
             />
         </div>
     );
