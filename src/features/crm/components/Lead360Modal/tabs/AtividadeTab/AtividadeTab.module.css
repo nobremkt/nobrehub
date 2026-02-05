@@ -152,6 +152,27 @@
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+
+    /* Scrollbar estilizada - Design System */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.activitiesListInner::-webkit-scrollbar {
+    width: 6px;
+}
+
+.activitiesListInner::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.activitiesListInner::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.activitiesListInner::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
 }
 
 .activityItem {
