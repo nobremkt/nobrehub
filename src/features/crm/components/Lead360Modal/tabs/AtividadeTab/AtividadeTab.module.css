@@ -144,7 +144,7 @@
     flex-shrink: 0;
 }
 
-/* Container interno com scroll */
+/* Container interno com scroll quando necessário */
 .activitiesListInner {
     display: flex;
     flex-direction: column;
@@ -152,7 +152,6 @@
     flex: 1;
     overflow-y: auto;
     min-height: 0;
-    max-height: 280px;
 }
 
 .activityItem {
