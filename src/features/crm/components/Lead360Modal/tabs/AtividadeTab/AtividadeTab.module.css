@@ -404,7 +404,7 @@
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
-    margin-top: 1rem;
+    margin-top: auto;
     padding: 0.75rem 1rem;
     background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
     border: none;
@@ -415,6 +415,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    flex-shrink: 0;
 }
 
 .sendTemplateBtn:hover {
