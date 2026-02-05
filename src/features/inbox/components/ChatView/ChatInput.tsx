@@ -10,9 +10,10 @@ interface ChatInputProps {
     onOpenTemplate?: () => void;
     onScheduleMessage?: (text: string, scheduledFor: Date) => void;
     disabled?: boolean;
+    sessionExpired?: boolean;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onScheduleMessage, disabled }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onScheduleMessage, disabled, sessionExpired }) => {
     const [message, setMessage] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -210,7 +211,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
                 onStopRecording={() => stopRecording(true)}
                 onCancelRecording={() => stopRecording(false)}
                 disabled={disabled}
-                placeholder="Digite sua mensagem..."
+                placeholder={sessionExpired ? "Sessão expirada. Envie um template para continuar." : "Digite sua mensagem..."}
                 attachmentOptions={attachmentOptions}
             />
 

@@ -65,6 +65,16 @@ export const ChatView: React.FC = () => {
         return lastInbound.createdAt ? new Date(lastInbound.createdAt) : undefined;
     }, [currentMessages]);
 
+    // Check if WhatsApp 24h session has expired (only for WhatsApp conversations)
+    const isSessionExpired = useMemo(() => {
+        if (!conversation || conversation.channel !== 'whatsapp') return false;
+        if (!lastInboundAt) return true; // No inbound messages = expired
+
+        const now = new Date();
+        const hoursSinceLastInbound = (now.getTime() - lastInboundAt.getTime()) / (1000 * 60 * 60);
+        return hoursSinceLastInbound >= 24;
+    }, [conversation, lastInboundAt]);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -239,7 +249,8 @@ export const ChatView: React.FC = () => {
                 onSendMedia={handleSendMedia}
                 onOpenTemplate={() => setIsTemplateModalOpen(true)}
                 onScheduleMessage={handleScheduleMessage}
-                disabled={isUploading}
+                disabled={isUploading || isSessionExpired}
+                sessionExpired={isSessionExpired}
             />
 
             {/* Send Template Modal */}
