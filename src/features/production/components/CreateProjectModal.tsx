@@ -3,8 +3,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useProductionStore } from '../stores/useProductionStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
+import { useProductStore } from '@/features/settings/stores/useProductStore';
 import { LeadService } from '@/features/crm/services/LeadService';
-import { Lead } from '@/types/lead.types';
+import { InboxService } from '@/features/inbox/services/InboxService';
 import {
     Modal,
     Input,
@@ -12,69 +13,69 @@ import {
     Dropdown,
     Switch,
 } from '@/design-system';
-import { ProjectStatus, VideoDurationCategory, DistributionStatus } from '@/types/project.types';
+import { VideoDurationCategory, DistributionStatus } from '@/types/project.types';
 import { toast } from 'react-toastify';
-import { Star } from 'lucide-react';
+import { Star, Package } from 'lucide-react';
+import styles from './CreateProjectModal.module.css';
 
 interface CreateProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
-    initialLeadId?: string;
-    initialLeadName?: string;
+    // Lead já vem do Inbox - não precisa selecionar
+    leadId?: string;
+    leadName?: string;
+    conversationId?: string; // Para fechar a conversa depois
+    onProjectCreated?: (projectId: string) => void; // Callback para ações adicionais
 }
 
-const PROJECT_STATUS_OPTIONS = [
-    { value: 'aguardando', label: 'Aguardando' },
-    { value: 'em-producao', label: 'Em Produção' },
-    { value: 'a-revisar', label: 'A Revisar' },
-    { value: 'revisado', label: 'Revisado' },
-    { value: 'alteracao', label: 'Em Alteração' },
+// Categorias de duração para vídeos
+const DURATION_OPTIONS = [
+    { value: '30s', label: '30 segundos' },
+    { value: '60s', label: '60 segundos' },
+    { value: '60plus', label: 'Mais de 60s' },
 ];
 
-// Opcoes de tipo de produto (exemplo)
-const PRODUCT_TYPE_OPTIONS = [
-    { value: 'video-30s', label: 'Vídeo 30s' },
-    { value: 'video-60s', label: 'Vídeo 60s' },
-    { value: 'video-60plus', label: 'Vídeo 60s+' },
-    { value: 'arte', label: 'Arte/Design' },
-    { value: 'carrossel', label: 'Carrossel' },
-    { value: 'outro', label: 'Outro' },
-];
-
-// Pontuação base por tipo de produto (pode vir de config futuramente)
-const BASE_POINTS: Record<string, number> = {
-    'video-30s': 1,
-    'video-60s': 2,
-    'video-60plus': 3,
-    'arte': 1,
-    'carrossel': 1,
-    'outro': 1,
-};
-
-export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLeadName }: CreateProjectModalProps) => {
+export const CreateProjectModal = ({
+    isOpen,
+    onClose,
+    leadId,
+    leadName,
+    conversationId
+}: CreateProjectModalProps) => {
     const { addProject, isLoading } = useProductionStore();
     const { collaborators } = useCollaboratorStore();
     const { sectors } = useSectorStore();
+    const { products, fetchProducts } = useProductStore();
 
-    // Form State - Campos existentes
+    // Form State
     const [name, setName] = useState('');
-    const [leadName, setLeadName] = useState('');
-    const [status, setStatus] = useState<ProjectStatus>('aguardando');
     const [dueDate, setDueDate] = useState('');
     const [driveLink, setDriveLink] = useState('');
     const [notes, setNotes] = useState('');
 
-    // Novos campos para distribuição
-    const [productType, setProductType] = useState('video-30s');
+    // Produto e pontos
+    const [selectedProductId, setSelectedProductId] = useState('');
+    const [selectedDuration, setSelectedDuration] = useState<VideoDurationCategory | ''>('');
     const [extraPoints, setExtraPoints] = useState(0);
-    const [sendToDistribution, setSendToDistribution] = useState(true);
+
+    // Sugestão de produtor (opcional)
     const [suggestProducer, setSuggestProducer] = useState(false);
     const [suggestedProducerId, setSuggestedProducerId] = useState('');
     const [suggestionNotes, setSuggestionNotes] = useState('');
 
-    // Estado para leads
-    const [availableLeads, setAvailableLeads] = useState<Lead[]>([]);
-    const [selectedLeadId, setSelectedLeadId] = useState('');
+    // Busca produtos ao abrir
+    useEffect(() => {
+        if (isOpen) {
+            fetchProducts();
+        }
+    }, [isOpen, fetchProducts]);
+
+    // Reseta form ao abrir
+    useEffect(() => {
+        if (isOpen) {
+            resetForm();
+        }
+    }, [isOpen]);
 
     // Encontra o setor de produção
     const productionSectorId = useMemo(() => {
@@ -90,38 +91,40 @@ export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLead
         return collaborators.filter(c => c.sectorId === productionSectorId && c.active);
     }, [collaborators, productionSectorId]);
 
-    // Busca leads ao abrir o modal
-    useEffect(() => {
-        if (isOpen) {
-            LeadService.getLeads().then(leads => {
-                // Filtra leads que não estão concluídos
-                setAvailableLeads(leads.filter(l => l.clientStatus !== 'concluido'));
-            }).catch(err => console.error('Error fetching leads:', err));
-        }
-    }, [isOpen]);
+    // Opções de produtos ativos
+    const productOptions = useMemo(() => {
+        return products
+            .filter(p => p.active)
+            .map(p => ({
+                value: p.id,
+                label: `${p.name} ${p.points ? `(${p.points} pts)` : ''}`
+            }));
+    }, [products]);
 
-    // Pré-preenche com lead inicial (quando vindo do CRM/Inbox)
-    useEffect(() => {
-        if (isOpen && initialLeadName) {
-            // Se tiver leadId, seleciona o lead existente
-            if (initialLeadId) {
-                setSelectedLeadId(initialLeadId);
-            }
-            // Sempre preenche o nome do cliente
-            setLeadName(initialLeadName);
-        }
-    }, [isOpen, initialLeadId, initialLeadName]);
+    // Produto selecionado
+    const selectedProduct = useMemo(() => {
+        return products.find(p => p.id === selectedProductId);
+    }, [products, selectedProductId]);
 
-    // Opções de leads para dropdown
-    const leadOptions = useMemo(() => {
-        return [
-            { value: '', label: 'Criar manualmente' },
-            ...availableLeads.map(lead => ({
-                value: lead.id,
-                label: `${lead.name} ${lead.phone ? `(${lead.phone})` : ''}`
-            }))
-        ];
-    }, [availableLeads]);
+    // Verifica se produto é vídeo (tem durationPoints)
+    const isVideoProduct = useMemo(() => {
+        return selectedProduct?.durationPoints !== undefined;
+    }, [selectedProduct]);
+
+    // Calcula pontos base do produto
+    const basePoints = useMemo(() => {
+        if (!selectedProduct) return 0;
+
+        // Se for vídeo e tiver duração selecionada, usa pontos da duração
+        if (isVideoProduct && selectedDuration && selectedProduct.durationPoints) {
+            return selectedProduct.durationPoints[selectedDuration] || 0;
+        }
+
+        // Senão usa pontos base do produto
+        return selectedProduct.points || 0;
+    }, [selectedProduct, isVideoProduct, selectedDuration]);
+
+    const totalPoints = basePoints + extraPoints;
 
     const producerOptions = useMemo(() => {
         return producers.map(p => ({
@@ -130,96 +133,103 @@ export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLead
         }));
     }, [producers]);
 
-    // Calcula pontos totais
-    const basePoints = BASE_POINTS[productType] || 1;
-    const totalPoints = basePoints + extraPoints;
-
-    // Determina a categoria de duração para vídeos
-    const getDurationCategory = (): VideoDurationCategory | undefined => {
-        if (productType.startsWith('video')) {
-            if (productType.includes('30')) return '30s';
-            if (productType.includes('60plus')) return '60plus';
-            if (productType.includes('60')) return '60s';
-        }
-        return undefined;
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name || !leadName || !dueDate) {
-            toast.error('Preencha os campos obrigatórios (Nome, Cliente, Prazo).');
+        if (!name || !dueDate) {
+            toast.error('Preencha os campos obrigatórios (Nome, Prazo).');
+            return;
+        }
+
+        if (!selectedProductId) {
+            toast.error('Selecione um produto.');
+            return;
+        }
+
+        if (isVideoProduct && !selectedDuration) {
+            toast.error('Selecione a duração do vídeo.');
             return;
         }
 
         // Determina o status de distribuição
         let distributionStatus: DistributionStatus = 'pending';
-        let producerId: string | undefined;
-        let producerName: string | undefined;
 
-        if (!sendToDistribution) {
-            // Se não vai para distribuição, precisa selecionar produtor
-            if (!suggestedProducerId) {
-                toast.error('Selecione um produtor para atribuir diretamente.');
-                return;
-            }
-            distributionStatus = 'assigned';
-            producerId = suggestedProducerId;
-            producerName = producers.find(p => p.id === suggestedProducerId)?.name;
-        } else if (suggestProducer && suggestedProducerId) {
-            // Vai para distribuição MAS com sugestão
+        if (suggestProducer && suggestedProducerId) {
             distributionStatus = 'suggested';
         }
 
         try {
-            await addProject({
+            // 1. Criar o projeto na lista de distribuição
+            const projectId = await addProject({
                 name,
-                leadId: selectedLeadId || 'manual',
-                leadName,
-                status,
+                leadId: leadId || 'manual',
+                leadName: leadName || 'Cliente manual',
+                status: 'aguardando', // Sempre começa como aguardando
                 dueDate: new Date(dueDate),
                 driveLink,
                 notes,
                 checklist: [],
-                // Novos campos de distribuição
-                productType,
-                durationCategory: getDurationCategory(),
+                // Dados do produto
+                productType: selectedProduct?.name || '',
+                productId: selectedProductId,
+                durationCategory: isVideoProduct ? selectedDuration as VideoDurationCategory : undefined,
                 basePoints,
                 extraPoints,
                 totalPoints,
+                // Distribuição - sempre vai pra lista
                 distributionStatus,
-                producerId: producerId || '',
-                producerName: producerName || '',
-                suggestedProducerId: (sendToDistribution && suggestProducer) ? suggestedProducerId : undefined,
-                suggestedProducerName: (sendToDistribution && suggestProducer)
+                producerId: '', // Líder vai atribuir
+                producerName: '',
+                suggestedProducerId: suggestProducer ? suggestedProducerId : undefined,
+                suggestedProducerName: suggestProducer
                     ? producers.find(p => p.id === suggestedProducerId)?.name
                     : undefined,
-                suggestionNotes: (sendToDistribution && suggestProducer) ? suggestionNotes : undefined,
-                source: 'manual',
+                suggestionNotes: suggestProducer ? suggestionNotes : undefined,
+                source: conversationId ? 'inbox' : 'manual',
             });
+
+            // 2. Atualizar o Lead para pós-venda (se tiver leadId válido)
+            if (leadId && leadId !== 'manual') {
+                try {
+                    await LeadService.updateLead(leadId, {
+                        currentSector: 'pos_vendas',
+                        clientStatus: 'aguardando_projeto',
+                        projectIds: [projectId], // Adiciona o ID do projeto
+                        postSalesDistributionStatus: 'pending', // Vai pra lista de distribuição pós-venda
+                    });
+                } catch (error) {
+                    console.error('Erro ao atualizar lead para pós-venda:', error);
+                    // Não bloqueia o fluxo, projeto foi criado
+                }
+            }
+
+            // 3. Fechar a conversa no Inbox de Vendas (se veio do inbox)
+            if (conversationId) {
+                try {
+                    await InboxService.toggleConversationStatus(conversationId);
+                } catch (error) {
+                    console.error('Erro ao fechar conversa:', error);
+                    // Não bloqueia o fluxo
+                }
+            }
+
+            toast.success('Projeto criado! Cliente enviado para pós-venda.');
             onClose();
-            resetForm();
-            toast.success(
-                sendToDistribution
-                    ? 'Projeto enviado para lista de distribuição!'
-                    : 'Projeto criado e atribuído!'
-            );
+
         } catch (error) {
             console.error(error);
+            toast.error('Erro ao criar projeto.');
         }
     };
 
     const resetForm = () => {
         setName('');
-        setLeadName('');
-        setSelectedLeadId('');
-        setStatus('aguardando');
         setDueDate('');
         setDriveLink('');
         setNotes('');
-        setProductType('video-30s');
+        setSelectedProductId('');
+        setSelectedDuration('');
         setExtraPoints(0);
-        setSendToDistribution(true);
         setSuggestProducer(false);
         setSuggestedProducerId('');
         setSuggestionNotes('');
@@ -229,10 +239,18 @@ export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLead
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Novo Projeto"
+            title="Criar Projeto"
             size="md"
         >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className={styles.form}>
+                {/* Cliente (apenas exibição) */}
+                {leadName && (
+                    <div className={styles.clientInfo}>
+                        <span className={styles.clientLabel}>Cliente:</span>
+                        <span className={styles.clientName}>{leadName}</span>
+                    </div>
+                )}
+
                 <Input
                     label="Nome do Projeto"
                     placeholder="Ex: Vídeo Institucional"
@@ -242,171 +260,129 @@ export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLead
                     fullWidth
                 />
 
+                {/* Produto */}
                 <Dropdown
-                    label="Cliente (Lead)"
-                    options={leadOptions}
-                    value={selectedLeadId}
+                    label="Produto"
+                    options={productOptions}
+                    value={selectedProductId}
                     onChange={(val) => {
-                        setSelectedLeadId(String(val));
-                        // Se selecionou um lead real, preenche o nome automaticamente
-                        const lead = availableLeads.find(l => l.id === val);
-                        if (lead) {
-                            setLeadName(lead.name);
-                        }
+                        setSelectedProductId(String(val));
+                        setSelectedDuration(''); // Reset duração ao mudar produto
                     }}
-                    placeholder="Selecione um lead ou crie manualmente"
+                    placeholder="Selecione o produto..."
                 />
 
-                {!selectedLeadId && (
-                    <Input
-                        label="Nome do Cliente (Manual)"
-                        placeholder="Ex: Empresa X"
-                        value={leadName}
-                        onChange={(e) => setLeadName(e.target.value)}
-                        required
-                        fullWidth
+                {/* Duração (só para vídeos) */}
+                {isVideoProduct && (
+                    <Dropdown
+                        label="Duração do Vídeo"
+                        options={DURATION_OPTIONS}
+                        value={selectedDuration}
+                        onChange={(val) => setSelectedDuration(val as VideoDurationCategory)}
+                        placeholder="Selecione a duração..."
                     />
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Dropdown
-                        label="Tipo de Produto"
-                        options={PRODUCT_TYPE_OPTIONS}
-                        value={productType}
-                        onChange={(val) => setProductType(String(val))}
-                    />
-
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-text-secondary">
-                            Prazo de Entrega <span className="text-danger-500">*</span>
-                        </label>
-                        <input
-                            type="date"
-                            className="bg-surface-primary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                            value={dueDate}
-                            onChange={(e) => setDueDate(e.target.value)}
-                            required
-                        />
-                    </div>
-                </div>
-
                 {/* Pontos */}
-                <div className="flex items-center gap-4 p-3 bg-surface-secondary rounded-lg border border-border">
-                    <div className="flex-1">
-                        <span className="text-sm text-text-muted">Pontos Base:</span>
-                        <span className="ml-2 font-semibold text-text-primary">{basePoints}</span>
+                <div className={styles.pointsContainer}>
+                    <div className={styles.pointsInfo}>
+                        <Package size={16} className={styles.pointsIcon} />
+                        <span className={styles.pointsLabel}>Pontos Base:</span>
+                        <span className={styles.pointsValue}>{basePoints}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-text-muted">Extras:</span>
+                    <div className={styles.extraPoints}>
+                        <span className={styles.pointsLabel}>Extras:</span>
                         <input
                             type="number"
                             min="0"
                             max="10"
-                            className="w-16 bg-surface-primary border border-border rounded-md px-2 py-1 text-sm text-text-primary text-center"
+                            className={styles.extraPointsInput}
                             value={extraPoints}
                             onChange={(e) => setExtraPoints(parseInt(e.target.value) || 0)}
                         />
                     </div>
-                    <div className="text-right">
-                        <span className="text-sm text-text-muted">Total:</span>
-                        <span className="ml-2 font-bold text-primary-500 text-lg">{totalPoints} pts</span>
+                    <div className={styles.totalPoints}>
+                        <span className={styles.pointsLabel}>Total:</span>
+                        <span className={styles.totalValue}>{totalPoints} pts</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Dropdown
-                        label="Status Inicial"
-                        options={PROJECT_STATUS_OPTIONS}
-                        value={status}
-                        onChange={(val) => setStatus(val as ProjectStatus)}
-                    />
-
-                    <Input
-                        label="Link do Drive"
-                        placeholder="https://drive.google.com/..."
-                        value={driveLink}
-                        onChange={(e) => setDriveLink(e.target.value)}
-                        fullWidth
+                {/* Prazo */}
+                <div className={styles.dateField}>
+                    <label className={styles.dateLabel}>
+                        Prazo de Entrega <span className={styles.required}>*</span>
+                    </label>
+                    <input
+                        type="date"
+                        className={styles.dateInput}
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        required
                     />
                 </div>
 
-                <div>
-                    <label className="text-sm font-medium text-text-secondary mb-1.5 block">
-                        Observações
-                    </label>
+                {/* Link do Drive (opcional) */}
+                <Input
+                    label="Link do Drive (opcional)"
+                    placeholder="https://drive.google.com/..."
+                    value={driveLink}
+                    onChange={(e) => setDriveLink(e.target.value)}
+                    fullWidth
+                />
+
+                {/* Observações */}
+                <div className={styles.textareaField}>
+                    <label className={styles.textareaLabel}>Observações</label>
                     <textarea
-                        className="w-full bg-surface-primary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none h-20"
+                        className={styles.textarea}
                         placeholder="Detalhes adicionais do projeto..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                     />
                 </div>
 
-                {/* Seção de Distribuição */}
-                <div className="border-t border-border pt-4 mt-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <span className="text-sm font-medium text-text-primary">Enviar para Lista de Distribuição</span>
-                            <p className="text-xs text-text-muted">Líder decidirá quem produz</p>
+                {/* Sugestão de Produtor (opcional) */}
+                <div className={styles.suggestionSection}>
+                    <div className={styles.suggestionHeader}>
+                        <div className={styles.suggestionLabel}>
+                            <Star size={14} className={styles.starIcon} />
+                            <span>Sugerir Produtor</span>
                         </div>
                         <Switch
-                            checked={sendToDistribution}
-                            onChange={setSendToDistribution}
+                            checked={suggestProducer}
+                            onChange={setSuggestProducer}
                         />
                     </div>
+                    <p className={styles.suggestionHint}>
+                        O líder de produção decide a atribuição final
+                    </p>
 
-                    {sendToDistribution ? (
-                        // Opção de sugerir produtor
-                        <div className="space-y-3 p-3 bg-surface-secondary rounded-lg">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Star size={14} className="text-primary-500" />
-                                    <span className="text-sm text-text-primary">Sugerir Produtor</span>
-                                </div>
-                                <Switch
-                                    checked={suggestProducer}
-                                    onChange={setSuggestProducer}
-                                />
-                            </div>
-
-                            {suggestProducer && (
-                                <div className="space-y-2">
-                                    <Dropdown
-                                        options={producerOptions}
-                                        value={suggestedProducerId}
-                                        onChange={(val) => setSuggestedProducerId(String(val))}
-                                        placeholder="Selecionar produtor..."
-                                    />
-                                    <input
-                                        type="text"
-                                        className="w-full bg-surface-primary border border-border rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                        placeholder="Motivo da sugestão (opcional)"
-                                        value={suggestionNotes}
-                                        onChange={(e) => setSuggestionNotes(e.target.value)}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        // Atribuição direta
-                        <div className="p-3 bg-surface-secondary rounded-lg">
+                    {suggestProducer && (
+                        <div className={styles.suggestionFields}>
                             <Dropdown
-                                label="Atribuir diretamente a"
                                 options={producerOptions}
                                 value={suggestedProducerId}
                                 onChange={(val) => setSuggestedProducerId(String(val))}
                                 placeholder="Selecionar produtor..."
                             />
+                            <input
+                                type="text"
+                                className={styles.suggestionNotesInput}
+                                placeholder="Motivo da sugestão (opcional)"
+                                value={suggestionNotes}
+                                onChange={(e) => setSuggestionNotes(e.target.value)}
+                            />
                         </div>
                     )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+                {/* Botões */}
+                <div className={styles.actions}>
                     <Button variant="ghost" onClick={onClose} type="button">
                         Cancelar
                     </Button>
                     <Button variant="primary" type="submit" isLoading={isLoading}>
-                        {sendToDistribution ? 'Enviar para Distribuição' : 'Criar e Atribuir'}
+                        Criar Projeto
                     </Button>
                 </div>
             </form>

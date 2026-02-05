@@ -755,7 +755,9 @@ export const ProfilePanel: React.FC = () => {
             <CreateProjectModal
                 isOpen={showCreateProjectModal}
                 onClose={() => setShowCreateProjectModal(false)}
-                initialLeadName={conversation.leadName}
+                leadId={conversation.leadId}
+                leadName={conversation.leadName}
+                conversationId={conversation.id}
             />
 
             {/* Lead 360° Modal */}
