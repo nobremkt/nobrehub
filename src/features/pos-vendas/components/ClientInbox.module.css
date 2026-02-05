@@ -343,3 +343,73 @@
     font-size: var(--font-size-sm);
     margin: 0;
 }
+
+/* Project Status Card */
+.projectStatus {
+    margin-top: var(--spacing-4);
+    padding: var(--spacing-3);
+    background-color: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.projectStatusHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.projectStatusContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.projectStatusRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+}
+
+.projectStatusLabel {
+    color: var(--color-text-muted);
+}
+
+.projectStatusValue {
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+/* Project Status Colors */
+.projectStatusValue.aguardando {
+    color: var(--color-text-muted);
+}
+
+.projectStatusValue.emproducao {
+    color: var(--color-info);
+}
+
+.projectStatusValue.arevisar {
+    color: var(--color-warning);
+}
+
+.projectStatusValue.revisado {
+    color: var(--color-success);
+}
+
+.projectStatusValue.alteracao {
+    color: var(--color-warning);
+}
+
+.projectStatusValue.entregue {
+    color: var(--color-success);
+}
+
+.projectStatusValue.concluido {
+    color: var(--color-text-muted);
+}

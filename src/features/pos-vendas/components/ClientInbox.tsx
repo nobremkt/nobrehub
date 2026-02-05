@@ -10,7 +10,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { usePostSalesStore } from '../stores/usePostSalesStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { PostSalesDistributionService } from '../services/PostSalesDistributionService';
+import { ProductionService } from '@/features/production/services/ProductionService';
 import { Lead, ClientStatus } from '@/types/lead.types';
+import { Project, ProjectStatus } from '@/types/project.types';
 import { Button, Spinner } from '@/design-system';
 import {
     User,
@@ -20,7 +22,8 @@ import {
     CreditCard,
     Phone,
     Calendar,
-    DollarSign
+    DollarSign,
+    Hammer
 } from 'lucide-react';
 import styles from './ClientInbox.module.css';
 
@@ -32,6 +35,16 @@ const STATUS_CONFIG: Record<ClientStatus, { label: string; color: string; icon: 
     'concluido': { label: 'Concluído', color: 'muted', icon: CheckCircle }
 };
 
+const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+    'aguardando': 'Aguardando Início',
+    'em-producao': 'Em Produção',
+    'a-revisar': 'A Revisar',
+    'revisado': 'Revisado',
+    'alteracao': 'Em Alteração',
+    'entregue': 'Entregue',
+    'concluido': 'Concluído'
+};
+
 export const ClientInbox = () => {
     const { selectedPostSalesId, clientsByAttendant, setClientsForAttendant } = usePostSalesStore();
     const { collaborators } = useCollaboratorStore();
@@ -39,6 +52,7 @@ export const ClientInbox = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
+    const [linkedProject, setLinkedProject] = useState<Project | null>(null);
 
     // Encontra o atendente selecionado
     const selectedAttendant = useMemo(() => {
@@ -71,26 +85,39 @@ export const ClientInbox = () => {
         return clients.find(c => c.id === selectedClientId);
     }, [clients, selectedClientId]);
 
-    // Busca clientes do atendente quando muda
+    // Inscreve-se para atualizações em tempo real dos clientes do atendente
     useEffect(() => {
         if (!selectedPostSalesId) return;
 
-        const fetchClients = async () => {
-            setIsLoading(true);
-            try {
-                // TODO: Implementar fetch real de clientes por atendente
-                // Por enquanto, mock vazio ou buscar do Firestore
-                // const clients = await PostSalesService.getClientsByAttendant(selectedPostSalesId);
-                setClientsForAttendant(selectedPostSalesId, []);
-            } catch (error) {
-                console.error('Error fetching clients:', error);
-            } finally {
+        setIsLoading(true);
+
+        const unsubscribe = PostSalesDistributionService.subscribeToClientsByAttendant(
+            selectedPostSalesId,
+            (fetchedClients) => {
+                setClientsForAttendant(selectedPostSalesId, fetchedClients);
                 setIsLoading(false);
             }
-        };
+        );
 
-        fetchClients();
+        return () => unsubscribe();
     }, [selectedPostSalesId, setClientsForAttendant]);
+
+    // Inscreve-se para atualizações em tempo real do projeto vinculado ao cliente
+    useEffect(() => {
+        if (!selectedClientId) {
+            setLinkedProject(null);
+            return;
+        }
+
+        const unsubscribe = ProductionService.subscribeToProjectByLeadId(
+            selectedClientId,
+            (project) => {
+                setLinkedProject(project);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [selectedClientId]);
 
     // Atualiza status do cliente
     const handleUpdateStatus = async (clientId: string, newStatus: ClientStatus) => {
@@ -120,6 +147,33 @@ export const ClientInbox = () => {
             setSelectedClientId(null);
         } catch (error) {
             console.error('Error completing client:', error);
+        }
+    };
+
+    // Solicita revisão - projeto volta pro MESMO produtor
+    const handleRequestRevision = async (clientId: string, projectId?: string) => {
+        if (!selectedPostSalesId) return;
+
+        try {
+            // Por enquanto usa um projectId mockado se não existir
+            // TODO: Buscar projectId real vinculado ao lead
+            const pid = projectId || clientId; // fallback
+            await PostSalesDistributionService.requestRevision(clientId, pid, 'Alteração solicitada pelo cliente');
+            // Atualização será feita pelo subscription
+        } catch (error) {
+            console.error('Error requesting revision:', error);
+        }
+    };
+
+    // Cliente aprovou o projeto
+    const handleApproveClient = async (clientId: string, projectId?: string) => {
+        if (!selectedPostSalesId) return;
+
+        try {
+            await PostSalesDistributionService.approveClient(clientId, projectId);
+            // Atualização será feita pelo subscription
+        } catch (error) {
+            console.error('Error approving client:', error);
         }
     };
 
@@ -292,6 +346,36 @@ export const ClientInbox = () => {
                                 )}
                             </div>
 
+                            {/* Project Status - Real Time */}
+                            {linkedProject && (
+                                <div className={styles.projectStatus}>
+                                    <div className={styles.projectStatusHeader}>
+                                        <Hammer size={14} />
+                                        <span>Projeto na Produção</span>
+                                    </div>
+                                    <div className={styles.projectStatusContent}>
+                                        <div className={styles.projectStatusRow}>
+                                            <span className={styles.projectStatusLabel}>Status:</span>
+                                            <span className={`${styles.projectStatusValue} ${styles[linkedProject.status.replace('-', '')]}`}>
+                                                {PROJECT_STATUS_LABELS[linkedProject.status]}
+                                            </span>
+                                        </div>
+                                        <div className={styles.projectStatusRow}>
+                                            <span className={styles.projectStatusLabel}>Produtor:</span>
+                                            <span className={styles.projectStatusValue}>{linkedProject.producerName}</span>
+                                        </div>
+                                        {linkedProject.dueDate && (
+                                            <div className={styles.projectStatusRow}>
+                                                <span className={styles.projectStatusLabel}>Previsão:</span>
+                                                <span className={styles.projectStatusValue}>
+                                                    {new Date(linkedProject.dueDate).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Actions */}
                             <div className={styles.actions}>
                                 {selectedClient.clientStatus === 'aguardando_projeto' && (
@@ -306,15 +390,15 @@ export const ClientInbox = () => {
                                     <>
                                         <Button
                                             variant="ghost"
-                                            onClick={() => handleUpdateStatus(selectedClient.id, 'aguardando_alteracao')}
+                                            onClick={() => handleRequestRevision(selectedClient.id)}
                                         >
-                                            Alteração
+                                            Solicitar Alteração
                                         </Button>
                                         <Button
-                                            variant="secondary"
-                                            onClick={() => handleUpdateStatus(selectedClient.id, 'aguardando_pagamento')}
+                                            variant="primary"
+                                            onClick={() => handleApproveClient(selectedClient.id)}
                                         >
-                                            Aguard. Pagamento
+                                            Cliente Aprovou ✓
                                         </Button>
                                     </>
                                 )}

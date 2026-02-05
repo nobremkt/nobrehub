@@ -169,5 +169,69 @@ export const ProductionService = {
         }, (error) => {
             console.error('Error listening to projects:', error);
         });
+    },
+
+    /**
+     * Busca projeto vinculado a um lead específico
+     * Retorna o projeto mais recente se houver múltiplos
+     */
+    getProjectByLeadId: async (leadId: string): Promise<Project | null> => {
+        try {
+            const projectsRef = collection(db, COLLECTION_NAME);
+            const q = query(
+                projectsRef,
+                where('leadId', '==', leadId),
+                orderBy('createdAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+
+            const doc = snapshot.docs[0];
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
+            } as Project;
+        } catch (error) {
+            console.error('Error fetching project by leadId:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Inscreve-se para atualizações em tempo real do projeto vinculado a um lead
+     */
+    subscribeToProjectByLeadId: (leadId: string, callback: (project: Project | null) => void) => {
+        const projectsRef = collection(db, COLLECTION_NAME);
+        const q = query(
+            projectsRef,
+            where('leadId', '==', leadId),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                callback(null);
+                return;
+            }
+
+            const doc = snapshot.docs[0];
+            const data = doc.data();
+            callback({
+                id: doc.id,
+                ...data,
+                dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
+            } as Project);
+        }, (error) => {
+            console.error('Error listening to project by leadId:', error);
+        });
     }
 };
