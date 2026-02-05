@@ -26,7 +26,7 @@ export function ContatoTab({ lead }: ContatoTabProps) {
         instagram: (customFields.instagram as string) || '',
         position: '',
         notes: lead.notes || '',
-        utm_source: (customFields.formOrigin as string) || '',
+        utm_source: (customFields.utmSource as string) || (customFields.formOrigin as string) || '',
     });
 
     const handleChange = (field: string, value: string) => {
@@ -47,7 +47,7 @@ export function ContatoTab({ lead }: ContatoTabProps) {
             instagram: (customFields.instagram as string) || '',
             position: '',
             notes: lead.notes || '',
-            utm_source: (customFields.formOrigin as string) || '',
+            utm_source: (customFields.utmSource as string) || (customFields.formOrigin as string) || '',
         });
         setIsEditing(false);
     };

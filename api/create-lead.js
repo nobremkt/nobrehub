@@ -207,7 +207,8 @@ export default async function handler(req, res) {
                                 teamSize: leadData.teamSize || null,
                                 revenue: leadData.revenue || null,
                                 challenge: leadData.challenge || null,
-                                formOrigin: leadData.formOrigin || 'website'
+                                formOrigin: leadData.formOrigin || 'website',
+                                utmSource: leadData.source || null
                             },
                             createdAt: now,
                             updatedAt: now,
