@@ -33,6 +33,18 @@ export function ContatoTab({ lead }: ContatoTabProps) {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    // Format Instagram username - auto-add @ at the beginning
+    const formatInstagram = (value: string): string => {
+        const cleaned = value.replace(/@/g, '').trim();
+        if (cleaned.length === 0) return '';
+        return `@${cleaned}`;
+    };
+
+    const handleInstagramChange = (value: string) => {
+        const formatted = formatInstagram(value);
+        setFormData(prev => ({ ...prev, instagram: formatted }));
+    };
+
     const handleSave = () => {
         toast.success('Informações de contato salvas!');
         setIsEditing(false);
@@ -135,7 +147,7 @@ export function ContatoTab({ lead }: ContatoTabProps) {
                     </label>
                     <Input
                         value={formData.instagram}
-                        onChange={(e) => handleChange('instagram', e.target.value)}
+                        onChange={(e) => handleInstagramChange(e.target.value)}
                         placeholder="@usuario"
                         disabled={!isEditing}
                     />
