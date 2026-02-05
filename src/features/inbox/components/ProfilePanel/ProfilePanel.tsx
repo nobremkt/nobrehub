@@ -32,6 +32,7 @@ import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { toast } from 'react-toastify';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
+import { CreateProjectModal } from '@/features/production/components/CreateProjectModal';
 
 interface AccordionSectionProps {
     title: string;
@@ -98,6 +99,9 @@ export const ProfilePanel: React.FC = () => {
 
     // Lead360 Modal State
     const [showLead360Modal, setShowLead360Modal] = useState(false);
+
+    // Create Project Modal State
+    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
     // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
     const LOSS_REASONS = [...lossReasons]
@@ -342,6 +346,13 @@ export const ProfilePanel: React.FC = () => {
                     title="Transferir"
                 >
                     <ArrowRightLeft size={18} />
+                </button>
+                <button
+                    className={`${styles.actionButton} ${styles.highlight}`}
+                    onClick={() => setShowCreateProjectModal(true)}
+                    title="Criar Projeto"
+                >
+                    <Plus size={18} />
                 </button>
             </div>
 
@@ -739,6 +750,14 @@ export const ProfilePanel: React.FC = () => {
                     )}
                 </div>
             </Modal>
+
+            {/* Create Project Modal */}
+            <CreateProjectModal
+                isOpen={showCreateProjectModal}
+                onClose={() => setShowCreateProjectModal(false)}
+                initialLeadId={conversation.leadId}
+                initialLeadName={conversation.leadName}
+            />
 
             {/* Lead 360° Modal */}
             <Lead360Modal

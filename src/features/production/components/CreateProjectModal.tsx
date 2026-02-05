@@ -19,6 +19,8 @@ import { Star } from 'lucide-react';
 interface CreateProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialLeadId?: string;
+    initialLeadName?: string;
 }
 
 const PROJECT_STATUS_OPTIONS = [
@@ -49,7 +51,7 @@ const BASE_POINTS: Record<string, number> = {
     'outro': 1,
 };
 
-export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps) => {
+export const CreateProjectModal = ({ isOpen, onClose, initialLeadId, initialLeadName }: CreateProjectModalProps) => {
     const { addProject, isLoading } = useProductionStore();
     const { collaborators } = useCollaboratorStore();
     const { sectors } = useSectorStore();
@@ -97,6 +99,14 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
             }).catch(err => console.error('Error fetching leads:', err));
         }
     }, [isOpen]);
+
+    // Pré-preenche com lead inicial (quando vindo do CRM/Inbox)
+    useEffect(() => {
+        if (isOpen && initialLeadId && initialLeadName) {
+            setSelectedLeadId(initialLeadId);
+            setLeadName(initialLeadName);
+        }
+    }, [isOpen, initialLeadId, initialLeadName]);
 
     // Opções de leads para dropdown
     const leadOptions = useMemo(() => {
