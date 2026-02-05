@@ -182,13 +182,33 @@ export default async function handler(req, res) {
                     const leadsRef = firestore.collection('leads');
 
                     // Check duplicate by phone if exists
-                    let exists = false;
+                    let existingLeadId = null;
                     if (cleanPhone) {
                         const q = await leadsRef.where('phone', '==', cleanPhone).get();
-                        exists = !q.empty;
+                        if (!q.empty) {
+                            existingLeadId = q.docs[0].id;
+                        }
                     }
 
-                    if (!exists) {
+                    if (existingLeadId) {
+                        // UPDATE existing lead with new customFields
+                        await leadsRef.doc(existingLeadId).update({
+                            company: conversationData.leadCompany || undefined,
+                            email: conversationData.leadEmail || undefined,
+                            customFields: {
+                                instagram: leadData.instagram || null,
+                                segment: leadData.segment || null,
+                                teamSize: leadData.teamSize || null,
+                                revenue: leadData.revenue || null,
+                                challenge: leadData.challenge || null,
+                                formOrigin: leadData.formOrigin || 'website',
+                                utmSource: leadData.source || null
+                            },
+                            updatedAt: now,
+                        });
+                        console.log(`Updated existing CRM lead: ${existingLeadId}`);
+                    } else {
+                        // CREATE new lead
                         await leadsRef.add({
                             name: conversationData.leadName,
                             phone: conversationData.leadPhone,
