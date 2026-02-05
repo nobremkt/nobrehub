@@ -1,10 +1,16 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Activity, Copy, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
 import { toast } from 'react-toastify';
+import { Lead } from '@/types/lead.types';
+import { LeadService } from '@/features/crm/services/LeadService';
+
+interface AtividadeTabProps {
+    lead: Lead;
+}
 
 // Helper to get stage number from stage id
 const getStageNumber = (stageId: string) => {
@@ -32,10 +38,12 @@ const highlightVariables = (content: string) => {
 };
 
 
-export function AtividadeTab() {
-    const [completedActivities, setCompletedActivities] = useState(0);
+export function AtividadeTab({ lead }: AtividadeTabProps) {
+    // Carregar progresso do lead.customFields ou iniciar em 0
+    const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
+    const [completedActivities, setCompletedActivities] = useState(initialProgress);
     // Estado para controlar qual atividade está selecionada para visualização (script)
-    const [selectedActivityId, setSelectedActivityId] = useState<number>(1);
+    const [selectedActivityId, setSelectedActivityId] = useState<number>(initialProgress + 1 || 1);
 
     // O script exibido baseia-se na atividade explicitamente selecionada OU na próxima atividade lógica
     const activeId = selectedActivityId || (completedActivities + 1);
@@ -62,19 +70,37 @@ export function AtividadeTab() {
         }
     };
 
-    const toggleCompletion = (activityId: number) => {
-        // Lógica de alternar conclusão apenas
+    const toggleCompletion = useCallback(async (activityId: number) => {
+        let newProgress: number;
+
+        // Lógica de alternar conclusão
         if (activityId <= completedActivities) {
             // Desmarcar: volta para o estágio anterior
-            setCompletedActivities(activityId - 1);
+            newProgress = activityId - 1;
         } else {
             // Marcar: avança até esta atividade
-            setCompletedActivities(activityId);
+            newProgress = activityId;
         }
 
-        // Ao marcar/desmarcar, seleciona a MESMA atividade (não avança)
+        // Update local state immediately (optimistic update)
+        setCompletedActivities(newProgress);
         setSelectedActivityId(activityId);
-    };
+
+        // Persist to Firebase
+        try {
+            await LeadService.updateLead(lead.id, {
+                customFields: {
+                    ...lead.customFields,
+                    playbookProgress: newProgress,
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao salvar progresso:', error);
+            toast.error('Erro ao salvar progresso');
+            // Rollback on error
+            setCompletedActivities(completedActivities);
+        }
+    }, [completedActivities, lead.id, lead.customFields]);
 
     const selectActivity = (activityId: number) => {
         setSelectedActivityId(activityId);

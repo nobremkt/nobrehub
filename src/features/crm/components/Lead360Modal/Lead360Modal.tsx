@@ -57,7 +57,7 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
     const renderTabContent = () => {
         switch (activeTab) {
             case 'ATIVIDADE':
-                return <AtividadeTab />;
+                return <AtividadeTab lead={lead} />;
             case 'CONTATO':
                 return <ContatoTab lead={lead} />;
             case 'EMPRESA':
