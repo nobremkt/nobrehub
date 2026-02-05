@@ -24,6 +24,7 @@ import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { ProductionPage } from '@/features/production/pages/ProductionPage';
+import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
@@ -137,7 +138,7 @@ export function App() {
 
                     <Route path={ROUTES.production.root + '/*'} element={<ProductionPage />} />
 
-                    <Route path={ROUTES.postSales.root + '/*'} element={<PlaceholderPage title="Pós-Venda" />} />
+                    <Route path={ROUTES.postSales.root + '/*'} element={<PostSalesPage />} />
 
                     <Route path={ROUTES.team.members} element={<MembersPage />} />
 

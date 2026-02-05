@@ -1,0 +1,214 @@
+.distributionList {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-primary);
+    overflow: hidden;
+}
+
+.header {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.badge {
+    background-color: var(--color-primary-500);
+    color: white;
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+}
+
+.actions {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+/* Project Card */
+.projectCard {
+    background-color: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    transition: all 0.2s ease;
+}
+
+.projectCard:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.projectCard.highlighted {
+    border-color: var(--color-primary-500);
+    background-color: rgba(220, 38, 38, 0.05);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-3);
+}
+
+.projectName {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.clientName {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.pointsBadge {
+    background-color: var(--color-surface-tertiary);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pointsBadge.hasExtra {
+    background-color: var(--color-warning-500);
+    color: white;
+}
+
+/* Suggestion Badge */
+.suggestionBadge {
+    background-color: var(--color-primary-500);
+    color: white;
+    font-size: var(--font-size-xs);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: var(--spacing-2);
+}
+
+/* Info Row */
+.infoRow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-2);
+}
+
+.infoRow svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* Notes */
+.notes {
+    background-color: var(--color-surface-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-3);
+    font-style: italic;
+}
+
+/* Card Actions */
+.cardActions {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-3);
+    padding-top: var(--spacing-3);
+    border-top: 1px solid var(--color-border);
+}
+
+/* Producer Select */
+.producerSelect {
+    flex: 1;
+    position: relative;
+}
+
+.producerDropdown {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    background-color: var(--color-surface-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.producerDropdown:hover {
+    border-color: var(--color-border-hover);
+}
+
+.producerDropdown:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    color: var(--color-text-muted);
+    text-align: center;
+    gap: var(--spacing-3);
+}
+
+.emptyState svg {
+    opacity: 0.5;
+}
+
+.emptyState p {
+    font-size: var(--font-size-sm);
+}

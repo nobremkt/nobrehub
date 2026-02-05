@@ -1,0 +1,176 @@
+.distributionList {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-primary);
+    overflow: hidden;
+}
+
+.header {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.badge {
+    background-color: var(--color-primary-500);
+    color: white;
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+}
+
+.actions {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+/* Client Card */
+.clientCard {
+    background-color: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    transition: all 0.2s ease;
+}
+
+.clientCard:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-3);
+}
+
+.clientName {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.dealValue {
+    font-size: var(--font-size-xs);
+    color: var(--color-success-500);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.tempBadge {
+    font-size: var(--font-size-xs);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+}
+
+.tempBadge.hot {
+    background-color: var(--color-danger-500);
+    color: white;
+}
+
+.tempBadge.warm {
+    background-color: var(--color-warning-500);
+    color: white;
+}
+
+.tempBadge.cold {
+    background-color: var(--color-info-500);
+    color: white;
+}
+
+/* Info Row */
+.infoRow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-2);
+}
+
+.infoRow svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* Returning Client Badge */
+.returningBadge {
+    background-color: var(--color-surface-tertiary);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: var(--spacing-2);
+}
+
+/* Card Actions */
+.cardActions {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-3);
+    padding-top: var(--spacing-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.postSalesSelect {
+    flex: 1;
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    color: var(--color-text-muted);
+    text-align: center;
+    gap: var(--spacing-3);
+}
+
+.emptyState svg {
+    opacity: 0.5;
+}
+
+.emptyState p {
+    font-size: var(--font-size-sm);
+}

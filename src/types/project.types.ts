@@ -4,7 +4,27 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-export type ProjectStatus = 'aguardando' | 'em-producao' | 'a-revisar' | 'revisado' | 'alteracao';
+// Status do projeto na produção
+export type ProjectStatus =
+    | 'aguardando'    // Na lista, aguardando início
+    | 'em-producao'   // Em produção
+    | 'a-revisar'     // Aguardando revisão do líder
+    | 'revisado'      // Revisado, pronto pra entregar
+    | 'alteracao'     // Cliente pediu alteração
+    | 'entregue'      // Enviado ao cliente
+    | 'concluido';    // 100% finalizado
+
+// Status na lista de distribuição
+export type DistributionStatus = 'pending' | 'assigned' | 'suggested';
+
+// Status de aprovação do cliente
+export type ClientApprovalStatus = 'pending' | 'approved' | 'changes_requested';
+
+// Status de pagamento
+export type PaymentStatus = 'pending' | 'partial' | 'paid';
+
+// Categoria de duração de vídeo (para pontuação)
+export type VideoDurationCategory = '30s' | '60s' | '60plus';
 
 export interface Project {
     id: string;
@@ -29,6 +49,49 @@ export interface Project {
     deliveredAt?: Date;
     createdAt: Date;
     updatedAt: Date;
+
+    // ═══════════════ PONTUAÇÃO (METAS) ═══════════════
+
+    productType?: string;                    // Tipo do produto
+    durationCategory?: VideoDurationCategory; // Duração do vídeo (se aplicável)
+    basePoints?: number;                     // Pontos base do produto
+    extraPoints?: number;                    // Pontos extras (complexidade)
+    totalPoints?: number;                    // basePoints + extraPoints
+
+    // ═══════════════ DISTRIBUIÇÃO ═══════════════
+
+    distributionStatus?: DistributionStatus;
+    suggestedProducerId?: string;           // Produtor sugerido pela vendedora
+    suggestedProducerName?: string;
+    suggestionNotes?: string;               // Observações da vendedora
+    assignedByLeaderId?: string;            // Líder que atribuiu
+    assignedAt?: Date;                      // Quando foi atribuído
+
+    // ═══════════════ PÓS-VENDAS ═══════════════
+
+    postSalesId?: string;                   // Responsável pós-venda
+    postSalesName?: string;
+    postSalesAssignedAt?: Date;
+
+    // Entrega ao cliente
+    deliveredToClientAt?: Date;
+    deliveredToClientBy?: string;
+
+    // Aprovação do cliente
+    clientApprovalStatus?: ClientApprovalStatus;
+    clientApprovedAt?: Date;
+    clientFeedback?: string;
+
+    // Pagamento
+    paymentStatus?: PaymentStatus;
+    paymentReceivedAt?: Date;
+    paymentReceivedBy?: string;
+
+    // ═══════════════ REVISÕES ═══════════════
+
+    revisionCount?: number;                 // Quantas vezes voltou
+    lastRevisionRequestedAt?: Date;
+    lastRevisionRequestedBy?: string;
 }
 
 export interface ProjectChecklistItem {

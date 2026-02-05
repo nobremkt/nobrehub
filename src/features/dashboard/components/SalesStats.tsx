@@ -14,26 +14,9 @@ import {
     PipelineOverview,
 } from './sales';
 import { useDashboardStore } from '../stores/useDashboardStore';
-import { DashboardAnalyticsService } from '../services/DashboardAnalyticsService';
+import { DashboardAnalyticsService, SalesMetrics } from '../services/DashboardAnalyticsService';
 
-interface SalesData {
-    newLeads: number;
-    qualifiedLeads: number;
-    closedDeals: number;
-    lostDeals: number;
-    pipelineValue: number;
-    conversionRate: number;
-    leadsByStatus: { status: string; count: number }[];
-    topSellers: { name: string; deals: number; value: number }[];
-    // Additional data
-    trendData: { date: string; leads: number; closed: number }[];
-    sourceData: { source: string; count: number }[];
-    performanceMetrics: {
-        avgResponseTime: number;
-        avgCycleTime: number;
-        contactRate: number;
-        followUpRate: number;
-    };
+interface SalesData extends SalesMetrics {
     pipelineStages: { name: string; count: number; value: number }[];
 }
 
@@ -51,35 +34,11 @@ function useSalesData() {
                 const metrics = await DashboardAnalyticsService.getSalesMetrics(dateFilter);
 
                 if (isMounted) {
-                    // Generate trend data from real data if available, or mock
-                    const trendData = generateTrendData(dateFilter);
-
-                    // Generate source data from pipeline if available, or mock
-                    const sourceData = generateSourceData();
-
                     // Calculate pipeline stages from status
                     const pipelineStages = calculatePipelineStages(metrics.leadsByStatus);
 
                     setData({
-                        newLeads: metrics.newLeads,
-                        qualifiedLeads: metrics.qualifiedLeads,
-                        closedDeals: metrics.closedDeals,
-                        lostDeals: metrics.lostDeals,
-                        pipelineValue: metrics.pipelineValue,
-                        conversionRate: metrics.conversionRate,
-                        leadsByStatus: metrics.leadsByStatus.map(item => ({
-                            status: item.status,
-                            count: item.count
-                        })),
-                        topSellers: metrics.topSellers,
-                        trendData,
-                        sourceData,
-                        performanceMetrics: {
-                            avgResponseTime: 4.5, // Mock - would need to calculate from lead history
-                            avgCycleTime: 14, // Mock
-                            contactRate: 72, // Mock
-                            followUpRate: 85, // Mock
-                        },
+                        ...metrics,
                         pipelineStages,
                     });
                     setIsLoading(false);
@@ -102,35 +61,6 @@ function useSalesData() {
     return { data, isLoading };
 }
 
-// Helper to generate trend data
-function generateTrendData(filter: string) {
-    const days = filter === 'week' ? 7 : filter === 'month' ? 30 : 14;
-    const data = [];
-    const now = new Date();
-
-    for (let i = days - 1; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        data.push({
-            date: `${date.getDate()}/${date.getMonth() + 1}`,
-            leads: Math.floor(Math.random() * 8) + 2,
-            closed: Math.floor(Math.random() * 3),
-        });
-    }
-    return data;
-}
-
-// Helper to generate source data (mock - would come from lead.origin field)
-function generateSourceData() {
-    return [
-        { source: 'instagram', count: 28 },
-        { source: 'whatsapp', count: 18 },
-        { source: 'indicacao', count: 12 },
-        { source: 'site', count: 8 },
-        { source: 'facebook', count: 5 },
-    ];
-}
-
 // Calculate pipeline stages from status data
 function calculatePipelineStages(statusData: { status: string; count: number }[]) {
     const stageOrder = ['new', 'contacted', 'qualified', 'negotiation', 'proposal'];
@@ -150,16 +80,16 @@ function calculatePipelineStages(statusData: { status: string; count: number }[]
             stages.push({
                 name: stageLabels[stage] || stage,
                 count: found.count,
-                value: found.count * 2500, // Estimated value per lead
+                value: found.count * 2500, // Estimated value per lead - TODO: use real estimatedValue
             });
         }
     }
 
     return stages.length > 0 ? stages : [
-        { name: 'Novos', count: 15, value: 37500 },
-        { name: 'Contatados', count: 8, value: 20000 },
-        { name: 'Qualificados', count: 5, value: 12500 },
-        { name: 'Negociação', count: 3, value: 7500 },
+        { name: 'Novos', count: 0, value: 0 },
+        { name: 'Contatados', count: 0, value: 0 },
+        { name: 'Qualificados', count: 0, value: 0 },
+        { name: 'Negociação', count: 0, value: 0 },
     ];
 }
 
