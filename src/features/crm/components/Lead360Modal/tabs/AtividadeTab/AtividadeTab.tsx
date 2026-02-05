@@ -43,7 +43,7 @@ const highlightVariables = (content: string) => {
 
 export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
     const navigate = useNavigate();
-    const { conversations, selectConversation, init } = useInboxStore();
+    const { conversations, selectConversation, init, setDraftMessage } = useInboxStore();
 
     // Carregar progresso do lead.customFields ou iniciar em 0
     const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
@@ -77,36 +77,27 @@ export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
     };
 
     const toggleCompletion = useCallback(async (activityId: number) => {
-        let newProgress: number;
+        // Usar o estado atual, não closure stale
+        setCompletedActivities(prev => {
+            const newProgress = activityId <= prev ? activityId - 1 : activityId;
 
-        // Lógica de alternar conclusão
-        if (activityId <= completedActivities) {
-            // Desmarcar: volta para o estágio anterior
-            newProgress = activityId - 1;
-        } else {
-            // Marcar: avança até esta atividade
-            newProgress = activityId;
-        }
-
-        // Update local state immediately (optimistic update)
-        setCompletedActivities(newProgress);
-        setSelectedActivityId(activityId);
-
-        // Persist to Firebase
-        try {
-            await LeadService.updateLead(lead.id, {
+            // Persist to Firebase (fire and forget para evitar problema de closure)
+            LeadService.updateLead(lead.id, {
                 customFields: {
                     ...lead.customFields,
                     playbookProgress: newProgress,
                 }
+            }).catch(error => {
+                console.error('Erro ao salvar progresso:', error);
+                toast.error('Erro ao salvar progresso');
             });
-        } catch (error) {
-            console.error('Erro ao salvar progresso:', error);
-            toast.error('Erro ao salvar progresso');
-            // Rollback on error
-            setCompletedActivities(completedActivities);
-        }
-    }, [completedActivities, lead.id, lead.customFields]);
+
+            return newProgress;
+        });
+
+        setSelectedActivityId(activityId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lead.id]);
 
     const selectActivity = (activityId: number) => {
         setSelectedActivityId(activityId);
@@ -233,17 +224,19 @@ export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
                                     selectConversation(existingConversation.id);
                                 }
 
+                                // Preparar mensagem com variáveis substituídas
+                                const message = currentScript.content
+                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+
+                                // Setar mensagem no input do chat (via store)
+                                setDraftMessage(message);
+
                                 // Fechar Modal360
                                 onClose();
 
-                                // Navegar para Inbox com state para abrir SendTemplateModal
-                                navigate('/inbox', {
-                                    state: {
-                                        openTemplateModal: true,
-                                        templateScript: currentScript.content,
-                                        leadPhone: phone
-                                    }
-                                });
+                                // Navegar para Inbox
+                                navigate('/inbox');
                             }}
                         >
                             <Send size={16} />

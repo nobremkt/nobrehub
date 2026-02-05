@@ -25,6 +25,15 @@ export interface Conversation {
     isFavorite?: boolean;
     isPinned?: boolean;
     isArchived?: boolean;
+    // Campos de Contato (sincronizados com Modal360)
+    birthday?: string;
+    position?: string;
+    utmSource?: string;
+    // Campos de Empresa (sincronizados com Modal360)
+    segment?: string;
+    employees?: string;
+    revenue?: string;
+    website?: string;
     createdAt: Date;
     updatedAt: Date;
 }

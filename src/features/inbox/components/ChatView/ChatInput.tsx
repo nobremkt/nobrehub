@@ -3,6 +3,7 @@ import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/comp
 import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar } from 'lucide-react';
 import { ScheduleMessagePopup } from './ScheduleMessagePopup';
 import { MediaPreviewModal } from './MediaPreviewModal';
+import { useInboxStore } from '../../stores/useInboxStore';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
@@ -14,6 +15,7 @@ interface ChatInputProps {
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onScheduleMessage, disabled, sessionExpired }) => {
+    const { draftMessage, setDraftMessage } = useInboxStore();
     const [message, setMessage] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -33,6 +35,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
+
+    // Sincronizar draftMessage do store com o estado local (quando vem do Playbook)
+    useEffect(() => {
+        if (draftMessage) {
+            setMessage(draftMessage);
+            // Limpar o draft após consumir
+            setDraftMessage('');
+        }
+    }, [draftMessage, setDraftMessage]);
 
     // Cleanup on unmount
     useEffect(() => {

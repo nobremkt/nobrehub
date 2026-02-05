@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { Tag, PhoneInput, Dropdown, Modal, Button } from '@/design-system';
 import { formatPhone } from '@/utils';
-import { DealStatus } from '../../types';
+import { DealStatus, Conversation } from '../../types';
 import {
     Phone,
     Mail,
@@ -167,11 +167,20 @@ export const ProfilePanel: React.FC = () => {
     const saveEditing = async () => {
         if (!selectedConversationId || !editingField) return;
 
-        const updates: any = {};
+        const updates: Partial<Conversation> = {};
+        // Campos de contato
         if (editingField === 'name') updates.leadName = editValue;
         if (editingField === 'phone') updates.leadPhone = editValue;
         if (editingField === 'email') updates.leadEmail = editValue;
+        if (editingField === 'instagram') updates.instagram = editValue;
+        if (editingField === 'birthday') updates.birthday = editValue;
+        if (editingField === 'position') updates.position = editValue;
+        // Campos de empresa
         if (editingField === 'company') updates.leadCompany = editValue;
+        if (editingField === 'segment') updates.segment = editValue;
+        if (editingField === 'employees') updates.employees = editValue;
+        if (editingField === 'revenue') updates.revenue = editValue;
+        if (editingField === 'website') updates.website = editValue;
 
         await updateConversationDetails(selectedConversationId, updates);
         setEditingField(null);
@@ -392,12 +401,23 @@ export const ProfilePanel: React.FC = () => {
                 <AccordionSection
                     title="Contato"
                     icon={<User size={16} />}
+                    defaultOpen={true}
                 >
                     <div className={styles.fieldList}>
                         {renderEditableField('name', 'Nome', conversation.leadName)}
+                        {renderEditableField('birthday', 'Aniversário', conversation.birthday, 'DD/MM/AAAA')}
                         {renderEditableField('email', 'Email', conversation.leadEmail)}
                         {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
                         {renderEditableField('instagram', 'Instagram', conversation.instagram, '@username')}
+                        {renderEditableField('position', 'Cargo', conversation.position, 'Ex: Gerente')}
+                        <div className={styles.field}>
+                            <span className={styles.fieldLabel}>Notas</span>
+                            <span className={styles.fieldValue}>{conversation.notes || '-'}</span>
+                        </div>
+                        <div className={styles.field}>
+                            <span className={styles.fieldLabel}>Origem (UTM)</span>
+                            <span className={styles.fieldValue}>{conversation.utmSource || 'Desconhecida'}</span>
+                        </div>
                         <div className={styles.field}>
                             <span className={styles.fieldLabel}>Tags</span>
                             <div className={styles.tagsInline}>
@@ -406,6 +426,20 @@ export const ProfilePanel: React.FC = () => {
                                 ))}
                             </div>
                         </div>
+                    </div>
+                </AccordionSection>
+
+                {/* Empresa */}
+                <AccordionSection
+                    title="Empresa"
+                    icon={<Briefcase size={16} />}
+                >
+                    <div className={styles.fieldList}>
+                        {renderEditableField('company', 'Nome', conversation.leadCompany)}
+                        {renderEditableField('segment', 'Segmento', conversation.segment, 'Ex: Tecnologia')}
+                        {renderEditableField('employees', 'Funcionários', conversation.employees, 'Ex: 11-50')}
+                        {renderEditableField('revenue', 'Faturamento', conversation.revenue, 'Ex: R$ 500k - 1M')}
+                        {renderEditableField('website', 'Site', conversation.website, 'www.empresa.com.br')}
                     </div>
                 </AccordionSection>
 
