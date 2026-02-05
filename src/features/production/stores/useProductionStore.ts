@@ -84,13 +84,14 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
     },
 
     addProject: async (newProject) => {
-        const { selectedProducerId } = get();
-        if (!selectedProducerId) return;
-
         set({ isLoading: true });
         try {
             await ProductionService.createProject(newProject);
-            await get().fetchProjects(selectedProducerId);
+            // Se tem produtor selecionado, atualiza a lista dele
+            const { selectedProducerId, fetchProjects } = get();
+            if (selectedProducerId) {
+                await fetchProjects(selectedProducerId);
+            }
             toast.success('Projeto criado com sucesso!');
         } catch (error) {
             console.error('Error adding project:', error);
