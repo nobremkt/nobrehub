@@ -23,6 +23,36 @@ const CATEGORY_OPTIONS = [
     { value: 'services', label: 'Serviços' },
 ];
 
+// Alinhado com formulário de captação (Social Media Landing Page)
+const SEGMENT_OPTIONS = [
+    { value: '', label: 'Selecione...' },
+    { value: 'restaurante', label: 'Restaurante/Alimentação' },
+    { value: 'clinica', label: 'Clínica/Saúde' },
+    { value: 'loja', label: 'Loja/Varejo' },
+    { value: 'servicos', label: 'Serviços' },
+    { value: 'beleza', label: 'Beleza/Estética' },
+    { value: 'imobiliaria', label: 'Imobiliária' },
+    { value: 'educacao', label: 'Educação' },
+    { value: 'outro', label: 'Outro' },
+];
+
+// Alinhado com formulário de captação
+const EMPLOYEE_OPTIONS = [
+    { value: '', label: 'Selecione...' },
+    { value: '1-5', label: '1-5 funcionários' },
+    { value: '6-20', label: '6-20 funcionários' },
+    { value: '21-50', label: '21-50 funcionários' },
+    { value: '50+', label: '50+ funcionários' },
+];
+
+// Alinhado com formulário de captação
+const REVENUE_OPTIONS = [
+    { value: '', label: 'Selecione...' },
+    { value: 'ate-10k', label: 'Até R$ 10 mil/mês' },
+    { value: '10k-50k', label: 'R$ 10 mil - R$ 50 mil/mês' },
+    { value: '50k-200k', label: 'R$ 50 mil - R$ 200 mil/mês' },
+    { value: '200k+', label: 'Acima de R$ 200 mil/mês' },
+];
 
 
 export function EmpresaTab({ lead }: EmpresaTabProps) {
@@ -147,10 +177,11 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         <Tag size={14} />
                         Segmento
                     </label>
-                    <Input
+                    <Dropdown
+                        options={SEGMENT_OPTIONS}
                         value={formData.segment}
-                        onChange={(e) => handleChange('segment', e.target.value)}
-                        placeholder="Ex: Restaurante, Clínica, Loja..."
+                        onChange={(val) => handleChange('segment', String(val))}
+                        placeholder="Selecione..."
                         disabled={!isEditing}
                     />
                 </div>
@@ -160,10 +191,11 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         <Users size={14} />
                         Nº de Funcionários
                     </label>
-                    <Input
+                    <Dropdown
+                        options={EMPLOYEE_OPTIONS}
                         value={formData.employeeCount}
-                        onChange={(e) => handleChange('employeeCount', e.target.value)}
-                        placeholder="Ex: 10-50"
+                        onChange={(val) => handleChange('employeeCount', String(val))}
+                        placeholder="Selecione..."
                         disabled={!isEditing}
                     />
                 </div>
@@ -173,10 +205,11 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         <DollarSign size={14} />
                         Faturamento
                     </label>
-                    <Input
+                    <Dropdown
+                        options={REVENUE_OPTIONS}
                         value={formData.revenue}
-                        onChange={(e) => handleChange('revenue', e.target.value)}
-                        placeholder="Ex: R$ 100.000/mês"
+                        onChange={(val) => handleChange('revenue', String(val))}
+                        placeholder="Selecione..."
                         disabled={!isEditing}
                     />
                 </div>
