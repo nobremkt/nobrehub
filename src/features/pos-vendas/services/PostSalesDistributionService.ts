@@ -260,5 +260,121 @@ export const PostSalesDistributionService = {
             console.error('Error completing client:', error);
             throw error;
         }
+    },
+
+    /**
+     * Busca clientes atribuídos a um atendente específico
+     */
+    getClientsByAttendant: async (postSalesId: string): Promise<Lead[]> => {
+        try {
+            const leadsRef = collection(db, LEADS_COLLECTION);
+            const q = query(
+                leadsRef,
+                where('postSalesId', '==', postSalesId),
+                where('clientStatus', 'in', ['aguardando_projeto', 'aguardando_alteracao', 'entregue', 'aguardando_pagamento']),
+                orderBy('updatedAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(docSnap => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                    dealClosedAt: data.dealClosedAt instanceof Timestamp ? data.dealClosedAt.toDate() : undefined
+                } as Lead;
+            });
+        } catch (error) {
+            console.error('Error fetching clients by attendant:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Inscreve-se para atualizações em tempo real dos clientes de um atendente
+     */
+    subscribeToClientsByAttendant: (postSalesId: string, callback: (clients: Lead[]) => void) => {
+        const leadsRef = collection(db, LEADS_COLLECTION);
+        const q = query(
+            leadsRef,
+            where('postSalesId', '==', postSalesId),
+            where('clientStatus', 'in', ['aguardando_projeto', 'aguardando_alteracao', 'entregue', 'aguardando_pagamento']),
+            orderBy('updatedAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const clients = snapshot.docs.map(docSnap => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+                    dealClosedAt: data.dealClosedAt instanceof Timestamp ? data.dealClosedAt.toDate() : undefined
+                } as Lead;
+            });
+            callback(clients);
+        }, (error) => {
+            console.error('Error in clients subscription:', error);
+        });
+    },
+
+    /**
+     * Solicita revisão/alteração - O projeto volta pro MESMO produtor
+     * Não volta pra lista de distribuição
+     */
+    requestRevision: async (leadId: string, projectId: string, reason?: string): Promise<void> => {
+        try {
+            // Atualiza o lead
+            const leadRef = doc(db, LEADS_COLLECTION, leadId);
+            await updateDoc(leadRef, {
+                clientStatus: 'aguardando_alteracao' as ClientStatus,
+                lastRevisionRequestedAt: new Date(),
+                updatedAt: new Date()
+            });
+
+            // Atualiza o projeto (status de alteração, NÃO muda producerId)
+            const projectRef = doc(db, 'projects', projectId);
+            await updateDoc(projectRef, {
+                status: 'alteracao',
+                revisionCount: (await getDocs(query(collection(db, 'projects'), where('id', '==', projectId)))).docs[0]?.data()?.revisionCount + 1 || 1,
+                lastRevisionRequestedAt: new Date(),
+                revisionReason: reason || '',
+                updatedAt: new Date()
+            });
+        } catch (error) {
+            console.error('Error requesting revision:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Cliente aprovou o projeto
+     */
+    approveClient: async (leadId: string, projectId?: string): Promise<void> => {
+        try {
+            // Atualiza o lead
+            const leadRef = doc(db, LEADS_COLLECTION, leadId);
+            await updateDoc(leadRef, {
+                clientStatus: 'aguardando_pagamento' as ClientStatus,
+                clientApprovedAt: new Date(),
+                updatedAt: new Date()
+            });
+
+            // Atualiza o projeto se fornecido
+            if (projectId) {
+                const projectRef = doc(db, 'projects', projectId);
+                await updateDoc(projectRef, {
+                    clientApprovalStatus: 'approved',
+                    clientApprovedAt: new Date(),
+                    updatedAt: new Date()
+                });
+            }
+        } catch (error) {
+            console.error('Error approving client:', error);
+            throw error;
+        }
     }
 };

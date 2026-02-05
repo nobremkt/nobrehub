@@ -1,8 +1,10 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useProductionStore } from '../stores/useProductionStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
+import { LeadService } from '@/features/crm/services/LeadService';
+import { Lead } from '@/types/lead.types';
 import {
     Modal,
     Input,
@@ -68,6 +70,10 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
     const [suggestedProducerId, setSuggestedProducerId] = useState('');
     const [suggestionNotes, setSuggestionNotes] = useState('');
 
+    // Estado para leads
+    const [availableLeads, setAvailableLeads] = useState<Lead[]>([]);
+    const [selectedLeadId, setSelectedLeadId] = useState('');
+
     // Encontra o setor de produção
     const productionSectorId = useMemo(() => {
         const sector = sectors.find(s =>
@@ -81,6 +87,27 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
         if (!productionSectorId) return [];
         return collaborators.filter(c => c.sectorId === productionSectorId && c.active);
     }, [collaborators, productionSectorId]);
+
+    // Busca leads ao abrir o modal
+    useEffect(() => {
+        if (isOpen) {
+            LeadService.getLeads().then(leads => {
+                // Filtra leads que não estão concluídos
+                setAvailableLeads(leads.filter(l => l.clientStatus !== 'concluido'));
+            }).catch(err => console.error('Error fetching leads:', err));
+        }
+    }, [isOpen]);
+
+    // Opções de leads para dropdown
+    const leadOptions = useMemo(() => {
+        return [
+            { value: '', label: 'Criar manualmente' },
+            ...availableLeads.map(lead => ({
+                value: lead.id,
+                label: `${lead.name} ${lead.phone ? `(${lead.phone})` : ''}`
+            }))
+        ];
+    }, [availableLeads]);
 
     const producerOptions = useMemo(() => {
         return producers.map(p => ({
@@ -133,7 +160,7 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
         try {
             await addProject({
                 name,
-                leadId: 'manual', // Placeholder - pode ser integrado com CRM depois
+                leadId: selectedLeadId || 'manual',
                 leadName,
                 status,
                 dueDate: new Date(dueDate),
@@ -171,6 +198,7 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
     const resetForm = () => {
         setName('');
         setLeadName('');
+        setSelectedLeadId('');
         setStatus('aguardando');
         setDueDate('');
         setDriveLink('');
@@ -200,14 +228,31 @@ export const CreateProjectModal = ({ isOpen, onClose }: CreateProjectModalProps)
                     fullWidth
                 />
 
-                <Input
-                    label="Nome do Cliente (Lead)"
-                    placeholder="Ex: Empresa X"
-                    value={leadName}
-                    onChange={(e) => setLeadName(e.target.value)}
-                    required
-                    fullWidth
+                <Dropdown
+                    label="Cliente (Lead)"
+                    options={leadOptions}
+                    value={selectedLeadId}
+                    onChange={(val) => {
+                        setSelectedLeadId(String(val));
+                        // Se selecionou um lead real, preenche o nome automaticamente
+                        const lead = availableLeads.find(l => l.id === val);
+                        if (lead) {
+                            setLeadName(lead.name);
+                        }
+                    }}
+                    placeholder="Selecione um lead ou crie manualmente"
                 />
+
+                {!selectedLeadId && (
+                    <Input
+                        label="Nome do Cliente (Manual)"
+                        placeholder="Ex: Empresa X"
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                        required
+                        fullWidth
+                    />
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                     <Dropdown

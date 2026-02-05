@@ -23,7 +23,7 @@
 - [x] Mudar/editar informações lockadas dos leads
 - [ ] Aba de histórico mostrando linha do tempo real (não só criação e atualização)
 - [ ] Aba de negócios salvando de verdade no banco ao editar
-- [ ] Campo pra vendedora sugerir produtor ao criar projeto
+- [x] Campo pra vendedora sugerir produtor ao criar projeto
 
 ---
 
@@ -50,17 +50,17 @@
 ---
 
 ## Pós-Venda
-- [ ] Implementar página de pós-venda
-- [ ] Sistema de lista de distribuição de clientes (líder decide automático ou manual)
-- [ ] Mostrar quem já atendeu esse cliente antes na lista de distribuição
-- [ ] Sistema de boards/quadros individuais de cada uma (líder ou admin vê a lista de todos)
+- [x] Implementar página de pós-venda
+- [x] Sistema de lista de distribuição de clientes (líder decide automático ou manual)
+- [x] Mostrar quem já atendeu esse cliente antes na lista de distribuição
+- [x] Sistema de boards/quadros individuais de cada uma (líder ou admin vê a lista de todos)
 - [ ] Cada board mostra um inbox, com páginas e acesso ao histórico anterior do cliente (venda)
-- [ ] Filtros/abas por status: Aguardando Projeto, Aguardando Alteração, Entregue, Aguardando Pagamento, Todos
-- [ ] Ver status do projeto em tempo real (vindo da produção)
-- [ ] Botão "Solicitar Alteração" (volta pro MESMO produtor)
-- [ ] Botão "Marcar como Entregue"
-- [ ] Botão "Cliente Aprovou"
-- [ ] Botão "Pagamento Recebido" (cliente sai do inbox e volta pra base)
+- [x] Filtros/abas por status: Aguardando Projeto, Aguardando Alteração, Entregue, Aguardando Pagamento, Todos
+- [x] Ver status do projeto em tempo real (vindo da produção)
+- [x] Botão "Solicitar Alteração" (volta pro MESMO produtor)
+- [x] Botão "Marcar como Entregue"
+- [x] Botão "Cliente Aprovou"
+- [x] Botão "Pagamento Recebido" (cliente sai do inbox e volta pra base)
 
 ---
 
@@ -76,15 +76,15 @@
 ---
 
 ## Produção
-- [ ] Lista de distribuição para produção (só líder vê)
-- [ ] Mostrar produtor sugerido destacado na lista
-- [ ] Mostrar observações da vendedora na lista
-- [ ] Mostrar quem já produziu pra esse cliente na lista
-- [ ] Botão "Distribuir Automaticamente" (balanceamento por pontos/projetos ativos)
-- [ ] Botão "Atribuir para [Produtor]" (manual, mostra carga de cada um)
-- [ ] Lógica de alterações: sempre volta pro MESMO produtor, nunca pra lista
-- [ ] Ao criar projeto: vincular lead real (não mais hardcoded)
-- [ ] Ao criar projeto: campo pra adicionar pontos extras (complexidade)
+- [x] Lista de distribuição para produção (só líder vê)
+- [x] Mostrar produtor sugerido destacado na lista
+- [x] Mostrar observações da vendedora na lista
+- [x] Mostrar quem já produziu pra esse cliente na lista
+- [x] Botão "Distribuir Automaticamente" (balanceamento por pontos/projetos ativos)
+- [x] Botão "Atribuir para [Produtor]" (manual, mostra carga de cada um)
+- [x] Lógica de alterações: sempre volta pro MESMO produtor, nunca pra lista
+- [x] Ao criar projeto: vincular lead real (não mais hardcoded)
+- [x] Ao criar projeto: campo pra adicionar pontos extras (complexidade)
 
 ---
 

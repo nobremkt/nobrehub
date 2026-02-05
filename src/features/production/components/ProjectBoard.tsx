@@ -3,8 +3,7 @@ import { useProductionStore } from '../stores/useProductionStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { PERMISSIONS } from '@/config/permissions';
 import { Button, Card, Spinner, Badge } from '@/design-system';
-import { Plus, Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
-import { CreateProjectModal } from './CreateProjectModal';
+import { Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
 import { ProjectDetailsModal } from './ProjectDetailsModal';
 
 // Helper de status
@@ -49,7 +48,6 @@ export const ProjectBoard = () => {
         setHighlightedProjectId
     } = useProductionStore();
     const { user } = useAuthStore();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<TabType>('production');
 
@@ -184,10 +182,6 @@ export const ProjectBoard = () => {
                             })}
                         </div>
                     </div>
-
-                    <Button leftIcon={<Plus size={18} />} onClick={() => setIsCreateModalOpen(true)}>
-                        Novo Projeto
-                    </Button>
                 </div>
             </div>
 
@@ -311,10 +305,6 @@ export const ProjectBoard = () => {
                 )}
             </div>
 
-            <CreateProjectModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-            />
             {
                 selectedProject && (
                     <ProjectDetailsModal
