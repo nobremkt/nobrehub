@@ -1,0 +1,158 @@
+.sidebar {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-primary);
+    overflow: hidden;
+}
+
+.searchWrapper {
+    padding: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-2);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.list::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+/* Member Card */
+.memberCard {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-1);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.memberCard:hover {
+    background-color: var(--color-surface-secondary);
+}
+
+.memberCard.selected {
+    background-color: rgba(220, 38, 38, 0.1);
+    border-color: var(--color-primary-500);
+}
+
+/* Avatar */
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.avatarSelected {
+    box-shadow: 0 0 0 2px var(--color-primary-500);
+}
+
+.avatarImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Member Info */
+.memberInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.memberName {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.statsRow {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-top: 4px;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+.stat svg {
+    opacity: 0.7;
+}
+
+/* Total Badge */
+.totalBadge {
+    background-color: var(--color-surface-tertiary);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: var(--radius-full);
+    min-width: 28px;
+    text-align: center;
+}
+
+.memberCard.selected .totalBadge {
+    background-color: var(--color-primary-500);
+    color: white;
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    color: var(--color-text-muted);
+    text-align: center;
+    gap: var(--spacing-2);
+}
+
+.emptyState svg {
+    opacity: 0.3;
+}
+
+.emptyState p {
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+/* Loading */
+.loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

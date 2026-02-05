@@ -104,6 +104,15 @@ export interface SalesMetrics {
     leadsByPipeline: { pipeline: string; count: number }[];
     leadsByStatus: { status: string; count: number }[];
     topSellers: { name: string; deals: number; value: number }[];
+    // Extended metrics for dashboard
+    trendData: { date: string; leads: number; closed: number }[];
+    sourceData: { source: string; count: number }[];
+    performanceMetrics: {
+        avgResponseTime: number;
+        avgCycleTime: number;
+        contactRate: number;
+        followUpRate: number;
+    };
 }
 
 /** General overview metrics */
@@ -156,6 +165,33 @@ export interface FinancialMetrics {
     };
 }
 
+/** Post-sales metrics */
+export interface PostSalesMetrics {
+    // Ticket metrics
+    openTickets: number;
+    resolvedTickets: number;
+    avgResolutionTime: number; // em horas
+    // Customer metrics
+    customerSatisfaction: number; // 0-100
+    churnRate: number; // %
+    retentionRate: number; // %
+    npsScore: number; // -100 a 100
+    // Trend data
+    ticketsTrend: { date: string; opened: number; resolved: number }[];
+    // Revenue tracking - pós-vendedoras recebem pagamentos finais
+    totalPaymentsReceived: number;
+    paymentsTrend: { date: string; amount: number }[];
+    // Ranking de pós-vendedoras por valor recebido
+    topPostSellers: {
+        id: string;
+        name: string;
+        photoUrl?: string;
+        paymentsReceived: number;
+        ticketsResolved: number;
+        avgRating: number;
+    }[];
+}
+
 /** Unified dashboard metrics - aggregates all sections */
 export interface UnifiedDashboardMetrics {
     dateFilter: DateFilter;
@@ -165,6 +201,7 @@ export interface UnifiedDashboardMetrics {
     sales: SalesMetrics;
     admin: AdminMetrics;
     financial: FinancialMetrics;
+    postSales: PostSalesMetrics;
 }
 
 /** Legacy alias for backward compatibility */
@@ -775,6 +812,55 @@ export const DashboardAnalyticsService = {
             .sort((a, b) => b.deals - a.deals)
             .slice(0, 5);
 
+        // Calculate trend data (leads and closed per day)
+        const trendMap: Record<string, { leads: number; closed: number }> = {};
+        leadsInPeriod.forEach(l => {
+            const dateKey = l.createdAt.toISOString().split('T')[0];
+            if (!trendMap[dateKey]) {
+                trendMap[dateKey] = { leads: 0, closed: 0 };
+            }
+            trendMap[dateKey].leads += 1;
+            if (closedStatuses.includes(l.status)) {
+                trendMap[dateKey].closed += 1;
+            }
+        });
+        const trendData = Object.entries(trendMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .slice(-14) // Last 14 days
+            .map(([date, data]) => {
+                const d = new Date(date);
+                return {
+                    date: `${d.getDate()}/${d.getMonth() + 1}`,
+                    leads: data.leads,
+                    closed: data.closed
+                };
+            });
+
+        // Calculate source data from lead origin field
+        const sourceMap: Record<string, number> = {};
+        leadsInPeriod.forEach(l => {
+            const source = (l as { origin?: string }).origin || 'outros';
+            sourceMap[source] = (sourceMap[source] || 0) + 1;
+        });
+        const sourceData = Object.entries(sourceMap)
+            .map(([source, count]) => ({ source, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // Calculate performance metrics
+        const contactedLeads = leadsInPeriod.filter(l =>
+            !['new'].includes(l.status)
+        ).length;
+        const contactRate = newLeads > 0 ? Math.round((contactedLeads / newLeads) * 100) : 0;
+
+        // Placeholder metrics (would need activity/history tracking to calculate properly)
+        const performanceMetrics = {
+            avgResponseTime: 4.5, // TODO: Calculate from lead activity history
+            avgCycleTime: totalCompleted > 0 ? 14 : 0, // TODO: Calculate from lead lifecycle
+            contactRate,
+            followUpRate: 85, // TODO: Calculate from activity tracking
+        };
+
         return {
             newLeads,
             qualifiedLeads,
@@ -784,7 +870,14 @@ export const DashboardAnalyticsService = {
             conversionRate,
             leadsByPipeline,
             leadsByStatus,
-            topSellers
+            topSellers,
+            trendData,
+            sourceData: sourceData.length > 0 ? sourceData : [
+                { source: 'instagram', count: 0 },
+                { source: 'whatsapp', count: 0 },
+                { source: 'indicacao', count: 0 },
+            ],
+            performanceMetrics
         };
     },
 
@@ -794,10 +887,16 @@ export const DashboardAnalyticsService = {
     getAdminMetrics: async (filter: DateFilter = 'month'): Promise<AdminMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Fetch collaborators
+        // Fetch collaborators (exclude DEBUG account)
         const collabRef = collection(db, 'collaborators');
         const collabSnapshot = await getDocs(collabRef);
-        const totalCollaborators = collabSnapshot.size;
+
+        // Filter out DEBUG account from collaborators
+        const filteredCollaborators = collabSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.email !== 'debug@debug.com';
+        });
+        const totalCollaborators = filteredCollaborators.length;
 
         // Fetch sectors for name lookups
         const sectorsRef = collection(db, 'sectors');
@@ -840,7 +939,7 @@ export const DashboardAnalyticsService = {
         const members: AdminMetrics['members'] = [];
         let activeCount = 0;
 
-        collabSnapshot.docs.forEach(doc => {
+        filteredCollaborators.forEach(doc => {
             const data = doc.data();
             const isActive = data.isActive !== false && data.active !== false;
             if (isActive) activeCount++;
@@ -1017,14 +1116,86 @@ export const DashboardAnalyticsService = {
     },
 
     /**
+     * Fetches post-sales metrics
+     * Note: Currently returns placeholder data - requires tickets/payments collections
+     */
+    getPostSalesMetrics: async (_filter: DateFilter = 'month'): Promise<PostSalesMetrics> => {
+        // Date range will be used when tickets/payments collections are available
+        // const { start, end } = getDateRange(filter);
+
+        // Fetch collaborators from post-sales sector for ranking
+        const collabRef = collection(db, 'collaborators');
+        const collabSnapshot = await getDocs(collabRef);
+
+        // Sector ID for "Pós-vendas"
+        const POS_VENDAS_SECTOR_ID = '2OByfKttFYPi5Cxbcs2t';
+
+        // Filter post-sales team members (excluding DEBUG account)
+        const postSalesTeam = collabSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.email !== 'debug@debug.com' &&
+                (data.sectorId === POS_VENDAS_SECTOR_ID || data.sector === 'Pós-vendas');
+        });
+
+        // TODO: Fetch from payments collection when available
+        // For now, create placeholder ranking with zeros
+        const topPostSellers = postSalesTeam.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name || 'Desconhecido',
+                photoUrl: data.photoUrl || undefined,
+                paymentsReceived: 0, // TODO: Sum from payments collection
+                ticketsResolved: 0, // TODO: Count from tickets collection
+                avgRating: 0, // TODO: Average from customer feedback
+            };
+        }).sort((a, b) => b.paymentsReceived - a.paymentsReceived).slice(0, 5);
+
+        // Generate trend data (placeholder - zeros)
+        const ticketsTrend: PostSalesMetrics['ticketsTrend'] = [];
+        const paymentsTrend: PostSalesMetrics['paymentsTrend'] = [];
+
+        // Generate last 14 days of trend data
+        const now = new Date();
+        for (let i = 13; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
+
+            ticketsTrend.push({ date: dateStr, opened: 0, resolved: 0 });
+            paymentsTrend.push({ date: dateStr, amount: 0 });
+        }
+
+        return {
+            // Ticket metrics - placeholders
+            openTickets: 0,
+            resolvedTickets: 0,
+            avgResolutionTime: 0,
+            // Customer metrics - placeholders
+            customerSatisfaction: 0,
+            churnRate: 0,
+            retentionRate: 0,
+            npsScore: 0,
+            // Trend data
+            ticketsTrend,
+            // Revenue tracking
+            totalPaymentsReceived: 0,
+            paymentsTrend,
+            // Team ranking
+            topPostSellers,
+        };
+    },
+
+    /**
      * Fetches all metrics unified
      */
     getAllMetrics: async (filter: DateFilter = 'month'): Promise<UnifiedDashboardMetrics> => {
-        const [production, sales, admin, financial] = await Promise.all([
+        const [production, sales, admin, financial, postSales] = await Promise.all([
             DashboardAnalyticsService.getMetrics(filter),
             DashboardAnalyticsService.getSalesMetrics(filter),
             DashboardAnalyticsService.getAdminMetrics(filter),
-            DashboardAnalyticsService.getFinancialMetrics(filter)
+            DashboardAnalyticsService.getFinancialMetrics(filter),
+            DashboardAnalyticsService.getPostSalesMetrics(filter)
         ]);
 
         const general: GeneralMetrics = {
@@ -1043,7 +1214,8 @@ export const DashboardAnalyticsService = {
             production,
             sales,
             admin,
-            financial
+            financial,
+            postSales
         };
     }
 };

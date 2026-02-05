@@ -1,0 +1,241 @@
+.container {
+    display: flex;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+    background-color: var(--color-surface-secondary);
+}
+
+/* Sidebar - Lista de Clientes ou Distribuição */
+.sidebar {
+    width: 320px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--color-border);
+    background-color: var(--color-surface-primary);
+    overflow: hidden;
+}
+
+.sidebarTabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sidebarTab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sidebarTab:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-secondary);
+}
+
+.sidebarTab.active {
+    color: var(--color-primary-500);
+    background-color: rgba(220, 38, 38, 0.05);
+}
+
+.sidebarTab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--color-primary-500);
+}
+
+.tabBadge {
+    background-color: var(--color-primary-500);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+}
+
+.sidebarContent {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Main Content - Detalhes do Cliente */
+.mainContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.emptyMain {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    gap: var(--spacing-4);
+}
+
+.emptyMain svg {
+    opacity: 0.3;
+}
+
+.emptyMain h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.emptyMain p {
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+/* Client List */
+.clientList {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-2);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.clientList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.clientList::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+/* Client Item */
+.clientItem {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-2);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--color-surface-secondary);
+    border: 1px solid transparent;
+}
+
+.clientItem:hover {
+    background-color: var(--color-surface-tertiary);
+    border-color: var(--color-border);
+}
+
+.clientItem.active {
+    background-color: rgba(220, 38, 38, 0.1);
+    border-color: var(--color-primary-500);
+}
+
+.clientAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+}
+
+.clientInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.clientName {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.clientStatus {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+}
+
+.statusDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.statusDot.aguardando_projeto {
+    background-color: var(--color-info-500);
+}
+
+.statusDot.aguardando_alteracao {
+    background-color: var(--color-warning-500);
+}
+
+.statusDot.entregue {
+    background-color: var(--color-success-500);
+}
+
+.statusDot.aguardando_pagamento {
+    background-color: var(--color-primary-500);
+}
+
+/* Filters */
+.filters {
+    padding: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    gap: var(--spacing-2);
+    flex-wrap: wrap;
+}
+
+.filterChip {
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    background-color: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filterChip:hover {
+    border-color: var(--color-border-hover);
+    color: var(--color-text-primary);
+}
+
+.filterChip.active {
+    background-color: var(--color-primary-500);
+    color: white;
+    border-color: var(--color-primary-500);
+}

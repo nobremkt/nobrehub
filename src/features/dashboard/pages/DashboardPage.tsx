@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/stores';
 import { Button, Dropdown, Checkbox } from '@/design-system';
 import { RefreshCw } from 'lucide-react';
-import { GeneralStats, SalesStats, ProductionStats, AdminStats, FinancialStats } from '../components';
+import { GeneralStats, SalesStats, ProductionStats, AdminStats, FinancialStats, PostSalesStats } from '../components';
 import { useDashboardStore } from '../stores/useDashboardStore';
 import { useUISound } from '@/hooks';
 import { usePermission } from '@/hooks/usePermission';
@@ -30,6 +30,7 @@ export function DashboardPage() {
         production: can(PERMISSIONS.VIEW_DASHBOARD_PRODUCTION),
         financial: can(PERMISSIONS.VIEW_DASHBOARD_FINANCIAL),
         admin: can(PERMISSIONS.VIEW_DASHBOARD_ADMIN),
+        postSales: can(PERMISSIONS.VIEW_DASHBOARD_POST_SALES),
     }), [can]);
 
     // Section visibility state (only for sections user has permission to see)
@@ -39,6 +40,7 @@ export function DashboardPage() {
         production: true,
         financial: true,
         admin: true,
+        postSales: true,
     });
 
     const [showSectionFilter, setShowSectionFilter] = useState(false);
@@ -69,7 +71,7 @@ export function DashboardPage() {
     }, [playSound]);
 
     // Check if user has any dashboard section permissions
-    const hasAnySectionPermission = permissions.sales || permissions.production || permissions.financial || permissions.admin;
+    const hasAnySectionPermission = permissions.sales || permissions.production || permissions.financial || permissions.admin || permissions.postSales;
 
     return (
         <div className={styles.dashboard}>
@@ -165,6 +167,17 @@ export function DashboardPage() {
                                             />
                                         </div>
                                     )}
+
+                                    {/* Post-Sales - permission required */}
+                                    {permissions.postSales && (
+                                        <div className={styles.sectionOption}>
+                                            <Checkbox
+                                                checked={visibleSections.postSales}
+                                                onChange={() => toggleSection('postSales')}
+                                                label="Pós-Venda"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -205,6 +218,14 @@ export function DashboardPage() {
                 <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.financial ? styles.visible : styles.hidden}`}>
                     <h2 className={styles.sectionTitle}>Financeiro</h2>
                     <FinancialStats />
+                </section>
+            )}
+
+            {/* Post-Sales Stats - permission required */}
+            {permissions.postSales && (
+                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.postSales ? styles.visible : styles.hidden}`}>
+                    <h2 className={styles.sectionTitle}>Pós-Venda</h2>
+                    <PostSalesStats />
                 </section>
             )}
 

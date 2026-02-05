@@ -31,30 +31,35 @@ function useGeneralData() {
                 const metrics = await DashboardAnalyticsService.getMetrics(dateFilter);
 
                 if (isMounted) {
+                    // Calculate average delivery days from MVP data
+                    const avgDays = metrics.mvpProducer?.avgDays || 0;
+
                     setData({
-                        activeClients: metrics.activeProducers * 8 || 45,
-                        newClientsThisMonth: 4,
+                        // TODO: Implement clients module to get real client count
+                        activeClients: 0, // Placeholder - needs clients collection
+                        newClientsThisMonth: 0, // Placeholder - needs clients collection
                         projectsDelivered: metrics.deliveredProjects || 0,
                         projectsInProgress: metrics.totalActiveProjects || 0,
                         upcomingDeadlines: metrics.pendingRevisions || 0,
-                        overdueProjects: 0,
-                        teamProductivity: metrics.goalPercentage || 85,
-                        avgDeliveryDays: 3,
+                        overdueProjects: 0, // TODO: Calculate from projects with deadline < now
+                        teamProductivity: metrics.goalPercentage || 0,
+                        avgDeliveryDays: avgDays,
                     });
                     setIsLoading(false);
                 }
             } catch (error) {
                 console.error('Error fetching general metrics:', error);
                 if (isMounted) {
+                    // Set zeros on error instead of mock data
                     setData({
-                        activeClients: 45,
-                        newClientsThisMonth: 4,
-                        projectsDelivered: 45,
-                        projectsInProgress: 18,
-                        upcomingDeadlines: 3,
+                        activeClients: 0,
+                        newClientsThisMonth: 0,
+                        projectsDelivered: 0,
+                        projectsInProgress: 0,
+                        upcomingDeadlines: 0,
                         overdueProjects: 0,
-                        teamProductivity: 88,
-                        avgDeliveryDays: 3,
+                        teamProductivity: 0,
+                        avgDeliveryDays: 0,
                     });
                     setIsLoading(false);
                 }
