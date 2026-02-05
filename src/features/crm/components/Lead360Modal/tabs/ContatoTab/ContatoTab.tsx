@@ -14,16 +14,19 @@ interface ContatoTabProps {
 }
 
 export function ContatoTab({ lead }: ContatoTabProps) {
+    // Extrair dados de customFields se existirem
+    const customFields = lead.customFields || {};
+
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         name: lead.name || '',
         birthday: '',
         email: lead.email || '',
         phone: lead.phone || '',
-        instagram: '',
+        instagram: (customFields.instagram as string) || '',
         position: '',
         notes: lead.notes || '',
-        utm_source: '',
+        utm_source: (customFields.formOrigin as string) || '',
     });
 
     const handleChange = (field: string, value: string) => {
@@ -41,10 +44,10 @@ export function ContatoTab({ lead }: ContatoTabProps) {
             birthday: '',
             email: lead.email || '',
             phone: lead.phone || '',
-            instagram: '',
+            instagram: (customFields.instagram as string) || '',
             position: '',
             notes: lead.notes || '',
-            utm_source: '',
+            utm_source: (customFields.formOrigin as string) || '',
         });
         setIsEditing(false);
     };

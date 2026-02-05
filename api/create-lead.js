@@ -202,6 +202,8 @@ export default async function handler(req, res) {
                             responsibleId: 'admin',
                             source: leadData.source || 'form',
                             customFields: {
+                                instagram: leadData.instagram || null,
+                                segment: leadData.segment || null,
                                 teamSize: leadData.teamSize || null,
                                 revenue: leadData.revenue || null,
                                 challenge: leadData.challenge || null,
@@ -251,9 +253,11 @@ function normalizeLeadData(data) {
         email: ['email', 'e-mail', 'emailCorporativo', 'email_corporativo', 'corporateEmail'],
         phone: ['phone', 'telefone', 'whatsapp', 'cel', 'celular', 'mobile', 'fone'],
         company: ['company', 'empresa', 'nomeEmpresa', 'nome_empresa', 'companyName'],
+        instagram: ['instagram', 'insta', 'ig', 'instagram_empresa'],
+        segment: ['segment', 'segmento', 'nicho', 'setor', 'categoria'],
         teamSize: ['teamSize', 'tamanhoEquipe', 'tamanho_equipe', 'team_size', 'employees'],
-        revenue: ['revenue', 'faturamento', 'faturamentoEmpresa', 'faturamento_empresa', 'billing'],
-        challenge: ['challenge', 'desafio', 'maiorDesafio', 'maior_desafio', 'problem', 'mensagem', 'message', 'projeto'],
+        revenue: ['revenue', 'faturamento', 'faturamentoEmpresa', 'faturamento_empresa', 'billing', 'budget'],
+        challenge: ['challenge', 'desafio', 'maiorDesafio', 'maior_desafio', 'problem', 'mensagem', 'message', 'projeto', 'goal'],
         source: ['source', 'origem', 'utm_source', 'referrer'],
         formOrigin: ['formOrigin', 'form_origin', 'form', 'formId', 'form_id']
     };
