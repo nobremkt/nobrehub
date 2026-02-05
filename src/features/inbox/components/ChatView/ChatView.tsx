@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { InboxService } from '../../services/InboxService';
 import { StorageService } from '../../services/StorageService';
@@ -20,6 +21,7 @@ const getDateKey = (date: Date | number | string): string => {
 };
 
 export const ChatView: React.FC = () => {
+    const location = useLocation();
     const {
         conversations,
         selectedConversationId,
@@ -31,6 +33,16 @@ export const ChatView: React.FC = () => {
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [showLead360Modal, setShowLead360Modal] = useState(false);
+
+    // Abrir SendTemplateModal automaticamente quando vem do Playbook
+    useEffect(() => {
+        const state = location.state as { openTemplateModal?: boolean } | null;
+        if (state?.openTemplateModal) {
+            setIsTemplateModalOpen(true);
+            // Limpar o state para não reabrir ao navegar de volta
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

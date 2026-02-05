@@ -1,5 +1,6 @@
 
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Activity, Copy, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
@@ -7,9 +8,11 @@ import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
 import { toast } from 'react-toastify';
 import { Lead } from '@/types/lead.types';
 import { LeadService } from '@/features/crm/services/LeadService';
+import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
 
 interface AtividadeTabProps {
     lead: Lead;
+    onClose: () => void;
 }
 
 // Helper to get stage number from stage id
@@ -38,7 +41,10 @@ const highlightVariables = (content: string) => {
 };
 
 
-export function AtividadeTab({ lead }: AtividadeTabProps) {
+export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
+    const navigate = useNavigate();
+    const { conversations, selectConversation, init } = useInboxStore();
+
     // Carregar progresso do lead.customFields ou iniciar em 0
     const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
     const [completedActivities, setCompletedActivities] = useState(initialProgress);
@@ -182,7 +188,17 @@ export function AtividadeTab({ lead }: AtividadeTabProps) {
 
                 <div className={styles.scriptSection}>
                     <div className={styles.scriptCard}>
-                        <button className={styles.copyScriptBtn} title="Copiar Script">
+                        <button
+                            className={styles.copyScriptBtn}
+                            title="Copiar Script"
+                            onClick={() => {
+                                const message = currentScript.content
+                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+                                navigator.clipboard.writeText(message);
+                                toast.success('Script copiado!');
+                            }}
+                        >
                             <Copy size={14} />
                         </button>
                         <h4 className={styles.scriptTitle}>
@@ -195,8 +211,39 @@ export function AtividadeTab({ lead }: AtividadeTabProps) {
                         <button
                             className={styles.sendTemplateBtn}
                             onClick={() => {
-                                // TODO: Navegar para Inbox com template pré-selecionado
-                                toast.info('Em breve: Envio de template pelo Inbox');
+                                // Validar telefone
+                                const phone = lead.phone?.replace(/\D/g, '');
+                                if (!phone) {
+                                    toast.error('Lead não possui telefone cadastrado');
+                                    return;
+                                }
+
+                                // Inicializar store se necessário
+                                if (conversations.length === 0) {
+                                    init();
+                                }
+
+                                // Buscar conversa existente do lead
+                                const existingConversation = conversations.find(c =>
+                                    c.leadPhone?.replace(/\D/g, '') === phone && c.channel === 'whatsapp'
+                                );
+
+                                if (existingConversation) {
+                                    // Selecionar conversa no store
+                                    selectConversation(existingConversation.id);
+                                }
+
+                                // Fechar Modal360
+                                onClose();
+
+                                // Navegar para Inbox com state para abrir SendTemplateModal
+                                navigate('/inbox', {
+                                    state: {
+                                        openTemplateModal: true,
+                                        templateScript: currentScript.content,
+                                        leadPhone: phone
+                                    }
+                                });
                             }}
                         >
                             <Send size={16} />
