@@ -72,13 +72,8 @@ export function AtividadeTab() {
             setCompletedActivities(activityId);
         }
 
-        // Ao concluir, auto-seleciona a próxima atividade para leitura
-        if (activityId > completedActivities) {
-            const nextId = activityId + 1;
-            if (SCRIPTS[nextId]) {
-                setSelectedActivityId(nextId);
-            }
-        }
+        // Ao marcar/desmarcar, seleciona a MESMA atividade (não avança)
+        setSelectedActivityId(activityId);
     };
 
     const selectActivity = (activityId: number) => {

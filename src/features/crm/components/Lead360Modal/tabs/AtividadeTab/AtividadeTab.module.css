@@ -152,6 +152,7 @@
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    max-height: 280px;
 }
 
 .activityItem {
