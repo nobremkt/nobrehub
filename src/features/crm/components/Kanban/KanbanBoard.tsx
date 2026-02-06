@@ -344,8 +344,6 @@ export function KanbanBoard() {
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -425,8 +423,9 @@ export function KanbanBoard() {
     };
 
     const handleLeadEdit = (lead: Lead) => {
-        setLeadToEdit(lead);
-        setIsEditModalOpen(true);
+        // Edit action now opens Lead360Modal (same as click)
+        setSelectedLead(lead);
+        setIsModalOpen(true);
     };
 
     const handleLeadDelete = (lead: Lead) => {
