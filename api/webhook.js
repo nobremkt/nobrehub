@@ -164,8 +164,10 @@ async function processIncomingMessage(message, contact) {
         const leadQuery = await leadsRef.where('phone', '==', phoneNumber).get();
 
         if (leadQuery.empty) {
-            await leadsRef.add(leadData);
-            console.log(`Created new CRM lead for ${phoneNumber}`);
+            // Use the SAME leadId as the RTDB conversation
+            const leadId = `whatsapp_${phoneNumber}`;
+            await leadsRef.doc(leadId).set(leadData);
+            console.log(`Created new CRM lead with ID: ${leadId}`);
         }
     }
 

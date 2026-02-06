@@ -8,6 +8,7 @@ interface InboxState {
     selectedConversationId: string | null;
     filters: SearchFilters;
     isLoading: boolean;
+    draftMessage: string; // Mensagem pré-preenchida (ex: vindo do Playbook)
 
     // Subscriptions handling
     unsubConversations: () => void;
@@ -20,6 +21,7 @@ interface InboxState {
     sendMessage: (content: string) => Promise<void>;
     markAsRead: (conversationId: string) => void;
     updateConversationDetails: (conversationId: string, data: Partial<Conversation>) => Promise<void>;
+    setDraftMessage: (message: string) => void;
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
@@ -31,8 +33,11 @@ export const useInboxStore = create<InboxState>((set, get) => ({
         query: ''
     },
     isLoading: false,
+    draftMessage: '',
     unsubConversations: () => { },
     unsubMessages: () => { },
+
+    setDraftMessage: (message) => set({ draftMessage: message }),
 
     init: () => {
         const { unsubConversations } = get();

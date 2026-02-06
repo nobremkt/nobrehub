@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Smile, Mic, Trash2 } from 'lucide-react';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import styles from './ChatInput.module.css';
 
 export interface AttachmentOption {
@@ -46,7 +47,9 @@ export const ChatInput = ({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isAttachOpen, setIsAttachOpen] = useState(false);
+    const [isEmojiOpen, setIsEmojiOpen] = useState(false);
     const attachContainerRef = useRef<HTMLDivElement>(null);
+    const emojiContainerRef = useRef<HTMLDivElement>(null);
 
     // Auto-resize textarea logic
     useEffect(() => {
@@ -72,6 +75,22 @@ export const ChatInput = ({
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isAttachOpen]);
+
+    // Close emoji menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (emojiContainerRef.current && !emojiContainerRef.current.contains(event.target as Node)) {
+                setIsEmojiOpen(false);
+            }
+        };
+
+        if (isEmojiOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isEmojiOpen]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -153,15 +172,33 @@ export const ChatInput = ({
                             rows={1}
                             className={styles.textarea}
                         />
-                        <button
-                            type="button"
-                            className={styles.headerActionBtn}
-                            disabled={disabled}
-                            title="Emojis"
-                            style={{ alignSelf: 'center', marginRight: '4px' }}
-                        >
-                            <Smile size={20} />
-                        </button>
+                        <div style={{ position: 'relative' }} ref={emojiContainerRef}>
+                            {isEmojiOpen && (
+                                <div className={styles.emojiPickerWrapper}>
+                                    <EmojiPicker
+                                        onEmojiClick={(emojiData: EmojiClickData) => {
+                                            onChange(value + emojiData.emoji);
+                                            setIsEmojiOpen(false);
+                                        }}
+                                        theme={Theme.DARK}
+                                        width={350}
+                                        height={400}
+                                        searchPlaceHolder="Buscar emoji..."
+                                        previewConfig={{ showPreview: false }}
+                                    />
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                className={styles.headerActionBtn}
+                                disabled={disabled}
+                                title="Emojis"
+                                onClick={() => setIsEmojiOpen(!isEmojiOpen)}
+                                style={isEmojiOpen ? { color: 'var(--color-primary-500)', backgroundColor: 'var(--color-bg-tertiary)' } : {}}
+                            >
+                                <Smile size={20} />
+                            </button>
+                        </div>
                     </>
                 )}
             </div>

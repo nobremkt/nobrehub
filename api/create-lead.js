@@ -45,10 +45,20 @@ export default async function handler(req, res) {
             data = Object.fromEntries(params.entries());
         }
 
-        console.log('Lead received:', data);
+        console.log('=== CREATE-LEAD API DEBUG ===');
+        console.log('RAW Data received:', JSON.stringify(data, null, 2));
 
         // Extract and normalize fields from different form formats
         const leadData = normalizeLeadData(data);
+        console.log('NORMALIZED leadData:', JSON.stringify(leadData, null, 2));
+        console.log('CustomFields going to save:', {
+            instagram: leadData.instagram,
+            segment: leadData.segment,
+            teamSize: leadData.teamSize,
+            revenue: leadData.revenue,
+            formOrigin: leadData.formOrigin,
+            source: leadData.source
+        });
 
         if (!leadData.name && !leadData.phone && !leadData.email) {
             return res.status(400).json({
@@ -182,14 +192,35 @@ export default async function handler(req, res) {
                     const leadsRef = firestore.collection('leads');
 
                     // Check duplicate by phone if exists
-                    let exists = false;
+                    let existingLeadId = null;
                     if (cleanPhone) {
                         const q = await leadsRef.where('phone', '==', cleanPhone).get();
-                        exists = !q.empty;
+                        if (!q.empty) {
+                            existingLeadId = q.docs[0].id;
+                        }
                     }
 
-                    if (!exists) {
-                        await leadsRef.add({
+                    if (existingLeadId) {
+                        // UPDATE existing lead with new customFields
+                        await leadsRef.doc(existingLeadId).update({
+                            company: conversationData.leadCompany || undefined,
+                            email: conversationData.leadEmail || undefined,
+                            customFields: {
+                                instagram: leadData.instagram || null,
+                                segment: leadData.segment || null,
+                                teamSize: leadData.teamSize || null,
+                                revenue: leadData.revenue || null,
+                                challenge: leadData.challenge || null,
+                                formOrigin: leadData.formOrigin || 'website',
+                                utmSource: leadData.source || null
+                            },
+                            updatedAt: now,
+                        });
+                        console.log(`Updated existing CRM lead: ${existingLeadId}`);
+                    } else {
+                        // CREATE new lead with SAME ID as conversation leadId
+                        // This ensures RTDB and Firestore are synchronized
+                        await leadsRef.doc(conversationData.leadId).set({
                             name: conversationData.leadName,
                             phone: conversationData.leadPhone,
                             email: conversationData.leadEmail,
@@ -200,11 +231,20 @@ export default async function handler(req, res) {
                             estimatedValue: 0,
                             tags: conversationData.tags,
                             responsibleId: 'admin',
-                            source: 'form',
+                            source: leadData.source || 'form',
+                            customFields: {
+                                instagram: leadData.instagram || null,
+                                segment: leadData.segment || null,
+                                teamSize: leadData.teamSize || null,
+                                revenue: leadData.revenue || null,
+                                challenge: leadData.challenge || null,
+                                formOrigin: leadData.formOrigin || 'website',
+                                utmSource: leadData.source || null
+                            },
                             createdAt: now,
                             updatedAt: now,
                         });
-                        console.log(`Created new CRM lead from form: ${conversationData.leadName}`);
+                        console.log(`Created new CRM lead with ID: ${conversationData.leadId}`);
                     }
                 }
             } catch (err) {
@@ -245,9 +285,11 @@ function normalizeLeadData(data) {
         email: ['email', 'e-mail', 'emailCorporativo', 'email_corporativo', 'corporateEmail'],
         phone: ['phone', 'telefone', 'whatsapp', 'cel', 'celular', 'mobile', 'fone'],
         company: ['company', 'empresa', 'nomeEmpresa', 'nome_empresa', 'companyName'],
+        instagram: ['instagram', 'insta', 'ig', 'instagram_empresa'],
+        segment: ['segment', 'segmento', 'nicho', 'setor', 'categoria'],
         teamSize: ['teamSize', 'tamanhoEquipe', 'tamanho_equipe', 'team_size', 'employees'],
-        revenue: ['revenue', 'faturamento', 'faturamentoEmpresa', 'faturamento_empresa', 'billing'],
-        challenge: ['challenge', 'desafio', 'maiorDesafio', 'maior_desafio', 'problem', 'mensagem', 'message', 'projeto'],
+        revenue: ['revenue', 'faturamento', 'faturamentoEmpresa', 'faturamento_empresa', 'billing', 'budget'],
+        challenge: ['challenge', 'desafio', 'maiorDesafio', 'maior_desafio', 'problem', 'mensagem', 'message', 'projeto', 'goal'],
         source: ['source', 'origem', 'utm_source', 'referrer'],
         formOrigin: ['formOrigin', 'form_origin', 'form', 'formId', 'form_id']
     };

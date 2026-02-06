@@ -92,10 +92,10 @@ export function PostSalesStats() {
                                             >
                                                 {index + 1}º
                                             </div>
-                                            {seller.photoUrl ? (
+                                            {seller.profilePhotoUrl ? (
                                                 <div className={styles.rankingAvatar}>
                                                     <img
-                                                        src={seller.photoUrl}
+                                                        src={seller.profilePhotoUrl}
                                                         alt={seller.name}
                                                     />
                                                 </div>

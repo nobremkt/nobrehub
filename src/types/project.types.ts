@@ -52,7 +52,8 @@ export interface Project {
 
     // ═══════════════ PONTUAÇÃO (METAS) ═══════════════
 
-    productType?: string;                    // Tipo do produto
+    productType?: string;                    // Tipo do produto (nome)
+    productId?: string;                      // ID do produto na collection products
     durationCategory?: VideoDurationCategory; // Duração do vídeo (se aplicável)
     basePoints?: number;                     // Pontos base do produto
     extraPoints?: number;                    // Pontos extras (complexidade)

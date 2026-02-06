@@ -44,6 +44,21 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
         }
     }, [isOpen, isConfigured]);
 
+    // Reset state when modal closes or conversation changes
+    useEffect(() => {
+        if (!isOpen) {
+            // Reset all state when modal closes
+            setSelectedTemplate(null);
+            setVariableValues({});
+            setError(null);
+        }
+    }, [isOpen]);
+
+    // Reset if conversation changes while modal is open
+    useEffect(() => {
+        setVariableValues({});
+    }, [conversation?.id]);
+
     const loadTemplates = async () => {
         setIsLoading(true);
         setError(null);
@@ -236,8 +251,8 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     };
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onMouseDown={onClose}>
+            <div className={styles.modal} onMouseDown={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className={styles.header}>
                     <h2 className={styles.title}>

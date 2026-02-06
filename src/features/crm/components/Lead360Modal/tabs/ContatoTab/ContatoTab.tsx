@@ -14,20 +14,35 @@ interface ContatoTabProps {
 }
 
 export function ContatoTab({ lead }: ContatoTabProps) {
+    // Extrair dados de customFields se existirem
+    const customFields = lead.customFields || {};
+
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         name: lead.name || '',
         birthday: '',
         email: lead.email || '',
         phone: lead.phone || '',
-        instagram: '',
+        instagram: (customFields.instagram as string) || '',
         position: '',
         notes: lead.notes || '',
-        utm_source: '',
+        utm_source: (customFields.utmSource as string) || (customFields.formOrigin as string) || '',
     });
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    // Format Instagram username - auto-add @ at the beginning
+    const formatInstagram = (value: string): string => {
+        const cleaned = value.replace(/@/g, '').trim();
+        if (cleaned.length === 0) return '';
+        return `@${cleaned}`;
+    };
+
+    const handleInstagramChange = (value: string) => {
+        const formatted = formatInstagram(value);
+        setFormData(prev => ({ ...prev, instagram: formatted }));
     };
 
     const handleSave = () => {
@@ -41,10 +56,10 @@ export function ContatoTab({ lead }: ContatoTabProps) {
             birthday: '',
             email: lead.email || '',
             phone: lead.phone || '',
-            instagram: '',
+            instagram: (customFields.instagram as string) || '',
             position: '',
             notes: lead.notes || '',
-            utm_source: '',
+            utm_source: (customFields.utmSource as string) || (customFields.formOrigin as string) || '',
         });
         setIsEditing(false);
     };
@@ -132,7 +147,7 @@ export function ContatoTab({ lead }: ContatoTabProps) {
                     </label>
                     <Input
                         value={formData.instagram}
-                        onChange={(e) => handleChange('instagram', e.target.value)}
+                        onChange={(e) => handleInstagramChange(e.target.value)}
                         placeholder="@usuario"
                         disabled={!isEditing}
                     />

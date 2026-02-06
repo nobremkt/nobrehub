@@ -1,10 +1,20 @@
 
-import { useState } from 'react';
-import { Activity, Copy, Phone, Send } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Activity, Copy, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
 import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
 import { toast } from 'react-toastify';
+import { Lead } from '@/types/lead.types';
+import { LeadService } from '@/features/crm/services/LeadService';
+import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
+
+interface AtividadeTabProps {
+    lead: Lead;
+    onClose: () => void;
+    onTemplateSelect?: (message: string) => void;
+}
 
 // Helper to get stage number from stage id
 const getStageNumber = (stageId: string) => {
@@ -32,10 +42,15 @@ const highlightVariables = (content: string) => {
 };
 
 
-export function AtividadeTab() {
-    const [completedActivities, setCompletedActivities] = useState(0);
+export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabProps) {
+    const navigate = useNavigate();
+    const { conversations, selectConversation, init, setDraftMessage } = useInboxStore();
+
+    // Carregar progresso do lead.customFields ou iniciar em 0
+    const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
+    const [completedActivities, setCompletedActivities] = useState(initialProgress);
     // Estado para controlar qual atividade está selecionada para visualização (script)
-    const [selectedActivityId, setSelectedActivityId] = useState<number>(1);
+    const [selectedActivityId, setSelectedActivityId] = useState<number>(initialProgress + 1 || 1);
 
     // O script exibido baseia-se na atividade explicitamente selecionada OU na próxima atividade lógica
     const activeId = selectedActivityId || (completedActivities + 1);
@@ -62,24 +77,28 @@ export function AtividadeTab() {
         }
     };
 
-    const toggleCompletion = (activityId: number) => {
-        // Lógica de alternar conclusão apenas
-        if (activityId <= completedActivities) {
-            // Desmarcar: volta para o estágio anterior
-            setCompletedActivities(activityId - 1);
-        } else {
-            // Marcar: avança até esta atividade
-            setCompletedActivities(activityId);
-        }
+    const toggleCompletion = useCallback(async (activityId: number) => {
+        // Usar o estado atual, não closure stale
+        setCompletedActivities(prev => {
+            const newProgress = activityId <= prev ? activityId - 1 : activityId;
 
-        // Ao concluir, auto-seleciona a próxima atividade para leitura
-        if (activityId > completedActivities) {
-            const nextId = activityId + 1;
-            if (SCRIPTS[nextId]) {
-                setSelectedActivityId(nextId);
-            }
-        }
-    };
+            // Persist to Firebase (fire and forget para evitar problema de closure)
+            LeadService.updateLead(lead.id, {
+                customFields: {
+                    ...lead.customFields,
+                    playbookProgress: newProgress,
+                }
+            }).catch(error => {
+                console.error('Erro ao salvar progresso:', error);
+                toast.error('Erro ao salvar progresso');
+            });
+
+            return newProgress;
+        });
+
+        setSelectedActivityId(activityId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lead.id]);
 
     const selectActivity = (activityId: number) => {
         setSelectedActivityId(activityId);
@@ -119,50 +138,62 @@ export function AtividadeTab() {
             <div className={styles.activityColumns}>
                 {/* Left Column: Activities Checklist */}
                 <div className={styles.activitiesSection}>
-                    <h3 className={styles.sectionTitle}>
-                        <Activity size={18} />
-                        Próximas Atividades
-                    </h3>
                     <div className={styles.activitiesList}>
-                        {ACTIVITIES.map((activity) => {
-                            const isCompleted = activity.id <= completedActivities;
-                            // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
-                            const isSelected = activity.id === activeId;
+                        <h3 className={styles.sectionTitle}>
+                            <Activity size={18} />
+                            Próximas Atividades
+                        </h3>
+                        <div className={styles.activitiesListInner}>
+                            {ACTIVITIES.map((activity) => {
+                                const isCompleted = activity.id <= completedActivities;
+                                // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
+                                const isSelected = activity.id === activeId;
 
-                            // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
-                            // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
+                                // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
+                                // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
+                                const stageNumber = getStageNumber(activity.stage);
 
-                            return (
-                                <div
-                                    key={activity.id}
-                                    className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
-                                    onClick={() => selectActivity(activity.id)}
-                                >
-                                    {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
-                                    <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
-                                        <Checkbox
-                                            checked={isCompleted}
-                                            onChange={() => toggleCompletion(activity.id)}
-                                            noSound={false}
-                                        />
+                                return (
+                                    <div
+                                        key={activity.id}
+                                        className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
+                                        onClick={() => selectActivity(activity.id)}
+                                    >
+                                        {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
+                                        <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
+                                            <Checkbox
+                                                checked={isCompleted}
+                                                onChange={() => toggleCompletion(activity.id)}
+                                                noSound={false}
+                                            />
+                                        </div>
+                                        <span className={styles.stageBadge}>
+                                            {stageNumber}
+                                        </span>
+                                        <span className={styles.activityLabel}>{activity.label}</span>
                                     </div>
-                                    <span className={styles.activityLabel}>{activity.label}</span>
-                                    <span className={styles.stageBadge}>
-                                        {getStageNumber(activity.stage)}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
                 <div className={styles.scriptSection}>
                     <div className={styles.scriptCard}>
-                        <button className={styles.copyScriptBtn} title="Copiar Script">
+                        <button
+                            className={styles.copyScriptBtn}
+                            title="Copiar Script"
+                            onClick={() => {
+                                const message = currentScript.content
+                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+                                navigator.clipboard.writeText(message);
+                                toast.success('Script copiado!');
+                            }}
+                        >
                             <Copy size={14} />
                         </button>
                         <h4 className={styles.scriptTitle}>
-                            <Phone size={16} className={styles.scriptIcon} />
                             <span className={styles.scriptNumber}>{activeId}. </span>
                             {currentScript.title}
                         </h4>
@@ -172,8 +203,47 @@ export function AtividadeTab() {
                         <button
                             className={styles.sendTemplateBtn}
                             onClick={() => {
-                                // TODO: Navegar para Inbox com template pré-selecionado
-                                toast.info('Em breve: Envio de template pelo Inbox');
+                                // Preparar mensagem com variáveis substituídas
+                                const message = currentScript.content
+                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+
+                                // Se tem callback customizado (pós-venda), usar ele e sair
+                                if (onTemplateSelect) {
+                                    onTemplateSelect(message);
+                                    onClose();
+                                    return;
+                                }
+
+                                // Fluxo padrão: validar telefone e navegar para Inbox
+                                const phone = lead.phone?.replace(/\D/g, '');
+                                if (!phone) {
+                                    toast.error('Lead não possui telefone cadastrado');
+                                    return;
+                                }
+
+                                // Inicializar store se necessário
+                                if (conversations.length === 0) {
+                                    init();
+                                }
+
+                                // Buscar conversa existente do lead
+                                const existingConversation = conversations.find(c =>
+                                    c.leadPhone?.replace(/\D/g, '') === phone && c.channel === 'whatsapp'
+                                );
+
+                                if (existingConversation) {
+                                    selectConversation(existingConversation.id);
+                                }
+
+                                // Setar mensagem no input do chat (via store)
+                                setDraftMessage(message);
+
+                                // Fechar Modal360
+                                onClose();
+
+                                // Navegar para Inbox
+                                navigate('/inbox');
                             }}
                         >
                             <Send size={16} />

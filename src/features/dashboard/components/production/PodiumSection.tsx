@@ -66,7 +66,7 @@ export function PodiumSection() {
                 stat={`${topPoints?.points ?? 0} pts`}
                 description=""
                 highlightColor="var(--color-warning-500)"
-                avatarUrl={topPoints?.photoUrl}
+                avatarUrl={topPoints?.profilePhotoUrl}
             />
             <PodiumCard
                 icon={<Folder size={14} color="#3b82f6" />}
@@ -75,7 +75,7 @@ export function PodiumSection() {
                 stat={`${topProjects?.count ?? 0} proj`}
                 description=""
                 highlightColor="#3b82f6"
-                avatarUrl={topProjects?.photoUrl}
+                avatarUrl={topProjects?.profilePhotoUrl}
             />
             <PodiumCard
                 icon={<Rocket size={14} color="#f43f5e" />}
@@ -84,7 +84,7 @@ export function PodiumSection() {
                 stat={`${rocket?.points ?? 0} pts`}
                 description="em 1 dia"
                 highlightColor="#f43f5e"
-                avatarUrl={rocket?.photoUrl}
+                avatarUrl={rocket?.profilePhotoUrl}
             />
             <PodiumCard
                 icon={<CheckCircle size={14} color="#22c55e" />}
@@ -93,7 +93,7 @@ export function PodiumSection() {
                 stat={`${finisher?.count ?? 0} proj`}
                 description="em 1 dia"
                 highlightColor="#22c55e"
-                avatarUrl={finisher?.photoUrl}
+                avatarUrl={finisher?.profilePhotoUrl}
             />
         </div>
     );

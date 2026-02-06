@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Lead } from '@/types/lead.types';
 import { Input, Dropdown } from '@/design-system';
-import { Save, X, Pencil, Building2, Globe, MapPin, Tag, Users, Database } from 'lucide-react';
+import { Save, X, Pencil, Building2, Globe, MapPin, Tag, Users, Database, DollarSign } from 'lucide-react';
 import styles from './EmpresaTab.module.css';
 import { toast } from 'react-toastify';
 
@@ -23,30 +23,52 @@ const CATEGORY_OPTIONS = [
     { value: 'services', label: 'Serviços' },
 ];
 
+// Alinhado com formulário de captação (Social Media Landing Page)
 const SEGMENT_OPTIONS = [
     { value: '', label: 'Selecione...' },
-    { value: 'tech', label: 'Tecnologia' },
-    { value: 'health', label: 'Saúde' },
-    { value: 'education', label: 'Educação' },
-    { value: 'finance', label: 'Finanças' },
-    { value: 'retail', label: 'Varejo' },
-    { value: 'real_estate', label: 'Imobiliário' },
-    { value: 'food', label: 'Alimentação' },
-    { value: 'automotive', label: 'Automotivo' },
-    { value: 'beauty', label: 'Beleza' },
-    { value: 'other', label: 'Outro' },
+    { value: 'restaurante', label: 'Restaurante/Alimentação' },
+    { value: 'clinica', label: 'Clínica/Saúde' },
+    { value: 'loja', label: 'Loja/Varejo' },
+    { value: 'servicos', label: 'Serviços' },
+    { value: 'beleza', label: 'Beleza/Estética' },
+    { value: 'imobiliaria', label: 'Imobiliária' },
+    { value: 'educacao', label: 'Educação' },
+    { value: 'outro', label: 'Outro' },
 ];
 
+// Alinhado com formulário de captação
+const EMPLOYEE_OPTIONS = [
+    { value: '', label: 'Selecione...' },
+    { value: '1-5', label: '1-5 funcionários' },
+    { value: '6-20', label: '6-20 funcionários' },
+    { value: '21-50', label: '21-50 funcionários' },
+    { value: '50+', label: '50+ funcionários' },
+];
+
+// Alinhado com formulário de captação
+const REVENUE_OPTIONS = [
+    { value: '', label: 'Selecione...' },
+    { value: 'ate-10k', label: 'Até R$ 10 mil/mês' },
+    { value: '10k-50k', label: 'R$ 10 mil - R$ 50 mil/mês' },
+    { value: '50k-200k', label: 'R$ 50 mil - R$ 200 mil/mês' },
+    { value: '200k+', label: 'Acima de R$ 200 mil/mês' },
+];
+
+
 export function EmpresaTab({ lead }: EmpresaTabProps) {
+    // Extrair dados de customFields se existirem
+    const customFields = lead.customFields || {};
+
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         companyName: lead.company || '',
-        website: '',
-        location: '',
-        category: '',
-        segment: '',
-        employeeCount: '',
-        crm: '',
+        website: (customFields.website as string) || '',
+        location: (customFields.location as string) || '',
+        category: (customFields.category as string) || '',
+        segment: (customFields.segment as string) || '',
+        employeeCount: (customFields.teamSize as string) || '',
+        revenue: (customFields.revenue as string) || '',
+        crm: (customFields.crm as string) || '',
     });
 
     const handleChange = (field: string, value: string) => {
@@ -61,12 +83,13 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
     const handleCancel = () => {
         setFormData({
             companyName: lead.company || '',
-            website: '',
-            location: '',
-            category: '',
-            segment: '',
-            employeeCount: '',
-            crm: '',
+            website: (customFields.website as string) || '',
+            location: (customFields.location as string) || '',
+            category: (customFields.category as string) || '',
+            segment: (customFields.segment as string) || '',
+            employeeCount: (customFields.teamSize as string) || '',
+            revenue: (customFields.revenue as string) || '',
+            crm: (customFields.crm as string) || '',
         });
         setIsEditing(false);
     };
@@ -168,11 +191,25 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                         <Users size={14} />
                         Nº de Funcionários
                     </label>
-                    <Input
-                        type="number"
+                    <Dropdown
+                        options={EMPLOYEE_OPTIONS}
                         value={formData.employeeCount}
-                        onChange={(e) => handleChange('employeeCount', e.target.value)}
-                        placeholder="Ex: 50"
+                        onChange={(val) => handleChange('employeeCount', String(val))}
+                        placeholder="Selecione..."
+                        disabled={!isEditing}
+                    />
+                </div>
+
+                <div className={styles.field}>
+                    <label className={styles.label}>
+                        <DollarSign size={14} />
+                        Faturamento
+                    </label>
+                    <Dropdown
+                        options={REVENUE_OPTIONS}
+                        value={formData.revenue}
+                        onChange={(val) => handleChange('revenue', String(val))}
+                        placeholder="Selecione..."
                         disabled={!isEditing}
                     />
                 </div>

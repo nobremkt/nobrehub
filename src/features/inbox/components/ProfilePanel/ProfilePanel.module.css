@@ -162,6 +162,18 @@
     cursor: not-allowed;
 }
 
+.actionButton.highlight {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+    border-color: var(--color-primary-500);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.actionButton.highlight:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * ACCORDION
  * ───────────────────────────────────────────────────────────────────────────── */

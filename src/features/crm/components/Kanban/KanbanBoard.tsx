@@ -11,11 +11,15 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 import { Lead } from '@/types/lead.types';
-import { User, Calendar, AlertCircle, TrendingUp, Crown, Zap } from 'lucide-react';
+import { Calendar, AlertCircle, TrendingUp, Crown, Zap, MessageCircle, Edit2, Trash2, Search } from 'lucide-react';
+import { Modal, Button } from '@/design-system';
 import styles from './Kanban.module.css';
 import { Lead360Modal } from '../Lead360Modal/Lead360Modal';
+import { LeadService } from '@/features/crm/services/LeadService';
 
 // DND-KIT Imports
 import {
@@ -76,10 +80,13 @@ function PipelineTabs() {
 interface LeadCardProps {
     lead: Lead;
     onClick?: (lead: Lead) => void;
+    onChat?: (lead: Lead) => void;
+    onEdit?: (lead: Lead) => void;
+    onDelete?: (lead: Lead) => void;
     isOverlay?: boolean;
 }
 
-function LeadCard({ lead, onClick, isOverlay }: LeadCardProps) {
+function LeadCard({ lead, onClick, onChat, onEdit, onDelete, isOverlay }: LeadCardProps) {
     const formatCurrency = (value?: number) => {
         if (!value) return '-';
         return new Intl.NumberFormat('pt-BR', {
@@ -100,7 +107,21 @@ function LeadCard({ lead, onClick, isOverlay }: LeadCardProps) {
         return `${days}d`;
     };
 
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase();
+    };
+
     const isUrgent = lead.tags.some(t => t.toLowerCase().includes('urgente'));
+
+    const handleActionClick = (e: React.MouseEvent, action: () => void) => {
+        e.stopPropagation();
+        action();
+    };
 
     return (
         <div
@@ -108,15 +129,20 @@ function LeadCard({ lead, onClick, isOverlay }: LeadCardProps) {
             onClick={onClick ? () => onClick(lead) : undefined}
             style={{ cursor: isOverlay ? 'grabbing' : 'grab' }}
         >
-            {/* Card Header */}
+            {/* Card Header with Avatar */}
             <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>
-                    <span className={styles.cardName}>{lead.name}</span>
-                    {isUrgent && <AlertCircle size={14} className={styles.urgentIcon} />}
+                <div className={styles.avatarInitials}>
+                    {getInitials(lead.name)}
                 </div>
-                {lead.company && (
-                    <span className={styles.cardCompany}>{lead.company}</span>
-                )}
+                <div className={styles.cardHeaderInfo}>
+                    <div className={styles.cardTitle}>
+                        <span className={styles.cardName}>{lead.name}</span>
+                        {isUrgent && <AlertCircle size={14} className={styles.urgentIcon} />}
+                    </div>
+                    {lead.company && (
+                        <span className={styles.cardCompany}>{lead.company}</span>
+                    )}
+                </div>
             </div>
 
             {/* Tags */}
@@ -125,22 +151,51 @@ function LeadCard({ lead, onClick, isOverlay }: LeadCardProps) {
                     {lead.tags.slice(0, 3).map((tag, i) => (
                         <span key={i} className={styles.tag}>{tag}</span>
                     ))}
+                    {lead.tags.length > 3 && (
+                        <span className={styles.tagMore}>+{lead.tags.length - 3}</span>
+                    )}
                 </div>
             )}
 
-            {/* Card Footer */}
+            {/* Value */}
+            <div className={styles.cardValue}>
+                {formatCurrency(lead.estimatedValue)}
+            </div>
+
+            {/* Card Footer with Actions */}
             <div className={styles.cardFooter}>
-                <div className={styles.cardMeta}>
-                    <div className={styles.avatar}>
-                        <User size={12} />
-                    </div>
-                    <span className={styles.cardTime}>
-                        <Calendar size={10} />
-                        {getTimeAgo(lead.updatedAt)}
-                    </span>
+                <div className={styles.cardActions}>
+                    {onChat && (
+                        <button
+                            className={styles.actionBtn}
+                            onClick={(e) => handleActionClick(e, () => onChat(lead))}
+                            title="Abrir conversa"
+                        >
+                            <MessageCircle size={14} />
+                        </button>
+                    )}
+                    {onEdit && (
+                        <button
+                            className={styles.actionBtn}
+                            onClick={(e) => handleActionClick(e, () => onEdit(lead))}
+                            title="Editar"
+                        >
+                            <Edit2 size={14} />
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button
+                            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                            onClick={(e) => handleActionClick(e, () => onDelete(lead))}
+                            title="Excluir"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
-                <span className={styles.cardValue}>
-                    {formatCurrency(lead.estimatedValue)}
+                <span className={styles.cardTime}>
+                    <Calendar size={10} />
+                    {getTimeAgo(lead.updatedAt)}
                 </span>
             </div>
         </div>
@@ -154,9 +209,12 @@ function LeadCard({ lead, onClick, isOverlay }: LeadCardProps) {
 interface SortableLeadCardProps {
     lead: Lead;
     onClick: (lead: Lead) => void;
+    onChat: (lead: Lead) => void;
+    onEdit: (lead: Lead) => void;
+    onDelete: (lead: Lead) => void;
 }
 
-function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
+function SortableLeadCard({ lead, onClick, onChat, onEdit, onDelete }: SortableLeadCardProps) {
     const {
         attributes,
         listeners,
@@ -186,7 +244,7 @@ function SortableLeadCard({ lead, onClick }: SortableLeadCardProps) {
             {...listeners}
             className={styles.sortableWrapper}
         >
-            <LeadCard lead={lead} onClick={onClick} />
+            <LeadCard lead={lead} onClick={onClick} onChat={onChat} onEdit={onEdit} onDelete={onDelete} />
         </div>
     );
 }
@@ -202,9 +260,12 @@ interface KanbanColumnProps {
     color: string;
     leads: Lead[];
     onLeadClick: (lead: Lead) => void;
+    onLeadChat: (lead: Lead) => void;
+    onLeadEdit: (lead: Lead) => void;
+    onLeadDelete: (lead: Lead) => void;
 }
 
-function KanbanColumn({ id, name, color, leads, onLeadClick }: KanbanColumnProps) {
+function KanbanColumn({ id, name, color, leads, onLeadClick, onLeadChat, onLeadEdit, onLeadDelete }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: id,
         data: {
@@ -253,6 +314,9 @@ function KanbanColumn({ id, name, color, leads, onLeadClick }: KanbanColumnProps
                             key={lead.id}
                             lead={lead}
                             onClick={onLeadClick}
+                            onChat={onLeadChat}
+                            onEdit={onLeadEdit}
+                            onDelete={onLeadDelete}
                         />
                     ))}
                 </SortableContext>
@@ -273,14 +337,27 @@ function KanbanColumn({ id, name, color, leads, onLeadClick }: KanbanColumnProps
 import { CreateLeadModal } from '../CreateLeadModal/CreateLeadModal';
 
 export function KanbanBoard() {
+    const navigate = useNavigate();
     const { activePipeline, getStagesByPipeline, leads: storeLeads, setLeads, fetchLeads, updateLead } = useKanbanStore();
     const [localLeads, setLocalLeads] = useState<Lead[]>(storeLeads);
     const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const stages = getStagesByPipeline(activePipeline);
+
+    // Calculate total opportunities for current pipeline
+    const totalOpportunities = useMemo(() => {
+        return localLeads.filter(lead => {
+            const stageIds = stages.map(s => s.id);
+            return stageIds.includes(lead.status);
+        }).length;
+    }, [localLeads, stages]);
 
     // Initial Fetch
     useEffect(() => {
@@ -296,12 +373,22 @@ export function KanbanBoard() {
 
     // ... (unchanged helpers)
 
-    // Função para pegar leads de uma coluna do estado local
+    // Função para pegar leads de uma coluna do estado local (com filtro de busca)
     const getLocalLeadsByStage = useCallback((stageId: string) => {
         return localLeads
             .filter(lead => lead.status === stageId)
+            .filter(lead => {
+                if (!searchTerm) return true;
+                const search = searchTerm.toLowerCase();
+                return (
+                    lead.name.toLowerCase().includes(search) ||
+                    lead.company?.toLowerCase().includes(search) ||
+                    lead.email?.toLowerCase().includes(search) ||
+                    lead.phone?.includes(search)
+                );
+            })
             .sort((a, b) => a.order - b.order);
-    }, [localLeads]);
+    }, [localLeads, searchTerm]);
 
     // ... (unchanged sensors and lead click)
 
@@ -320,6 +407,51 @@ export function KanbanBoard() {
     const handleLeadClick = (lead: Lead) => {
         setSelectedLead(lead);
         setIsModalOpen(true);
+    };
+
+    // Action Handlers
+    const handleLeadChat = (lead: Lead) => {
+        // Navigate to inbox with lead data for finding or creating conversation
+        const params = new URLSearchParams({
+            phone: lead.phone,
+            name: lead.name,
+            ...(lead.email && { email: lead.email }),
+            ...(lead.company && { company: lead.company }),
+            ...(lead.id && { leadId: lead.id }),
+        });
+        navigate(`/inbox?${params.toString()}`);
+    };
+
+    const handleLeadEdit = (lead: Lead) => {
+        // Edit action now opens Lead360Modal (same as click)
+        setSelectedLead(lead);
+        setIsModalOpen(true);
+    };
+
+    const handleLeadDelete = (lead: Lead) => {
+        setLeadToDelete(lead);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!leadToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await LeadService.deleteLead(leadToDelete.id);
+            // Remove from local state immediately
+            setLocalLeads(prev => prev.filter(l => l.id !== leadToDelete.id));
+            toast.success('Lead excluído com sucesso!');
+            setIsDeleteModalOpen(false);
+            setLeadToDelete(null);
+            // Refresh from server
+            fetchLeads();
+        } catch (error) {
+            console.error('Error deleting lead:', error);
+            toast.error('Erro ao excluir lead');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // DND Handlers
@@ -475,11 +607,22 @@ export function KanbanBoard() {
             {/* Header */}
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
-
                     <PipelineTabs />
+                    <span className={styles.opportunityCounter}>
+                        {totalOpportunities} oportunidades
+                    </span>
                 </div>
                 <div className={styles.headerRight}>
-                    <button className={styles.filterBtn}>Filtros</button>
+                    <div className={styles.searchWrapper}>
+                        <Search size={16} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder="Buscar lead..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                    </div>
                     <button
                         className={styles.addBtn}
                         onClick={() => setIsCreateModalOpen(true)}
@@ -507,6 +650,9 @@ export function KanbanBoard() {
                             color={stage.color}
                             leads={getLocalLeadsByStage(stage.id)}
                             onLeadClick={handleLeadClick}
+                            onLeadChat={handleLeadChat}
+                            onLeadEdit={handleLeadEdit}
+                            onLeadDelete={handleLeadDelete}
                         />
                     ))}
 
@@ -532,6 +678,43 @@ export function KanbanBoard() {
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={() => fetchLeads()}
             />
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setLeadToDelete(null);
+                }}
+                title="Confirmar Exclusão"
+            >
+                <div className={styles.deleteModal}>
+                    <p>
+                        Tem certeza que deseja excluir o lead <strong>{leadToDelete?.name}</strong>?
+                    </p>
+                    <p className={styles.deleteWarning}>
+                        Esta ação não pode ser desfeita.
+                    </p>
+                    <div className={styles.deleteActions}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setIsDeleteModalOpen(false);
+                                setLeadToDelete(null);
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={confirmDelete}
+                            isLoading={isDeleting}
+                        >
+                            Excluir
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

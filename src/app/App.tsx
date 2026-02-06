@@ -30,6 +30,7 @@ import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
+import { Agentation } from 'agentation';
 
 // Inicializa Firebase no boot
 initFirebase();
@@ -113,78 +114,83 @@ export function App() {
     }, [initAuthListener]);
 
     return (
-        <BrowserRouter>
-            <Routes>
-                {/* Public Routes */}
-                <Route path={ROUTES.auth.login} element={
-                    <PublicRoute>
-                        <LoginPage />
-                    </PublicRoute>
-                } />
+        <>
+            <BrowserRouter>
+                <Routes>
+                    {/* Public Routes */}
+                    <Route path={ROUTES.auth.login} element={
+                        <PublicRoute>
+                            <LoginPage />
+                        </PublicRoute>
+                    } />
 
-                {/* Protected Routes with MainLayout */}
-                <Route element={
-                    <ProtectedRoute>
-                        <MainLayout />
-                    </ProtectedRoute>
-                }>
-                    <Route path={ROUTES.dashboard} element={<DashboardPage />} />
+                    {/* Protected Routes with MainLayout */}
+                    <Route element={
+                        <ProtectedRoute>
+                            <MainLayout />
+                        </ProtectedRoute>
+                    }>
+                        <Route path={ROUTES.dashboard} element={<DashboardPage />} />
 
-                    <Route path={ROUTES.debug_ui} element={<DebugUIPage />} />
-                    <Route path={ROUTES.data_import} element={<DataImportPage />} />
+                        <Route path={ROUTES.debug_ui} element={<DebugUIPage />} />
+                        <Route path={ROUTES.data_import} element={<DataImportPage />} />
 
-                    <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
+                        <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
 
-                    <Route path={ROUTES.inbox.root + '/*'} element={<InboxPage />} />
+                        <Route path={ROUTES.inbox.root + '/*'} element={<InboxPage />} />
 
-                    <Route path={ROUTES.production.root + '/*'} element={<ProductionPage />} />
+                        <Route path={ROUTES.production.root + '/*'} element={<ProductionPage />} />
 
-                    <Route path={ROUTES.postSales.root + '/*'} element={<PostSalesPage />} />
+                        <Route path={ROUTES.postSales.root + '/*'} element={<PostSalesPage />} />
 
-                    <Route path={ROUTES.team.members} element={<MembersPage />} />
+                        <Route path={ROUTES.team.members} element={<MembersPage />} />
 
-                    <Route path={ROUTES.team.chat} element={<TeamChatPage />} />
+                        <Route path={ROUTES.team.chat} element={<TeamChatPage />} />
 
-                    <Route path={ROUTES.team.root + '/*'} element={<PlaceholderPage title="Equipe" />} />
+                        <Route path={ROUTES.team.root + '/*'} element={<PlaceholderPage title="Equipe" />} />
 
-                    <Route path={ROUTES.analytics.root + '/*'} element={<PlaceholderPage title="Analytics" />} />
+                        <Route path={ROUTES.analytics.root + '/*'} element={<PlaceholderPage title="Analytics" />} />
 
-                    {/* Strategic */}
-                    <Route path={ROUTES.strategic.notes} element={<NotesPage />} />
-                    <Route path={ROUTES.strategic.projects} element={<StrategicProjectsPage />} />
-                    <Route path={ROUTES.strategic.socialMedia} element={<SocialMediaPage />} />
+                        {/* Strategic */}
+                        <Route path={ROUTES.strategic.notes} element={<NotesPage />} />
+                        <Route path={ROUTES.strategic.projects} element={<StrategicProjectsPage />} />
+                        <Route path={ROUTES.strategic.socialMedia} element={<SocialMediaPage />} />
 
-                    {/* Settings */}
-                    <Route path={ROUTES.settings.appearance} element={<AppearancePage />} />
+                        {/* Settings */}
+                        <Route path={ROUTES.settings.appearance} element={<AppearancePage />} />
 
-                    <Route path={ROUTES.settings.collaborators} element={<CollaboratorsPage />} />
+                        <Route path={ROUTES.settings.collaborators} element={<CollaboratorsPage />} />
 
-                    <Route path={ROUTES.settings.root + '/*'} element={<PlaceholderPage title="Configurações" />} />
+                        <Route path={ROUTES.settings.root + '/*'} element={<PlaceholderPage title="Configurações" />} />
 
-                    <Route path={ROUTES.settings.integrations} element={<IntegrationsPage />} />
+                        <Route path={ROUTES.settings.integrations} element={<IntegrationsPage />} />
 
-                    <Route path={ROUTES.settings.organization} element={<OrganizationPage />} />
+                        <Route path={ROUTES.settings.organization} element={<OrganizationPage />} />
 
-                    <Route path={ROUTES.settings.products} element={<ProductsPage />} />
+                        <Route path={ROUTES.settings.products} element={<ProductsPage />} />
 
-                    <Route path={ROUTES.settings.lossReasons} element={<LossReasonsPage />} />
+                        <Route path={ROUTES.settings.lossReasons} element={<LossReasonsPage />} />
 
-                    <Route path={ROUTES.settings.sectors} element={<SectorsPage />} />
+                        <Route path={ROUTES.settings.sectors} element={<SectorsPage />} />
 
-                    <Route path={ROUTES.settings.roles} element={<RolesPage />} />
+                        <Route path={ROUTES.settings.roles} element={<RolesPage />} />
 
-                    <Route path={ROUTES.settings.permissions} element={<PermissionsPage />} />
+                        <Route path={ROUTES.settings.permissions} element={<PermissionsPage />} />
 
-                    <Route path={ROUTES.settings.goals} element={<GoalsPage />} />
+                        <Route path={ROUTES.settings.goals} element={<GoalsPage />} />
 
-                    <Route path={ROUTES.settings.holidays} element={<HolidaysPage />} />
+                        <Route path={ROUTES.settings.holidays} element={<HolidaysPage />} />
 
-                    <Route path={ROUTES.settings.leadDistribution} element={<LeadDistributionPage />} />
-                </Route>
+                        <Route path={ROUTES.settings.leadDistribution} element={<LeadDistributionPage />} />
+                    </Route>
 
-                {/* Catch-all redirect */}
-                <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />
-            </Routes>
-        </BrowserRouter>
+                    {/* Catch-all redirect */}
+                    <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />
+                </Routes>
+            </BrowserRouter>
+
+            {/* Agentation: Ferramenta de feedback visual para agentes de IA */}
+            {import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
+        </>
     );
 }

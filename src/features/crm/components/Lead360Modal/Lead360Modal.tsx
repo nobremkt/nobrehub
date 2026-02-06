@@ -21,6 +21,7 @@ import {
     Building2
 } from 'lucide-react';
 import { Modal } from '@/design-system';
+import { useKanbanStore } from '../../stores/useKanbanStore';
 
 import { LeadHeader } from './components/LeadHeader/LeadHeader';
 import { AtividadeTab } from './tabs/AtividadeTab/AtividadeTab';
@@ -34,12 +35,46 @@ interface Lead360ModalProps {
     isOpen: boolean;
     onClose: () => void;
     lead: Lead | null;
+    onTemplateSelect?: (message: string) => void;
 }
 
 type TabType = 'ATIVIDADE' | 'CONTATO' | 'EMPRESA' | 'NEGÓCIOS' | 'CONVERSAS' | 'HISTÓRICO';
 
-export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
+export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
+    const { updateLead, moveLead, stages } = useKanbanStore();
+
+    // Handler para mudar status (Ganho/Perdido)
+    const handleStatusChange = async (status: 'won' | 'lost' | 'open') => {
+        if (!lead) return;
+
+        try {
+            if (status === 'won') {
+                // Encontra a etapa de "Fechado Ganho" para o pipeline do lead
+                const currentPipeline = lead.status?.startsWith('lt-') ? 'low-ticket' : 'high-ticket';
+                const wonStage = stages.find(s =>
+                    s.pipeline === currentPipeline &&
+                    (s.name.toLowerCase().includes('ganho') || s.name.toLowerCase().includes('fechado') || s.id.includes('fechado'))
+                );
+
+                if (wonStage) {
+                    await moveLead(lead.id, wonStage.id);
+                }
+            } else if (status === 'lost') {
+                // Para "Perdido", atualiza apenas o campo de metadata ou cria uma coluna específica
+                // Por enquanto, marca no próprio lead
+                await updateLead(lead.id, {
+                    customFields: {
+                        ...lead.customFields,
+                        dealStatus: 'lost',
+                        lostAt: new Date().toISOString()
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+        }
+    };
 
     // KeyDown handled by Modal
 
@@ -57,7 +92,7 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
     const renderTabContent = () => {
         switch (activeTab) {
             case 'ATIVIDADE':
-                return <AtividadeTab />;
+                return <AtividadeTab lead={lead} onClose={onClose} onTemplateSelect={onTemplateSelect} />;
             case 'CONTATO':
                 return <ContatoTab lead={lead} />;
             case 'EMPRESA':
@@ -81,7 +116,7 @@ export function Lead360Modal({ isOpen, onClose, lead }: Lead360ModalProps) {
             size="full"
         >
             <div className={styles.container}>
-                <LeadHeader lead={lead} />
+                <LeadHeader lead={lead} onStatusChange={handleStatusChange} />
 
                 <nav className={styles.tabsNav}>
                     {tabs.map((tab) => (

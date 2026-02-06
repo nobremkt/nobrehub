@@ -2,28 +2,43 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - CLIENT INBOX
  * ═══════════════════════════════════════════════════════════════════════════════
- * Inbox de clientes do atendente selecionado
+ * Inbox de clientes do atendente selecionado com chat integrado
  * Similar ao ProjectBoard de Produção
  */
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { usePostSalesStore } from '../stores/usePostSalesStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { PostSalesDistributionService } from '../services/PostSalesDistributionService';
 import { ProductionService } from '@/features/production/services/ProductionService';
+import { InboxService } from '@/features/inbox/services/InboxService';
+import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
+import { StorageService } from '@/features/inbox/services/StorageService';
+import { Conversation, Message } from '@/features/inbox/types';
 import { Lead, ClientStatus } from '@/types/lead.types';
 import { Project, ProjectStatus } from '@/types/project.types';
 import { Button, Spinner } from '@/design-system';
+
+// Componentes de Chat do Inbox (reutilizados)
+import { MessageBubble } from '@/features/inbox/components/ChatView/MessageBubble';
+import { DateSeparator } from '@/features/inbox/components/ChatView/DateSeparator';
+import { ChatInput } from '@/features/inbox/components/ChatView/ChatInput';
+import { SessionWarning } from '@/features/inbox/components/ChatView/SessionWarning';
+import { SendTemplateModal } from '@/features/inbox/components/SendTemplateModal';
+import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
+
 import {
     User,
     Clock,
     CheckCircle,
     AlertTriangle,
     CreditCard,
-    Phone,
     Calendar,
-    DollarSign,
-    Hammer
+    Hammer,
+    MessageCircle,
+    Phone,
+    ExternalLink,
+    Info
 } from 'lucide-react';
 import styles from './ClientInbox.module.css';
 
@@ -53,32 +68,52 @@ export const ClientInbox = () => {
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
     const [linkedProject, setLinkedProject] = useState<Project | null>(null);
+    const { setDraftMessage } = useInboxStore();
+
+    // Chat states
+    const [conversation, setConversation] = useState<Conversation | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [showClientDetailsModal, setShowClientDetailsModal] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Encontra o atendente selecionado
     const selectedAttendant = useMemo(() => {
         return collaborators.find(c => c.id === selectedPostSalesId);
     }, [collaborators, selectedPostSalesId]);
 
-    // Clientes do atendente selecionado (sem concluídos)
+    // Clientes do atendente selecionado
+    // Quando filtro é 'concluido', mostra apenas concluídos
+    // Caso contrário, mostra ativos (não concluídos)
     const allClients = useMemo(() => {
         if (!selectedPostSalesId) return [];
-        return (clientsByAttendant[selectedPostSalesId] || []).filter(c => c.clientStatus !== 'concluido');
-    }, [clientsByAttendant, selectedPostSalesId]);
+        const allClientsList = clientsByAttendant[selectedPostSalesId] || [];
+        if (statusFilter === 'concluido') {
+            return allClientsList.filter(c => c.clientStatus === 'concluido');
+        }
+        return allClientsList.filter(c => c.clientStatus !== 'concluido');
+    }, [clientsByAttendant, selectedPostSalesId, statusFilter]);
 
     // Clientes filtrados por status
     const clients = useMemo(() => {
-        if (statusFilter === 'all') return allClients;
+        if (statusFilter === 'all' || statusFilter === 'concluido') return allClients;
         return allClients.filter(c => c.clientStatus === statusFilter);
     }, [allClients, statusFilter]);
 
-    // Contagem por status
-    const statusCounts = useMemo(() => ({
-        all: allClients.length,
-        aguardando_projeto: allClients.filter(c => c.clientStatus === 'aguardando_projeto').length,
-        aguardando_alteracao: allClients.filter(c => c.clientStatus === 'aguardando_alteracao').length,
-        entregue: allClients.filter(c => c.clientStatus === 'entregue').length,
-        aguardando_pagamento: allClients.filter(c => c.clientStatus === 'aguardando_pagamento').length,
-    }), [allClients]);
+    // Contagem por status (precisa da lista completa)
+    const statusCounts = useMemo(() => {
+        const allClientsList = clientsByAttendant[selectedPostSalesId || ''] || [];
+        const activeClients = allClientsList.filter(c => c.clientStatus !== 'concluido');
+        return {
+            all: activeClients.length,
+            aguardando_projeto: activeClients.filter(c => c.clientStatus === 'aguardando_projeto').length,
+            aguardando_alteracao: activeClients.filter(c => c.clientStatus === 'aguardando_alteracao').length,
+            entregue: activeClients.filter(c => c.clientStatus === 'entregue').length,
+            aguardando_pagamento: activeClients.filter(c => c.clientStatus === 'aguardando_pagamento').length,
+            concluido: allClientsList.filter(c => c.clientStatus === 'concluido').length,
+        };
+    }, [clientsByAttendant, selectedPostSalesId]);
 
     // Cliente selecionado
     const selectedClient = useMemo(() => {
@@ -118,6 +153,152 @@ export const ClientInbox = () => {
 
         return () => unsubscribe();
     }, [selectedClientId]);
+
+    // Busca a conversa associada ao cliente (por leadId)
+    useEffect(() => {
+        if (!selectedClientId) {
+            setConversation(null);
+            setMessages([]);
+            return;
+        }
+
+        // Subscribe para conversa por leadId
+        const unsubscribe = InboxService.subscribeToConversationByLeadId(
+            selectedClientId,
+            (conv) => {
+                setConversation(conv);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [selectedClientId]);
+
+    // Busca mensagens da conversa
+    useEffect(() => {
+        if (!conversation?.id) {
+            setMessages([]);
+            return;
+        }
+
+        const unsubscribe = InboxService.subscribeToMessages(
+            conversation.id,
+            (msgs) => {
+                setMessages(msgs);
+                InboxService.markAsRead(conversation.id);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [conversation?.id]);
+
+    // Auto-scroll para última mensagem
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    // Group messages by date for rendering separators
+    const getDateKey = (date: Date | number | string): string => {
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const messagesWithSeparators = useMemo(() => {
+        const result: { type: 'separator' | 'message'; date?: Date; message?: Message }[] = [];
+        let lastDateKey = '';
+
+        for (const msg of messages) {
+            const msgDate = msg.createdAt ? new Date(msg.createdAt) : new Date();
+            const dateKey = getDateKey(msgDate);
+
+            if (dateKey !== lastDateKey) {
+                result.push({ type: 'separator', date: msgDate });
+                lastDateKey = dateKey;
+            }
+
+            result.push({ type: 'message', message: msg });
+        }
+
+        return result;
+    }, [messages]);
+
+    // Calcula última mensagem de entrada para janela de 24h do WhatsApp
+    const lastInboundAt = useMemo(() => {
+        const inboundMessages = messages.filter(m => m.direction === 'in');
+        if (inboundMessages.length === 0) return undefined;
+        const lastInbound = inboundMessages[inboundMessages.length - 1];
+        return lastInbound.createdAt ? new Date(lastInbound.createdAt) : undefined;
+    }, [messages]);
+
+    // Verifica se a sessão de 24h do WhatsApp expirou
+    const isSessionExpired = useMemo(() => {
+        if (!conversation || conversation.channel !== 'whatsapp') return false;
+        if (!lastInboundAt) return true; // Sem mensagens de entrada = expirou
+
+        const now = new Date();
+        const hoursSinceLastInbound = (now.getTime() - lastInboundAt.getTime()) / (1000 * 60 * 60);
+        return hoursSinceLastInbound >= 24;
+    }, [conversation, lastInboundAt]);
+
+    // Enviar mensagem de texto
+    const handleSendMessage = async (text: string) => {
+        if (!conversation?.id) return;
+        await InboxService.sendMessage(conversation.id, text);
+    };
+
+    // Enviar mídia
+    const handleSendMedia = async (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string, viewOnce?: boolean) => {
+        if (!conversation?.id) return;
+
+        // Validar tamanho do arquivo
+        if (!StorageService.validateFileSize(file)) {
+            console.error('Arquivo muito grande. Máximo: 16MB');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            // Upload para Firebase Storage
+            const mediaUrl = await StorageService.uploadMedia(conversation.id, file);
+
+            // Envia a mensagem de mídia
+            await InboxService.sendMediaMessage(
+                conversation.id,
+                mediaUrl,
+                type,
+                caption || file.name,
+                'agent',
+                viewOnce
+            );
+        } catch (error) {
+            console.error('Upload falhou:', error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    // Enviar template
+    const handleSendTemplate = async (
+        templateName: string,
+        language: string,
+        components: any[],
+        previewText: string
+    ) => {
+        if (!conversation?.id) return;
+        await InboxService.sendTemplateMessage(
+            conversation.id,
+            templateName,
+            language,
+            components,
+            previewText
+        );
+    };
+
+    // Agendar mensagem
+    const handleScheduleMessage = async (text: string, scheduledFor: Date) => {
+        if (!conversation?.id) return;
+        await InboxService.scheduleMessage(conversation.id, text, scheduledFor);
+    };
+
 
     // Atualiza status do cliente
     const handleUpdateStatus = async (clientId: string, newStatus: ClientStatus) => {
@@ -266,6 +447,14 @@ export const ClientInbox = () => {
                             Pagamento
                             <span className={styles.filterCount}>{statusCounts.aguardando_pagamento}</span>
                         </button>
+                        <button
+                            className={`${styles.filterTab} ${styles.concluidos} ${statusFilter === 'concluido' ? styles.active : ''}`}
+                            onClick={() => setStatusFilter('concluido')}
+                        >
+                            <CheckCircle size={12} />
+                            Concluídos
+                            <span className={styles.filterCount}>{statusCounts.concluido}</span>
+                        </button>
                     </div>
 
                     {/* Client Cards */}
@@ -311,124 +500,213 @@ export const ClientInbox = () => {
                 {/* Client Details */}
                 <div className={styles.detailsPanel}>
                     {selectedClient ? (
-                        <div className={styles.details}>
-                            <div className={styles.detailsHeader}>
-                                <div className={styles.detailsAvatar}>
-                                    {getInitials(selectedClient.name)}
-                                </div>
-                                <div>
-                                    <h3 className={styles.detailsName}>{selectedClient.name}</h3>
-                                    <div className={`${styles.statusBadge} ${styles[STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].color]}`}>
-                                        {STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].label}
+                        <>
+                            {/* Compact Header Bar */}
+                            <div className={styles.headerBar}>
+                                <div className={styles.headerLeft}>
+                                    <div className={styles.headerAvatar}>
+                                        {getInitials(selectedClient.name)}
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Info Items */}
-                            <div className={styles.infoItems}>
-                                {selectedClient.phone && (
-                                    <div className={styles.infoItem}>
-                                        <Phone size={14} />
-                                        <span>{selectedClient.phone}</span>
-                                    </div>
-                                )}
-                                {selectedClient.dealValue && (
-                                    <div className={styles.infoItem}>
-                                        <DollarSign size={14} />
-                                        <span>{formatCurrency(selectedClient.dealValue)}</span>
-                                    </div>
-                                )}
-                                {selectedClient.dealClosedAt && (
-                                    <div className={styles.infoItem}>
-                                        <Calendar size={14} />
-                                        <span>Fechou em: {new Date(selectedClient.dealClosedAt).toLocaleDateString('pt-BR')}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Project Status - Real Time */}
-                            {linkedProject && (
-                                <div className={styles.projectStatus}>
-                                    <div className={styles.projectStatusHeader}>
-                                        <Hammer size={14} />
-                                        <span>Projeto na Produção</span>
-                                    </div>
-                                    <div className={styles.projectStatusContent}>
-                                        <div className={styles.projectStatusRow}>
-                                            <span className={styles.projectStatusLabel}>Status:</span>
-                                            <span className={`${styles.projectStatusValue} ${styles[linkedProject.status.replace('-', '')]}`}>
-                                                {PROJECT_STATUS_LABELS[linkedProject.status]}
+                                    <div className={styles.headerInfo}>
+                                        <h3 className={styles.headerName}>{selectedClient.name}</h3>
+                                        <div className={styles.headerMeta}>
+                                            <span className={`${styles.statusBadge} ${styles[STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].color]}`}>
+                                                {STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].label}
                                             </span>
-                                        </div>
-                                        <div className={styles.projectStatusRow}>
-                                            <span className={styles.projectStatusLabel}>Produtor:</span>
-                                            <span className={styles.projectStatusValue}>{linkedProject.producerName}</span>
-                                        </div>
-                                        {linkedProject.dueDate && (
-                                            <div className={styles.projectStatusRow}>
-                                                <span className={styles.projectStatusLabel}>Previsão:</span>
-                                                <span className={styles.projectStatusValue}>
-                                                    {new Date(linkedProject.dueDate).toLocaleDateString('pt-BR')}
+                                            {linkedProject && (
+                                                <span className={styles.projectBadge}>
+                                                    <Hammer size={12} />
+                                                    {PROJECT_STATUS_LABELS[linkedProject.status]}
                                                 </span>
-                                            </div>
-                                        )}
+                                            )}
+                                            {selectedClient.dealClosedAt && (
+                                                <span className={styles.dateBadge}>
+                                                    <Calendar size={12} />
+                                                    {new Date(selectedClient.dealClosedAt).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Actions */}
-                            <div className={styles.actions}>
-                                {selectedClient.clientStatus === 'aguardando_projeto' && (
+                                <div className={styles.headerActions}>
+                                    {/* Ações de Comunicação */}
+                                    {/* Ações de Comunicação */}
                                     <Button
-                                        variant="secondary"
-                                        onClick={() => handleUpdateStatus(selectedClient.id, 'entregue')}
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (selectedClient.phone) {
+                                                window.location.href = `tel:${selectedClient.phone}`;
+                                            }
+                                        }}
+                                        title={selectedClient.phone ? "Ligar" : "Sem telefone"}
+                                        disabled={!selectedClient.phone}
                                     >
-                                        Marcar como Entregue
+                                        <Phone size={18} />
                                     </Button>
-                                )}
-                                {selectedClient.clientStatus === 'entregue' && (
-                                    <>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (selectedClient.phone) {
+                                                const phone = selectedClient.phone.replace(/\D/g, '');
+                                                window.open(`https://wa.me/${phone}`, '_blank');
+                                            }
+                                        }}
+                                        title={selectedClient.phone ? "Abrir no WhatsApp" : "Sem telefone"}
+                                        disabled={!selectedClient.phone}
+                                    >
+                                        <ExternalLink size={18} />
+                                    </Button>
+
+                                    {/* Ver Detalhes Completos */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowClientDetailsModal(true)}
+                                        title="Ver detalhes completos"
+                                    >
+                                        <Info size={18} />
+                                    </Button>
+
+                                    {/* Botões de Fluxo do Pós-Venda */}
+                                    {selectedClient.clientStatus === 'aguardando_projeto' && (
                                         <Button
-                                            variant="ghost"
-                                            onClick={() => handleRequestRevision(selectedClient.id)}
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => handleUpdateStatus(selectedClient.id, 'entregue')}
                                         >
-                                            Solicitar Alteração
+                                            Marcar Entregue
                                         </Button>
+                                    )}
+                                    {selectedClient.clientStatus === 'entregue' && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRequestRevision(selectedClient.id)}
+                                            >
+                                                Alteração
+                                            </Button>
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => handleApproveClient(selectedClient.id)}
+                                            >
+                                                Aprovou ✓
+                                            </Button>
+                                        </>
+                                    )}
+                                    {selectedClient.clientStatus === 'aguardando_alteracao' && (
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => handleUpdateStatus(selectedClient.id, 'entregue')}
+                                        >
+                                            Alteração Entregue
+                                        </Button>
+                                    )}
+                                    {selectedClient.clientStatus === 'aguardando_pagamento' && (
                                         <Button
                                             variant="primary"
-                                            onClick={() => handleApproveClient(selectedClient.id)}
+                                            size="sm"
+                                            onClick={() => handleCompleteClient(selectedClient.id)}
                                         >
-                                            Cliente Aprovou ✓
+                                            Concluir
                                         </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Full Chat Area */}
+                            <div className={styles.chatArea}>
+                                {conversation ? (
+                                    <>
+                                        {/* WhatsApp 24h Session Warning */}
+                                        {conversation.channel === 'whatsapp' && (
+                                            <SessionWarning
+                                                lastInboundAt={lastInboundAt}
+                                                onSendTemplate={() => setIsTemplateModalOpen(true)}
+                                            />
+                                        )}
+
+                                        <div className={styles.messagesArea}>
+                                            {messagesWithSeparators.length === 0 ? (
+                                                <div className={styles.noMessages}>
+                                                    <MessageCircle size={32} />
+                                                    <p>Nenhuma mensagem ainda</p>
+                                                </div>
+                                            ) : (
+                                                messagesWithSeparators.map((item, index) =>
+                                                    item.type === 'separator' ? (
+                                                        <DateSeparator key={`sep-${index}`} date={item.date!} />
+                                                    ) : (
+                                                        <MessageBubble key={item.message!.id} message={item.message!} />
+                                                    )
+                                                )
+                                            )}
+                                            <div ref={messagesEndRef} />
+                                        </div>
+
+                                        {/* Upload Status */}
+                                        {isUploading && (
+                                            <div className={styles.uploadStatus}>
+                                                <Spinner size="sm" />
+                                                <span>Enviando arquivo...</span>
+                                            </div>
+                                        )}
+
+                                        <ChatInput
+                                            onSend={handleSendMessage}
+                                            onSendMedia={handleSendMedia}
+                                            onOpenTemplate={() => setIsTemplateModalOpen(true)}
+                                            onScheduleMessage={handleScheduleMessage}
+                                            disabled={isUploading || isSessionExpired}
+                                            sessionExpired={isSessionExpired}
+                                        />
                                     </>
-                                )}
-                                {selectedClient.clientStatus === 'aguardando_alteracao' && (
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => handleUpdateStatus(selectedClient.id, 'entregue')}
-                                    >
-                                        Alteração Entregue
-                                    </Button>
-                                )}
-                                {selectedClient.clientStatus === 'aguardando_pagamento' && (
-                                    <Button
-                                        variant="primary"
-                                        onClick={() => handleCompleteClient(selectedClient.id)}
-                                    >
-                                        Concluir (Pago)
-                                    </Button>
+                                ) : (
+                                    <div className={styles.noConversation}>
+                                        <MessageCircle size={48} />
+                                        <h4>Sem conversa vinculada</h4>
+                                        <p>Este cliente não possui conversa do WhatsApp</p>
+                                    </div>
                                 )}
                             </div>
-                        </div>
+
+                            {/* Send Template Modal */}
+                            {conversation && (
+                                <SendTemplateModal
+                                    isOpen={isTemplateModalOpen}
+                                    onClose={() => setIsTemplateModalOpen(false)}
+                                    onSend={handleSendTemplate}
+                                    conversation={conversation}
+                                />
+                            )}
+                        </>
                     ) : (
                         <div className={styles.emptyDetails}>
                             <User size={48} />
                             <h4>Selecione um cliente</h4>
-                            <p>Clique em um cliente para ver detalhes</p>
+                            <p>Clique em um cliente para ver o chat</p>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Modal Ver Detalhes Completos (Lead 360) */}
+            {selectedClient && (
+                <Lead360Modal
+                    isOpen={showClientDetailsModal}
+                    onClose={() => setShowClientDetailsModal(false)}
+                    lead={selectedClient}
+                    onTemplateSelect={(message) => {
+                        setDraftMessage(message);
+                        setShowClientDetailsModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };

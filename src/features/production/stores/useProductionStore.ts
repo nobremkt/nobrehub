@@ -18,7 +18,7 @@ interface ProductionState {
     fetchProjects: (producerId: string) => Promise<void>;
     subscribeToProjects: (producerId: string) => void;
     unsubscribeFromProjects: () => void;
-    addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
     updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
     unsubscribe: (() => void) | null;
@@ -84,17 +84,19 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
     },
 
     addProject: async (newProject) => {
-        const { selectedProducerId } = get();
-        if (!selectedProducerId) return;
-
         set({ isLoading: true });
         try {
-            await ProductionService.createProject(newProject);
-            await get().fetchProjects(selectedProducerId);
-            toast.success('Projeto criado com sucesso!');
+            const projectId = await ProductionService.createProject(newProject);
+            // Se tem produtor selecionado, atualiza a lista dele
+            const { selectedProducerId, fetchProjects } = get();
+            if (selectedProducerId) {
+                await fetchProjects(selectedProducerId);
+            }
+            return projectId;
         } catch (error) {
             console.error('Error adding project:', error);
             toast.error('Erro ao criar projeto.');
+            throw error;
         } finally {
             set({ isLoading: false });
         }

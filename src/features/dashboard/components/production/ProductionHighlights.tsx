@@ -31,7 +31,7 @@ export function ProductionHighlights() {
     const mvpPoints = mvp?.points ?? 0;
     const mvpAvgDays = mvp?.avgDays ?? 0;
     const mvpApprovalRate = mvp?.approvalRate ?? 0;
-    const mvpPhotoUrl = mvp?.photoUrl;
+    const mvpPhotoUrl = mvp?.profilePhotoUrl;
 
     // Efficiency = points / projects (for the MVP)
     const efficiency = mvpProjects > 0 ? (mvpPoints / mvpProjects).toFixed(1) : '0';
