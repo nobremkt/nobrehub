@@ -11,7 +11,8 @@ export function MainLayout() {
     // Add other full width routes here as needed
     const isFullWidth = location.pathname.startsWith(ROUTES.team.chat) ||
         location.pathname.startsWith(ROUTES.inbox.root) ||
-        location.pathname.startsWith(ROUTES.production.root);
+        location.pathname.startsWith(ROUTES.production.root) ||
+        location.pathname.startsWith(ROUTES.postSales.root);
 
     return (
         <>

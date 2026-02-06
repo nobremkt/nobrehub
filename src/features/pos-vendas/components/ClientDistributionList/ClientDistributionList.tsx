@@ -36,13 +36,15 @@ export const ClientDistributionList = () => {
     const [isAssigning, setIsAssigning] = useState<string | null>(null);
     const [selectedPostSales, setSelectedPostSales] = useState<Record<string, string>>({});
 
-    // Encontra o setor de pós-vendas
+    // Encontra o setor de pós-vendas (aceita variações do nome)
     const postSalesSectorId = useMemo(() => {
-        const sector = sectors.find(s =>
-            s.name.toLowerCase() === 'pós-vendas' ||
-            s.name.toLowerCase() === 'pos-vendas' ||
-            s.name.toLowerCase() === 'post-sales'
-        );
+        const sector = sectors.find(s => {
+            const name = s.name.toLowerCase();
+            return name.includes('pós-venda') ||
+                name.includes('pos-venda') ||
+                name.includes('post-sales') ||
+                name.includes('pos venda');
+        });
         return sector?.id;
     }, [sectors]);
 

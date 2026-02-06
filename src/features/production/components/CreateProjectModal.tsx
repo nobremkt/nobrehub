@@ -209,10 +209,12 @@ export const CreateProjectModal = ({
                     await LeadService.updateOrCreateLead(
                         leadId,
                         {
-                            currentSector: 'pos_vendas',
+                            // 'distribution' para aparecer na lista de distribuição do pós-venda
+                            currentSector: 'distribution',
                             clientStatus: 'aguardando_projeto',
                             projectIds: [projectId],
                             postSalesDistributionStatus: 'pending',
+                            dealClosedAt: new Date(), // Marca quando fechou a venda
                         },
                         // Dados para criação caso não exista
                         { name: leadName || 'Cliente' }
@@ -223,12 +225,12 @@ export const CreateProjectModal = ({
                 }
             }
 
-            // 3. Fechar a conversa no Inbox de Vendas (se veio do inbox)
+            // 3. Transferir conversa para o Pós-Venda (não fecha, transfere!)
             if (conversationId) {
                 try {
-                    await InboxService.toggleConversationStatus(conversationId);
+                    await InboxService.transferToPostSales(conversationId);
                 } catch (error) {
-                    console.error('Erro ao fechar conversa:', error);
+                    console.error('Erro ao transferir conversa para pós-venda:', error);
                     // Não bloqueia o fluxo
                 }
             }

@@ -15,7 +15,8 @@ import {
     updateDoc,
     doc,
     onSnapshot,
-    Timestamp
+    Timestamp,
+    arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Lead, ClientStatus } from '@/types/lead.types';
@@ -247,6 +248,7 @@ export const PostSalesDistributionService = {
 
     /**
      * Marca cliente como concluído (sai do inbox pós-venda)
+     * Adiciona automaticamente a tag "cliente" para identificar clientes fidelizados
      */
     completeClient: async (leadId: string): Promise<void> => {
         try {
@@ -254,7 +256,9 @@ export const PostSalesDistributionService = {
             await updateDoc(leadRef, {
                 clientStatus: 'concluido' as ClientStatus,
                 currentSector: 'vendas', // Volta pra base de contatos
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                // Adiciona a tag "cliente" automaticamente
+                tags: arrayUnion('cliente')
             });
         } catch (error) {
             console.error('Error completing client:', error);

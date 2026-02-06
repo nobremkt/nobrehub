@@ -1,4 +1,5 @@
 export type DealStatus = 'open' | 'won' | 'lost';
+export type ConversationContext = 'sales' | 'post_sales';
 
 export interface Conversation {
     id: string;
@@ -13,9 +14,13 @@ export interface Conversation {
     notes?: string;
     lastMessage?: Message;
     unreadCount: number;
-    assignedTo?: string; // userId
+    assignedTo?: string; // userId (vendedor ou pós-vendedor)
     channel: 'whatsapp' | 'internal';
     status: 'open' | 'closed';
+    // Context (sales or post_sales)
+    context?: ConversationContext;
+    postSalesId?: string; // userId do pós-vendedor atribuído
+    transferredToPostSalesAt?: Date;
     // Deal/Negócio fields
     pipeline?: string;
     stage?: string;

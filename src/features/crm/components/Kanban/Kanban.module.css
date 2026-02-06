@@ -38,6 +38,46 @@
     gap: 0.75rem;
 }
 
+.opportunityCounter {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.searchWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+
+.searchInput {
+    width: 200px;
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.searchInput::placeholder {
+    color: var(--color-text-muted);
+}
+
+.searchInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+}
+
 
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -268,8 +308,8 @@
 
 .cardHeader {
     display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
+    align-items: flex-start;
+    gap: 0.75rem;
 }
 
 .cardTitle {
@@ -355,6 +395,102 @@
     font-size: 0.875rem;
     font-weight: 700;
     color: var(--color-success);
+    margin-top: 0.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CARD ACTIONS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.avatarInitials {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.cardHeaderInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.cardActions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.actionBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-text-muted);
+    color: var(--color-text-primary);
+}
+
+.actionBtnDanger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.tagMore {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    padding: 0.125rem 0.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DELETE MODAL
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.deleteModal {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.deleteModal p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.deleteWarning {
+    color: var(--color-error) !important;
+    font-size: 0.875rem;
+}
+
+.deleteActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

@@ -70,6 +70,77 @@ export const InboxService = {
     },
 
     /**
+     * Subscribe to a conversation by leadId.
+     * Used by post-sales to find the conversation associated with a client.
+     */
+    subscribeToConversationByLeadId: (
+        leadId: string,
+        callback: (conversation: Conversation | null) => void
+    ) => {
+        const db = getRealtimeDb();
+        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+
+        return onValue(conversationsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) {
+                callback(null);
+                return;
+            }
+
+            // Find conversation with matching leadId
+            const found = Object.keys(data).find(key => data[key].leadId === leadId);
+
+            if (found) {
+                callback({
+                    id: found,
+                    ...data[found]
+                } as Conversation);
+            } else {
+                callback(null);
+            }
+        });
+    },
+
+    /**
+     * Create a new conversation for a lead.
+     * Used when navigating from Kanban/Lead360 and no existing conversation exists.
+     */
+    createConversation: async (leadData: {
+        leadId?: string;
+        leadName: string;
+        leadPhone: string;
+        leadEmail?: string;
+        leadCompany?: string;
+        tags?: string[];
+    }): Promise<string> => {
+        const db = getRealtimeDb();
+        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+        const newConvRef = push(conversationsRef);
+        const conversationId = newConvRef.key!;
+
+        const now = Date.now();
+
+        await set(newConvRef, {
+            leadId: leadData.leadId || `lead_${now}`,
+            leadName: leadData.leadName,
+            leadPhone: leadData.leadPhone,
+            leadEmail: leadData.leadEmail || '',
+            leadCompany: leadData.leadCompany || '',
+            tags: leadData.tags || [],
+            notes: '',
+            unreadCount: 0,
+            channel: 'whatsapp',
+            status: 'open',
+            context: 'sales',
+            lastMessage: null,
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        return conversationId;
+    },
+
+    /**
      * Send a new message.
      */
     sendMessage: async (conversationId: string, text: string, senderId: string = 'agent') => {
@@ -484,6 +555,25 @@ export const InboxService = {
         });
 
         return newStatus;
+    },
+
+    /**
+     * Transfer conversation to post-sales sector.
+     * Keeps conversation open but changes context to 'post_sales'.
+     * Used when a sale is closed and project is created.
+     */
+    transferToPostSales: async (conversationId: string) => {
+        const db = getRealtimeDb();
+        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+
+        await update(conversationRef, {
+            context: 'post_sales',
+            status: 'open',
+            // Clear sales assignment, will be reassigned in post-sales
+            assignedTo: null,
+            transferredToPostSalesAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
     },
 
     /**

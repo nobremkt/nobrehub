@@ -13,6 +13,7 @@ import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
 interface AtividadeTabProps {
     lead: Lead;
     onClose: () => void;
+    onTemplateSelect?: (message: string) => void;
 }
 
 // Helper to get stage number from stage id
@@ -41,7 +42,7 @@ const highlightVariables = (content: string) => {
 };
 
 
-export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
+export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabProps) {
     const navigate = useNavigate();
     const { conversations, selectConversation, init, setDraftMessage } = useInboxStore();
 
@@ -202,7 +203,19 @@ export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
                         <button
                             className={styles.sendTemplateBtn}
                             onClick={() => {
-                                // Validar telefone
+                                // Preparar mensagem com variáveis substituídas
+                                const message = currentScript.content
+                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+
+                                // Se tem callback customizado (pós-venda), usar ele e sair
+                                if (onTemplateSelect) {
+                                    onTemplateSelect(message);
+                                    onClose();
+                                    return;
+                                }
+
+                                // Fluxo padrão: validar telefone e navegar para Inbox
                                 const phone = lead.phone?.replace(/\D/g, '');
                                 if (!phone) {
                                     toast.error('Lead não possui telefone cadastrado');
@@ -220,14 +233,8 @@ export function AtividadeTab({ lead, onClose }: AtividadeTabProps) {
                                 );
 
                                 if (existingConversation) {
-                                    // Selecionar conversa no store
                                     selectConversation(existingConversation.id);
                                 }
-
-                                // Preparar mensagem com variáveis substituídas
-                                const message = currentScript.content
-                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
-                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
 
                                 // Setar mensagem no input do chat (via store)
                                 setDraftMessage(message);

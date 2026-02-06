@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lead } from '@/types/lead.types';
-import { MessageSquare, ExternalLink, Clock, CheckCircle } from 'lucide-react';
+import { MessageSquare, ExternalLink, Clock, CheckCircle, Plus } from 'lucide-react';
 import styles from './ConversasTab.module.css';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
 import { Button } from '@/design-system';
@@ -40,6 +40,12 @@ export function ConversasTab({ lead }: ConversasTabProps) {
     const handleGoToConversation = (conversationId: string) => {
         selectConversation(conversationId);
         navigate('/inbox');
+    };
+
+    // Navega para o Inbox para iniciar nova conversa com o lead
+    const handleStartConversation = () => {
+        // Navega para inbox com o phone como query param para buscar/criar conversa
+        navigate(`/inbox?phone=${encodeURIComponent(lead.phone || '')}`);
     };
 
     const formatDate = (date: Date | undefined) => {
@@ -93,6 +99,15 @@ export function ConversasTab({ lead }: ConversasTabProps) {
                 <div className={styles.emptyState}>
                     <MessageSquare size={48} />
                     <p>Nenhuma conversa registrada com este lead.</p>
+                    {lead.phone && (
+                        <Button
+                            variant="primary"
+                            onClick={handleStartConversation}
+                        >
+                            <Plus size={16} />
+                            Iniciar Conversa
+                        </Button>
+                    )}
                 </div>
             </div>
         );
