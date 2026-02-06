@@ -1,0 +1,164 @@
+/* Bubble Menu - Selection Toolbar */
+.bubbleMenu {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background-color: #262626;
+    /* Solid fallback */
+    background-color: var(--color-surface-tertiary, #262626);
+    border: 1px solid #404040;
+    border-color: var(--color-border, #404040);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+}
+
+.menuButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: #a3a3a3;
+    color: var(--color-text-secondary, #a3a3a3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.menuButton:hover {
+    color: #ffffff;
+    color: var(--color-text-primary, #ffffff);
+    background-color: #1a1a1a;
+    background-color: var(--color-surface-secondary, #1a1a1a);
+}
+
+.menuButton.active {
+    color: #dc2626;
+    color: var(--color-primary-500, #dc2626);
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+/* Context Menu - Right-Click */
+.contextMenu {
+    position: fixed;
+    z-index: 99999;
+    min-width: 200px;
+    background-color: #262626;
+    /* Solid fallback */
+    background-color: var(--color-surface-tertiary, #262626);
+    border: 1px solid #404040;
+    border-color: var(--color-border, #404040);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    animation: contextMenuFadeIn 0.15s ease;
+}
+
+@keyframes contextMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.contextMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: #ffffff;
+    color: var(--color-text-primary, #ffffff);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.contextMenuItem:hover {
+    background-color: #1a1a1a;
+    background-color: var(--color-surface-secondary, #1a1a1a);
+}
+
+.contextMenuItem:active {
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+.contextMenuItem svg {
+    color: #737373;
+    color: var(--color-text-muted, #737373);
+    flex-shrink: 0;
+}
+
+.contextMenuItem:hover svg {
+    color: #dc2626;
+    color: var(--color-primary-500, #dc2626);
+}
+
+.divider {
+    height: 1px;
+    background-color: #404040;
+    background-color: var(--color-border, #404040);
+    margin: 4px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * LIGHT MODE OVERRIDES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+:global(:root:not(.dark)) .bubbleMenu,
+:global([data-theme="light"]) .bubbleMenu {
+    background-color: #ffffff;
+    border-color: #d4d4d4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:global(:root:not(.dark)) .menuButton,
+:global([data-theme="light"]) .menuButton {
+    color: #525252;
+}
+
+:global(:root:not(.dark)) .menuButton:hover,
+:global([data-theme="light"]) .menuButton:hover {
+    color: #171717;
+    background-color: #f5f5f5;
+}
+
+:global(:root:not(.dark)) .contextMenu,
+:global([data-theme="light"]) .contextMenu {
+    background-color: #ffffff;
+    border-color: #d4d4d4;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+:global(:root:not(.dark)) .contextMenuItem,
+:global([data-theme="light"]) .contextMenuItem {
+    color: #171717;
+}
+
+:global(:root:not(.dark)) .contextMenuItem:hover,
+:global([data-theme="light"]) .contextMenuItem:hover {
+    background-color: #f5f5f5;
+}
+
+:global(:root:not(.dark)) .contextMenuItem svg,
+:global([data-theme="light"]) .contextMenuItem svg {
+    color: #737373;
+}
+
+:global(:root:not(.dark)) .divider,
+:global([data-theme="light"]) .divider {
+    background-color: #e5e5e5;
+}

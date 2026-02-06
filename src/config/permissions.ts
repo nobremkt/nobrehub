@@ -5,6 +5,7 @@ export const PERMISSIONS = {
     VIEW_POST_SALES: 'view_post_sales',
     MANAGE_POST_SALES_DISTRIBUTION: 'manage_post_sales_distribution',
     VIEW_ADMIN: 'view_admin',
+    VIEW_STRATEGIC: 'view_strategic',
     // Dashboard section permissions
     VIEW_DASHBOARD_SALES: 'view_dashboard_sales',
     VIEW_DASHBOARD_PRODUCTION: 'view_dashboard_production',
@@ -20,6 +21,7 @@ export const PERMISSION_LABELS = {
     [PERMISSIONS.VIEW_POST_SALES]: 'Visualizar Pós-Vendas',
     [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Gerenciar Distribuição Pós-Vendas',
     [PERMISSIONS.VIEW_ADMIN]: 'Administração',
+    [PERMISSIONS.VIEW_STRATEGIC]: 'Visualizar Estratégico',
     // Dashboard section labels
     [PERMISSIONS.VIEW_DASHBOARD_SALES]: 'Ver métricas de Vendas',
     [PERMISSIONS.VIEW_DASHBOARD_PRODUCTION]: 'Ver métricas de Produção',

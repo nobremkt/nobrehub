@@ -119,8 +119,8 @@ export const PostSalesSidebar = () => {
                                 onClick={() => setSelectedPostSalesId(member.id)}
                             >
                                 <div className={`${styles.avatar} ${isSelected ? styles.avatarSelected : ''}`}>
-                                    {member.photoUrl ? (
-                                        <img src={member.photoUrl} alt={member.name} className={styles.avatarImg} />
+                                    {(member.profilePhotoUrl || member.photoUrl) ? (
+                                        <img src={member.profilePhotoUrl || member.photoUrl} alt={member.name} className={styles.avatarImg} />
                                     ) : (
                                         getInitials(member.name)
                                     )}

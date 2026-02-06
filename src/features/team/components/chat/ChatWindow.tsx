@@ -52,7 +52,7 @@ export const ChatWindow = () => {
 
         return {
             name: otherUser?.name || 'Usuário',
-            photoUrl: otherUser?.photoUrl,
+            photoUrl: otherUser?.profilePhotoUrl || otherUser?.photoUrl,
             isGroup: false,
             otherId: otherId // Returning ID to look up status
         };

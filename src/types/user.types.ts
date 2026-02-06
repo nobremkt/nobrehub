@@ -10,7 +10,8 @@ export interface User {
     email: string;
     name: string;
     avatar?: string;
-    photoUrl?: string;
+    photoUrl?: string; // Foto 9:16 (banner/cover)
+    profilePhotoUrl?: string; // Foto de perfil 1:1 (avatar)
     role: string; // ID do role ou nome
     permissions?: string[];
     roleId?: string; // ID do documento de role

@@ -1,0 +1,29 @@
+.taskItem {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-2);
+}
+
+.checkboxWrapper {
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+}
+
+.content p {
+    margin: 0 !important;
+}
+
+.checked {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+}
+
+.checked p {
+    color: var(--color-text-muted);
+}

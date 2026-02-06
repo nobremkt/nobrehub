@@ -1,0 +1,9 @@
+.pageContainer {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 60px);
+    /* Subtract header height */
+    overflow: hidden;
+    isolation: isolate;
+    /* Creates clean stacking context for portal menus */
+}

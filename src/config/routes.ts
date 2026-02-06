@@ -61,6 +61,14 @@ export const ROUTES = {
         root: '/analytics',
     },
 
+    // Strategic
+    strategic: {
+        root: '/estrategico',
+        notes: '/estrategico/anotacoes',
+        projects: '/estrategico/projetos',
+        socialMedia: '/estrategico/social-media',
+    },
+
     // Settings
     settings: {
         root: '/configuracoes',

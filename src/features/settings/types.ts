@@ -48,7 +48,8 @@ export interface Collaborator {
     phone?: string;
     roleId?: string;
     sectorId?: string;
-    photoUrl?: string; // URL da foto ou base64
+    photoUrl?: string; // URL da foto 9:16 ou base64
+    profilePhotoUrl?: string; // URL da foto de perfil 1:1
     active: boolean;
     authUid?: string; // ID do usuário no Firebase Auth
     createdAt: number;

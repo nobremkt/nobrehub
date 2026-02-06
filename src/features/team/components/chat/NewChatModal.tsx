@@ -66,7 +66,7 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                         id: c.authUid!,
                         name: c.name,
                         email: c.email,
-                        photoUrl: c.photoUrl
+                        photoUrl: c.profilePhotoUrl || c.photoUrl
                     }));
 
                 await createGroupChat(groupName, participants);
@@ -92,7 +92,7 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                 id: collaborator.authUid,
                 name: collaborator.name,
                 email: collaborator.email,
-                photoUrl: collaborator.photoUrl
+                photoUrl: collaborator.profilePhotoUrl || collaborator.photoUrl
             });
             handleCleanClose();
         } catch (error) {
@@ -202,8 +202,8 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
                                     )}
 
                                     <div className="w-10 h-10 rounded-full bg-surface-tertiary overflow-hidden border-2 border-surface-primary shadow-sm">
-                                        {collab.photoUrl ? (
-                                            <img src={collab.photoUrl} alt={collab.name} className="w-full h-full object-cover" />
+                                        {(collab.profilePhotoUrl || collab.photoUrl) ? (
+                                            <img src={collab.profilePhotoUrl || collab.photoUrl} alt={collab.name} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-text-muted">
                                                 <User size={18} />

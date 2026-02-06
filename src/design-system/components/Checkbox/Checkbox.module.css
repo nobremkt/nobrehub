@@ -44,6 +44,13 @@
     justify-content: center;
 }
 
+/* Light mode: darker border for visibility */
+:global(:root:not(.dark)) .box,
+:global([data-theme="light"]) .box {
+    border-color: #9ca3af;
+    /* Gray-400 for better visibility */
+}
+
 .input:checked+.box {
     background-color: var(--color-primary-500);
     border-color: var(--color-primary-500);

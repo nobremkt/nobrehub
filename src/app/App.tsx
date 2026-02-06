@@ -27,6 +27,7 @@ import { ProductionPage } from '@/features/production/pages/ProductionPage';
 import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
+import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
 
@@ -147,6 +148,11 @@ export function App() {
                     <Route path={ROUTES.team.root + '/*'} element={<PlaceholderPage title="Equipe" />} />
 
                     <Route path={ROUTES.analytics.root + '/*'} element={<PlaceholderPage title="Analytics" />} />
+
+                    {/* Strategic */}
+                    <Route path={ROUTES.strategic.notes} element={<NotesPage />} />
+                    <Route path={ROUTES.strategic.projects} element={<StrategicProjectsPage />} />
+                    <Route path={ROUTES.strategic.socialMedia} element={<SocialMediaPage />} />
 
                     {/* Settings */}
                     <Route path={ROUTES.settings.appearance} element={<AppearancePage />} />

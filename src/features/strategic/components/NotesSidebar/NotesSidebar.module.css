@@ -1,0 +1,186 @@
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-primary);
+    border-right: 1px solid var(--color-border);
+}
+
+.header {
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.searchInput {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    background-color: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    transition: all 0.2s ease;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+.searchInput::placeholder {
+    color: var(--color-text-muted);
+}
+
+.createBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    margin-top: var(--spacing-3);
+    background-color: var(--color-primary-500);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.createBtn:hover {
+    background-color: var(--color-primary-600);
+}
+
+.notesList {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-2);
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.notesList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notesList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notesList::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.noteItem {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-1);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.noteHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+}
+
+.noteTimestamp {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.noteItem:hover {
+    background-color: var(--color-surface-secondary);
+    border-color: var(--color-border);
+}
+
+.noteItem.selected {
+    background-color: var(--color-primary-500);
+    background-opacity: 0.1;
+    border-color: var(--color-primary-500);
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+.noteTitle {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.noteItem.selected .noteTitle {
+    color: var(--color-primary-500);
+}
+
+.noteMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.noteCreator {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.deleteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-1);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s ease;
+}
+
+.noteItem:hover .deleteBtn {
+    opacity: 1;
+}
+
+.deleteBtn:hover {
+    color: var(--color-error);
+    background-color: var(--color-surface-tertiary);
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.emptyIcon {
+    margin-bottom: var(--spacing-3);
+    opacity: 0.5;
+}
+
+.emptyText {
+    font-size: var(--font-size-sm);
+}

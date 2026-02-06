@@ -1,0 +1,337 @@
+.container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--color-surface-primary);
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4) var(--spacing-6);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-surface-primary);
+}
+
+.titleInput {
+    flex: 1;
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    outline: none;
+    letter-spacing: -0.02em;
+}
+
+.titleInput::placeholder {
+    color: var(--color-text-muted);
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    padding: var(--spacing-1) var(--spacing-3);
+    background-color: var(--color-surface-secondary);
+    border-radius: var(--radius-full);
+}
+
+.savingDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-warning);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.savedDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-success);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.editorWrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-6);
+    background-color: var(--color-surface-primary);
+    position: relative;
+    z-index: 1;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.editorWrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.editorWrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.editorWrapper::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.editorContent {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+/* Tiptap ProseMirror Styling - Clean Obsidian-like */
+.proseMirror {
+    outline: none !important;
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    line-height: 1.75;
+    min-height: 400px;
+}
+
+.proseMirror:focus {
+    outline: none !important;
+}
+
+/* Placeholder */
+.proseMirror p.is-editor-empty:first-child::before {
+    color: var(--color-text-muted);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    white-space: pre-wrap;
+}
+
+/* Headings */
+.proseMirror h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.proseMirror h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.proseMirror h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Paragraphs */
+.proseMirror p {
+    margin-bottom: 1rem;
+}
+
+/* Bold & Italic */
+.proseMirror strong {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.proseMirror em {
+    font-style: italic;
+}
+
+/* Strikethrough */
+.proseMirror s {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+}
+
+/* Lists */
+.proseMirror ul,
+.proseMirror ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.proseMirror li {
+    margin-bottom: 0.25rem;
+}
+
+.proseMirror li p {
+    margin-bottom: 0.25rem;
+}
+
+/* Task Lists (Checklists) */
+.proseMirror ul[data-type="taskList"] {
+    list-style: none;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.proseMirror ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.proseMirror ul[data-type="taskList"] li>label {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.proseMirror ul[data-type="taskList"] li>div {
+    flex: 1;
+}
+
+.proseMirror ul[data-type="taskList"] input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+    background-color: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+}
+
+.proseMirror ul[data-type="taskList"] input[type="checkbox"]:hover {
+    border-color: var(--color-primary-500);
+}
+
+.proseMirror ul[data-type="taskList"] input[type="checkbox"]:checked {
+    background-color: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+}
+
+.proseMirror ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.proseMirror ul[data-type="taskList"] li[data-checked="true"]>div {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+}
+
+/* Blockquotes */
+.proseMirror blockquote {
+    border-left: 3px solid var(--color-primary-500);
+    padding-left: 1rem;
+    margin-left: 0;
+    margin-bottom: 1rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+/* Code Inline */
+.proseMirror code {
+    background-color: var(--color-surface-tertiary);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+    font-size: 0.875em;
+    color: var(--color-primary-500);
+}
+
+/* Code Block */
+.proseMirror pre {
+    background-color: var(--color-surface-tertiary);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.proseMirror pre code {
+    background: none;
+    padding: 0;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+/* Horizontal Rule */
+.proseMirror hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 2rem 0;
+}
+
+/* Links */
+.proseMirror a {
+    color: var(--color-primary-500);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.proseMirror a:hover {
+    text-decoration: underline;
+}
+
+/* Selection */
+.proseMirror ::selection {
+    background-color: rgba(220, 38, 38, 0.3);
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.emptyIcon {
+    margin-bottom: var(--spacing-4);
+    opacity: 0.3;
+}
+
+.emptyTitle {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-2);
+}
+
+.emptyText {
+    font-size: var(--font-size-sm);
+    max-width: 280px;
+    line-height: 1.6;
+}

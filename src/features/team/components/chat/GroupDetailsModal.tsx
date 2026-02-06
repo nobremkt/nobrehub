@@ -124,6 +124,7 @@ export const GroupDetailsModal = ({ isOpen, onClose, chat }: GroupDetailsModalPr
             uid,
             name: collab?.name || 'Usuário desconhecido',
             photoUrl: collab?.photoUrl,
+            profilePhotoUrl: collab?.profilePhotoUrl,
             email: collab?.email,
             isAdmin: chat.admins?.includes(uid)
         };
@@ -384,8 +385,8 @@ export const GroupDetailsModal = ({ isOpen, onClose, chat }: GroupDetailsModalPr
                                         className="flex items-center gap-2 p-2 hover:bg-surface-tertiary rounded-md text-left transition-colors"
                                     >
                                         <div className="w-8 h-8 rounded-full bg-surface-primary overflow-hidden">
-                                            {user.photoUrl ? (
-                                                <img src={user.photoUrl} className="w-full h-full object-cover" />
+                                            {(user.profilePhotoUrl || user.photoUrl) ? (
+                                                <img src={user.profilePhotoUrl || user.photoUrl} className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-text-muted"><User size={14} /></div>
                                             )}
@@ -407,8 +408,8 @@ export const GroupDetailsModal = ({ isOpen, onClose, chat }: GroupDetailsModalPr
                             <div key={p.uid} className="flex items-center justify-between p-2 hover:bg-surface-secondary rounded-lg transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-surface-tertiary overflow-hidden border border-border">
-                                        {p.photoUrl ? (
-                                            <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                                        {(p.profilePhotoUrl || p.photoUrl) ? (
+                                            <img src={p.profilePhotoUrl || p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-text-muted">
                                                 <User size={18} />

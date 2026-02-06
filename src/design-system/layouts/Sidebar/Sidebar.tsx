@@ -37,7 +37,9 @@ import {
     Upload,
     Target,
     CalendarDays,
-    Shuffle
+    Shuffle,
+    Lightbulb,
+    Share2
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -103,6 +105,17 @@ const navCategories: NavCategory[] = [
         subItems: [
             { id: 'members', label: 'Membros', path: ROUTES.team.members, icon: <User size={18} /> },
             { id: 'chat', label: 'Chat da Equipe', path: ROUTES.team.chat, icon: <MessagesSquare size={18} /> },
+        ]
+    },
+    {
+        id: 'strategic',
+        label: 'Estratégico',
+        icon: <Lightbulb size={20} />,
+        permission: PERMISSIONS.VIEW_STRATEGIC,
+        subItems: [
+            { id: 'notes', label: 'Anotações', path: ROUTES.strategic.notes, icon: <FileText size={18} /> },
+            { id: 'strategicProjects', label: 'Projetos', path: ROUTES.strategic.projects, icon: <Briefcase size={18} /> },
+            { id: 'socialMedia', label: 'Social Media', path: ROUTES.strategic.socialMedia, icon: <Share2 size={18} /> },
         ]
     },
     {

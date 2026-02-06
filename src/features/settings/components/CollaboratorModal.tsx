@@ -27,7 +27,9 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
     const [sectorId, setSectorId] = useState('');
     const [active, setActive] = useState(true);
     const [photoUrl, setPhotoUrl] = useState('');
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [isUploadingProfile, setIsUploadingProfile] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
     // Validation State
@@ -51,7 +53,7 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
             setSectorId(collaboratorToEdit.sectorId || '');
             setActive(collaboratorToEdit.active);
             setPhotoUrl(collaboratorToEdit.photoUrl || '');
-            setPhotoUrl(collaboratorToEdit.photoUrl || '');
+            setProfilePhotoUrl(collaboratorToEdit.profilePhotoUrl || '');
             setPassword(''); // Reset password field
         } else {
             // Reset for create mode
@@ -62,6 +64,7 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
             setSectorId('');
             setActive(true);
             setPhotoUrl('');
+            setProfilePhotoUrl('');
             setPassword('');
         }
     }, [collaboratorToEdit, isOpen]);
@@ -105,6 +108,7 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                     sectorId,
                     active,
                     photoUrl,
+                    profilePhotoUrl,
                     password: password.trim() || undefined
                 });
             } else {
@@ -116,6 +120,7 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                     sectorId,
                     active,
                     photoUrl,
+                    profilePhotoUrl,
                     password
                 });
             }
@@ -199,13 +204,14 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                     />
                 </div>
 
+                {/* Foto 9:16 */}
                 <Input
-                    label="URL da Foto"
+                    label="Foto 9:16 (Banner/Cover)"
                     placeholder="https://..."
                     value={photoUrl}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhotoUrl(e.target.value)}
                     fullWidth
-                    helperText="Cole o link ou faça upload de uma imagem."
+                    helperText="Foto vertical para banners e capas."
                 />
                 <div className="flex justify-end -mt-3">
                     <input
@@ -230,7 +236,6 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                                 setPhotoUrl(downloadURL);
                             } catch (error) {
                                 console.error("Upload failed:", error);
-                                // Optional: You could set a specific error state here if needed
                             } finally {
                                 setIsUploading(false);
                             }
@@ -242,6 +247,54 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                         size="sm"
                         isLoading={isUploading}
                         onClick={() => document.getElementById('photo-upload')?.click()}
+                    >
+                        Upload do Computador
+                    </Button>
+                </div>
+
+                {/* Foto de Perfil 1:1 */}
+                <Input
+                    label="Foto de Perfil 1:1 (Avatar)"
+                    placeholder="https://..."
+                    value={profilePhotoUrl}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfilePhotoUrl(e.target.value)}
+                    fullWidth
+                    helperText="Foto quadrada para avatares e perfis."
+                />
+                <div className="flex justify-end -mt-3">
+                    <input
+                        type="file"
+                        id="profile-photo-upload"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            setIsUploadingProfile(true);
+                            try {
+                                const storage = getFirebaseStorage();
+                                const timestamp = Date.now();
+                                const filename = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                                const storageRef = ref(storage, `collaborators/profile-photos/${filename}`);
+
+                                const snapshot = await uploadBytes(storageRef, file);
+                                const downloadURL = await getDownloadURL(snapshot.ref);
+
+                                setProfilePhotoUrl(downloadURL);
+                            } catch (error) {
+                                console.error("Profile photo upload failed:", error);
+                            } finally {
+                                setIsUploadingProfile(false);
+                            }
+                        }}
+                    />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        isLoading={isUploadingProfile}
+                        onClick={() => document.getElementById('profile-photo-upload')?.click()}
                     >
                         Upload do Computador
                     </Button>

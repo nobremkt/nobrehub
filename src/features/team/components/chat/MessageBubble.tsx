@@ -56,7 +56,7 @@ export const MessageBubble = ({ message, showSender = false, onImageClick }: Mes
             isMine={isMine}
             senderName={senderName}
             showSender={showSender}
-            senderAvatar={sender?.photoUrl}
+            senderAvatar={sender?.profilePhotoUrl || sender?.photoUrl}
             time={formatMessageTime(message.createdAt)}
             fileName={fileName}
             onImageClick={(url) => onImageClick ? onImageClick(url) : window.open(url, '_blank')}

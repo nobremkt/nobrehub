@@ -51,7 +51,7 @@ export const ChatSidebar = () => {
         if (chat.type === 'group') return null;
         const otherId = chat.participants?.find((uid: string) => uid !== currentAuthUid);
         const otherUser = collaborators.find(c => c.authUid === otherId);
-        return otherUser?.photoUrl;
+        return otherUser?.profilePhotoUrl || otherUser?.photoUrl;
     };
 
     const formatTime = (timestamp: number) => {

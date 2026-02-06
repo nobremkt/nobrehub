@@ -113,9 +113,9 @@ export const CollaboratorsPage = () => {
                             </div>
 
                             <div className="w-24 h-24 rounded-full overflow-hidden bg-surface-tertiary mb-3 shrink-0 border-2 border-surface-card shadow-sm">
-                                {collaborator.photoUrl ? (
+                                {collaborator.profilePhotoUrl ? (
                                     <img
-                                        src={collaborator.photoUrl}
+                                        src={collaborator.profilePhotoUrl}
                                         alt={collaborator.name}
                                         className="w-full h-full object-cover"
                                     />

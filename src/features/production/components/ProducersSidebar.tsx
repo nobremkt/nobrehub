@@ -209,8 +209,8 @@ export const ProducersSidebar = () => {
                                         w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0
                                         ${isSelected ? 'ring-2 ring-primary-500' : 'bg-surface-tertiary'}
                                     `}>
-                                        {producer.photoUrl ? (
-                                            <img src={producer.photoUrl} alt={producer.name} className="w-full h-full object-cover" />
+                                        {(producer.profilePhotoUrl || producer.photoUrl) ? (
+                                            <img src={producer.profilePhotoUrl || producer.photoUrl} alt={producer.name} className="w-full h-full object-cover" />
                                         ) : (
                                             <User size={14} />
                                         )}

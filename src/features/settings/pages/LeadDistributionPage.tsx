@@ -255,9 +255,9 @@ export const LeadDistributionPage = () => {
                                 {/* Collaborator info */}
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-tertiary shrink-0">
-                                        {collaborator.photoUrl ? (
+                                        {(collaborator.profilePhotoUrl || collaborator.photoUrl) ? (
                                             <img
-                                                src={collaborator.photoUrl}
+                                                src={collaborator.profilePhotoUrl || collaborator.photoUrl}
                                                 alt={collaborator.name}
                                                 className="w-full h-full object-cover"
                                             />

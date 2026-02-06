@@ -1,0 +1,155 @@
+/**
+ * Client Table Styles
+ */
+
+.loading,
+.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    color: var(--color-text-muted);
+}
+
+.tableWrapper {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.table th {
+    text-align: left;
+    padding: var(--spacing-2) var(--spacing-3);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.table th svg {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: var(--spacing-1);
+}
+
+.table td {
+    padding: var(--spacing-3);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.row:hover {
+    background-color: var(--color-bg-secondary);
+}
+
+.row.selected {
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+/* Contract status colors */
+.row.active {
+    border-left: 3px solid var(--color-success);
+}
+
+.row.warning {
+    border-left: 3px solid var(--color-warning);
+}
+
+.row.expired {
+    border-left: 3px solid var(--color-error);
+}
+
+td.active {
+    color: var(--color-success);
+}
+
+td.warning {
+    color: var(--color-warning);
+}
+
+td.expired {
+    color: var(--color-error);
+}
+
+.clientName {
+    font-weight: 500;
+    color: var(--color-primary-500);
+}
+
+.planBadge {
+    display: inline-block;
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+}
+
+.planBadge.expansao {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.planBadge.presenca {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.planBadge.outro {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.instagramBtn {
+    display: inline-block;
+    padding: var(--spacing-1) var(--spacing-2);
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.instagramBtn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(131, 58, 180, 0.4);
+    color: var(--color-text-secondary);
+}
+
+.actions {
+    display: flex;
+    gap: var(--spacing-1);
+}
+
+.editBtn,
+.deleteBtn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    padding: var(--spacing-1);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.editBtn:hover {
+    color: var(--color-primary-500);
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+.deleteBtn:hover {
+    color: var(--color-error);
+    background-color: rgba(220, 38, 38, 0.1);
+}
