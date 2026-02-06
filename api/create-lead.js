@@ -218,8 +218,9 @@ export default async function handler(req, res) {
                         });
                         console.log(`Updated existing CRM lead: ${existingLeadId}`);
                     } else {
-                        // CREATE new lead
-                        await leadsRef.add({
+                        // CREATE new lead with SAME ID as conversation leadId
+                        // This ensures RTDB and Firestore are synchronized
+                        await leadsRef.doc(conversationData.leadId).set({
                             name: conversationData.leadName,
                             phone: conversationData.leadPhone,
                             email: conversationData.leadEmail,
@@ -243,7 +244,7 @@ export default async function handler(req, res) {
                             createdAt: now,
                             updatedAt: now,
                         });
-                        console.log(`Created new CRM lead from form: ${conversationData.leadName}`);
+                        console.log(`Created new CRM lead with ID: ${conversationData.leadId}`);
                     }
                 }
             } catch (err) {
