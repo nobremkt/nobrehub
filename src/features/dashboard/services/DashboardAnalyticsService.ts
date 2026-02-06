@@ -85,12 +85,12 @@ export interface ProductionMetrics {
         points: number;
         avgDays: number;
         approvalRate: number;
-        photoUrl?: string
+        profilePhotoUrl?: string
     } | null;
-    topPointsProducer: { name: string; points: number; photoUrl?: string } | null;
-    topProjectsProducer: { name: string; count: number; photoUrl?: string } | null;
-    rocketProducer: { name: string; points: number; inDays: number; photoUrl?: string } | null;
-    finisherProducer: { name: string; count: number; inDays: number; photoUrl?: string } | null;
+    topPointsProducer: { name: string; points: number; profilePhotoUrl?: string } | null;
+    topProjectsProducer: { name: string; count: number; profilePhotoUrl?: string } | null;
+    rocketProducer: { name: string; points: number; inDays: number; profilePhotoUrl?: string } | null;
+    finisherProducer: { name: string; count: number; inDays: number; profilePhotoUrl?: string } | null;
 }
 
 /** Sales/CRM metrics */
@@ -140,7 +140,7 @@ export interface AdminMetrics {
         name: string;
         role: string;
         sector: string;
-        photoUrl?: string;
+        profilePhotoUrl?: string;
         projectsDelivered: number;
         pointsEarned: number;
     }[];
@@ -185,7 +185,7 @@ export interface PostSalesMetrics {
     topPostSellers: {
         id: string;
         name: string;
-        photoUrl?: string;
+        profilePhotoUrl?: string;
         paymentsReceived: number;
         ticketsResolved: number;
         avgRating: number;
@@ -349,11 +349,11 @@ async function getCollaboratorsData(): Promise<CollaboratorsData> {
     snapshot.docs.forEach(docSnap => {
         const data = docSnap.data();
         const name = data.name || data.displayName || 'Desconhecido';
-        const photoUrl = data.photoUrl || '';
+        const profilePhotoUrl = data.profilePhotoUrl || '';
 
         // Add to maps (all collaborators)
         nameMap[docSnap.id] = name;
-        photoMap[docSnap.id] = photoUrl;
+        photoMap[docSnap.id] = profilePhotoUrl;
 
         // Count producers: sectorId = Produção AND roleId != Líder
         const sectorId = data.sectorId || '';
@@ -623,20 +623,20 @@ export const DashboardAnalyticsService = {
                 points: mvpEntry.points,
                 avgDays: mvpAvgDays,
                 approvalRate: mvpApprovalRate,
-                photoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined
+                profilePhotoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined
             };
         }
 
         // Top points producer (same as MVP for now)
         const topPointsProducer = mvpEntry
-            ? { name: mvpEntry.name, points: mvpEntry.points, photoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined }
+            ? { name: mvpEntry.name, points: mvpEntry.points, profilePhotoUrl: collaboratorsPhotoMap[mvpEntry.id] || undefined }
             : null;
 
         // Top projects producer (by count)
         const topProjectsEntry = Object.values(producerPointsMap)
             .sort((a, b) => b.count - a.count)[0];
         const topProjectsProducer = topProjectsEntry
-            ? { name: topProjectsEntry.name, count: topProjectsEntry.count, photoUrl: collaboratorsPhotoMap[topProjectsEntry.id] || undefined }
+            ? { name: topProjectsEntry.name, count: topProjectsEntry.count, profilePhotoUrl: collaboratorsPhotoMap[topProjectsEntry.id] || undefined }
             : null;
 
         // Rocket (record for most POINTS in a SINGLE day - based on MONTH of the selected period)
@@ -676,7 +676,7 @@ export const DashboardAnalyticsService = {
                 name: rocketEntry.name,
                 points: rocketEntry.points,
                 inDays: 1, // It's a single day record
-                photoUrl: collaboratorsPhotoMap[rocketEntry.id] || undefined
+                profilePhotoUrl: collaboratorsPhotoMap[rocketEntry.id] || undefined
             }
             : null;
 
@@ -707,7 +707,7 @@ export const DashboardAnalyticsService = {
                 name: finisherEntry.name,
                 count: finisherEntry.count,
                 inDays: 1, // It's a single day record
-                photoUrl: collaboratorsPhotoMap[finisherEntry.id] || undefined
+                profilePhotoUrl: collaboratorsPhotoMap[finisherEntry.id] || undefined
             }
             : null;
 
@@ -951,7 +951,7 @@ export const DashboardAnalyticsService = {
                 name: data.name || 'Desconhecido',
                 role: rolesMap[data.roleId] || 'Sem Cargo',
                 sector: sectorsMap[data.sectorId] || 'Sem Setor',
-                photoUrl: data.photoUrl,
+                profilePhotoUrl: data.profilePhotoUrl,
                 projectsDelivered: projectStats.count,
                 pointsEarned: projectStats.points
             });
@@ -1144,7 +1144,7 @@ export const DashboardAnalyticsService = {
             return {
                 id: doc.id,
                 name: data.name || 'Desconhecido',
-                photoUrl: data.photoUrl || undefined,
+                profilePhotoUrl: data.profilePhotoUrl || undefined,
                 paymentsReceived: 0, // TODO: Sum from payments collection
                 ticketsResolved: 0, // TODO: Count from tickets collection
                 avgRating: 0, // TODO: Average from customer feedback

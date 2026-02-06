@@ -7,7 +7,7 @@ interface TeamMember {
     name: string;
     role: string;
     sector: string;
-    photoUrl?: string;
+    profilePhotoUrl?: string;
     isOnline: boolean;
     productivity: number;
 }
@@ -58,9 +58,9 @@ export function TeamOverview({ members }: TeamOverviewProps) {
                                 className={styles.memberAvatar}
                                 style={{ background: getAvatarColor(member.name) }}
                             >
-                                {member.photoUrl ? (
+                                {member.profilePhotoUrl ? (
                                     <img
-                                        src={member.photoUrl}
+                                        src={member.profilePhotoUrl}
                                         alt={member.name}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     />
