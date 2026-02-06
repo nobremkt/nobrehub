@@ -203,14 +203,20 @@ export const CreateProjectModal = ({
             const projectId = await addProject(projectData as any);
 
             // 2. Atualizar o Lead para pós-venda (se tiver leadId válido)
+            // Usa updateOrCreateLead que cria o lead se ele não existir no Firestore
             if (leadId && leadId !== 'manual') {
                 try {
-                    await LeadService.updateLead(leadId, {
-                        currentSector: 'pos_vendas',
-                        clientStatus: 'aguardando_projeto',
-                        projectIds: [projectId], // Adiciona o ID do projeto
-                        postSalesDistributionStatus: 'pending', // Vai pra lista de distribuição pós-venda
-                    });
+                    await LeadService.updateOrCreateLead(
+                        leadId,
+                        {
+                            currentSector: 'pos_vendas',
+                            clientStatus: 'aguardando_projeto',
+                            projectIds: [projectId],
+                            postSalesDistributionStatus: 'pending',
+                        },
+                        // Dados para criação caso não exista
+                        { name: leadName || 'Cliente' }
+                    );
                 } catch (error) {
                     console.error('Erro ao atualizar lead para pós-venda:', error);
                     // Não bloqueia o fluxo, projeto foi criado

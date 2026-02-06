@@ -2,7 +2,9 @@ import { getFirestoreDb, getRealtimeDb } from '@/config/firebase';
 import {
     collection,
     getDocs,
+    getDoc,
     addDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     doc,
@@ -86,6 +88,54 @@ export const LeadService = {
             await updateDoc(docRef, dataToUpdate);
         } catch (error) {
             console.error('Error updating lead:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Update or create a lead. If the lead doesn't exist, creates it with the provided data.
+     * Used when transitioning from Inbox conversations (RTDB) to CRM leads (Firestore).
+     */
+    updateOrCreateLead: async (
+        id: string,
+        updates: Partial<Lead>,
+        createData?: { name: string; phone?: string; email?: string }
+    ): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const docRef = doc(db, COLLECTION_NAME, id);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                // Lead exists - just update it
+                const dataToUpdate: any = { ...updates };
+                dataToUpdate.updatedAt = Timestamp.fromDate(new Date());
+                delete dataToUpdate.createdAt;
+                await updateDoc(docRef, dataToUpdate);
+            } else if (createData) {
+                // Lead doesn't exist - create it with ID and initial data
+                const now = new Date();
+                await setDoc(docRef, {
+                    name: createData.name,
+                    phone: createData.phone || null,
+                    email: createData.email || null,
+                    company: null,
+                    pipeline: 'low-ticket',
+                    status: 'lt-entrada',
+                    order: 0,
+                    estimatedValue: 0,
+                    tags: ['Pós-Venda'],
+                    responsibleId: 'admin',
+                    ...updates,
+                    createdAt: Timestamp.fromDate(now),
+                    updatedAt: Timestamp.fromDate(now),
+                });
+            } else {
+                // No create data provided - skip silently
+                console.warn('[LeadService] Lead not found and no createData provided:', id);
+            }
+        } catch (error) {
+            console.error('Error in updateOrCreateLead:', error);
             throw error;
         }
     },
