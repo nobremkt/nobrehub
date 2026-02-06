@@ -106,9 +106,11 @@ export const CreateProjectModal = ({
         return products.find(p => p.id === selectedProductId);
     }, [products, selectedProductId]);
 
-    // Verifica se produto é vídeo (tem durationPoints)
+    // Verifica se produto é vídeo (pela categoria, não durationPoints)
     const isVideoProduct = useMemo(() => {
-        return selectedProduct?.durationPoints !== undefined;
+        if (!selectedProduct) return false;
+        const cat = selectedProduct.category?.toLowerCase() || '';
+        return cat.includes('vídeo') || cat.includes('video');
     }, [selectedProduct]);
 
     // Calcula pontos base do produto
@@ -159,34 +161,43 @@ export const CreateProjectModal = ({
         }
 
         try {
-            // 1. Criar o projeto na lista de distribuição
-            const projectId = await addProject({
+            // Monta objeto do projeto (sem campos undefined)
+            const projectData: Record<string, unknown> = {
                 name,
                 leadId: leadId || 'manual',
                 leadName: leadName || 'Cliente manual',
-                status: 'aguardando', // Sempre começa como aguardando
+                status: 'aguardando',
                 dueDate: new Date(dueDate),
-                driveLink,
-                notes,
+                driveLink: driveLink || '',
+                notes: notes || '',
                 checklist: [],
-                // Dados do produto
                 productType: selectedProduct?.name || '',
                 productId: selectedProductId,
-                durationCategory: isVideoProduct ? selectedDuration as VideoDurationCategory : undefined,
                 basePoints,
                 extraPoints,
                 totalPoints,
-                // Distribuição - sempre vai pra lista
                 distributionStatus,
-                producerId: '', // Líder vai atribuir
+                producerId: '',
                 producerName: '',
-                suggestedProducerId: suggestProducer ? suggestedProducerId : undefined,
-                suggestedProducerName: suggestProducer
-                    ? producers.find(p => p.id === suggestedProducerId)?.name
-                    : undefined,
-                suggestionNotes: suggestProducer ? suggestionNotes : undefined,
                 source: conversationId ? 'inbox' : 'manual',
-            });
+            };
+
+            // Adiciona durationCategory apenas se for vídeo e tiver selecionado
+            if (isVideoProduct && selectedDuration) {
+                projectData.durationCategory = selectedDuration;
+            }
+
+            // Adiciona sugestão de produtor apenas se tiver
+            if (suggestProducer && suggestedProducerId) {
+                projectData.suggestedProducerId = suggestedProducerId;
+                projectData.suggestedProducerName = producers.find(p => p.id === suggestedProducerId)?.name || '';
+                if (suggestionNotes) {
+                    projectData.suggestionNotes = suggestionNotes;
+                }
+            }
+
+            // 1. Criar o projeto na lista de distribuição
+            const projectId = await addProject(projectData as any);
 
             // 2. Atualizar o Lead para pós-venda (se tiver leadId válido)
             if (leadId && leadId !== 'manual') {
