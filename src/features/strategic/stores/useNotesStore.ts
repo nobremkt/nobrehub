@@ -4,7 +4,17 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * Zustand store para gerenciamento de estado das notas.
- * Inclui auto-save com debounce e sync em tempo real.
+ * 
+ * Arquitetura Multiplayer:
+ * - Lista de notas: Firestore (onSnapshot)
+ * - Conteúdo da nota: RTDB (onValue) - sync instantâneo
+ * - Presença de editores: RTDB (onValue)
+ * 
+ * Fluxo de edição:
+ * 1. Usuário digita → estado local atualiza imediatamente
+ * 2. Debounce de 300ms → envia para RTDB
+ * 3. RTDB propaga para todos os subscribers
+ * 4. Outros usuários recebem update em tempo real
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -12,156 +22,291 @@
 import { create } from 'zustand';
 import { Note } from '../types';
 import { NotesService } from '../services/NotesService';
+import { NotesRealtimeService, EditorPresence, NoteRealtimeData } from '../services/NotesRealtimeService';
 import { toast } from 'react-toastify';
+import { useAuthStore } from '@/stores';
 
 interface NotesState {
+    // Data
     notes: Note[];
     selectedNoteId: string | null;
-    selectedNoteContent: string; // Real-time synced content from server
+    localContent: string;          // Conteúdo local (para UI instantânea)
+    remoteContent: string;         // Conteúdo do servidor (para comparação)
+    activeEditors: EditorPresence[]; // Editores ativos na nota atual
+    lastRemoteEditBy: string;      // Quem fez a última edição remota
+
+    // Status
     isLoading: boolean;
     isSaving: boolean;
+    isConnected: boolean;
     searchQuery: string;
-    lastLocalUpdate: number; // Timestamp to detect local vs remote changes
 
-    // Subscriptions
-    unsubscribe: () => void;
-    unsubscribeNote: () => void;
-
-    // Debounce timer
-    saveTimeout: ReturnType<typeof setTimeout> | null;
+    // Subscriptions (internos)
+    _unsubscribeNotes: () => void;
+    _unsubscribeContent: () => void;
+    _unsubscribeEditors: () => void;
+    _leaveEditor: () => void;
+    _saveTimeout: ReturnType<typeof setTimeout> | null;
+    _presenceInterval: ReturnType<typeof setInterval> | null;
+    _lastLocalEdit: number;
 
     // Actions
     init: () => void;
     cleanup: () => void;
     selectNote: (id: string | null) => void;
     createNote: () => Promise<void>;
-    updateNoteContent: (content: string) => void;
+    updateLocalContent: (content: string) => void;  // Atualiza localmente + debounce save
     updateNoteTitle: (title: string) => void;
     deleteNote: (id: string) => Promise<void>;
     setSearchQuery: (query: string) => void;
 }
 
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 300; // Reduzido para melhor responsividade
+const PRESENCE_INTERVAL_MS = 10000; // Heartbeat a cada 10 segundos
 
 export const useNotesStore = create<NotesState>((set, get) => ({
+    // Initial state
     notes: [],
     selectedNoteId: null,
-    selectedNoteContent: '',
+    localContent: '',
+    remoteContent: '',
+    activeEditors: [],
+    lastRemoteEditBy: '',
     isLoading: false,
     isSaving: false,
+    isConnected: true,
     searchQuery: '',
-    lastLocalUpdate: 0,
-    unsubscribe: () => { },
-    unsubscribeNote: () => { },
-    saveTimeout: null,
 
+    // Internal subscriptions
+    _unsubscribeNotes: () => { },
+    _unsubscribeContent: () => { },
+    _unsubscribeEditors: () => { },
+    _leaveEditor: () => { },
+    _saveTimeout: null,
+    _presenceInterval: null,
+    _lastLocalEdit: 0,
+
+    /**
+     * Inicializa o store - subscribe à lista de notas
+     */
     init: () => {
-        const { unsubscribe } = get();
-        unsubscribe(); // Cleanup previous subscription
+        const { _unsubscribeNotes } = get();
+        _unsubscribeNotes();
 
         set({ isLoading: true });
 
         const unsub = NotesService.subscribeToNotes((notes) => {
-            set({ notes, isLoading: false });
+            set({ notes, isLoading: false, isConnected: true });
         });
 
-        set({ unsubscribe: unsub });
+        set({ _unsubscribeNotes: unsub });
     },
 
+    /**
+     * Cleanup completo - chamado ao desmontar
+     */
     cleanup: () => {
-        const { unsubscribe, unsubscribeNote, saveTimeout } = get();
-        unsubscribe();
-        unsubscribeNote();
-        if (saveTimeout) clearTimeout(saveTimeout);
+        const {
+            _unsubscribeNotes,
+            _unsubscribeContent,
+            _unsubscribeEditors,
+            _leaveEditor,
+            _saveTimeout,
+            _presenceInterval
+        } = get();
+
+        _unsubscribeNotes();
+        _unsubscribeContent();
+        _unsubscribeEditors();
+        _leaveEditor();
+
+        if (_saveTimeout) clearTimeout(_saveTimeout);
+        if (_presenceInterval) clearInterval(_presenceInterval);
+
         set({
             notes: [],
             selectedNoteId: null,
-            selectedNoteContent: '',
-            unsubscribe: () => { },
-            unsubscribeNote: () => { },
-            saveTimeout: null
+            localContent: '',
+            remoteContent: '',
+            activeEditors: [],
+            _unsubscribeNotes: () => { },
+            _unsubscribeContent: () => { },
+            _unsubscribeEditors: () => { },
+            _leaveEditor: () => { },
+            _saveTimeout: null,
+            _presenceInterval: null,
         });
     },
 
-    selectNote: (id) => {
-        const { unsubscribeNote: prevUnsub } = get();
-        prevUnsub(); // Cleanup previous note subscription
+    /**
+     * Seleciona uma nota e inicia subscriptions multiplayer
+     */
+    selectNote: async (id) => {
+        const {
+            _unsubscribeContent,
+            _unsubscribeEditors,
+            _leaveEditor,
+            _saveTimeout,
+            _presenceInterval,
+            notes
+        } = get();
+
+        // Limpar subscriptions anteriores
+        _unsubscribeContent();
+        _unsubscribeEditors();
+        _leaveEditor();
+        if (_saveTimeout) clearTimeout(_saveTimeout);
+        if (_presenceInterval) clearInterval(_presenceInterval);
 
         if (!id) {
             set({
                 selectedNoteId: null,
-                selectedNoteContent: '',
-                unsubscribeNote: () => { }
+                localContent: '',
+                remoteContent: '',
+                activeEditors: [],
+                _unsubscribeContent: () => { },
+                _unsubscribeEditors: () => { },
+                _leaveEditor: () => { },
+                _presenceInterval: null,
             });
             return;
         }
 
-        // Subscribe to real-time updates for this specific note
-        const unsub = NotesService.subscribeToNote(id, (note) => {
-            const { lastLocalUpdate, isSaving } = get();
+        // Garantir que a nota existe no RTDB (migração de notas antigas)
+        const note = notes.find(n => n.id === id);
+        if (note) {
+            await NotesService.ensureNoteInRTDB(id, note.content || '');
+        }
+
+        // 1. Subscribe ao conteúdo em tempo real (RTDB)
+        const unsubContent = NotesRealtimeService.subscribeToContent(id, (data: NoteRealtimeData | null) => {
+            if (!data) return;
+
+            const { _lastLocalEdit, localContent } = get();
+            const currentUser = useAuthStore.getState().user;
             const now = Date.now();
 
-            // Only update content if it's not a local change (within debounce window)
-            // This prevents overwriting while user is typing
-            if (note && (now - lastLocalUpdate > DEBOUNCE_MS + 100) && !isSaving) {
-                set({ selectedNoteContent: note.content });
+            // Só atualiza se:
+            // - A edição não é local recente (evita loop)
+            // - Ou é uma edição de outro usuário
+            const isRemoteEdit = data.lastEditBy !== currentUser?.id;
+            const isStaleLocalEdit = now - _lastLocalEdit > DEBOUNCE_MS + 200;
+
+            if (isRemoteEdit || isStaleLocalEdit) {
+                // Só atualiza se o conteúdo realmente mudou
+                if (data.content !== localContent) {
+                    set({
+                        localContent: data.content,
+                        remoteContent: data.content,
+                        lastRemoteEditBy: data.lastEditBy,
+                    });
+                }
             }
+
+            set({ remoteContent: data.content });
         });
+
+        // 2. Subscribe aos editores ativos
+        const unsubEditors = NotesRealtimeService.subscribeToEditors(id, (editors) => {
+            const currentUser = useAuthStore.getState().user;
+            // Filtra o próprio usuário da lista
+            const otherEditors = editors.filter(e => e.oderId !== currentUser?.id);
+            set({ activeEditors: otherEditors });
+        });
+
+        // 3. Marcar presença como editor
+        const leave = await NotesRealtimeService.joinAsEditor(id);
+
+        // 4. Iniciar heartbeat de presença
+        const presenceInt = setInterval(() => {
+            NotesRealtimeService.updatePresence(id);
+        }, PRESENCE_INTERVAL_MS);
+
+        // Carregar conteúdo inicial
+        const initialContent = await NotesRealtimeService.getContent(id);
 
         set({
             selectedNoteId: id,
-            unsubscribeNote: unsub
+            localContent: initialContent || '',
+            remoteContent: initialContent || '',
+            _unsubscribeContent: unsubContent,
+            _unsubscribeEditors: unsubEditors,
+            _leaveEditor: leave,
+            _presenceInterval: presenceInt,
         });
     },
 
+    /**
+     * Cria uma nova nota
+     */
     createNote: async () => {
         try {
+            set({ isLoading: true });
             const noteId = await NotesService.createNote();
-            get().selectNote(noteId);
+            await get().selectNote(noteId);
             toast.success('Anotação criada!');
         } catch (error) {
             console.error('Error creating note:', error);
             toast.error('Erro ao criar anotação');
+        } finally {
+            set({ isLoading: false });
         }
     },
 
-    updateNoteContent: (content: string) => {
-        const { selectedNoteId, saveTimeout } = get();
+    /**
+     * Atualiza conteúdo localmente + debounce para salvar
+     * Esta é a função chamada pelo editor a cada keystroke
+     */
+    updateLocalContent: (content: string) => {
+        const { selectedNoteId, _saveTimeout } = get();
         if (!selectedNoteId) return;
 
-        // Clear previous timeout
-        if (saveTimeout) clearTimeout(saveTimeout);
+        // Limpar timeout anterior
+        if (_saveTimeout) clearTimeout(_saveTimeout);
 
-        // Mark this as a local update
-        set({ lastLocalUpdate: Date.now() });
+        // Atualizar estado local imediatamente (UI responsiva)
+        set({
+            localContent: content,
+            _lastLocalEdit: Date.now(),
+        });
 
-        // Debounced save
+        // Debounced save para RTDB
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
-                await NotesService.updateNote(selectedNoteId, { content });
+                await NotesService.updateNoteContent(selectedNoteId, content);
             } catch (error) {
                 console.error('Error saving note content:', error);
+                set({ isConnected: false });
             } finally {
                 set({ isSaving: false });
             }
         }, DEBOUNCE_MS);
 
-        set({ saveTimeout: newTimeout });
+        set({ _saveTimeout: newTimeout });
     },
 
+    /**
+     * Atualiza título da nota
+     */
     updateNoteTitle: (title: string) => {
-        const { selectedNoteId, saveTimeout } = get();
+        const { selectedNoteId, _saveTimeout } = get();
         if (!selectedNoteId) return;
 
-        // Clear previous timeout
-        if (saveTimeout) clearTimeout(saveTimeout);
+        // Atualizar na lista local imediatamente
+        set(state => ({
+            notes: state.notes.map(n =>
+                n.id === selectedNoteId ? { ...n, title } : n
+            ),
+        }));
 
-        // Debounced save
+        // Limpar timeout anterior e criar novo
+        if (_saveTimeout) clearTimeout(_saveTimeout);
+
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
-                await NotesService.updateNote(selectedNoteId, { title });
+                await NotesService.updateNoteTitle(selectedNoteId, title);
             } catch (error) {
                 console.error('Error saving note title:', error);
             } finally {
@@ -169,14 +314,17 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             }
         }, DEBOUNCE_MS);
 
-        set({ saveTimeout: newTimeout });
+        set({ _saveTimeout: newTimeout });
     },
 
+    /**
+     * Deleta uma nota
+     */
     deleteNote: async (id: string) => {
         try {
             await NotesService.deleteNote(id);
 
-            // If deleted note was selected, clear selection
+            // Se a nota deletada era a selecionada, limpar seleção
             if (get().selectedNoteId === id) {
                 get().selectNote(null);
             }
@@ -188,6 +336,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         }
     },
 
+    /**
+     * Atualiza query de busca
+     */
     setSearchQuery: (query) => {
         set({ searchQuery: query });
     },
