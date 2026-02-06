@@ -313,5 +313,100 @@ export const LeadService = {
             console.error('Error syncing from inbox:', error);
             throw error;
         }
+    },
+
+    /**
+     * Assign responsible (vendedora or pós-venda) to multiple leads.
+     */
+    bulkAssignResponsible: async (
+        leadIds: string[],
+        responsibleId: string,
+        field: 'responsibleId' | 'postSalesId'
+    ): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const now = new Date();
+
+            const updatePromises = leadIds.map(id =>
+                updateDoc(doc(db, COLLECTION_NAME, id), {
+                    [field]: responsibleId,
+                    updatedAt: Timestamp.fromDate(now)
+                })
+            );
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk assigning responsible:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Move multiple leads to a new pipeline/stage.
+     */
+    bulkMoveStage: async (
+        leadIds: string[],
+        pipeline: 'high-ticket' | 'low-ticket',
+        status: string
+    ): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const now = new Date();
+
+            const updatePromises = leadIds.map(id =>
+                updateDoc(doc(db, COLLECTION_NAME, id), {
+                    pipeline,
+                    status,
+                    updatedAt: Timestamp.fromDate(now)
+                })
+            );
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk moving stage:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Mark multiple leads as lost.
+     */
+    bulkMarkAsLost: async (leadIds: string[], lossReasonId: string): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+            const now = new Date();
+
+            const updatePromises = leadIds.map(id =>
+                updateDoc(doc(db, COLLECTION_NAME, id), {
+                    lostReason: lossReasonId,
+                    lostAt: Timestamp.fromDate(now),
+                    updatedAt: Timestamp.fromDate(now)
+                })
+            );
+
+            await Promise.all(updatePromises);
+        } catch (error) {
+            console.error('Error bulk marking as lost:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Delete multiple leads.
+     */
+    bulkDelete: async (leadIds: string[]): Promise<void> => {
+        try {
+            const db = getFirestoreDb();
+
+            const deletePromises = leadIds.map(id =>
+                deleteDoc(doc(db, COLLECTION_NAME, id))
+            );
+
+            await Promise.all(deletePromises);
+        } catch (error) {
+            console.error('Error bulk deleting leads:', error);
+            throw error;
+        }
     }
 };
+
