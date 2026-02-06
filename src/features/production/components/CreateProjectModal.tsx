@@ -4,6 +4,7 @@ import { useProductionStore } from '../stores/useProductionStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useProductStore } from '@/features/settings/stores/useProductStore';
+import { useGoalsStore } from '@/features/settings/stores/useGoalsStore';
 import { LeadService } from '@/features/crm/services/LeadService';
 import { InboxService } from '@/features/inbox/services/InboxService';
 import {
@@ -46,6 +47,7 @@ export const CreateProjectModal = ({
     const { collaborators } = useCollaboratorStore();
     const { sectors } = useSectorStore();
     const { products, fetchProducts } = useProductStore();
+    const { config: goalsConfig, init: initGoals } = useGoalsStore();
 
     // Form State
     const [name, setName] = useState('');
@@ -63,12 +65,13 @@ export const CreateProjectModal = ({
     const [suggestedProducerId, setSuggestedProducerId] = useState('');
     const [suggestionNotes, setSuggestionNotes] = useState('');
 
-    // Busca produtos ao abrir
+    // Busca produtos e config de pontos ao abrir
     useEffect(() => {
         if (isOpen) {
             fetchProducts();
+            initGoals();
         }
-    }, [isOpen, fetchProducts]);
+    }, [isOpen, fetchProducts, initGoals]);
 
     // Reseta form ao abrir
     useEffect(() => {
@@ -117,14 +120,14 @@ export const CreateProjectModal = ({
     const basePoints = useMemo(() => {
         if (!selectedProduct) return 0;
 
-        // Se for vídeo e tiver duração selecionada, usa pontos da duração
-        if (isVideoProduct && selectedDuration && selectedProduct.durationPoints) {
-            return selectedProduct.durationPoints[selectedDuration] || 0;
+        // Se for vídeo, usa pontos globais de duração do config
+        if (isVideoProduct && selectedDuration && goalsConfig?.videoDurationPoints) {
+            return goalsConfig.videoDurationPoints[selectedDuration] || 0;
         }
 
         // Senão usa pontos base do produto
         return selectedProduct.points || 0;
-    }, [selectedProduct, isVideoProduct, selectedDuration]);
+    }, [selectedProduct, isVideoProduct, selectedDuration, goalsConfig]);
 
     const totalPoints = basePoints + extraPoints;
 
