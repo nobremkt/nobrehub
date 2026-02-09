@@ -15,6 +15,7 @@ import {
     FileText,
     History,
     Plus,
+    Rocket,
     Edit2,
     Check,
     X,
@@ -347,13 +348,7 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <ArrowRightLeft size={18} />
                 </button>
-                <button
-                    className={`${styles.actionButton} ${styles.highlight}`}
-                    onClick={() => setShowCreateProjectModal(true)}
-                    title="Criar Projeto"
-                >
-                    <Plus size={18} />
-                </button>
+
             </div>
 
             {/* Accordion Sections */}
@@ -388,7 +383,7 @@ export const ProfilePanel: React.FC = () => {
                         <div className={styles.dealStatus}>
                             <button
                                 className={`${styles.statusButton} ${styles.won} ${conversation.dealStatus === 'won' ? styles.active : ''}`}
-                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'won' as DealStatus })}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'won' as DealStatus, status: 'closed' })}
                             >
                                 Ganho
                             </button>
@@ -400,11 +395,28 @@ export const ProfilePanel: React.FC = () => {
                             </button>
                             <button
                                 className={`${styles.statusButton} ${styles.open} ${(!conversation.dealStatus || conversation.dealStatus === 'open') ? styles.active : ''}`}
-                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'open' as DealStatus })}
+                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'open' as DealStatus, status: 'open' })}
                             >
                                 Aberto
                             </button>
                         </div>
+
+                        {/* CTA Criar Projeto - só aparece quando deal é ganho */}
+                        {conversation.dealStatus === 'won' && (
+                            <div className={styles.createProjectBanner}>
+                                <div className={styles.bannerHeader}>
+                                    <span className={styles.bannerEmoji}>🎉</span>
+                                    <span className={styles.bannerText}>Venda ganha!</span>
+                                </div>
+                                <button
+                                    className={styles.createProjectBtn}
+                                    onClick={() => setShowCreateProjectModal(true)}
+                                >
+                                    <Rocket size={16} />
+                                    Criar Projeto
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </AccordionSection>
 
@@ -620,7 +632,8 @@ export const ProfilePanel: React.FC = () => {
                             onClick={() => {
                                 updateConversationDetails(conversation.id, {
                                     dealStatus: 'lost' as DealStatus,
-                                    lossReason: selectedLossReason
+                                    lossReason: selectedLossReason,
+                                    status: 'closed'
                                 });
                                 setShowLossModal(false);
                                 setSelectedLossReason('');

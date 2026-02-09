@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { InboxService } from '../../services/InboxService';
 import { StorageService } from '../../services/StorageService';
@@ -33,6 +33,9 @@ export const ChatView: React.FC = () => {
     const [showLead360Modal, setShowLead360Modal] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesAreaRef = useRef<HTMLDivElement>(null);
+    const isInitialScrollRef = useRef(true);
+    const prevConversationIdRef = useRef<string | null>(null);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const currentMessages = selectedConversationId ? messages[selectedConversationId] || [] : [];
@@ -75,13 +78,54 @@ export const ChatView: React.FC = () => {
         return hoursSinceLastInbound >= 24;
     }, [conversation, lastInboundAt]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const scrollToBottom = useCallback((instant = true) => {
+        const container = messagesAreaRef.current;
+        if (!container) return;
+        if (instant) {
+            container.scrollTop = container.scrollHeight;
+        } else {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+    }, []);
 
+    // Detect conversation switch vs new message
     useEffect(() => {
-        scrollToBottom();
-    }, [currentMessages, selectedConversationId]);
+        if (selectedConversationId !== prevConversationIdRef.current) {
+            // Conversation switched — instant scroll after DOM paint
+            isInitialScrollRef.current = true;
+            prevConversationIdRef.current = selectedConversationId;
+            // Double rAF ensures React has committed and browser has painted
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    scrollToBottom(true);
+                });
+            });
+            // Keep initial flag for 2s to catch late-loading media
+            const timer = setTimeout(() => { isInitialScrollRef.current = false; }, 2000);
+            return () => clearTimeout(timer);
+        } else if (currentMessages.length > 0) {
+            // New message in same conversation — smooth scroll
+            scrollToBottom(false);
+        }
+    }, [currentMessages, selectedConversationId, scrollToBottom]);
+
+    // Safety-net: re-scroll when images/videos load and change container height
+    useEffect(() => {
+        const container = messagesAreaRef.current;
+        if (!container) return;
+
+        const handleMediaLoad = () => {
+            // Only auto-scroll if user is near the bottom (within 200px) or initial load
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+            if (isNearBottom || isInitialScrollRef.current) {
+                container.scrollTop = container.scrollHeight;
+            }
+        };
+
+        // Listen for load events on images/videos inside the container (capture phase)
+        container.addEventListener('load', handleMediaLoad, true);
+        return () => container.removeEventListener('load', handleMediaLoad, true);
+    }, [selectedConversationId]);
 
     const handleSendMessage = async (text: string) => {
         if (!selectedConversationId) return;
@@ -144,11 +188,6 @@ export const ChatView: React.FC = () => {
         await InboxService.assignConversation(selectedConversationId, userId);
     };
 
-    const handleCloseConversation = async () => {
-        if (!selectedConversationId) return;
-        await InboxService.toggleConversationStatus(selectedConversationId);
-    };
-
     const handleToggleFavorite = async () => {
         if (!selectedConversationId) return;
         await InboxService.toggleFavorite(selectedConversationId);
@@ -179,7 +218,6 @@ export const ChatView: React.FC = () => {
             <ChatHeader
                 conversation={conversation}
                 onAssign={handleAssign}
-                onCloseConversation={handleCloseConversation}
                 onToggleFavorite={handleToggleFavorite}
                 onTogglePin={handleTogglePin}
                 onOpenLead360={() => setShowLead360Modal(true)}
@@ -193,7 +231,7 @@ export const ChatView: React.FC = () => {
                 />
             )}
 
-            <div className={styles.messagesArea}>
+            <div className={styles.messagesArea} ref={messagesAreaRef}>
                 {messagesWithSeparators.map((item, index) =>
                     item.type === 'separator' ? (
                         <DateSeparator key={`sep-${index}`} date={item.date!} />

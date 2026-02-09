@@ -40,6 +40,7 @@ export const ChatBubble = ({
     onFileClick
 }: ChatBubbleProps) => {
     const [imageLoaded, setImageLoaded] = useState(false);
+    const [videoLoaded, setVideoLoaded] = useState(false);
 
     const handleFileOpen = () => {
         if (onFileClick) {
@@ -81,7 +82,7 @@ export const ChatBubble = ({
                             src={content}
                             alt="Imagem"
                             className={`${styles.mediaImage} ${imageLoaded ? styles.imageLoaded : styles.imageLoading}`}
-                            loading="lazy"
+                            loading="eager"
                             onLoad={() => setImageLoaded(true)}
                             onClick={() => onImageClick && onImageClick(content)}
                         />
@@ -94,12 +95,18 @@ export const ChatBubble = ({
                     </div>
                 ) : type === 'video' ? (
                     <div className={styles.mediaWrapper}>
+                        {!videoLoaded && (
+                            <div className={styles.imagePlaceholder}>
+                                <div className={styles.imageLoader} />
+                            </div>
+                        )}
                         <video
                             src={content}
                             controls
-                            className={styles.mediaImage}
+                            className={`${styles.mediaImage} ${videoLoaded ? styles.imageLoaded : styles.imageLoading}`}
                             style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px' }}
                             preload="metadata"
+                            onLoadedMetadata={() => setVideoLoaded(true)}
                         />
                         {viewOnce && (
                             <div className={styles.viewOnceBadge}>
