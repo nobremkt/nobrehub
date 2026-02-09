@@ -36,7 +36,7 @@ export function Dropdown({
     noSound = false,
 }: DropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; width: number }>({ left: 0, width: 0 });
     const triggerRef = useRef<HTMLButtonElement>(null);
     const { playSound } = useUISound();
 
@@ -45,11 +45,28 @@ export function Dropdown({
     const updatePosition = useCallback(() => {
         if (isOpen && triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
-            setMenuPosition({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX,
-                width: rect.width,
-            });
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const MENU_MAX_HEIGHT = 250; // Approximated from CSS
+            const GAP = 4;
+
+            // Decide direction: if strict space below < max height AND more space above, open up
+            const shouldOpenUp = spaceBelow < MENU_MAX_HEIGHT && rect.top > spaceBelow;
+
+            if (shouldOpenUp) {
+                setMenuPosition({
+                    bottom: window.innerHeight - rect.top + GAP,
+                    left: rect.left,
+                    width: rect.width,
+                    top: undefined,
+                });
+            } else {
+                setMenuPosition({
+                    top: rect.bottom + GAP,
+                    left: rect.left,
+                    width: rect.width,
+                    bottom: undefined,
+                });
+            }
         }
     }, [isOpen]);
 
@@ -121,6 +138,7 @@ export function Dropdown({
                 className={styles.menuPortal}
                 style={{
                     top: menuPosition.top,
+                    bottom: menuPosition.bottom,
                     left: menuPosition.left,
                     width: menuPosition.width,
                 }}

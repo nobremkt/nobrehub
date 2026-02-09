@@ -71,13 +71,18 @@ export function NoteEditor() {
             CustomTaskItem.configure({
                 nested: true,
             }),
-            Underline,
+            Underline.configure({
+                HTMLAttributes: {
+                    class: 'underline',
+                },
+            }),
             Placeholder.configure({
                 placeholder: 'Clique com botão direito para ver opções de formatação...',
             }),
             Typography,
         ],
         content: localContent,
+        immediatelyRender: false, // Prevent flushSync warnings
         editorProps: {
             attributes: {
                 class: styles.proseMirror,
@@ -106,26 +111,36 @@ export function NoteEditor() {
         if (remoteContent === lastRemoteContentRef.current) return;
         if (remoteContent === editor.getHTML()) return;
 
-        // Store current cursor position
+        // Store current cursor position and note ID
         const { from, to } = editor.state.selection;
+        const currentNoteId = selectedNoteId;
+        const contentToSet = remoteContent;
 
-        // Update editor with remote content
-        editor.commands.setContent(remoteContent, { emitUpdate: false });
+        // Use queueMicrotask to avoid flushSync warning during React render
+        queueMicrotask(() => {
+            if (!editor || editor.isDestroyed) return;
 
-        // Try to restore cursor position
-        try {
-            const docLength = editor.state.doc.content.size;
-            const safeFrom = Math.min(from, Math.max(0, docLength - 1));
-            const safeTo = Math.min(to, Math.max(0, docLength - 1));
-            if (safeFrom >= 0 && safeTo >= 0) {
-                editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+            // Check if we're still on the same note
+            if (useNotesStore.getState().selectedNoteId !== currentNoteId) return;
+
+            // Update editor with remote content
+            editor.commands.setContent(contentToSet, { emitUpdate: false });
+
+            // Try to restore cursor position
+            try {
+                const docLength = editor.state.doc.content.size;
+                const safeFrom = Math.min(from, Math.max(0, docLength - 1));
+                const safeTo = Math.min(to, Math.max(0, docLength - 1));
+                if (safeFrom >= 0 && safeTo >= 0) {
+                    editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+                }
+            } catch {
+                // Cursor restoration failed, continue without it
             }
-        } catch {
-            // Cursor restoration failed, continue without it
-        }
+        });
 
         lastRemoteContentRef.current = remoteContent;
-    }, [remoteContent, editor]);
+    }, [remoteContent, editor, selectedNoteId]);
 
     // Update editor when selecting a different note
     useEffect(() => {
@@ -133,11 +148,20 @@ export function NoteEditor() {
             setLocalTitle(selectedNote.title || '');
 
             // Only set content if it's different (prevents cursor jump on initial load)
+            // Use queueMicrotask to avoid flushSync warning during React render
             if (editor.getHTML() !== localContent) {
-                editor.commands.setContent(localContent || '');
+                const currentNoteId = selectedNoteId;
+                const contentToSet = localContent;
+
+                queueMicrotask(() => {
+                    if (!editor || editor.isDestroyed) return;
+                    // Check if we're still on the same note
+                    if (useNotesStore.getState().selectedNoteId !== currentNoteId) return;
+                    editor.commands.setContent(contentToSet || '', { emitUpdate: false });
+                });
             }
         }
-    }, [selectedNoteId, editor]);
+    }, [selectedNoteId, editor, localContent]);
 
     // Update title when note changes
     useEffect(() => {
