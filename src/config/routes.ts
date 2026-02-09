@@ -21,6 +21,7 @@ export const ROUTES = {
     dashboard: '/',
     debug_ui: '/debug-ui',
     data_import: '/data-import',
+    publicProjectStatus: (token: string) => `/status/projeto/${token}`,
 
     // CRM
     crm: {
@@ -95,4 +96,5 @@ export const ROUTES = {
 export const PUBLIC_ROUTES = [
     ROUTES.auth.login,
     ROUTES.auth.forgotPassword,
+    '/status/projeto/:token',
 ] as const;

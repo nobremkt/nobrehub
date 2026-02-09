@@ -1077,8 +1077,11 @@ export const DashboardAnalyticsService = {
         for (let i = 5; i >= 0; i--) {
             const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthName = months[monthDate.getMonth()];
-            // Use current revenue as base with slight variation for historical months
-            const monthRevenue = Math.round(currentRevenue * (0.8 + Math.random() * 0.4));
+            // Use deterministic variation based on month index instead of Math.random()
+            // This produces consistent values between renders while still varying per month
+            const seed = (monthDate.getMonth() + 1) * 0.137;  // 0.137 to 1.644
+            const variation = 0.8 + (seed % 0.4);  // Range: 0.8 to 1.2
+            const monthRevenue = Math.round(currentRevenue * variation);
             const monthExpenses = Math.round(monthRevenue * 0.6);
             cashFlow.push({
                 month: monthName,

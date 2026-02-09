@@ -183,7 +183,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const note = notes.find(n => n.id === id);
         if (note) {
             // Não await - deixa rodar em background
-            NotesService.ensureNoteInRTDB(id, note.content || '').catch(console.error);
+            NotesRealtimeService.migrateContentToRTDB(id, note.content || '').catch(console.error);
         }
 
         // 1. Subscribe ao conteúdo em tempo real (RTDB)
@@ -290,7 +290,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
-                await NotesService.updateNoteContent(selectedNoteId, content);
+                await NotesRealtimeService.updateContent(selectedNoteId, content);
             } catch (error) {
                 console.error('Error saving note content:', error);
                 set({ isConnected: false });
@@ -322,7 +322,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
-                await NotesService.updateNoteTitle(selectedNoteId, title);
+                await NotesService.updateNote(selectedNoteId, { title });
             } catch (error) {
                 console.error('Error saving note title:', error);
             } finally {

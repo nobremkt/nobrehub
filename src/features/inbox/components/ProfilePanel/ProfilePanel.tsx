@@ -109,14 +109,21 @@ export const ProfilePanel: React.FC = () => {
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
         .map(r => ({ value: r.id, label: r.name }));
 
-    // Filter: only sales sector + online/idle
-    const salesCollaborators = useMemo(() => {
-        const salesSectorIds = sectors
-            .filter(s => s.name.toLowerCase().includes('vendas'))
+    // Filter: sales + post-sales sectors, only online/idle
+    const transferableCollaborators = useMemo(() => {
+        const transferSectorIds = sectors
+            .filter(s => {
+                const name = s.name.toLowerCase();
+                return name.includes('vendas') ||
+                    name.includes('pós-venda') ||
+                    name.includes('pos-venda') ||
+                    name.includes('post-sales') ||
+                    name.includes('pos venda');
+            })
             .map(s => s.id);
 
         return collaborators.filter(member => {
-            if (!member.active || !salesSectorIds.includes(member.sectorId || '')) {
+            if (!member.active || !transferSectorIds.includes(member.sectorId || '')) {
                 return false;
             }
             const status = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
@@ -137,10 +144,23 @@ export const ProfilePanel: React.FC = () => {
 
     const handleTransfer = (userId: string) => {
         if (!selectedConversationId) return;
-        updateConversationDetails(selectedConversationId, { assignedTo: userId });
-        setShowTransferModal(false);
+
         const member = collaborators.find(c => c.id === userId);
-        toast.success(`Transferido para ${member?.name || 'vendedor'}`);
+        const memberSectorName = sectors.find(s => s.id === member?.sectorId)?.name?.toLowerCase() || '';
+        const isPostSalesMember =
+            memberSectorName.includes('pós-venda') ||
+            memberSectorName.includes('pos-venda') ||
+            memberSectorName.includes('post-sales') ||
+            memberSectorName.includes('pos venda');
+
+        updateConversationDetails(selectedConversationId, {
+            assignedTo: userId,
+            context: isPostSalesMember ? 'post_sales' : 'sales',
+            postSalesId: isPostSalesMember ? userId : ''
+        });
+
+        setShowTransferModal(false);
+        toast.success(`Transferido para ${member?.name || 'membro da equipe'}`);
     };
 
     if (!selectedConversationId || !conversation) {
@@ -673,7 +693,7 @@ export const ProfilePanel: React.FC = () => {
                 size="auto"
             >
                 <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
-                    Selecione o vendedor para transferir esta conversa:
+                    Selecione um membro de Vendas ou Pós-Vendas:
                 </p>
                 <div style={{
                     display: 'flex',
@@ -682,12 +702,12 @@ export const ProfilePanel: React.FC = () => {
                     maxHeight: '300px',
                     overflowY: 'auto'
                 }}>
-                    {salesCollaborators.length === 0 ? (
+                    {transferableCollaborators.length === 0 ? (
                         <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '20px' }}>
-                            Nenhum vendedor disponível no momento
+                            Nenhum membro disponível no momento
                         </p>
                     ) : (
-                        salesCollaborators.map(member => {
+                        transferableCollaborators.map(member => {
                             const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
                             const isCurrentAssigned = member.id === conversation.assignedTo;
 
@@ -755,7 +775,7 @@ export const ProfilePanel: React.FC = () => {
             <CreateProjectModal
                 isOpen={showCreateProjectModal}
                 onClose={() => setShowCreateProjectModal(false)}
-                leadId={conversation.leadId}
+                leadId={conversation.leadId || conversation.id}
                 leadName={conversation.leadName}
                 conversationId={conversation.id}
             />
@@ -765,7 +785,7 @@ export const ProfilePanel: React.FC = () => {
                 isOpen={showLead360Modal}
                 onClose={() => setShowLead360Modal(false)}
                 lead={{
-                    id: conversation.id,
+                    id: conversation.leadId || conversation.id,
                     name: conversation.leadName,
                     phone: conversation.leadPhone,
                     email: conversation.leadEmail || '',

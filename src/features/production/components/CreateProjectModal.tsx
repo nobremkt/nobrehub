@@ -17,6 +17,7 @@ import {
 import { VideoDurationCategory, DistributionStatus } from '@/types/project.types';
 import { toast } from 'react-toastify';
 import { Star, Package } from 'lucide-react';
+import { arrayUnion } from 'firebase/firestore';
 import styles from './CreateProjectModal.module.css';
 
 interface CreateProjectModalProps {
@@ -41,7 +42,8 @@ export const CreateProjectModal = ({
     onClose,
     leadId,
     leadName,
-    conversationId
+    conversationId,
+    onProjectCreated
 }: CreateProjectModalProps) => {
     const { addProject, isLoading } = useProductionStore();
     const { collaborators } = useCollaboratorStore();
@@ -164,11 +166,14 @@ export const CreateProjectModal = ({
         }
 
         try {
+            const linkedLeadId = leadId || conversationId || 'manual';
+            const linkedLeadName = leadName || 'Cliente manual';
+
             // Monta objeto do projeto (sem campos undefined)
             const projectData: Record<string, unknown> = {
                 name,
-                leadId: leadId || 'manual',
-                leadName: leadName || 'Cliente manual',
+                leadId: linkedLeadId,
+                leadName: linkedLeadName,
                 status: 'aguardando',
                 dueDate: new Date(dueDate),
                 driveLink: driveLink || '',
@@ -204,20 +209,21 @@ export const CreateProjectModal = ({
 
             // 2. Atualizar o Lead para pós-venda (se tiver leadId válido)
             // Usa updateOrCreateLead que cria o lead se ele não existir no Firestore
-            if (leadId && leadId !== 'manual') {
+            if (linkedLeadId && linkedLeadId !== 'manual') {
                 try {
                     await LeadService.updateOrCreateLead(
-                        leadId,
+                        linkedLeadId,
                         {
                             // 'distribution' para aparecer na lista de distribuição do pós-venda
                             currentSector: 'distribution',
                             clientStatus: 'aguardando_projeto',
-                            projectIds: [projectId],
+                            projectIds: arrayUnion(projectId) as unknown as string[],
                             postSalesDistributionStatus: 'pending',
+                            dealStatus: 'won',
                             dealClosedAt: new Date(), // Marca quando fechou a venda
                         },
                         // Dados para criação caso não exista
-                        { name: leadName || 'Cliente' }
+                        { name: linkedLeadName }
                     );
                 } catch (error) {
                     console.error('Erro ao atualizar lead para pós-venda:', error);
@@ -236,6 +242,7 @@ export const CreateProjectModal = ({
             }
 
             toast.success('Projeto criado! Cliente enviado para pós-venda.');
+            onProjectCreated?.(projectId);
             onClose();
 
         } catch (error) {
