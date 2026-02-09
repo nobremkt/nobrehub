@@ -141,6 +141,26 @@ export function NoteEditor() {
 
         lastRemoteContentRef.current = remoteContent;
     }, [remoteContent, editor, selectedNoteId]);
+        // Store current cursor position
+        const { from, to } = editor.state.selection;
+
+        // Update editor with remote content
+        editor.commands.setContent(remoteContent, { emitUpdate: false });
+
+        // Try to restore cursor position
+        try {
+            const docLength = editor.state.doc.content.size;
+            const safeFrom = Math.min(from, Math.max(0, docLength - 1));
+            const safeTo = Math.min(to, Math.max(0, docLength - 1));
+            if (safeFrom >= 0 && safeTo >= 0) {
+                editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+            }
+        } catch {
+            // Cursor restoration failed, continue without it
+        }
+
+        lastRemoteContentRef.current = remoteContent;
+    }, [remoteContent, editor]);
 
     // Update editor when selecting a different note
     useEffect(() => {
@@ -159,6 +179,8 @@ export function NoteEditor() {
                     if (useNotesStore.getState().selectedNoteId !== currentNoteId) return;
                     editor.commands.setContent(contentToSet || '', { emitUpdate: false });
                 });
+            if (editor.getHTML() !== localContent) {
+                editor.commands.setContent(localContent || '');
             }
         }
     }, [selectedNoteId, editor, localContent]);

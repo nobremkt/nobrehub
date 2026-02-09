@@ -83,11 +83,14 @@
     position: relative;
     display: inline-block;
     max-width: 100%;
+    min-width: 200px;
+    min-height: 200px;
 }
 
 .mediaImage {
     max-width: 100%;
     max-height: 300px;
+    min-height: 200px;
     width: auto;
     border-radius: 12px;
     margin-bottom: 8px;
@@ -100,21 +103,23 @@
 
 .imageLoading {
     opacity: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
     position: absolute;
-    top: 0;
-    left: 0;
 }
 
 .imageLoaded {
     opacity: 1;
     position: relative;
+    min-height: auto;
 }
 
 /* Image Loading Placeholder */
 .imagePlaceholder {
-    width: 200px;
-    height: 150px;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
+    width: 280px;
+    height: 200px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.05));
     border-radius: 12px;
     display: flex;
     align-items: center;

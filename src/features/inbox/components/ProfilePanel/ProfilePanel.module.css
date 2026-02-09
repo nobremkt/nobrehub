@@ -162,17 +162,7 @@
     cursor: not-allowed;
 }
 
-.actionButton.highlight {
-    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
-    border-color: var(--color-primary-500);
-    color: white;
-    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
-}
 
-.actionButton.highlight:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * ACCORDION
@@ -360,6 +350,75 @@
 .statusButton.open.active {
     background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CREATE PROJECT BANNER (appears when deal is won)
+ * ───────────────────────────────────────────────────────────────────────────── */
+@keyframes bannerFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.createProjectBanner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: var(--radius-md);
+    animation: bannerFadeIn 0.3s ease-out;
+}
+
+.bannerHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.bannerEmoji {
+    font-size: 1rem;
+}
+
+.bannerText {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-success-500);
+}
+
+.createProjectBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-4);
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.createProjectBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+}
+
+.createProjectBtn:active {
+    transform: translateY(0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

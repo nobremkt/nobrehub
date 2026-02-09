@@ -22,7 +22,6 @@ import {
     ExternalLink,
     Copy,
     Ban,
-    RefreshCw,
     // Icons para canal
     Smartphone
 } from 'lucide-react';
@@ -36,7 +35,6 @@ import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 interface ChatHeaderProps {
     conversation: Conversation;
     onAssign?: (userId: string | null) => void;
-    onCloseConversation?: () => void;
     onToggleFavorite?: () => void;
     onTogglePin?: () => void;
     onOpenLead360?: () => void;
@@ -58,7 +56,6 @@ const WhatsAppIcon = ({ size = 16 }: { size?: number }) => (
 export function ChatHeader({
     conversation,
     onAssign,
-    onCloseConversation,
     onToggleFavorite,
     onTogglePin,
     onOpenLead360
@@ -195,12 +192,14 @@ export function ChatHeader({
                 </div>
             </div>
 
-            {/* Status Tag */}
+            {/* Status Tag - reflects deal status */}
             <div className={styles.statusSection}>
-                {conversation.status === 'open' ? (
-                    <Tag variant="success">Aberto</Tag>
+                {conversation.dealStatus === 'won' ? (
+                    <Tag variant="success">Ganho</Tag>
+                ) : conversation.dealStatus === 'lost' ? (
+                    <Tag variant="danger">Perdido</Tag>
                 ) : (
-                    <Tag variant="default">Fechado</Tag>
+                    <Tag variant="default">Aberto</Tag>
                 )}
             </div>
 
@@ -302,16 +301,6 @@ export function ChatHeader({
                     )}
                 </div>
 
-                {/* Close/Open Conversation */}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onCloseConversation}
-                    title={conversation.status === 'open' ? 'Encerrar conversa' : 'Reabrir conversa'}
-                >
-                    <CheckCircle size={18} />
-                </Button>
-
                 <Button variant="ghost" size="sm" title="Ligar">
                     <Phone size={18} />
                 </Button>
@@ -348,21 +337,6 @@ export function ChatHeader({
                             >
                                 <Copy size={16} />
                                 <span>Copiar telefone</span>
-                            </button>
-                            <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
-                            <button
-                                className={styles.dropdownItem}
-                                onClick={() => {
-                                    // Reopen conversation if closed
-                                    if (conversation.status === 'closed' && onCloseConversation) {
-                                        onCloseConversation();
-                                    }
-                                    setShowOptionsDropdown(false);
-                                }}
-                                disabled={conversation.status === 'open'}
-                            >
-                                <RefreshCw size={16} />
-                                <span>Reabrir conversa</span>
                             </button>
                             <button
                                 className={styles.dropdownItem}

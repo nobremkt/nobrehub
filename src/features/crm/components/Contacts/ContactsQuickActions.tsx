@@ -233,42 +233,141 @@ export const ContactsQuickActions: React.FC<ContactsQuickActionsProps> = ({
         });
     };
 
-    const handleAssignVendedora = () => {
+    const handleAssignVendedora = async () => {
         if (!selectedVendedora) return;
-        // TODO: Implement bulk assign vendedora via API
-        console.log('Assigning vendedora:', selectedVendedora, 'to contacts:', Array.from(selectedIds));
+
+        try {
+            await LeadService.bulkAssignResponsible(
+                Array.from(selectedIds),
+                selectedVendedora,
+                'responsibleId'
+            );
+
+            // Update store state for real-time UI update
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id)) {
+                    return { ...contact, responsibleId: selectedVendedora };
+                }
+                return contact;
+            });
+            setContacts(updatedContacts);
+
+            const vendedoraName = vendedoras.find(v => v.id === selectedVendedora)?.name || 'Vendedora';
+            toast.success(`${vendedoraName} atribuída a ${selectedCount} contato(s)`);
+        } catch (error) {
+            console.error('Error assigning vendedora:', error);
+            toast.error('Erro ao atribuir vendedora');
+        }
+
         setShowAssignVendedoraModal(false);
         setSelectedVendedora(undefined);
     };
 
-    const handleAssignPosVenda = () => {
+    const handleAssignPosVenda = async () => {
         if (!selectedPosVenda) return;
-        // TODO: Implement bulk assign pós-venda via API
-        console.log('Assigning pós-venda:', selectedPosVenda, 'to contacts:', Array.from(selectedIds));
+
+        try {
+            await LeadService.bulkAssignResponsible(
+                Array.from(selectedIds),
+                selectedPosVenda,
+                'postSalesId'
+            );
+
+            // Update store state for real-time UI update
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id)) {
+                    return { ...contact, postSalesId: selectedPosVenda };
+                }
+                return contact;
+            });
+            setContacts(updatedContacts);
+
+            const posVendaName = posVendaMembers.find(m => m.id === selectedPosVenda)?.name || 'Responsável';
+            toast.success(`${posVendaName} atribuído a ${selectedCount} contato(s)`);
+        } catch (error) {
+            console.error('Error assigning pós-venda:', error);
+            toast.error('Erro ao atribuir pós-venda');
+        }
+
         setShowAssignPosVendaModal(false);
         setSelectedPosVenda(undefined);
     };
 
-    const handleMoveStage = () => {
+    const handleMoveStage = async () => {
         if (!selectedPipeline || !selectedStage) return;
-        // TODO: Implement bulk move stage via API
-        console.log('Moving to pipeline:', selectedPipeline, 'stage:', selectedStage, 'contacts:', Array.from(selectedIds));
+
+        try {
+            await LeadService.bulkMoveStage(
+                Array.from(selectedIds),
+                selectedPipeline,
+                selectedStage
+            );
+
+            // Update store state for real-time UI update
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id)) {
+                    return { ...contact, pipeline: selectedPipeline, status: selectedStage };
+                }
+                return contact;
+            });
+            setContacts(updatedContacts);
+
+            const stageName = stagesForPipeline.find(s => s.id === selectedStage)?.name || 'Etapa';
+            toast.success(`${selectedCount} contato(s) movido(s) para ${stageName}`);
+        } catch (error) {
+            console.error('Error moving stage:', error);
+            toast.error('Erro ao mover contatos');
+        }
+
         setShowMoveStageModal(false);
         setSelectedPipeline(undefined);
         setSelectedStage(undefined);
     };
 
-    const handleMarkLost = () => {
+    const handleMarkLost = async () => {
         if (!selectedLossReason) return;
-        // TODO: Implement bulk mark as lost via API
-        console.log('Marking as lost with reason:', selectedLossReason, 'contacts:', Array.from(selectedIds));
+
+        try {
+            await LeadService.bulkMarkAsLost(
+                Array.from(selectedIds),
+                selectedLossReason
+            );
+
+            // Update store state for real-time UI update
+            const now = new Date();
+            const updatedContacts = contacts.map(contact => {
+                if (selectedIds.has(contact.id)) {
+                    return { ...contact, lostReason: selectedLossReason, lostAt: now };
+                }
+                return contact;
+            });
+            setContacts(updatedContacts);
+
+            const reasonName = lossReasons.find(r => r.id === selectedLossReason)?.name || 'Perdido';
+            toast.success(`${selectedCount} contato(s) marcado(s) como perdido: ${reasonName}`);
+        } catch (error) {
+            console.error('Error marking as lost:', error);
+            toast.error('Erro ao marcar como perdido');
+        }
+
         setShowLostModal(false);
         setSelectedLossReason('');
     };
 
-    const handleDelete = () => {
-        // TODO: Implement bulk delete via API
-        console.log('Deleting contacts:', Array.from(selectedIds));
+    const handleDelete = async () => {
+        try {
+            await LeadService.bulkDelete(Array.from(selectedIds));
+
+            // Remove from store state for real-time UI update
+            const updatedContacts = contacts.filter(contact => !selectedIds.has(contact.id));
+            setContacts(updatedContacts);
+
+            toast.success(`${selectedCount} contato(s) excluído(s)`);
+        } catch (error) {
+            console.error('Error deleting contacts:', error);
+            toast.error('Erro ao excluir contatos');
+        }
+
         setShowDeleteConfirm(false);
         onClearSelection();
     };

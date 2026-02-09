@@ -516,14 +516,54 @@ export const InboxService = {
 
     /**
      * Update diverse conversation details (lead info, tags, notes, etc).
+     * Also syncs relevant fields to the corresponding Firestore Lead if leadId exists.
      */
     updateConversationDetails: async (conversationId: string, data: Partial<Conversation>) => {
         const db = getRealtimeDb();
         const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        // We do NOT update updatedAt here to avoid reordering cards just for simple edits
+
+        // 1. Update conversation in RTDB
         await update(conversationRef, {
             ...data
         });
+
+        // 2. Get conversation to check for leadId
+        const snapshot = await get(conversationRef);
+        const conv = snapshot.val();
+
+        // 3. If leadId exists, sync relevant fields to Firestore Lead
+        if (conv?.leadId) {
+            try {
+                const { getFirestoreDb } = await import('@/config/firebase');
+                const { doc, getDoc, updateDoc, Timestamp } = await import('firebase/firestore');
+
+                const firestoreDb = getFirestoreDb();
+                const leadRef = doc(firestoreDb, 'leads', conv.leadId);
+                const leadSnap = await getDoc(leadRef);
+
+                if (leadSnap.exists()) {
+                    const leadUpdates: Record<string, any> = {};
+
+                    // Map conversation fields to lead fields
+                    if (data.leadName !== undefined) leadUpdates.name = data.leadName;
+                    if (data.leadPhone !== undefined) leadUpdates.phone = data.leadPhone;
+                    if (data.leadEmail !== undefined) leadUpdates.email = data.leadEmail;
+                    if (data.leadCompany !== undefined) leadUpdates.company = data.leadCompany;
+                    if (data.tags !== undefined) leadUpdates.tags = data.tags;
+                    if (data.notes !== undefined) leadUpdates.notes = data.notes;
+
+                    // Only update if there are changes
+                    if (Object.keys(leadUpdates).length > 0) {
+                        leadUpdates.updatedAt = Timestamp.fromDate(new Date());
+                        await updateDoc(leadRef, leadUpdates);
+                        console.log('[InboxService] Synced conversation changes to Lead:', conv.leadId);
+                    }
+                }
+            } catch (error) {
+                // Don't fail the conversation update if lead sync fails
+                console.error('[InboxService] Failed to sync to Firestore Lead:', error);
+            }
+        }
     },
 
     /**
