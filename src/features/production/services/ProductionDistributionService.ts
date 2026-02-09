@@ -18,9 +18,10 @@ import {
     Timestamp
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 import { Project, DistributionStatus } from '@/types/project.types';
 
-const COLLECTION_NAME = 'production_projects';
+const COLLECTION_NAME = COLLECTIONS.PRODUCTION_PROJECTS;
 
 // Tipo para informações de carga de trabalho do produtor
 interface ProducerWorkload {

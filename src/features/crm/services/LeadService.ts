@@ -1,4 +1,5 @@
 import { getFirestoreDb, getRealtimeDb } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 import {
     collection,
     getDocs,
@@ -15,7 +16,7 @@ import {
 import { ref, get } from 'firebase/database';
 import { Lead } from '@/types/lead.types';
 
-const COLLECTION_NAME = 'leads';
+const COLLECTION_NAME = COLLECTIONS.LEADS;
 
 export const LeadService = {
     /**
@@ -110,6 +111,14 @@ export const LeadService = {
                 // Lead exists - just update it
                 const dataToUpdate: any = { ...updates };
                 dataToUpdate.updatedAt = Timestamp.fromDate(new Date());
+
+                // Preserve existing linked projects and append new ones (avoid overwrite)
+                if (Array.isArray(updates.projectIds) && updates.projectIds.length > 0) {
+                    const existing = docSnap.data();
+                    const existingProjectIds = Array.isArray(existing.projectIds) ? existing.projectIds : [];
+                    dataToUpdate.projectIds = Array.from(new Set([...existingProjectIds, ...updates.projectIds]));
+                }
+
                 delete dataToUpdate.createdAt;
                 await updateDoc(docRef, dataToUpdate);
             } else if (createData) {

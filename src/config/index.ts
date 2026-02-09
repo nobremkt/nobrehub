@@ -12,3 +12,4 @@ export * from './constants';
 export * from './routes';
 export * from './permissions';
 export * from './firebase';
+export * from './collections';

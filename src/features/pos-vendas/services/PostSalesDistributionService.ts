@@ -12,6 +12,7 @@ import {
     where,
     orderBy,
     getDocs,
+    getDoc,
     updateDoc,
     doc,
     onSnapshot,
@@ -19,9 +20,11 @@ import {
     arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 import { Lead, ClientStatus } from '@/types/lead.types';
 
-const LEADS_COLLECTION = 'leads';
+const LEADS_COLLECTION = COLLECTIONS.LEADS;
+const PROJECTS_COLLECTION = COLLECTIONS.PRODUCTION_PROJECTS;
 
 // Tipo para carga de trabalho do pós-venda
 interface PostSalesWorkload {
@@ -331,6 +334,10 @@ export const PostSalesDistributionService = {
      */
     requestRevision: async (leadId: string, projectId: string, reason?: string): Promise<void> => {
         try {
+            if (!projectId) {
+                throw new Error('Project ID is required to request revision');
+            }
+
             // Atualiza o lead
             const leadRef = doc(db, LEADS_COLLECTION, leadId);
             await updateDoc(leadRef, {
@@ -340,12 +347,22 @@ export const PostSalesDistributionService = {
             });
 
             // Atualiza o projeto (status de alteração, NÃO muda producerId)
-            const projectRef = doc(db, 'projects', projectId);
+            const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+            const projectSnap = await getDoc(projectRef);
+
+            if (!projectSnap.exists()) {
+                throw new Error(`Project not found: ${projectId}`);
+            }
+
+            const projectData = projectSnap.data();
+            const currentRevisionCount = Number(projectData?.revisionCount || 0);
+
             await updateDoc(projectRef, {
                 status: 'alteracao',
-                revisionCount: (await getDocs(query(collection(db, 'projects'), where('id', '==', projectId)))).docs[0]?.data()?.revisionCount + 1 || 1,
+                revisionCount: currentRevisionCount + 1,
                 lastRevisionRequestedAt: new Date(),
                 revisionReason: reason || '',
+                clientApprovalStatus: 'changes_requested',
                 updatedAt: new Date()
             });
         } catch (error) {
@@ -359,6 +376,10 @@ export const PostSalesDistributionService = {
      */
     approveClient: async (leadId: string, projectId?: string): Promise<void> => {
         try {
+            if (!projectId) {
+                throw new Error('Project ID is required to approve client');
+            }
+
             // Atualiza o lead
             const leadRef = doc(db, LEADS_COLLECTION, leadId);
             await updateDoc(leadRef, {
@@ -367,15 +388,13 @@ export const PostSalesDistributionService = {
                 updatedAt: new Date()
             });
 
-            // Atualiza o projeto se fornecido
-            if (projectId) {
-                const projectRef = doc(db, 'projects', projectId);
-                await updateDoc(projectRef, {
-                    clientApprovalStatus: 'approved',
-                    clientApprovedAt: new Date(),
-                    updatedAt: new Date()
-                });
-            }
+            // Atualiza o projeto
+            const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+            await updateDoc(projectRef, {
+                clientApprovalStatus: 'approved',
+                clientApprovedAt: new Date(),
+                updatedAt: new Date()
+            });
         } catch (error) {
             console.error('Error approving client:', error);
             throw error;

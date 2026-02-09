@@ -14,9 +14,10 @@ import {
     onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 import { Project } from '@/types/project.types';
 
-const COLLECTION_NAME = 'production_projects';
+const COLLECTION_NAME = COLLECTIONS.PRODUCTION_PROJECTS;
 
 export const ProductionService = {
     /**
