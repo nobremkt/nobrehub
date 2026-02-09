@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Project, DistributionStatus } from '@/types/project.types';
+import { ProjectStatusPageService } from './ProjectStatusPageService';
 
 const COLLECTION_NAME = 'production_projects';
 
@@ -160,8 +161,10 @@ export const ProductionDistributionService = {
                 distributionStatus: 'assigned' as DistributionStatus,
                 assignedByLeaderId,
                 assignedAt: new Date(),
-                status: 'aguardando' // Muda para aguardando início
+                status: 'aguardando', // Muda para aguardando início
+                updatedAt: new Date()
             });
+            await ProjectStatusPageService.syncFromProjectId(projectId);
         } catch (error) {
             console.error('Error assigning project:', error);
             throw error;

@@ -172,6 +172,30 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             return;
         }
 
+        // ✅ IMEDIATAMENTE setar o ID para feedback visual instantâneo
+        // NÃO limpa o conteúdo - deixa o subscription atualizar
+        // Isso evita flash de conteúdo vazio ao trocar rápido de nota
+        set({
+            selectedNoteId: id,
+        });
+
+        // Garantir que a nota existe no RTDB (em background, não bloqueia)
+        const note = notes.find(n => n.id === id);
+        if (note) {
+            // Não await - deixa rodar em background
+            NotesRealtimeService.migrateContentToRTDB(id, note.content || '').catch(console.error);
+        }
+
+        // 1. Subscribe ao conteúdo em tempo real (RTDB)
+        // O subscription já vai fornecer o conteúdo inicial automaticamente
+        const unsubContent = NotesRealtimeService.subscribeToContent(id, (data: NoteRealtimeData | null) => {
+            if (!data) return;
+
+            const { _lastLocalEdit, localContent, selectedNoteId: currentSelectedId } = get();
+
+            // Ignorar updates se a nota mudou
+            if (currentSelectedId !== id) return;
+
         // Garantir que a nota existe no RTDB (migração de notas antigas)
         const note = notes.find(n => n.id === id);
         if (note) {
@@ -214,6 +238,27 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             set({ activeEditors: otherEditors });
         });
 
+        // 3. Marcar presença como editor (em background)
+        // Não bloqueia - presença não é crítica para carregar a nota
+        NotesRealtimeService.joinAsEditor(id).then(leave => {
+            // Só atualiza se ainda estamos na mesma nota
+            if (get().selectedNoteId === id) {
+                set({ _leaveEditor: leave });
+            } else {
+                // Se mudou de nota, limpa a presença
+                leave();
+            }
+        }).catch(console.error);
+        });
+
+        // 2. Subscribe aos editores ativos
+        const unsubEditors = NotesRealtimeService.subscribeToEditors(id, (editors) => {
+            const currentUser = useAuthStore.getState().user;
+            // Filtra o próprio usuário da lista
+            const otherEditors = editors.filter(e => e.oderId !== currentUser?.id);
+            set({ activeEditors: otherEditors });
+        });
+
         // 3. Marcar presença como editor
         const leave = await NotesRealtimeService.joinAsEditor(id);
 
@@ -222,6 +267,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             NotesRealtimeService.updatePresence(id);
         }, PRESENCE_INTERVAL_MS);
 
+        // Atualizar subscriptions no state
+        set({
+            _unsubscribeContent: unsubContent,
+            _unsubscribeEditors: unsubEditors,
         // Carregar conteúdo inicial
         const initialContent = await NotesRealtimeService.getContent(id);
 
@@ -274,6 +323,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
+                await NotesRealtimeService.updateContent(selectedNoteId, content);
                 await NotesService.updateNoteContent(selectedNoteId, content);
             } catch (error) {
                 console.error('Error saving note content:', error);

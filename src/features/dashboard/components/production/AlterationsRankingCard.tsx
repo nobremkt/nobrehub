@@ -49,7 +49,7 @@ export function AlterationsRankingCard() {
                                 tickLine={false}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} isAnimationActive={false} />
-                            <Bar dataKey="points" barSize={20} radius={[0, 4, 4, 0]}>
+                            <Bar dataKey="points" barSize={20} radius={[0, 4, 4, 0]} isAnimationActive={false}>
                                 <LabelList
                                     dataKey="points"
                                     position="right"

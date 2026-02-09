@@ -67,7 +67,7 @@ export function AdminStats() {
                 {/* Right Column: Summary Cards */}
                 <div className={styles.rightColumn}>
                     <TeamSizeCard count={adminData.teamSize} activeCount={adminData.activeMembers} />
-                    <AvgWorkloadCard hours={adminData.avgWorkload} />
+                    <AvgWorkloadCard projectsPerMember={adminData.avgWorkload} />
                     <GoalsMetCard percentage={adminData.goalsMet} />
                     <EfficiencyCard score={adminData.efficiency} />
                 </div>

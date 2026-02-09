@@ -73,8 +73,8 @@ function TaskItem({ task, projectId, members, isSubTask, subTaskCount, subTaskCo
     const [showAssigneePicker, setShowAssigneePicker] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
-    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
-    const [assigneePickerPos, setAssigneePickerPos] = useState({ top: 0, left: 0 });
+    const [tooltipPos, setTooltipPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
+    const [assigneePickerPos, setAssigneePickerPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
     const addBtnRef = useRef<HTMLButtonElement>(null);
     const assigneeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -181,10 +181,21 @@ function TaskItem({ task, projectId, members, isSubTask, subTaskCount, subTaskCo
                         onClick={() => {
                             if (!showTagCreator && addBtnRef.current) {
                                 const rect = addBtnRef.current.getBoundingClientRect();
-                                setTooltipPos({
-                                    top: rect.bottom + window.scrollY + 4,
-                                    left: rect.left + window.scrollX
-                                });
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const MENU_HEIGHT = 200; // Estimated
+                                if (spaceBelow < MENU_HEIGHT && rect.top > spaceBelow) {
+                                    setTooltipPos({
+                                        bottom: window.innerHeight - rect.top + 4,
+                                        left: rect.left,
+                                        top: undefined
+                                    });
+                                } else {
+                                    setTooltipPos({
+                                        top: rect.bottom + 4,
+                                        left: rect.left,
+                                        bottom: undefined
+                                    });
+                                }
                             }
                             setShowTagCreator(!showTagCreator);
                         }}
@@ -200,7 +211,7 @@ function TaskItem({ task, projectId, members, isSubTask, subTaskCount, subTaskCo
             {showTagCreator && createPortal(
                 <div
                     className={styles.tagCreatorPortal}
-                    style={{ top: tooltipPos.top, left: tooltipPos.left }}
+                    style={{ top: tooltipPos.top, bottom: tooltipPos.bottom, left: tooltipPos.left }}
                 >
                     <div className={styles.tagCreator}>
                         <Input
@@ -293,10 +304,22 @@ function TaskItem({ task, projectId, members, isSubTask, subTaskCount, subTaskCo
                     onClick={() => {
                         if (!showAssigneePicker && assigneeBtnRef.current) {
                             const rect = assigneeBtnRef.current.getBoundingClientRect();
-                            setAssigneePickerPos({
-                                top: rect.bottom + window.scrollY + 4,
-                                left: rect.right + window.scrollX - 200 // Align right edge (200px menu width)
-                            });
+                            const spaceBelow = window.innerHeight - rect.bottom;
+                            const MENU_HEIGHT = 300; // Estimated for assignee picker
+
+                            if (spaceBelow < MENU_HEIGHT && rect.top > spaceBelow) {
+                                setAssigneePickerPos({
+                                    bottom: window.innerHeight - rect.top + 4,
+                                    left: rect.right - 200, // Align right edge
+                                    top: undefined
+                                });
+                            } else {
+                                setAssigneePickerPos({
+                                    top: rect.bottom + 4,
+                                    left: rect.right - 200, // Align right edge
+                                    bottom: undefined
+                                });
+                            }
                         }
                         setShowAssigneePicker(!showAssigneePicker);
                     }}
@@ -310,7 +333,7 @@ function TaskItem({ task, projectId, members, isSubTask, subTaskCount, subTaskCo
             {showAssigneePicker && createPortal(
                 <div
                     className={styles.assigneePickerPortal}
-                    style={{ top: assigneePickerPos.top, left: assigneePickerPos.left }}
+                    style={{ top: assigneePickerPos.top, bottom: assigneePickerPos.bottom, left: assigneePickerPos.left }}
                 >
                     <div className={styles.assigneePickerMenu}>
                         <div className={styles.assigneePickerHeader}>Atribuir a:</div>

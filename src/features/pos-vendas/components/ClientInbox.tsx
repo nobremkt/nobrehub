@@ -15,9 +15,9 @@ import { InboxService } from '@/features/inbox/services/InboxService';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
 import { StorageService } from '@/features/inbox/services/StorageService';
 import { Conversation, Message } from '@/features/inbox/types';
-import { Lead, ClientStatus } from '@/types/lead.types';
+import { ClientStatus } from '@/types/lead.types';
 import { Project, ProjectStatus } from '@/types/project.types';
-import { Button, Spinner } from '@/design-system';
+import { Button, Dropdown, Spinner } from '@/design-system';
 
 // Componentes de Chat do Inbox (reutilizados)
 import { MessageBubble } from '@/features/inbox/components/ChatView/MessageBubble';
@@ -26,6 +26,7 @@ import { ChatInput } from '@/features/inbox/components/ChatView/ChatInput';
 import { SessionWarning } from '@/features/inbox/components/ChatView/SessionWarning';
 import { SendTemplateModal } from '@/features/inbox/components/SendTemplateModal';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
+import { toast } from 'react-toastify';
 
 import {
     User,
@@ -38,7 +39,8 @@ import {
     MessageCircle,
     Phone,
     ExternalLink,
-    Info
+    Info,
+    Copy
 } from 'lucide-react';
 import styles from './ClientInbox.module.css';
 
@@ -67,7 +69,8 @@ export const ClientInbox = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
-    const [linkedProject, setLinkedProject] = useState<Project | null>(null);
+    const [linkedProjects, setLinkedProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const { setDraftMessage } = useInboxStore();
 
     // Chat states
@@ -120,6 +123,12 @@ export const ClientInbox = () => {
         return clients.find(c => c.id === selectedClientId);
     }, [clients, selectedClientId]);
 
+    const selectedProject = useMemo(() => {
+        if (linkedProjects.length === 0) return null;
+        if (!selectedProjectId) return linkedProjects[0];
+        return linkedProjects.find(project => project.id === selectedProjectId) || linkedProjects[0];
+    }, [linkedProjects, selectedProjectId]);
+
     // Inscreve-se para atualizações em tempo real dos clientes do atendente
     useEffect(() => {
         if (!selectedPostSalesId) return;
@@ -140,14 +149,20 @@ export const ClientInbox = () => {
     // Inscreve-se para atualizações em tempo real do projeto vinculado ao cliente
     useEffect(() => {
         if (!selectedClientId) {
-            setLinkedProject(null);
+            setLinkedProjects([]);
+            setSelectedProjectId(null);
             return;
         }
 
-        const unsubscribe = ProductionService.subscribeToProjectByLeadId(
+        const unsubscribe = ProductionService.subscribeToProjectsByLeadId(
             selectedClientId,
-            (project) => {
-                setLinkedProject(project);
+            (projects) => {
+                setLinkedProjects(projects);
+                setSelectedProjectId(prev =>
+                    prev && projects.some(project => project.id === prev)
+                        ? prev
+                        : (projects[0]?.id || null)
+                );
             }
         );
 
@@ -301,16 +316,20 @@ export const ClientInbox = () => {
 
 
     // Atualiza status do cliente
-    const handleUpdateStatus = async (clientId: string, newStatus: ClientStatus) => {
+    const handleUpdateStatus = async (clientId: string, _newStatus: ClientStatus) => {
         if (!selectedPostSalesId) return;
 
         try {
-            await PostSalesDistributionService.updateClientStatus(clientId, newStatus);
-            // Atualiza localmente
-            const updatedClients = clients.map(c =>
-                c.id === clientId ? { ...c, clientStatus: newStatus } : c
+            if (!selectedProject?.id) {
+                console.warn('Cannot mark as delivered: no selected project');
+                return;
+            }
+
+            await PostSalesDistributionService.markProjectAsDelivered(
+                clientId,
+                selectedProject.id,
+                selectedPostSalesId
             );
-            setClientsForAttendant(selectedPostSalesId, updatedClients as Lead[]);
         } catch (error) {
             console.error('Error updating status:', error);
         }
@@ -321,38 +340,37 @@ export const ClientInbox = () => {
         if (!selectedPostSalesId) return;
 
         try {
-            await PostSalesDistributionService.completeClient(clientId);
-            // Remove da lista local
-            const updatedClients = clients.filter(c => c.id !== clientId);
-            setClientsForAttendant(selectedPostSalesId, updatedClients);
-            setSelectedClientId(null);
+            await PostSalesDistributionService.completeClient(
+                clientId,
+                selectedProject?.id,
+                selectedPostSalesId
+            );
         } catch (error) {
             console.error('Error completing client:', error);
         }
     };
 
     // Solicita revisão - projeto volta pro MESMO produtor
-    const handleRequestRevision = async (clientId: string, projectId?: string) => {
-        if (!selectedPostSalesId) return;
+    const handleRequestRevision = async (clientId: string) => {
+        if (!selectedPostSalesId || !selectedProject?.id) return;
 
         try {
-            // Por enquanto usa um projectId mockado se não existir
-            // TODO: Buscar projectId real vinculado ao lead
-            const pid = projectId || clientId; // fallback
-            await PostSalesDistributionService.requestRevision(clientId, pid, 'Alteração solicitada pelo cliente');
-            // Atualização será feita pelo subscription
+            await PostSalesDistributionService.requestRevision(
+                clientId,
+                selectedProject.id,
+                'AlteraÃ§Ã£o solicitada pelo cliente'
+            );
         } catch (error) {
             console.error('Error requesting revision:', error);
         }
     };
 
     // Cliente aprovou o projeto
-    const handleApproveClient = async (clientId: string, projectId?: string) => {
+    const handleApproveClient = async (clientId: string) => {
         if (!selectedPostSalesId) return;
 
         try {
-            await PostSalesDistributionService.approveClient(clientId, projectId);
-            // Atualização será feita pelo subscription
+            await PostSalesDistributionService.approveClient(clientId, selectedProject?.id);
         } catch (error) {
             console.error('Error approving client:', error);
         }
@@ -370,6 +388,17 @@ export const ClientInbox = () => {
     // Gera iniciais do nome
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
+
+    const handleCopyStatusPageLink = async (statusPageUrl?: string) => {
+        if (!statusPageUrl) return;
+        try {
+            await navigator.clipboard.writeText(statusPageUrl);
+            toast.success('Link da pagina de status copiado!');
+        } catch (error) {
+            console.error('Error copying status page url:', error);
+            toast.error('Nao foi possivel copiar o link.');
+        }
     };
 
     // Se nenhum atendente selecionado
@@ -513,11 +542,25 @@ export const ClientInbox = () => {
                                             <span className={`${styles.statusBadge} ${styles[STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].color]}`}>
                                                 {STATUS_CONFIG[selectedClient.clientStatus || 'aguardando_projeto'].label}
                                             </span>
-                                            {linkedProject && (
+                                            {selectedProject && (
                                                 <span className={styles.projectBadge}>
                                                     <Hammer size={12} />
-                                                    {PROJECT_STATUS_LABELS[linkedProject.status]}
+                                                    {PROJECT_STATUS_LABELS[selectedProject.status]}
                                                 </span>
+                                            )}
+                                            {linkedProjects.length > 1 && (
+                                                <div className={styles.projectSelector}>
+                                                    <Dropdown
+                                                        options={linkedProjects.map(project => ({
+                                                            value: project.id,
+                                                            label: project.name
+                                                        }))}
+                                                        value={selectedProject?.id || ''}
+                                                        onChange={(value) => setSelectedProjectId(String(value))}
+                                                        placeholder="Selecionar projeto..."
+                                                        noSound
+                                                    />
+                                                </div>
                                             )}
                                             {selectedClient.dealClosedAt && (
                                                 <span className={styles.dateBadge}>
@@ -559,6 +602,27 @@ export const ClientInbox = () => {
                                     >
                                         <ExternalLink size={18} />
                                     </Button>
+
+                                    {selectedProject?.statusPageUrl && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => window.open(selectedProject.statusPageUrl, '_blank')}
+                                                title="Abrir pagina de status do cliente"
+                                            >
+                                                <Hammer size={18} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleCopyStatusPageLink(selectedProject.statusPageUrl)}
+                                                title="Copiar link da pagina de status"
+                                            >
+                                                <Copy size={18} />
+                                            </Button>
+                                        </>
+                                    )}
 
                                     {/* Ver Detalhes Completos */}
                                     <Button
