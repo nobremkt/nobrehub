@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/design-system';
 import { useKanbanStore } from '../../stores/useKanbanStore';
+import { useContactsStore } from '../../stores/useContactsStore';
 
 import { LeadHeader } from './components/LeadHeader/LeadHeader';
 import { AtividadeTab } from './tabs/AtividadeTab/AtividadeTab';
@@ -43,6 +44,11 @@ type TabType = 'ATIVIDADE' | 'CONTATO' | 'EMPRESA' | 'NEGÓCIOS' | 'CONVERSAS' |
 export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
     const { updateLead, moveLead, stages } = useKanbanStore();
+    const { fetchContacts } = useContactsStore();
+
+    const handleLeadUpdated = () => {
+        fetchContacts();
+    };
 
     // Handler para mudar status (Ganho/Perdido)
     const handleStatusChange = async (status: 'won' | 'lost' | 'open') => {
@@ -98,7 +104,7 @@ export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead36
             case 'EMPRESA':
                 return <EmpresaTab lead={lead} />;
             case 'NEGÓCIOS':
-                return <NegociosTab lead={lead} />;
+                return <NegociosTab lead={lead} onLeadUpdated={handleLeadUpdated} />;
             case 'CONVERSAS':
                 return <ConversasTab lead={lead} />;
             case 'HISTÓRICO':

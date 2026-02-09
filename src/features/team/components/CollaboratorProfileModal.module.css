@@ -786,6 +786,109 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * GOAL PROGRESS BARS
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.goalProgressSection {
+    margin-top: var(--spacing-4);
+}
+
+.goalProgressTitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--spacing-3);
+}
+
+.goalProgressList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.goalProgressItem {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.goalProgressHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.goalProgressLabel {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.goalProgressValues {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.goalProgressBarBg {
+    height: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.goalProgressBarFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.6s ease;
+    background: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600));
+}
+
+.goalProgressBarFill.success {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.goalOverallCard {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-4);
+    background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-4);
+}
+
+.goalOverallPercentage {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.goalOverallLabel {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.noGoalsMessage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-6);
+    background: var(--color-bg-tertiary);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    color: var(--color-text-muted);
+    gap: var(--spacing-2);
+    font-size: 0.875rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
  * RESPONSIVE
  * ───────────────────────────────────────────────────────────────────────────── */
 

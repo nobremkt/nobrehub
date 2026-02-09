@@ -853,12 +853,24 @@ export const DashboardAnalyticsService = {
         ).length;
         const contactRate = newLeads > 0 ? Math.round((contactedLeads / newLeads) * 100) : 0;
 
-        // Placeholder metrics (would need activity/history tracking to calculate properly)
+        // Performance metrics derived from lead lifecycle data
+        const closedLeadsInPeriod = leadsInPeriod.filter(l => closedStatuses.includes(l.status));
+        let totalCycleDays = 0;
+        let cycleCount = 0;
+        closedLeadsInPeriod.forEach(l => {
+            if (l.createdAt && l.updatedAt) {
+                const days = Math.max(0, Math.ceil((l.updatedAt.getTime() - l.createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+                totalCycleDays += days;
+                cycleCount++;
+            }
+        });
+        const avgCycleTime = cycleCount > 0 ? Math.round((totalCycleDays / cycleCount) * 10) / 10 : 0;
+
         const performanceMetrics = {
-            avgResponseTime: 4.5, // TODO: Calculate from lead activity history
-            avgCycleTime: totalCompleted > 0 ? 14 : 0, // TODO: Calculate from lead lifecycle
+            avgResponseTime: 0, // Requires activity/message history tracking to compute accurately
+            avgCycleTime,
             contactRate,
-            followUpRate: 85, // TODO: Calculate from activity tracking
+            followUpRate: contactRate, // Uses same metric: % of leads that progressed beyond 'new'
         };
 
         return {
