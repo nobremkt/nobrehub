@@ -7,14 +7,16 @@ import { Lead } from '@/types/lead.types';
 import { Input, Dropdown } from '@/design-system';
 import {
     Save, X, Pencil, DollarSign, Package, FileText,
-    Thermometer, Video, Briefcase
+    Thermometer, Video, Briefcase, Loader2
 } from 'lucide-react';
 import styles from './NegociosTab.module.css';
 import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/helpers';
+import { LeadService } from '../../../../services/LeadService';
 
 interface NegociosTabProps {
     lead: Lead;
+    onLeadUpdated?: () => void;
 }
 
 const TEMPERATURE_OPTIONS = [
@@ -34,34 +36,59 @@ const PRODUCT_OPTIONS = [
     { value: 'servico', label: 'Serviço Avulso' },
 ];
 
-export function NegociosTab({ lead }: NegociosTabProps) {
+export function NegociosTab({ lead, onLeadUpdated }: NegociosTabProps) {
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const customFields = (lead.customFields || {}) as Record<string, string>;
     const [formData, setFormData] = useState({
-        dealValue: lead.estimatedValue?.toString() || '',
-        productAcquired: '',
-        productName: '',
-        notes: '',
-        temperature: '',
-        recordingLink: '',
+        dealValue: (lead.dealValue ?? lead.estimatedValue)?.toString() || '',
+        productAcquired: customFields.productAcquired || '',
+        productName: customFields.productName || '',
+        notes: lead.dealNotes || '',
+        temperature: lead.temperature || '',
+        recordingLink: customFields.recordingLink || '',
     });
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSave = () => {
-        toast.success('Informações do negócio salvas!');
-        setIsEditing(false);
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const numericValue = parseFloat(formData.dealValue) || 0;
+            await LeadService.updateLead(lead.id, {
+                estimatedValue: numericValue,
+                dealValue: numericValue,
+                dealNotes: formData.notes,
+                temperature: (formData.temperature || undefined) as Lead['temperature'],
+                customFields: {
+                    ...lead.customFields,
+                    productAcquired: formData.productAcquired,
+                    productName: formData.productName,
+                    recordingLink: formData.recordingLink,
+                },
+            });
+            toast.success('Informações do negócio salvas!');
+            setIsEditing(false);
+            onLeadUpdated?.();
+        } catch (error) {
+            console.error('Erro ao salvar negócio:', error);
+            toast.error('Erro ao salvar informações do negócio.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleCancel = () => {
+        const cf = (lead.customFields || {}) as Record<string, string>;
         setFormData({
-            dealValue: lead.estimatedValue?.toString() || '',
-            productAcquired: '',
-            productName: '',
-            notes: '',
-            temperature: '',
-            recordingLink: '',
+            dealValue: (lead.dealValue ?? lead.estimatedValue)?.toString() || '',
+            productAcquired: cf.productAcquired || '',
+            productName: cf.productName || '',
+            notes: lead.dealNotes || '',
+            temperature: lead.temperature || '',
+            recordingLink: cf.recordingLink || '',
         });
         setIsEditing(false);
     };
@@ -89,9 +116,9 @@ export function NegociosTab({ lead }: NegociosTabProps) {
                             <X size={14} />
                             Cancelar
                         </button>
-                        <button className={styles.saveBtn} onClick={handleSave}>
-                            <Save size={14} />
-                            Salvar
+                        <button className={styles.saveBtn} onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? <Loader2 size={14} className={styles.spinning} /> : <Save size={14} />}
+                            {isSaving ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 )}

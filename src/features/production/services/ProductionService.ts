@@ -1,23 +1,43 @@
 
 import {
     collection,
-    addDoc,
     updateDoc,
     deleteDoc,
     doc,
     getDocs,
+    getDoc,
     query,
     where,
     orderBy,
     serverTimestamp,
     Timestamp,
-    onSnapshot
+    onSnapshot,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { COLLECTIONS } from '@/config';
 import { Project } from '@/types/project.types';
+import { ProjectStatusPageService } from './ProjectStatusPageService';
 
 const COLLECTION_NAME = COLLECTIONS.PRODUCTION_PROJECTS;
+
+const mapProjectDoc = (docSnap: any): Project => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...data,
+        dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+        deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
+        assignedAt: data.assignedAt instanceof Timestamp ? data.assignedAt.toDate() : undefined,
+        postSalesAssignedAt: data.postSalesAssignedAt instanceof Timestamp ? data.postSalesAssignedAt.toDate() : undefined,
+        deliveredToClientAt: data.deliveredToClientAt instanceof Timestamp ? data.deliveredToClientAt.toDate() : undefined,
+        clientApprovedAt: data.clientApprovedAt instanceof Timestamp ? data.clientApprovedAt.toDate() : undefined,
+        paymentReceivedAt: data.paymentReceivedAt instanceof Timestamp ? data.paymentReceivedAt.toDate() : undefined,
+        lastRevisionRequestedAt: data.lastRevisionRequestedAt instanceof Timestamp ? data.lastRevisionRequestedAt.toDate() : undefined,
+    } as Project;
+};
 
 export const ProductionService = {
     /**
@@ -33,18 +53,7 @@ export const ProductionService = {
             );
 
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    // Converte Timestamps para Dates
-                    dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
-                } as Project;
-            });
+            return snapshot.docs.map(mapProjectDoc);
         } catch (error) {
             console.error('Error fetching projects:', error);
             throw error;
@@ -74,17 +83,7 @@ export const ProductionService = {
             );
 
             const snapshot = await getDocs(q);
-            const allProjects = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
-                } as Project;
-            });
+            const allProjects = snapshot.docs.map(mapProjectDoc);
 
             const lowerTerm = term.toLowerCase();
             return allProjects.filter(p =>
@@ -103,12 +102,52 @@ export const ProductionService = {
      */
     createProject: async (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
-            const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+            const projectsRef = collection(db, COLLECTION_NAME);
+            const projectDocRef = doc(projectsRef);
+            const projectId = projectDocRef.id;
+
+            const statusPageToken = project.statusPageToken || ProjectStatusPageService.generateToken();
+            const statusPageUrl = project.statusPageUrl || ProjectStatusPageService.buildStatusPageUrl(statusPageToken);
+
+            const batch = writeBatch(db);
+
+            batch.set(projectDocRef, {
                 ...project,
+                statusPageToken,
+                statusPageUrl,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
-            return docRef.id;
+
+            const publicPayload = {
+                id: projectId,
+                name: project.name,
+                leadName: project.leadName,
+                producerName: project.producerName,
+                status: project.status,
+                dueDate: project.dueDate,
+                deliveredToClientAt: project.deliveredToClientAt,
+                statusPageToken,
+                statusPageUrl
+            };
+
+            const statusDocRef = doc(db, 'project_status_pages', statusPageToken);
+            batch.set(statusDocRef, {
+                token: statusPageToken,
+                projectId,
+                statusPageUrl,
+                projectName: publicPayload.name,
+                leadName: publicPayload.leadName,
+                producerName: publicPayload.producerName || '',
+                status: publicPayload.status,
+                dueDate: publicPayload.dueDate || null,
+                deliveredToClientAt: publicPayload.deliveredToClientAt || null,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+
+            await batch.commit();
+            return projectId;
         } catch (error) {
             console.error('Error creating project:', error);
             throw error;
@@ -125,6 +164,7 @@ export const ProductionService = {
                 ...updates,
                 updatedAt: serverTimestamp()
             });
+            await ProjectStatusPageService.syncFromProjectId(id);
         } catch (error) {
             console.error('Error updating project:', error);
             throw error;
@@ -155,17 +195,7 @@ export const ProductionService = {
         );
 
         return onSnapshot(q, (snapshot) => {
-            const projects = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
-                } as Project;
-            });
+            const projects = snapshot.docs.map(mapProjectDoc);
             callback(projects);
         }, (error) => {
             console.error('Error listening to projects:', error);
@@ -173,10 +203,10 @@ export const ProductionService = {
     },
 
     /**
-     * Busca projeto vinculado a um lead específico
-     * Retorna o projeto mais recente se houver múltiplos
+     * Busca todos os projetos vinculados a um lead
+     * Ordena por criação (mais recente primeiro)
      */
-    getProjectByLeadId: async (leadId: string): Promise<Project | null> => {
+    getProjectsByLeadId: async (leadId: string): Promise<Project[]> => {
         try {
             const projectsRef = collection(db, COLLECTION_NAME);
             const q = query(
@@ -186,28 +216,26 @@ export const ProductionService = {
             );
 
             const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-
-            const doc = snapshot.docs[0];
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
-                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
-            } as Project;
+            return snapshot.docs.map(mapProjectDoc);
         } catch (error) {
-            console.error('Error fetching project by leadId:', error);
-            return null;
+            console.error('Error fetching projects by leadId:', error);
+            return [];
         }
     },
 
     /**
-     * Inscreve-se para atualizações em tempo real do projeto vinculado a um lead
+     * Busca projeto vinculado a um lead específico
+     * Retorna o projeto mais recente se houver múltiplos
      */
-    subscribeToProjectByLeadId: (leadId: string, callback: (project: Project | null) => void) => {
+    getProjectByLeadId: async (leadId: string): Promise<Project | null> => {
+        const projects = await ProductionService.getProjectsByLeadId(leadId);
+        return projects[0] || null;
+    },
+
+    /**
+     * Inscreve-se para atualizações em tempo real de todos os projetos vinculados a um lead
+     */
+    subscribeToProjectsByLeadId: (leadId: string, callback: (projects: Project[]) => void) => {
         const projectsRef = collection(db, COLLECTION_NAME);
         const q = query(
             projectsRef,
@@ -216,23 +244,40 @@ export const ProductionService = {
         );
 
         return onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
-                callback(null);
-                return;
-            }
-
-            const doc = snapshot.docs[0];
-            const data = doc.data();
-            callback({
-                id: doc.id,
-                ...data,
-                dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
-                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                deliveredAt: data.deliveredAt instanceof Timestamp ? data.deliveredAt.toDate() : undefined,
-            } as Project);
+            callback(snapshot.docs.map(mapProjectDoc));
         }, (error) => {
-            console.error('Error listening to project by leadId:', error);
+            console.error('Error listening to projects by leadId:', error);
         });
+    },
+
+    /**
+     * Inscreve-se para atualizações em tempo real do projeto vinculado a um lead
+     */
+    subscribeToProjectByLeadId: (leadId: string, callback: (project: Project | null) => void) => {
+        return ProductionService.subscribeToProjectsByLeadId(leadId, (projects) => {
+            callback(projects[0] || null);
+        });
+    },
+
+    /**
+     * Sincroniza os dados públicos da página de status de um projeto.
+     */
+    syncPublicStatusPage: async (projectId: string) => {
+        await ProjectStatusPageService.syncFromProjectId(projectId);
+    },
+
+    /**
+     * Busca um projeto por ID.
+     */
+    getProjectById: async (projectId: string): Promise<Project | null> => {
+        try {
+            const projectDocRef = doc(db, COLLECTION_NAME, projectId);
+            const snapshot = await getDoc(projectDocRef);
+            if (!snapshot.exists()) return null;
+            return mapProjectDoc(snapshot);
+        } catch (error) {
+            console.error('Error fetching project by id:', error);
+            return null;
+        }
     }
 };

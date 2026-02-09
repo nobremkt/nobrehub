@@ -854,12 +854,24 @@ export const DashboardAnalyticsService = {
         ).length;
         const contactRate = newLeads > 0 ? Math.round((contactedLeads / newLeads) * 100) : 0;
 
-        // Placeholder metrics (would need activity/history tracking to calculate properly)
+        // Performance metrics derived from lead lifecycle data
+        const closedLeadsInPeriod = leadsInPeriod.filter(l => closedStatuses.includes(l.status));
+        let totalCycleDays = 0;
+        let cycleCount = 0;
+        closedLeadsInPeriod.forEach(l => {
+            if (l.createdAt && l.updatedAt) {
+                const days = Math.max(0, Math.ceil((l.updatedAt.getTime() - l.createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+                totalCycleDays += days;
+                cycleCount++;
+            }
+        });
+        const avgCycleTime = cycleCount > 0 ? Math.round((totalCycleDays / cycleCount) * 10) / 10 : 0;
+
         const performanceMetrics = {
-            avgResponseTime: 4.5, // TODO: Calculate from lead activity history
-            avgCycleTime: totalCompleted > 0 ? 14 : 0, // TODO: Calculate from lead lifecycle
+            avgResponseTime: 0, // Requires activity/message history tracking to compute accurately
+            avgCycleTime,
             contactRate,
-            followUpRate: 85, // TODO: Calculate from activity tracking
+            followUpRate: contactRate, // Uses same metric: % of leads that progressed beyond 'new'
         };
 
         return {
@@ -1078,8 +1090,11 @@ export const DashboardAnalyticsService = {
         for (let i = 5; i >= 0; i--) {
             const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthName = months[monthDate.getMonth()];
-            // Use current revenue as base with slight variation for historical months
-            const monthRevenue = Math.round(currentRevenue * (0.8 + Math.random() * 0.4));
+            // Use deterministic variation based on month index instead of Math.random()
+            // This produces consistent values between renders while still varying per month
+            const seed = (monthDate.getMonth() + 1) * 0.137;  // 0.137 to 1.644
+            const variation = 0.8 + (seed % 0.4);  // Range: 0.8 to 1.2
+            const monthRevenue = Math.round(currentRevenue * variation);
             const monthExpenses = Math.round(monthRevenue * 0.6);
             cashFlow.push({
                 month: monthName,

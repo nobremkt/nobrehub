@@ -72,11 +72,13 @@ export function ProductivityChart({ data }: ProductivityChartProps) {
                                     `${value}%`,
                                     'Produtividade'
                                 ]}
+                                isAnimationActive={false}
                             />
                             <Bar
                                 dataKey="productivity"
                                 radius={[0, 4, 4, 0]}
                                 barSize={20}
+                                isAnimationActive={false}
                             >
                                 {sortedData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={getBarColor(entry.productivity)} />

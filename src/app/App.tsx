@@ -24,6 +24,7 @@ import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { ProductionPage } from '@/features/production/pages/ProductionPage';
+import { PublicProjectStatusPage } from '@/features/production/pages/PublicProjectStatusPage';
 import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
@@ -117,6 +118,9 @@ export function App() {
         <>
             <BrowserRouter>
                 <Routes>
+                    {/* Public project status page (no authentication required) */}
+                    <Route path="/status/projeto/:token" element={<PublicProjectStatusPage />} />
+
                     {/* Public Routes */}
                     <Route path={ROUTES.auth.login} element={
                         <PublicRoute>

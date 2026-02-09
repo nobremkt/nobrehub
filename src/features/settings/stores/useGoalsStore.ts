@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand';
-import { GoalsService, GoalsConfig, VideoDurationPoints } from '../services/goalsService';
+import { GoalsService, GoalsConfig, VideoDurationPoints, SalesGoals, PostSalesGoals, StrategicGoals } from '../services/goalsService';
 import { toast } from 'react-toastify';
 
 interface GoalsState {
@@ -20,6 +20,7 @@ interface GoalsState {
     setDailyGoal: (goal: number) => Promise<void>;
     setWorkdays: (perWeek: number, perMonth: number) => Promise<void>;
     setVideoDurationPoints: (points: VideoDurationPoints) => Promise<void>;
+    saveSectorGoals: (sector: 'salesGoals' | 'postSalesGoals' | 'strategicGoals', data: SalesGoals | PostSalesGoals | StrategicGoals) => Promise<void>;
     calculateGoal: (period: string) => number;
 }
 
@@ -94,6 +95,22 @@ export const useGoalsStore = create<GoalsState>((set, get) => ({
         } catch (error) {
             console.error('Error saving video duration points:', error);
             toast.error('Erro ao salvar configuração');
+        } finally {
+            set({ isSaving: false });
+        }
+    },
+
+    saveSectorGoals: async (sector, data) => {
+        set({ isSaving: true });
+        try {
+            await GoalsService.saveConfig({ [sector]: data });
+            set(state => ({
+                config: state.config ? { ...state.config, [sector]: data } : null
+            }));
+            toast.success('Metas do setor salvas!');
+        } catch (error) {
+            console.error('Error saving sector goals:', error);
+            toast.error('Erro ao salvar metas do setor');
         } finally {
             set({ isSaving: false });
         }

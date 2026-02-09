@@ -1,48 +1,96 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - POST SALES DISTRIBUTION SERVICE
- * ═══════════════════════════════════════════════════════════════════════════════
- * Gerencia a lista de distribuição de clientes para pós-vendas
- * Clientes são distribuídos quando o projeto é criado
- */
-
 import {
+    arrayUnion,
     collection,
-    query,
-    where,
-    orderBy,
-    getDocs,
-    getDoc,
-    updateDoc,
     doc,
+    getDoc,
+    getDocs,
     onSnapshot,
+    orderBy,
+    query,
     Timestamp,
-    arrayUnion
+    updateDoc,
+    where
 } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { get, ref, update as updateRealtime } from 'firebase/database';
+import { db, getRealtimeDb } from '@/config/firebase';
 import { COLLECTIONS } from '@/config';
 import { Lead, ClientStatus } from '@/types/lead.types';
+import { Project } from '@/types/project.types';
+import { ProjectStatusPageService } from '@/features/production/services/ProjectStatusPageService';
 
 const LEADS_COLLECTION = COLLECTIONS.LEADS;
 const PROJECTS_COLLECTION = COLLECTIONS.PRODUCTION_PROJECTS;
 
-// Tipo para carga de trabalho do pós-venda
 interface PostSalesWorkload {
     postSalesId: string;
     postSalesName: string;
-    activeClients: number;  // Clientes com status aguardando_projeto ou aguardando_alteracao
+    activeClients: number;
 }
 
-// Tipo para cliente na lista de distribuição
 interface DistributionClient extends Lead {
-    previousAttendant?: string; // Quem atendeu antes (se retornando)
+    previousAttendant?: string;
 }
+
+const ACTIVE_CLIENT_STATUSES: ClientStatus[] = [
+    'aguardando_projeto',
+    'aguardando_alteracao',
+    'entregue',
+    'aguardando_pagamento'
+];
+
+const getLeadClientStatusFromProjects = (projects: Project[]): ClientStatus => {
+    if (projects.length === 0) return 'aguardando_projeto';
+
+    const hasAlteration = projects.some(
+        project => project.status === 'alteracao' || project.clientApprovalStatus === 'changes_requested'
+    );
+    if (hasAlteration) return 'aguardando_alteracao';
+
+    const hasPendingPayment = projects.some(
+        project => project.clientApprovalStatus === 'approved' && project.paymentStatus !== 'paid'
+    );
+    if (hasPendingPayment) return 'aguardando_pagamento';
+
+    const hasDeliveredAwaitingApproval = projects.some(
+        project => project.status === 'entregue' && project.clientApprovalStatus !== 'approved'
+    );
+    if (hasDeliveredAwaitingApproval) return 'entregue';
+
+    return 'aguardando_projeto';
+};
+
+const mapLeadDoc = (docSnap: any): DistributionClient => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...data,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+        dealClosedAt: data.dealClosedAt instanceof Timestamp ? data.dealClosedAt.toDate() : undefined,
+        previousAttendant: data.previousPostSalesIds?.length > 0
+            ? data.previousPostSalesIds[data.previousPostSalesIds.length - 1]
+            : undefined
+    } as DistributionClient;
+};
+
+const mapProjectDoc = (docSnap: any): Project => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        ...data,
+        dueDate: data.dueDate instanceof Timestamp ? data.dueDate.toDate() : new Date(data.dueDate),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+        assignedAt: data.assignedAt instanceof Timestamp ? data.assignedAt.toDate() : undefined,
+        postSalesAssignedAt: data.postSalesAssignedAt instanceof Timestamp ? data.postSalesAssignedAt.toDate() : undefined,
+        deliveredToClientAt: data.deliveredToClientAt instanceof Timestamp ? data.deliveredToClientAt.toDate() : undefined,
+        clientApprovedAt: data.clientApprovedAt instanceof Timestamp ? data.clientApprovedAt.toDate() : undefined,
+        paymentReceivedAt: data.paymentReceivedAt instanceof Timestamp ? data.paymentReceivedAt.toDate() : undefined,
+        lastRevisionRequestedAt: data.lastRevisionRequestedAt instanceof Timestamp ? data.lastRevisionRequestedAt.toDate() : undefined,
+    } as Project;
+};
 
 export const PostSalesDistributionService = {
-    /**
-     * Busca clientes na lista de distribuição (pendentes)
-     * Só retorna clientes que ainda não foram atribuídos a um pós-venda
-     */
     getDistributionQueue: async (): Promise<DistributionClient[]> => {
         try {
             const leadsRef = collection(db, LEADS_COLLECTION);
@@ -54,29 +102,13 @@ export const PostSalesDistributionService = {
             );
 
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(docSnap => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    dealClosedAt: data.dealClosedAt instanceof Timestamp ? data.dealClosedAt.toDate() : undefined,
-                    // Mostra quem atendeu antes se existir
-                    previousAttendant: data.previousPostSalesIds?.length > 0
-                        ? data.previousPostSalesIds[data.previousPostSalesIds.length - 1]
-                        : undefined
-                } as DistributionClient;
-            });
+            return snapshot.docs.map(mapLeadDoc);
         } catch (error) {
             console.error('Error fetching post-sales distribution queue:', error);
             throw error;
         }
     },
 
-    /**
-     * Inscreve-se para atualizações em tempo real da lista de distribuição
-     */
     subscribeToDistributionQueue: (callback: (clients: DistributionClient[]) => void) => {
         const leadsRef = collection(db, LEADS_COLLECTION);
         const q = query(
@@ -87,46 +119,25 @@ export const PostSalesDistributionService = {
         );
 
         return onSnapshot(q, (snapshot) => {
-            const clients = snapshot.docs.map(docSnap => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    dealClosedAt: data.dealClosedAt instanceof Timestamp ? data.dealClosedAt.toDate() : undefined,
-                    previousAttendant: data.previousPostSalesIds?.length > 0
-                        ? data.previousPostSalesIds[data.previousPostSalesIds.length - 1]
-                        : undefined
-                } as DistributionClient;
-            });
-            callback(clients);
+            callback(snapshot.docs.map(mapLeadDoc));
         }, (error) => {
             console.error('Error listening to post-sales distribution queue:', error);
         });
     },
 
-    /**
-     * Calcula a carga de trabalho de um pós-venda
-     * Considera clientes ATIVOS (aguardando_projeto ou aguardando_alteracao)
-     */
     calculatePostSalesWorkload: async (postSalesId: string): Promise<PostSalesWorkload> => {
         try {
             const leadsRef = collection(db, LEADS_COLLECTION);
-            // Clientes ativos = aguardando_projeto ou aguardando_alteracao
-            const activeStatuses: ClientStatus[] = ['aguardando_projeto', 'aguardando_alteracao'];
-
             const q = query(
                 leadsRef,
                 where('postSalesId', '==', postSalesId),
-                where('clientStatus', 'in', activeStatuses)
+                where('clientStatus', 'in', ACTIVE_CLIENT_STATUSES)
             );
 
             const snapshot = await getDocs(q);
-
             return {
                 postSalesId,
-                postSalesName: '', // Será preenchido pelo componente
+                postSalesName: '',
                 activeClients: snapshot.size
             };
         } catch (error) {
@@ -135,65 +146,80 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Busca carga de trabalho de todos os pós-vendas
-     */
     getAllPostSalesWorkload: async (postSalesIds: string[]): Promise<PostSalesWorkload[]> => {
-        const workloads = await Promise.all(
+        return Promise.all(
             postSalesIds.map(id => PostSalesDistributionService.calculatePostSalesWorkload(id))
         );
-        return workloads;
     },
 
-    /**
-     * Atribui cliente manualmente para um pós-venda (líder decide)
-     */
+    syncConversationAssignment: async (leadId: string, postSalesId: string): Promise<void> => {
+        try {
+            const realtimeDb = getRealtimeDb();
+            const conversationsRef = ref(realtimeDb, 'conversations');
+            const snapshot = await get(conversationsRef);
+
+            if (!snapshot.exists()) return;
+
+            const data = snapshot.val() as Record<string, any>;
+            const conversationId = Object.keys(data).find(id => data[id]?.leadId === leadId);
+            if (!conversationId) return;
+
+            await updateRealtime(ref(realtimeDb, `conversations/${conversationId}`), {
+                assignedTo: postSalesId,
+                postSalesId,
+                context: 'post_sales',
+                status: 'open',
+                updatedAt: Date.now()
+            });
+        } catch (error) {
+            console.error('Error syncing post-sales conversation assignment:', error);
+        }
+    },
+
     assignToPostSales: async (
         leadId: string,
         postSalesId: string,
-        _postSalesName: string  // Usado para consistência de API
+        _postSalesName: string
     ): Promise<void> => {
         try {
             const leadRef = doc(db, LEADS_COLLECTION, leadId);
-            await updateDoc(leadRef, {
+            const leadSnapshot = await getDoc(leadRef);
+            const previousPostSalesId = leadSnapshot.exists() ? leadSnapshot.data().postSalesId : undefined;
+
+            const updates: Record<string, unknown> = {
                 postSalesId,
                 postSalesDistributionStatus: 'assigned',
                 postSalesAssignedAt: new Date(),
                 currentSector: 'pos_vendas',
-                clientStatus: 'aguardando_projeto' as ClientStatus
-            });
+                clientStatus: 'aguardando_projeto' as ClientStatus,
+                updatedAt: new Date()
+            };
+
+            if (previousPostSalesId && previousPostSalesId !== postSalesId) {
+                updates.previousPostSalesIds = arrayUnion(previousPostSalesId);
+            }
+
+            await updateDoc(leadRef, updates);
+            await PostSalesDistributionService.syncConversationAssignment(leadId, postSalesId);
         } catch (error) {
             console.error('Error assigning client to post-sales:', error);
             throw error;
         }
     },
 
-    /**
-     * Distribui automaticamente para o pós-venda com menor carga
-     */
     autoAssignClient: async (
         leadId: string,
         postSalesIds: string[]
     ): Promise<{ postSalesId: string; postSalesName: string } | null> => {
         try {
-            if (postSalesIds.length === 0) {
-                return null; // Nenhum pós-venda disponível
-            }
+            if (postSalesIds.length === 0) return null;
 
-            // Calcula carga de todos os pós-vendas
             const workloads = await PostSalesDistributionService.getAllPostSalesWorkload(postSalesIds);
-
-            // Ordena por clientes ativos (menor primeiro)
             workloads.sort((a, b) => a.activeClients - b.activeClients);
 
-            // Pega o pós-venda com menor carga
             const selected = workloads[0];
+            if (!selected) return null;
 
-            if (!selected) {
-                return null;
-            }
-
-            // Atribui ao pós-venda
             await PostSalesDistributionService.assignToPostSales(
                 leadId,
                 selected.postSalesId,
@@ -210,19 +236,13 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Distribui automaticamente todos os clientes pendentes
-     */
     autoAssignAllPending: async (postSalesIds: string[]): Promise<number> => {
         try {
             const queue = await PostSalesDistributionService.getDistributionQueue();
-
             let assigned = 0;
+
             for (const client of queue) {
-                const result = await PostSalesDistributionService.autoAssignClient(
-                    client.id,
-                    postSalesIds
-                );
+                const result = await PostSalesDistributionService.autoAssignClient(client.id, postSalesIds);
                 if (result) assigned++;
             }
 
@@ -233,9 +253,6 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Atualiza o status do cliente no pós-vendas
-     */
     updateClientStatus: async (leadId: string, status: ClientStatus): Promise<void> => {
         try {
             const leadRef = doc(db, LEADS_COLLECTION, leadId);
@@ -249,18 +266,100 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Marca cliente como concluído (sai do inbox pós-venda)
-     * Adiciona automaticamente a tag "cliente" para identificar clientes fidelizados
-     */
-    completeClient: async (leadId: string): Promise<void> => {
+    getProjectsByLeadId: async (leadId: string): Promise<Project[]> => {
         try {
+            const projectsRef = collection(db, PROJECTS_COLLECTION);
+            const q = query(
+                projectsRef,
+                where('leadId', '==', leadId),
+                orderBy('createdAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(mapProjectDoc);
+        } catch (error) {
+            console.error('Error fetching projects by leadId:', error);
+            return [];
+        }
+    },
+
+    syncLeadStatusFromProjects: async (leadId: string): Promise<void> => {
+        const projects = await PostSalesDistributionService.getProjectsByLeadId(leadId);
+        if (projects.length === 0) return;
+
+        const allConcluded = projects.every(
+            project => project.status === 'concluido' || project.paymentStatus === 'paid'
+        );
+
+        const leadRef = doc(db, LEADS_COLLECTION, leadId);
+
+        if (allConcluded) {
+            await updateDoc(leadRef, {
+                clientStatus: 'concluido' as ClientStatus,
+                currentSector: 'vendas',
+                postSalesDistributionStatus: null,
+                completedAt: new Date(),
+                updatedAt: new Date(),
+                tags: arrayUnion('cliente')
+            });
+            return;
+        }
+
+        await updateDoc(leadRef, {
+            clientStatus: getLeadClientStatusFromProjects(projects),
+            currentSector: 'pos_vendas',
+            postSalesDistributionStatus: 'assigned',
+            updatedAt: new Date()
+        });
+    },
+
+    markProjectAsDelivered: async (
+        leadId: string,
+        projectId: string,
+        deliveredByPostSalesId?: string
+    ): Promise<void> => {
+        try {
+            const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+            await updateDoc(projectRef, {
+                status: 'entregue',
+                clientApprovalStatus: 'pending',
+                deliveredToClientAt: new Date(),
+                deliveredToClientBy: deliveredByPostSalesId || '',
+                updatedAt: new Date()
+            });
+            await ProjectStatusPageService.syncFromProjectId(projectId);
+
+            await PostSalesDistributionService.syncLeadStatusFromProjects(leadId);
+        } catch (error) {
+            console.error('Error marking project as delivered:', error);
+            throw error;
+        }
+    },
+
+    completeClient: async (leadId: string, projectId?: string, paymentReceivedBy?: string): Promise<void> => {
+        try {
+            if (projectId) {
+                const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+                await updateDoc(projectRef, {
+                    paymentStatus: 'paid',
+                    paymentReceivedAt: new Date(),
+                    paymentReceivedBy: paymentReceivedBy || '',
+                    status: 'concluido',
+                    updatedAt: new Date()
+                });
+                await ProjectStatusPageService.syncFromProjectId(projectId);
+
+                await PostSalesDistributionService.syncLeadStatusFromProjects(leadId);
+                return;
+            }
+
             const leadRef = doc(db, LEADS_COLLECTION, leadId);
             await updateDoc(leadRef, {
                 clientStatus: 'concluido' as ClientStatus,
-                currentSector: 'vendas', // Volta pra base de contatos
+                currentSector: 'vendas',
+                postSalesDistributionStatus: null,
+                completedAt: new Date(),
                 updatedAt: new Date(),
-                // Adiciona a tag "cliente" automaticamente
                 tags: arrayUnion('cliente')
             });
         } catch (error) {
@@ -269,16 +368,13 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Busca clientes atribuídos a um atendente específico
-     */
     getClientsByAttendant: async (postSalesId: string): Promise<Lead[]> => {
         try {
             const leadsRef = collection(db, LEADS_COLLECTION);
             const q = query(
                 leadsRef,
                 where('postSalesId', '==', postSalesId),
-                where('clientStatus', 'in', ['aguardando_projeto', 'aguardando_alteracao', 'entregue', 'aguardando_pagamento']),
+                where('clientStatus', 'in', [...ACTIVE_CLIENT_STATUSES, 'concluido']),
                 orderBy('updatedAt', 'desc')
             );
 
@@ -299,15 +395,12 @@ export const PostSalesDistributionService = {
         }
     },
 
-    /**
-     * Inscreve-se para atualizações em tempo real dos clientes de um atendente
-     */
     subscribeToClientsByAttendant: (postSalesId: string, callback: (clients: Lead[]) => void) => {
         const leadsRef = collection(db, LEADS_COLLECTION);
         const q = query(
             leadsRef,
             where('postSalesId', '==', postSalesId),
-            where('clientStatus', 'in', ['aguardando_projeto', 'aguardando_alteracao', 'entregue', 'aguardando_pagamento']),
+            where('clientStatus', 'in', [...ACTIVE_CLIENT_STATUSES, 'concluido']),
             orderBy('updatedAt', 'desc')
         );
 
@@ -328,10 +421,6 @@ export const PostSalesDistributionService = {
         });
     },
 
-    /**
-     * Solicita revisão/alteração - O projeto volta pro MESMO produtor
-     * Não volta pra lista de distribuição
-     */
     requestRevision: async (leadId: string, projectId: string, reason?: string): Promise<void> => {
         try {
             if (!projectId) {
@@ -365,15 +454,15 @@ export const PostSalesDistributionService = {
                 clientApprovalStatus: 'changes_requested',
                 updatedAt: new Date()
             });
+            await ProjectStatusPageService.syncFromProjectId(projectId);
+
+            await PostSalesDistributionService.updateClientStatus(leadId, 'aguardando_alteracao');
         } catch (error) {
             console.error('Error requesting revision:', error);
             throw error;
         }
     },
 
-    /**
-     * Cliente aprovou o projeto
-     */
     approveClient: async (leadId: string, projectId?: string): Promise<void> => {
         try {
             if (!projectId) {
@@ -395,6 +484,9 @@ export const PostSalesDistributionService = {
                 clientApprovedAt: new Date(),
                 updatedAt: new Date()
             });
+            await ProjectStatusPageService.syncFromProjectId(projectId);
+
+            await PostSalesDistributionService.syncLeadStatusFromProjects(leadId);
         } catch (error) {
             console.error('Error approving client:', error);
             throw error;

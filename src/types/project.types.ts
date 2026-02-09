@@ -45,6 +45,8 @@ export interface Project {
     externalId?: string;
     metadata?: Record<string, any>;
     tags?: string[];
+    statusPageToken?: string;               // Token público da página de status
+    statusPageUrl?: string;                 // URL pública da página de status
 
     deliveredAt?: Date;
     createdAt: Date;

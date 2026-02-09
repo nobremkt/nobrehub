@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useProductionStore } from '../stores/useProductionStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { PERMISSIONS } from '@/config/permissions';
@@ -12,7 +11,8 @@ import {
 } from '@/design-system';
 import { Project, ProjectStatus } from '@/types/project.types';
 import { ConfirmModal } from '@/design-system/components/ConfirmModal/ConfirmModal';
-import { Calendar, ExternalLink, Trash2 } from 'lucide-react';
+import { Calendar, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 interface ProjectDetailsModalProps {
     isOpen: boolean;
@@ -22,10 +22,12 @@ interface ProjectDetailsModalProps {
 
 const PROJECT_STATUS_OPTIONS = [
     { value: 'aguardando', label: 'Aguardando' },
-    { value: 'em-producao', label: 'Em Produção' },
+    { value: 'em-producao', label: 'Em Producao' },
     { value: 'a-revisar', label: 'A Revisar' },
     { value: 'revisado', label: 'Revisado' },
-    { value: 'alteracao', label: 'Em Alteração' },
+    { value: 'alteracao', label: 'Em Alteracao' },
+    { value: 'entregue', label: 'Entregue' },
+    { value: 'concluido', label: 'Concluido' },
 ];
 
 export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetailsModalProps) => {
@@ -71,6 +73,17 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
 
     if (!project) return null;
 
+    const handleCopyStatusPageLink = async () => {
+        if (!project.statusPageUrl) return;
+        try {
+            await navigator.clipboard.writeText(project.statusPageUrl);
+            toast.success('Link da pagina de status copiado!');
+        } catch (error) {
+            console.error(error);
+            toast.error('Nao foi possivel copiar o link.');
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isReadOnly) return;
@@ -94,12 +107,12 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={isReadOnly ? "Detalhes do Projeto" : "Editar Projeto"}
+            title={isReadOnly ? 'Detalhes do Projeto' : 'Editar Projeto'}
             size="md"
         >
             <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Header Info (Read Only for everyone essentially, but editable if manager) */}
+                {/* Header Info */}
                 <div className="flex flex-col gap-4">
                     {isReadOnly ? (
                         <div className="space-y-4">
@@ -209,11 +222,41 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
 
                 <div>
                     <label className="text-sm font-medium text-text-secondary mb-1.5 block">
-                        Observações
+                        Pagina de Status do Cliente
+                    </label>
+                    {project.statusPageUrl ? (
+                        <div className="flex items-center gap-2 bg-surface-secondary p-2 rounded-md border border-border">
+                            <a
+                                href={project.statusPageUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 flex items-center gap-2 text-primary-500 hover:text-primary-400 transition-colors min-w-0"
+                            >
+                                <ExternalLink size={16} />
+                                <span className="truncate">{project.statusPageUrl}</span>
+                            </a>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCopyStatusPageLink}
+                                leftIcon={<Copy size={14} />}
+                            >
+                                Copiar
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-text-muted italic">Link ainda nao disponivel.</p>
+                    )}
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium text-text-secondary mb-1.5 block">
+                        Observacoes
                     </label>
                     {isReadOnly ? (
                         <div className="bg-surface-secondary/50 p-3 rounded-md min-h-[4rem] text-sm text-text-primary whitespace-pre-wrap">
-                            {notes || <span className="text-text-muted italic">Sem observações.</span>}
+                            {notes || <span className="text-text-muted italic">Sem observacoes.</span>}
                         </div>
                     ) : (
                         <textarea
@@ -240,11 +283,11 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
                     </div>
                     <div className="flex gap-3">
                         <Button variant="ghost" onClick={onClose} type="button">
-                            {isReadOnly ? "Fechar" : "Cancelar"}
+                            {isReadOnly ? 'Fechar' : 'Cancelar'}
                         </Button>
                         {!isReadOnly && (
                             <Button variant="primary" type="submit" isLoading={isLoading}>
-                                Salvar Alterações
+                                Salvar Alteracoes
                             </Button>
                         )}
                     </div>
@@ -256,7 +299,7 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleDelete}
                 title="Excluir Projeto"
-                description={`Tem certeza que deseja excluir o projeto "${project.name}"? Esta ação não pode ser desfeita.`}
+                description={`Tem certeza que deseja excluir o projeto "${project.name}"? Esta acao nao pode ser desfeita.`}
                 confirmLabel="Excluir"
                 cancelLabel="Cancelar"
                 variant="danger"
