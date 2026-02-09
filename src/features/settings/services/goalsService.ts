@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - GOALS SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
- * Firebase service for managing production goals
+ * Firebase service for managing production and sector goals
  */
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -16,11 +16,31 @@ export interface VideoDurationPoints {
     '60plus': number;
 }
 
+export interface SalesGoals {
+    monthlyRevenue: number;
+    leadsConverted: number;
+    conversionRate: number;
+}
+
+export interface PostSalesGoals {
+    monthlyClients: number;
+    satisfactionRate: number;
+    responseTime: number;
+}
+
+export interface StrategicGoals {
+    monthlyNotes: number;
+    weeklyReviews: number;
+}
+
 export interface GoalsConfig {
-    dailyProductionGoal: number; // Meta diária em pontos
-    workdaysPerWeek: number; // Dias úteis por semana (padrão 5)
-    workdaysPerMonth: number; // Dias úteis estimados por mês (padrão 22)
-    videoDurationPoints: VideoDurationPoints; // Pontos por duração de vídeo
+    dailyProductionGoal: number;
+    workdaysPerWeek: number;   // kept for backward compatibility with DashboardAnalyticsService
+    workdaysPerMonth: number;  // kept for backward compatibility with DashboardAnalyticsService
+    videoDurationPoints: VideoDurationPoints;
+    salesGoals?: SalesGoals;
+    postSalesGoals?: PostSalesGoals;
+    strategicGoals?: StrategicGoals;
     updatedAt: Date;
 }
 
@@ -54,6 +74,9 @@ export const GoalsService = {
                     workdaysPerWeek: data.workdaysPerWeek ?? DEFAULT_CONFIG.workdaysPerWeek,
                     workdaysPerMonth: data.workdaysPerMonth ?? DEFAULT_CONFIG.workdaysPerMonth,
                     videoDurationPoints: data.videoDurationPoints ?? DEFAULT_VIDEO_DURATION_POINTS,
+                    salesGoals: data.salesGoals ?? undefined,
+                    postSalesGoals: data.postSalesGoals ?? undefined,
+                    strategicGoals: data.strategicGoals ?? undefined,
                     updatedAt: data.updatedAt?.toDate?.() ?? new Date()
                 };
             }

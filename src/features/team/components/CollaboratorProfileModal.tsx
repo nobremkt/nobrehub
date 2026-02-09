@@ -9,12 +9,16 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useState, useMemo, useEffect } from 'react';
-import { Modal } from '@/design-system';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Modal, Spinner } from '@/design-system';
 import { Collaborator } from '@/features/settings/types';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import { HolidaysService } from '@/features/settings/services/holidaysService';
+import { useGoalProgress } from '@/features/settings/hooks/useGoalProgress';
+import type { GoalProgress } from '@/features/settings/services/goalTrackingService';
 import { formatPhone } from '@/utils';
+import { getFirestoreDb } from '@/config/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import {
     Mail,
     Phone,
@@ -59,6 +63,379 @@ const SECTOR_IDS = {
     ESTRATEGICO: 'zeekJ4iY9voX3AURpar5',
     GERENCIA: 'YIK77HEH6qESkWzVYvXK'
 };
+
+interface CollaboratorMetrics {
+    // Production
+    points: number;
+    projectsFinished: number;
+    approvalRate: number;
+    avgDeliveryDays: number;
+    // Sales
+    totalSold: number;
+    leadsConverted: number;
+    conversionRate: number;
+    avgTicket: number;
+    // Post-Sales
+    clientsAttended: number;
+    completedProjects: number;
+}
+
+function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: string | undefined, isActive: boolean) {
+    const [metrics, setMetrics] = useState<CollaboratorMetrics | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const fetchMetrics = useCallback(async () => {
+        if (!collaboratorId || !sectorId || !isActive) return;
+        setLoading(true);
+        try {
+            const db = getFirestoreDb();
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+            if (sectorId === SECTOR_IDS.PRODUCAO) {
+                const snapshot = await getDocs(collection(db, 'projects'));
+                let points = 0, delivered = 0, alteracoes = 0, totalDays = 0, deliveryCount = 0;
+
+                snapshot.docs.forEach(doc => {
+                    const d = doc.data();
+                    if (d.producerId !== collaboratorId) return;
+                    const deliveredAt = d.deliveredAt?.toDate?.() || (d.deliveredAt ? new Date(d.deliveredAt) : null);
+                    const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+                    const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
+                    if (!deliveredAt || deliveredAt < monthStart || deliveredAt > monthEnd) return;
+                    if (isAlt) { alteracoes++; return; }
+                    delivered++;
+                    points += Number(d.points) || 1;
+                    if (createdAt) {
+                        totalDays += Math.max(0, Math.ceil((deliveredAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+                        deliveryCount++;
+                    }
+                });
+
+                const total = delivered + alteracoes;
+                setMetrics({
+                    points,
+                    projectsFinished: delivered,
+                    approvalRate: total > 0 ? Math.round((delivered / total) * 100) : 100,
+                    avgDeliveryDays: deliveryCount > 0 ? Math.round((totalDays / deliveryCount) * 10) / 10 : 0,
+                    totalSold: 0, leadsConverted: 0, conversionRate: 0, avgTicket: 0,
+                    clientsAttended: 0, completedProjects: 0,
+                });
+            } else if (sectorId === SECTOR_IDS.VENDAS) {
+                const snapshot = await getDocs(collection(db, 'leads'));
+                let totalSold = 0, closed = 0, lost = 0;
+                const closedStatuses = ['won', 'closed', 'contracted'];
+                const lostStatuses = ['lost', 'churned'];
+
+                snapshot.docs.forEach(doc => {
+                    const d = doc.data();
+                    if (d.responsibleId !== collaboratorId) return;
+                    const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+                    if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
+                    if (closedStatuses.includes(d.status)) {
+                        closed++;
+                        totalSold += d.estimatedValue || 0;
+                    }
+                    if (lostStatuses.includes(d.status)) lost++;
+                });
+
+                const totalCompleted = closed + lost;
+                setMetrics({
+                    points: 0, projectsFinished: 0, approvalRate: 0, avgDeliveryDays: 0,
+                    totalSold,
+                    leadsConverted: closed,
+                    conversionRate: totalCompleted > 0 ? Math.round((closed / totalCompleted) * 100) : 0,
+                    avgTicket: closed > 0 ? Math.round(totalSold / closed) : 0,
+                    clientsAttended: 0, completedProjects: 0,
+                });
+            } else if (sectorId === SECTOR_IDS.POS_VENDAS) {
+                const leadsSnap = await getDocs(collection(db, 'leads'));
+                let clientsAttended = 0, completed = 0;
+
+                leadsSnap.docs.forEach(doc => {
+                    const d = doc.data();
+                    if (d.postSalesId !== collaboratorId) return;
+                    clientsAttended++;
+                    if (d.clientStatus === 'concluido') completed++;
+                });
+
+                setMetrics({
+                    points: 0, projectsFinished: 0, approvalRate: 0, avgDeliveryDays: 0,
+                    totalSold: 0, leadsConverted: 0, conversionRate: 0, avgTicket: 0,
+                    clientsAttended,
+                    completedProjects: completed,
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar métricas do colaborador:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [collaboratorId, sectorId, isActive]);
+
+    useEffect(() => {
+        fetchMetrics();
+    }, [fetchMetrics]);
+
+    return { metrics, loading };
+}
+
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+};
+
+function GoalProgressBars({ collaborator }: { collaborator: Collaborator }) {
+    const { progress, loading } = useGoalProgress(
+        collaborator.id, collaborator.sectorId, true
+    );
+
+    if (loading) {
+        return (
+            <div className={styles.goalProgressSection}>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-4)' }}>
+                    <Spinner size="sm" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!progress || progress.goals.length === 0 || progress.goals.every((g: GoalProgress) => g.target === 0)) {
+        return (
+            <div className={styles.goalProgressSection}>
+                <h4 className={styles.goalProgressTitle}>Progresso de Metas</h4>
+                <div className={styles.noGoalsMessage}>
+                    <Target size={24} />
+                    <span>Metas não configuradas para este setor.</span>
+                    <span style={{ fontSize: '0.75rem' }}>Configure em Administração → Metas</span>
+                </div>
+            </div>
+        );
+    }
+
+    const color = progress.overallPercentage >= 100
+        ? 'var(--color-success-500)'
+        : progress.overallPercentage >= 60
+            ? 'var(--color-warning-500)'
+            : 'var(--color-primary-500)';
+
+    return (
+        <div className={styles.goalProgressSection}>
+            <h4 className={styles.goalProgressTitle}>Progresso de Metas — {progress.sectorLabel}</h4>
+
+            {/* Overall percentage */}
+            <div className={styles.goalOverallCard}>
+                <div className={styles.goalOverallPercentage} style={{ color }}>
+                    {progress.overallPercentage}%
+                </div>
+                <div className={styles.goalOverallLabel}>
+                    Progresso geral do mês
+                </div>
+            </div>
+
+            {/* Individual goals */}
+            <div className={styles.goalProgressList}>
+                {progress.goals.filter((g: GoalProgress) => g.target > 0).map((goal: GoalProgress) => {
+                    const barWidth = Math.min(goal.percentage, 100);
+                    const isComplete = goal.percentage >= 100;
+                    const formatValue = (value: number, unit: string) => {
+                        if (unit === 'R$') return `R$ ${value.toLocaleString('pt-BR')}`;
+                        if (unit === '%') return `${value}%`;
+                        return `${value}`;
+                    };
+                    return (
+                        <div key={goal.label} className={styles.goalProgressItem}>
+                            <div className={styles.goalProgressHeader}>
+                                <span className={styles.goalProgressLabel}>{goal.label}</span>
+                                <span className={styles.goalProgressValues}>
+                                    {formatValue(goal.actual, goal.unit)} / {formatValue(goal.target, goal.unit)}
+                                </span>
+                            </div>
+                            <div className={styles.goalProgressBarBg}>
+                                <div
+                                    className={`${styles.goalProgressBarFill} ${isComplete ? styles.success : ''}`}
+                                    style={{ width: `${barWidth}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function MetricsTabContent({ collaborator }: { collaborator: Collaborator }) {
+    const { metrics, loading } = useCollaboratorMetrics(
+        collaborator.id, collaborator.sectorId, true
+    );
+
+    if (loading) {
+        return (
+            <div className={styles.tabContent}>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8)' }}>
+                    <Spinner size="lg" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={styles.tabContent}>
+            <div className={styles.metricsSection}>
+                {/* Produção Metrics */}
+                {collaborator.sectorId === SECTOR_IDS.PRODUCAO && (
+                    <>
+                        <h3 className={styles.sectionTitle}>Métricas de Produção</h3>
+                        <div className={styles.metricsGrid}>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.points ?? 0}</span>
+                                    <span className={styles.metricLabel}>Pontos Este Mês</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Trophy size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.projectsFinished ?? 0}</span>
+                                    <span className={styles.metricLabel}>Projetos Finalizados</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Percent size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.approvalRate ?? 0}%</span>
+                                    <span className={styles.metricLabel}>Taxa de Aprovação</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Clock size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.avgDeliveryDays ?? 0} dias</span>
+                                    <span className={styles.metricLabel}>Tempo Médio</span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Vendas Metrics */}
+                {collaborator.sectorId === SECTOR_IDS.VENDAS && (
+                    <>
+                        <h3 className={styles.sectionTitle}>Métricas de Vendas</h3>
+                        <div className={styles.metricsGrid}>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <DollarSign size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{formatCurrency(metrics?.totalSold ?? 0)}</span>
+                                    <span className={styles.metricLabel}>Total Vendido</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Users size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.leadsConverted ?? 0}</span>
+                                    <span className={styles.metricLabel}>Leads Convertidos</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Percent size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.conversionRate ?? 0}%</span>
+                                    <span className={styles.metricLabel}>Taxa de Conversão</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{formatCurrency(metrics?.avgTicket ?? 0)}</span>
+                                    <span className={styles.metricLabel}>Ticket Médio</span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Pós-vendas Metrics */}
+                {collaborator.sectorId === SECTOR_IDS.POS_VENDAS && (
+                    <>
+                        <h3 className={styles.sectionTitle}>Métricas de Pós-vendas</h3>
+                        <div className={styles.metricsGrid}>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Users size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.clientsAttended ?? 0}</span>
+                                    <span className={styles.metricLabel}>Clientes Atendidos</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Check size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>{metrics?.completedProjects ?? 0}</span>
+                                    <span className={styles.metricLabel}>Projetos Concluídos</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <Clock size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>—</span>
+                                    <span className={styles.metricLabel}>Tempo Médio Atend.</span>
+                                </div>
+                            </div>
+                            <div className={styles.metricCard}>
+                                <div className={styles.metricIcon}>
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div className={styles.metricInfo}>
+                                    <span className={styles.metricValue}>—</span>
+                                    <span className={styles.metricLabel}>Taxa de Satisfação</span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Estratégico Metrics */}
+                {collaborator.sectorId === SECTOR_IDS.ESTRATEGICO && (
+                    <>
+                        <h3 className={styles.sectionTitle}>Métricas Estratégicas</h3>
+                        <div className={styles.comingSoon}>
+                            <BarChart3 size={48} />
+                            <p>Métricas em desenvolvimento</p>
+                            <span>Em breve você poderá visualizar as métricas estratégicas aqui.</span>
+                        </div>
+                    </>
+                )}
+
+                {/* Goal Progress Bars — shown for ALL sectors */}
+                <GoalProgressBars collaborator={collaborator} />
+            </div>
+        </div>
+    );
+}
 
 const LIDER_ROLE_ID = '2Qb0NHjub0kaYFYDITqQ';
 
@@ -597,156 +974,7 @@ export const CollaboratorProfileModal: React.FC<CollaboratorProfileModalProps> =
 
                     {/* Métricas Tab Content */}
                     {activeTab === 'metricas' && (
-                        <div className={styles.tabContent}>
-                            <div className={styles.metricsSection}>
-                                {/* Produção Metrics */}
-                                {collaborator.sectorId === SECTOR_IDS.PRODUCAO && (
-                                    <>
-                                        <h3 className={styles.sectionTitle}>Métricas de Produção</h3>
-                                        <div className={styles.metricsGrid}>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <TrendingUp size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>127</span>
-                                                    <span className={styles.metricLabel}>Pontos Este Mês</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Trophy size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>18</span>
-                                                    <span className={styles.metricLabel}>Projetos Finalizados</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Percent size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>85%</span>
-                                                    <span className={styles.metricLabel}>Taxa de Aprovação</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Clock size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>2.3 dias</span>
-                                                    <span className={styles.metricLabel}>Tempo Médio</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Vendas Metrics */}
-                                {collaborator.sectorId === SECTOR_IDS.VENDAS && (
-                                    <>
-                                        <h3 className={styles.sectionTitle}>Métricas de Vendas</h3>
-                                        <div className={styles.metricsGrid}>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <DollarSign size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>R$ 47.500</span>
-                                                    <span className={styles.metricLabel}>Total Vendido</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Users size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>12</span>
-                                                    <span className={styles.metricLabel}>Leads Convertidos</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Percent size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>32%</span>
-                                                    <span className={styles.metricLabel}>Taxa de Conversão</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <TrendingUp size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>R$ 3.958</span>
-                                                    <span className={styles.metricLabel}>Ticket Médio</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Pós-vendas Metrics */}
-                                {collaborator.sectorId === SECTOR_IDS.POS_VENDAS && (
-                                    <>
-                                        <h3 className={styles.sectionTitle}>Métricas de Pós-vendas</h3>
-                                        <div className={styles.metricsGrid}>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <DollarSign size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>R$ 32.800</span>
-                                                    <span className={styles.metricLabel}>Pagamentos Recebidos</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Clock size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>4.2h</span>
-                                                    <span className={styles.metricLabel}>Tempo Médio Atend.</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <Check size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>45</span>
-                                                    <span className={styles.metricLabel}>Tickets Resolvidos</span>
-                                                </div>
-                                            </div>
-                                            <div className={styles.metricCard}>
-                                                <div className={styles.metricIcon}>
-                                                    <TrendingUp size={24} />
-                                                </div>
-                                                <div className={styles.metricInfo}>
-                                                    <span className={styles.metricValue}>94%</span>
-                                                    <span className={styles.metricLabel}>Taxa de Satisfação</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Estratégico Metrics */}
-                                {collaborator.sectorId === SECTOR_IDS.ESTRATEGICO && (
-                                    <>
-                                        <h3 className={styles.sectionTitle}>Métricas Estratégicas</h3>
-                                        <div className={styles.comingSoon}>
-                                            <BarChart3 size={48} />
-                                            <p>Métricas em desenvolvimento</p>
-                                            <span>Em breve você poderá visualizar as métricas estratégicas aqui.</span>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                        <MetricsTabContent collaborator={collaborator} />
                     )}
                 </div>
             </div>
