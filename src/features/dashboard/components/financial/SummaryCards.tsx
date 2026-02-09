@@ -50,7 +50,7 @@ export function ExpensesCard({ expenses }: { expenses: number }) {
                     R$ {expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                    no período
+                    no período • <span style={{ opacity: 0.6 }}>estimativa</span>
                 </div>
             </CardBody>
         </Card>

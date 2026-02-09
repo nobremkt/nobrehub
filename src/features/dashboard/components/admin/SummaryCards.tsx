@@ -21,9 +21,9 @@ export function TeamSizeCard({ count, activeCount }: { count: number; activeCoun
     );
 }
 
-export function AvgWorkloadCard({ hours }: { hours: number }) {
-    const status = hours <= 6 ? 'Leve' : hours <= 8 ? 'Normal' : 'Alto';
-    const color = hours <= 6 ? 'var(--color-success-500)' : hours <= 8 ? 'var(--color-warning-500)' : 'var(--color-error-500)';
+export function AvgWorkloadCard({ projectsPerMember }: { projectsPerMember: number }) {
+    const status = projectsPerMember <= 3 ? 'Leve' : projectsPerMember <= 6 ? 'Normal' : 'Alto';
+    const color = projectsPerMember <= 3 ? 'var(--color-success-500)' : projectsPerMember <= 6 ? 'var(--color-warning-500)' : 'var(--color-error-500)';
 
     return (
         <Card variant="default" className={styles.card}>
@@ -33,10 +33,10 @@ export function AvgWorkloadCard({ hours }: { hours: number }) {
                     CARGA MÉDIA
                 </div>
                 <div className={styles.summaryValue} style={{ color }}>
-                    {hours}h
+                    {projectsPerMember}
                 </div>
                 <div className={styles.summarySubtext}>
-                    por dia • {status}
+                    projetos/membro • {status}
                 </div>
             </CardBody>
         </Card>
@@ -57,7 +57,7 @@ export function GoalsMetCard({ percentage }: { percentage: number }) {
                     {percentage}%
                 </div>
                 <div className={styles.summarySubtext}>
-                    este mês
+                    este mês • <span style={{ opacity: 0.6 }}>estimativa</span>
                 </div>
             </CardBody>
         </Card>

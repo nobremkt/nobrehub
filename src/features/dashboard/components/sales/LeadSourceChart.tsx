@@ -67,6 +67,7 @@ export function LeadSourceChart({ data }: LeadSourceChartProps) {
                                     outerRadius={65}
                                     paddingAngle={2}
                                     dataKey="count"
+                                    isAnimationActive={false}
                                 >
                                     {chartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -80,6 +81,7 @@ export function LeadSourceChart({ data }: LeadSourceChartProps) {
                                         fontSize: '12px'
                                     }}
                                     formatter={(value) => [`${value} leads`, '']}
+                                    isAnimationActive={false}
                                 />
                             </PieChart>
                         </ResponsiveContainer>

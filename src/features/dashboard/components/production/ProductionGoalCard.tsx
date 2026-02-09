@@ -83,8 +83,9 @@ export function ProductionGoalCard() {
                                     endAngle={-270}
                                     dataKey="value"
                                     stroke="none"
-                                    cornerRadius={10} // Native prop for rounded start and end
+                                    cornerRadius={10}
                                     paddingAngle={0}
+                                    isAnimationActive={false}
                                 >
                                     {/* Value Segment with Gradient */}
                                     <Cell fill="url(#goalGradient)" />

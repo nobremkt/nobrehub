@@ -51,6 +51,7 @@ export function OperationalCostsChart({ data, totalCosts }: OperationalCostsChar
                                     outerRadius={80}
                                     paddingAngle={2}
                                     dataKey="value"
+                                    isAnimationActive={false}
                                 >
                                     {sortedData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color || COST_COLORS[entry.name] || '#6b7280'} />
@@ -64,6 +65,7 @@ export function OperationalCostsChart({ data, totalCosts }: OperationalCostsChar
                                         fontSize: '12px'
                                     }}
                                     formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                                    isAnimationActive={false}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
