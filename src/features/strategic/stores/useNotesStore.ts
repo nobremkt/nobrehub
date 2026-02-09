@@ -322,7 +322,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const newTimeout = setTimeout(async () => {
             set({ isSaving: true });
             try {
-                await NotesService.updateNote(selectedNoteId, { title });
+                await NotesService.updateNoteTitle(selectedNoteId, title);
             } catch (error) {
                 console.error('Error saving note title:', error);
             } finally {
