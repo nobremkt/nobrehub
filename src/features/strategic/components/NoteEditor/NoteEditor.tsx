@@ -3,17 +3,24 @@
  * NOBRE HUB - FEATURE: STRATEGIC - NOTE EDITOR
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * Editor WYSIWYG com Tiptap (ProseMirror) para edição inline.
- * Experiência similar ao Notion/Obsidian.
- * - BubbleMenu: aparece ao selecionar texto
- * - ContextMenu: aparece ao clicar com botão direito
- * - Real-time collaboration: conteúdo sincroniza entre usuários
+ * Editor WYSIWYG com Tiptap (ProseMirror) para edição colaborativa.
+ * 
+ * Arquitetura Multiplayer:
+ * - localContent: estado local para UI responsiva
+ * - remoteContent: conteúdo do RTDB para detectar mudanças externas
+ * - activeEditors: lista de outros usuários editando
+ * 
+ * Fluxo:
+ * 1. Usuário digita → updateLocalContent → UI atualiza instantaneamente
+ * 2. Após debounce → salva no RTDB
+ * 3. RTDB propaga → outros usuários recebem
+ * 4. Se outro usuário editar → remoteContent muda → atualiza editor local
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { FileText } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { FileText, Users, WifiOff } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
@@ -24,23 +31,28 @@ import { CustomTaskItem } from './CustomTaskItem';
 import { EditorBubbleMenu } from './EditorBubbleMenu';
 import { EditorContextMenu } from './EditorContextMenu';
 import { useNotesStore } from '../../stores/useNotesStore';
+import { Avatar } from '@/design-system';
 import styles from './NoteEditor.module.css';
 
 export function NoteEditor() {
     const {
         notes,
         selectedNoteId,
-        selectedNoteContent,
+        localContent,
+        remoteContent,
+        activeEditors,
         isSaving,
-        updateNoteContent,
+        isConnected,
+        updateLocalContent,
         updateNoteTitle
     } = useNotesStore();
 
     // Refs
     const editorWrapperRef = useRef<HTMLDivElement>(null);
-    const isLocalEditRef = useRef(false); // Track if edit is local
+    const isTypingRef = useRef(false);
+    const lastRemoteContentRef = useRef(remoteContent);
 
-    // Local state for title to prevent focus loss
+    // Local state for title
     const [localTitle, setLocalTitle] = useState('');
 
     const selectedNote = useMemo(() => {
@@ -59,75 +71,110 @@ export function NoteEditor() {
             CustomTaskItem.configure({
                 nested: true,
             }),
-            Underline,
+            Underline.configure({
+                HTMLAttributes: {
+                    class: 'underline',
+                },
+            }),
             Placeholder.configure({
                 placeholder: 'Clique com botão direito para ver opções de formatação...',
             }),
             Typography,
         ],
-        content: selectedNote?.content || '',
+        content: localContent,
+        immediatelyRender: false, // Prevent flushSync warnings
         editorProps: {
             attributes: {
                 class: styles.proseMirror,
             },
         },
         onUpdate: ({ editor }) => {
-            isLocalEditRef.current = true; // Mark as local edit
+            isTypingRef.current = true;
             const html = editor.getHTML();
-            updateNoteContent(html);
-            // Reset after debounce time
+            updateLocalContent(html);
+
+            // Reset typing flag after debounce
             setTimeout(() => {
-                isLocalEditRef.current = false;
-            }, 600);
+                isTypingRef.current = false;
+            }, 400);
         },
     });
 
-    // Update editor content when selected note changes (initial load)
+    // Sync with remote content when it changes from another user
+    useEffect(() => {
+        if (!editor || !remoteContent) return;
+
+        // Skip if user is currently typing
+        if (isTypingRef.current) return;
+
+        // Skip if content hasn't actually changed from remote
+        if (remoteContent === lastRemoteContentRef.current) return;
+        if (remoteContent === editor.getHTML()) return;
+
+        // Store current cursor position and note ID
+        const { from, to } = editor.state.selection;
+        const currentNoteId = selectedNoteId;
+        const contentToSet = remoteContent;
+
+        // Use queueMicrotask to avoid flushSync warning during React render
+        queueMicrotask(() => {
+            if (!editor || editor.isDestroyed) return;
+
+            // Check if we're still on the same note
+            if (useNotesStore.getState().selectedNoteId !== currentNoteId) return;
+
+            // Update editor with remote content
+            editor.commands.setContent(contentToSet, { emitUpdate: false });
+
+            // Try to restore cursor position
+            try {
+                const docLength = editor.state.doc.content.size;
+                const safeFrom = Math.min(from, Math.max(0, docLength - 1));
+                const safeTo = Math.min(to, Math.max(0, docLength - 1));
+                if (safeFrom >= 0 && safeTo >= 0) {
+                    editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
+                }
+            } catch {
+                // Cursor restoration failed, continue without it
+            }
+        });
+
+        lastRemoteContentRef.current = remoteContent;
+    }, [remoteContent, editor, selectedNoteId]);
+
+    // Update editor when selecting a different note
     useEffect(() => {
         if (selectedNote && editor) {
             setLocalTitle(selectedNote.title || '');
-            // Use setTimeout to avoid flushSync warning from Tiptap's ReactNodeViewRenderer
-            if (editor.getHTML() !== selectedNote.content) {
-                setTimeout(() => {
-                    editor.commands.setContent(selectedNote.content || '');
-                }, 0);
+
+            // Only set content if it's different (prevents cursor jump on initial load)
+            // Use queueMicrotask to avoid flushSync warning during React render
+            if (editor.getHTML() !== localContent) {
+                const currentNoteId = selectedNoteId;
+                const contentToSet = localContent;
+
+                queueMicrotask(() => {
+                    if (!editor || editor.isDestroyed) return;
+                    // Check if we're still on the same note
+                    if (useNotesStore.getState().selectedNoteId !== currentNoteId) return;
+                    editor.commands.setContent(contentToSet || '', { emitUpdate: false });
+                });
             }
         }
-    }, [selectedNoteId, editor]);
+    }, [selectedNoteId, editor, localContent]);
 
-    // Real-time sync: Update editor when remote content changes
+    // Update title when note changes
     useEffect(() => {
-        if (!editor || !selectedNoteContent) return;
-
-        // Only update if this is a remote change (not local edit)
-        if (!isLocalEditRef.current && !isSaving) {
-            const currentContent = editor.getHTML();
-            if (currentContent !== selectedNoteContent) {
-                // Preserve cursor position during remote update
-                const { from, to } = editor.state.selection;
-                setTimeout(() => {
-                    editor.commands.setContent(selectedNoteContent);
-                    // Try to restore cursor position
-                    try {
-                        const docLength = editor.state.doc.content.size;
-                        const safeFrom = Math.min(from, docLength - 1);
-                        const safeTo = Math.min(to, docLength - 1);
-                        if (safeFrom >= 0 && safeTo >= 0) {
-                            editor.commands.setTextSelection({ from: safeFrom, to: safeTo });
-                        }
-                    } catch {
-                        // If cursor restoration fails, just continue
-                    }
-                }, 0);
-            }
+        if (selectedNote) {
+            setLocalTitle(selectedNote.title || '');
         }
-    }, [selectedNoteContent, editor, isSaving]);
+    }, [selectedNote?.title]);
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         setLocalTitle(newTitle);
         updateNoteTitle(newTitle);
-    };
+    }, [updateNoteTitle]);
 
     // Empty state when no note selected
     if (!selectedNote) {
@@ -154,18 +201,52 @@ export function NoteEditor() {
                     value={localTitle}
                     onChange={handleTitleChange}
                 />
-                <div className={styles.status}>
-                    {isSaving ? (
-                        <>
-                            <span className={styles.savingDot} />
-                            <span>Salvando...</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className={styles.savedDot} />
-                            <span>Salvo</span>
-                        </>
+
+                <div className={styles.headerRight}>
+                    {/* Active Editors Indicator */}
+                    {activeEditors.length > 0 && (
+                        <div className={styles.activeEditors}>
+                            <Users size={14} />
+                            <span>{activeEditors.length} editando</span>
+                            <div className={styles.editorAvatars}>
+                                {activeEditors.slice(0, 3).map((ed) => (
+                                    <Avatar
+                                        key={ed.oderId}
+                                        fallback={ed.displayName}
+                                        alt={ed.displayName}
+                                        src={ed.photoURL}
+                                        size="sm"
+                                        className={styles.editorAvatar}
+                                    />
+                                ))}
+                                {activeEditors.length > 3 && (
+                                    <span className={styles.moreEditors}>
+                                        +{activeEditors.length - 3}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     )}
+
+                    {/* Connection/Save Status */}
+                    <div className={styles.status}>
+                        {!isConnected ? (
+                            <>
+                                <WifiOff size={14} className={styles.disconnectedIcon} />
+                                <span>Offline</span>
+                            </>
+                        ) : isSaving ? (
+                            <>
+                                <span className={styles.savingDot} />
+                                <span>Salvando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className={styles.savedDot} />
+                                <span>Sincronizado</span>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
