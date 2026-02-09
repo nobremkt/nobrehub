@@ -196,17 +196,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             // Ignorar updates se a nota mudou
             if (currentSelectedId !== id) return;
 
-        // Garantir que a nota existe no RTDB (migração de notas antigas)
-        const note = notes.find(n => n.id === id);
-        if (note) {
-            await NotesService.ensureNoteInRTDB(id, note.content || '');
-        }
-
-        // 1. Subscribe ao conteúdo em tempo real (RTDB)
-        const unsubContent = NotesRealtimeService.subscribeToContent(id, (data: NoteRealtimeData | null) => {
-            if (!data) return;
-
-            const { _lastLocalEdit, localContent } = get();
             const currentUser = useAuthStore.getState().user;
             const now = Date.now();
 
@@ -249,18 +238,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
                 leave();
             }
         }).catch(console.error);
-        });
-
-        // 2. Subscribe aos editores ativos
-        const unsubEditors = NotesRealtimeService.subscribeToEditors(id, (editors) => {
-            const currentUser = useAuthStore.getState().user;
-            // Filtra o próprio usuário da lista
-            const otherEditors = editors.filter(e => e.oderId !== currentUser?.id);
-            set({ activeEditors: otherEditors });
-        });
-
-        // 3. Marcar presença como editor
-        const leave = await NotesRealtimeService.joinAsEditor(id);
 
         // 4. Iniciar heartbeat de presença
         const presenceInt = setInterval(() => {
@@ -271,16 +248,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         set({
             _unsubscribeContent: unsubContent,
             _unsubscribeEditors: unsubEditors,
-        // Carregar conteúdo inicial
-        const initialContent = await NotesRealtimeService.getContent(id);
-
-        set({
-            selectedNoteId: id,
-            localContent: initialContent || '',
-            remoteContent: initialContent || '',
-            _unsubscribeContent: unsubContent,
-            _unsubscribeEditors: unsubEditors,
-            _leaveEditor: leave,
             _presenceInterval: presenceInt,
         });
     },
@@ -324,7 +291,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
             set({ isSaving: true });
             try {
                 await NotesRealtimeService.updateContent(selectedNoteId, content);
-                await NotesService.updateNoteContent(selectedNoteId, content);
             } catch (error) {
                 console.error('Error saving note content:', error);
                 set({ isConnected: false });
