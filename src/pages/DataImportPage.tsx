@@ -12,6 +12,7 @@
 import { useState, useRef } from 'react';
 import { writeBatch, collection, doc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 import {
     Button,
     Card,
@@ -95,7 +96,7 @@ export function DataImportPage() {
         let failedCount = 0;
 
         try {
-            const projectsCollection = collection(db, 'projects');
+            const projectsCollection = collection(db, COLLECTIONS.PRODUCTION_PROJECTS);
 
             // Firestore batch can only handle 500 operations at a time
             const BATCH_SIZE = 450;
@@ -148,7 +149,7 @@ export function DataImportPage() {
         let deletedCount = 0;
 
         try {
-            const projectsCollection = collection(db, 'projects');
+            const projectsCollection = collection(db, COLLECTIONS.PRODUCTION_PROJECTS);
             const q = query(projectsCollection, where('isHistorical', '==', true));
             const snapshot = await getDocs(q);
 

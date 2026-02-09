@@ -41,6 +41,7 @@ import {
     Info
 } from 'lucide-react';
 import styles from './ClientInbox.module.css';
+import { toast } from 'react-toastify';
 
 const STATUS_CONFIG: Record<ClientStatus, { label: string; color: string; icon: typeof Clock }> = {
     'aguardando_projeto': { label: 'Aguardando Vídeo', color: 'info', icon: Clock },
@@ -336,13 +337,17 @@ export const ClientInbox = () => {
         if (!selectedPostSalesId) return;
 
         try {
-            // Por enquanto usa um projectId mockado se não existir
-            // TODO: Buscar projectId real vinculado ao lead
-            const pid = projectId || clientId; // fallback
+            const pid = projectId || linkedProject?.id;
+            if (!pid) {
+                toast.error('Projeto vinculado não encontrado para solicitar alteração.');
+                return;
+            }
+
             await PostSalesDistributionService.requestRevision(clientId, pid, 'Alteração solicitada pelo cliente');
             // Atualização será feita pelo subscription
         } catch (error) {
             console.error('Error requesting revision:', error);
+            toast.error('Erro ao solicitar alteração do projeto.');
         }
     };
 
@@ -351,10 +356,17 @@ export const ClientInbox = () => {
         if (!selectedPostSalesId) return;
 
         try {
-            await PostSalesDistributionService.approveClient(clientId, projectId);
+            const pid = projectId || linkedProject?.id;
+            if (!pid) {
+                toast.error('Projeto vinculado não encontrado para aprovar cliente.');
+                return;
+            }
+
+            await PostSalesDistributionService.approveClient(clientId, pid);
             // Atualização será feita pelo subscription
         } catch (error) {
             console.error('Error approving client:', error);
+            toast.error('Erro ao aprovar cliente.');
         }
     };
 

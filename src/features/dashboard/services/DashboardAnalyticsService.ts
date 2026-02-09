@@ -14,11 +14,12 @@ import {
     doc,
     getDoc
 } from 'firebase/firestore';
+import { COLLECTIONS } from '@/config';
 import { db } from '@/config/firebase';
 import { Lead } from '@/types/lead.types';
 import { HolidaysService } from '@/features/settings/services/holidaysService';
 
-const PROJECTS_COLLECTION = 'projects';
+const PROJECTS_COLLECTION = COLLECTIONS.PRODUCTION_PROJECTS;
 
 // Category colors for the donut chart
 const CATEGORY_COLORS: Record<string, string> = {
