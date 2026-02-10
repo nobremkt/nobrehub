@@ -71,6 +71,13 @@ npm run dev
 ```
 > Abra o app no browser e teste as áreas afetadas.
 
+### 9. Voltar para a branch de trabalho
+// turbo
+```powershell
+git checkout <NOME_DA_BRANCH>
+```
+> Retorna para a branch de trabalho para continuar desenvolvendo.
+
 ---
 
 ## Dicas

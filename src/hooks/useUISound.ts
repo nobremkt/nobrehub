@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useUIStore } from '@/stores';
 
 /**
@@ -48,68 +48,89 @@ const DEFAULT_VOLUMES: Partial<Record<UISoundType, number>> = {
     'checkbox': 0.3,
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL AUDIO CACHE (Singleton)
+// Only 10 Audio elements total, shared by ALL components.
+// This prevents the "too many WebMediaPlayers" browser intervention.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const globalAudioCache = new Map<UISoundType, HTMLAudioElement>();
+let cacheInitialized = false;
+let activeSubscribers = 0;
+
+function initGlobalCache() {
+    if (cacheInitialized) return;
+    cacheInitialized = true;
+
+    Object.entries(SOUND_PATHS).forEach(([key, path]) => {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        globalAudioCache.set(key as UISoundType, audio);
+    });
+}
+
+function destroyGlobalCache() {
+    globalAudioCache.forEach((audio) => {
+        audio.pause();
+        audio.src = '';
+    });
+    globalAudioCache.clear();
+    cacheInitialized = false;
+}
+
 /**
- * Hook for playing UI sound effects
+ * Hook for playing UI sound effects.
+ * 
+ * Uses a global singleton cache — no matter how many Button/Checkbox/Switch
+ * components are rendered, only 10 Audio elements are ever created.
  * 
  * @example
  * const { playSound } = useUISound();
- * 
- * // In a button onClick
  * <Button onClick={() => { playSound('click'); doSomething(); }}>
- *   Click Me
- * </Button>
  */
 export function useUISound() {
-    const audioCache = useRef<Map<UISoundType, HTMLAudioElement>>(new Map());
-
-    // Get sound settings from store
     const soundEnabled = useUIStore((state) => state.soundEnabled);
     const masterVolume = useUIStore((state) => state.soundVolume);
+    const masterVolumeRef = useRef(masterVolume);
+    masterVolumeRef.current = masterVolume;
 
-    // Preload sounds
+    // Track subscribers to manage global cache lifecycle
     useEffect(() => {
         if (!soundEnabled) return;
 
-        Object.entries(SOUND_PATHS).forEach(([key, path]) => {
-            const audio = new Audio(path);
-            audio.preload = 'auto';
-            audio.volume = (DEFAULT_VOLUMES[key as UISoundType] ?? 0.5) * masterVolume;
-            audioCache.current.set(key as UISoundType, audio);
+        activeSubscribers++;
+        initGlobalCache();
+
+        // Update volumes when masterVolume changes
+        globalAudioCache.forEach((audio, key) => {
+            audio.volume = (DEFAULT_VOLUMES[key] ?? 0.5) * masterVolume;
         });
 
         return () => {
-            audioCache.current.forEach((audio) => {
-                audio.pause();
-                audio.src = '';
-            });
-            audioCache.current.clear();
+            activeSubscribers--;
+            if (activeSubscribers <= 0) {
+                activeSubscribers = 0;
+                destroyGlobalCache();
+            }
         };
     }, [soundEnabled, masterVolume]);
 
     /**
-     * Play a UI sound effect
+     * Play a UI sound effect.
+     * Reuses the cached Audio element — resets currentTime instead of cloning.
      */
     const playSound = useCallback((type: UISoundType, volume?: number) => {
         if (!soundEnabled) return;
 
-        const cachedAudio = audioCache.current.get(type);
-        if (cachedAudio) {
-            // Clone audio to allow overlapping sounds
-            const audio = cachedAudio.cloneNode() as HTMLAudioElement;
-            audio.volume = Math.min(1, (volume ?? (DEFAULT_VOLUMES[type] ?? 0.5)) * masterVolume);
+        const audio = globalAudioCache.get(type);
+        if (audio) {
+            audio.volume = Math.min(1, (volume ?? (DEFAULT_VOLUMES[type] ?? 0.5)) * masterVolumeRef.current);
+            audio.currentTime = 0;
             audio.play().catch(() => {
                 // Ignore autoplay errors (user hasn't interacted yet)
             });
-        } else {
-            // Fallback: create new audio if not cached
-            const path = SOUND_PATHS[type];
-            if (path) {
-                const audio = new Audio(path);
-                audio.volume = Math.min(1, (volume ?? (DEFAULT_VOLUMES[type] ?? 0.5)) * masterVolume);
-                audio.play().catch(() => { });
-            }
         }
-    }, [soundEnabled, masterVolume]);
+    }, [soundEnabled]);
 
     return {
         playSound,
