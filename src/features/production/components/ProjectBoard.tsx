@@ -263,6 +263,36 @@ export const ProjectBoard = () => {
                                                                 Aprovar
                                                             </Button>
                                                         </div>
+                                                    ) : project.status === 'alteracao' ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="success"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateProject(project.id, {
+                                                                        status: 'revisado',
+                                                                        priority: 'normal'
+                                                                    });
+                                                                }}
+                                                                leftIcon={<Check size={14} />}
+                                                            >
+                                                                Aprovar
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant={project.priority === 'high' ? 'danger' : 'secondary'}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateProject(project.id, {
+                                                                        priority: project.priority === 'high' ? 'normal' : 'high'
+                                                                    });
+                                                                }}
+                                                                leftIcon={<AlertCircle size={14} />}
+                                                            >
+                                                                {project.priority === 'high' ? 'Prioridade' : 'Priorizar'}
+                                                            </Button>
+                                                        </div>
                                                     ) : (
                                                         <Button
                                                             size="sm"
@@ -285,6 +315,9 @@ export const ProjectBoard = () => {
                                             )}
                                             {!canManageProjects && project.status === 'em-producao' && (
                                                 <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); updateProject(project.id, { status: 'a-revisar' }); }}>Finalizar</Button>
+                                            )}
+                                            {!canManageProjects && project.status === 'alteracao' && (
+                                                <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); updateProject(project.id, { status: 'a-revisar' }); }} leftIcon={<Check size={14} />}>Finalizar</Button>
                                             )}
                                         </div>
                                         {project.priority === 'high' && <Badge variant="danger" content="Prioridade Alta" />}
