@@ -42,7 +42,7 @@ const getLeadClientStatusFromProjects = (projects: Project[]): ClientStatus => {
     if (projects.length === 0) return 'aguardando_projeto';
 
     const hasAlteration = projects.some(
-        project => project.status === 'alteracao' || project.clientApprovalStatus === 'changes_requested'
+        project => project.status === 'alteracao' || project.status === 'alteracao_interna' || project.status === 'alteracao_cliente' || project.clientApprovalStatus === 'changes_requested'
     );
     if (hasAlteration) return 'aguardando_alteracao';
 
@@ -444,13 +444,21 @@ export const PostSalesDistributionService = {
             }
 
             const projectData = projectSnap.data();
+            const currentClientRevisionCount = Number(projectData?.clientRevisionCount || 0);
             const currentRevisionCount = Number(projectData?.revisionCount || 0);
 
             await updateDoc(projectRef, {
-                status: 'alteracao',
+                status: 'alteracao_cliente',
                 revisionCount: currentRevisionCount + 1,
+                clientRevisionCount: currentClientRevisionCount + 1,
+                revisionHistory: arrayUnion({
+                    type: 'client',
+                    reason: reason || '',
+                    requestedBy: 'post-sales',
+                    requestedByName: 'Pós-Vendas',
+                    requestedAt: new Date()
+                }),
                 lastRevisionRequestedAt: new Date(),
-                revisionReason: reason || '',
                 clientApprovalStatus: 'changes_requested',
                 updatedAt: new Date()
             });

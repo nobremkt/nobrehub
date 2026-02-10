@@ -25,7 +25,9 @@ const PROJECT_STATUS_OPTIONS = [
     { value: 'em-producao', label: 'Em Producao' },
     { value: 'a-revisar', label: 'A Revisar' },
     { value: 'revisado', label: 'Revisado' },
-    { value: 'alteracao', label: 'Em Alteracao' },
+    { value: 'alteracao', label: 'Em Alteracao (legacy)' },
+    { value: 'alteracao_interna', label: 'Alteracao Interna' },
+    { value: 'alteracao_cliente', label: 'Alteracao Cliente' },
     { value: 'entregue', label: 'Entregue' },
     { value: 'concluido', label: 'Concluido' },
 ];

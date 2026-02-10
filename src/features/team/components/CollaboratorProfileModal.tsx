@@ -107,7 +107,7 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
                     const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
                     const status = d.status || '';
                     const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
-                    const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
+                    const isAlt = d.type === 'alteracao' || d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
                     // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
                     const relevantDate = deliveredAt || (isFinished ? createdAt : null);
                     if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;

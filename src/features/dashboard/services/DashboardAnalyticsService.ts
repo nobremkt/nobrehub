@@ -516,8 +516,9 @@ export const DashboardAnalyticsService = {
         });
 
         // Filter by type: exclude alteracoes from main projects count
-        const projects = allProjects.filter(p => p.type !== 'alteracao' && p.status !== 'alteracao');
-        const alteracoes = allProjects.filter(p => p.type === 'alteracao' || p.status === 'alteracao');
+        const isAlteracao = (p: any) => p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
+        const projects = allProjects.filter(p => !isAlteracao(p));
+        const alteracoes = allProjects.filter(p => isAlteracao(p));
 
         // Filter projects by date range
         const projectsInPeriod = projects.filter(p => {

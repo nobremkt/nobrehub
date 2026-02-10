@@ -6,13 +6,15 @@
 
 // Status do projeto na produção
 export type ProjectStatus =
-    | 'aguardando'    // Na lista, aguardando início
-    | 'em-producao'   // Em produção
-    | 'a-revisar'     // Aguardando revisão do líder
-    | 'revisado'      // Revisado, pronto pra entregar
-    | 'alteracao'     // Cliente pediu alteração
-    | 'entregue'      // Enviado ao cliente
-    | 'concluido';    // 100% finalizado
+    | 'aguardando'           // Na lista, aguardando início
+    | 'em-producao'          // Em produção
+    | 'a-revisar'            // Aguardando revisão do líder
+    | 'revisado'             // Revisado, pronto pra entregar
+    | 'alteracao'            // (legacy) Manter backward compat
+    | 'alteracao_interna'    // Líder revisou e pediu ajuste (não saiu da produção)
+    | 'alteracao_cliente'    // Cliente solicitou alteração via pós-vendas
+    | 'entregue'             // Enviado ao cliente
+    | 'concluido';           // 100% finalizado
 
 // Status na lista de distribuição
 export type DistributionStatus = 'pending' | 'assigned' | 'suggested';
@@ -25,6 +27,18 @@ export type PaymentStatus = 'pending' | 'partial' | 'paid';
 
 // Categoria de duração de vídeo (para pontuação)
 export type VideoDurationCategory = '30s' | '60s' | '60plus';
+
+// Tipo de revisão
+export type RevisionSource = 'internal' | 'client';
+
+// Entrada individual no histórico de revisões
+export interface RevisionEntry {
+    type: RevisionSource;
+    reason?: string;
+    requestedBy: string;       // userId
+    requestedByName: string;   // nome legível
+    requestedAt: Date;
+}
 
 export interface Project {
     id: string;
@@ -92,7 +106,10 @@ export interface Project {
 
     // ═══════════════ REVISÕES ═══════════════
 
-    revisionCount?: number;                 // Quantas vezes voltou
+    revisionCount?: number;                 // (legacy) Total genérico
+    internalRevisionCount?: number;         // Revisões internas (produção)
+    clientRevisionCount?: number;           // Revisões do cliente (pós-vendas)
+    revisionHistory?: RevisionEntry[];      // Log completo de todas as revisões
     lastRevisionRequestedAt?: Date;
     lastRevisionRequestedBy?: string;
 }

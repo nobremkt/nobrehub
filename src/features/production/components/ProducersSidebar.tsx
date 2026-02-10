@@ -29,7 +29,9 @@ const getStatusLabel = (status: string) => {
         'em-producao': 'Em Produção',
         'a-revisar': 'A Revisar',
         'revisado': 'Revisado',
-        'alteracao': 'Em Alteração'
+        'alteracao': 'Em Alteração',
+        'alteracao_interna': 'Alt. Interna',
+        'alteracao_cliente': 'Alt. Cliente'
     };
     return labels[status] || status;
 };
@@ -40,7 +42,9 @@ const getStatusColor = (status: string) => {
         'em-producao': 'primary',
         'a-revisar': 'warning',
         'revisado': 'success',
-        'alteracao': 'warning'
+        'alteracao': 'warning',
+        'alteracao_interna': 'warning',
+        'alteracao_cliente': 'danger'
     };
     return colors[status] || 'default';
 };
