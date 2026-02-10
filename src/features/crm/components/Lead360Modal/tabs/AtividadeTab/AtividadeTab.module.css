@@ -427,3 +427,15 @@
 .sendTemplateBtn:active {
     transform: translateY(0);
 }
+
+.internalInstructionHint {
+    margin-top: auto;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--color-bg-secondary, #f8fafc);
+    color: var(--color-text-muted, #94a3b8);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    flex-shrink: 0;
+}

@@ -65,6 +65,7 @@ export const CreateProjectModal = ({
     // Sugestão de produtor (opcional)
     const [suggestProducer, setSuggestProducer] = useState(false);
     const [suggestedProducerId, setSuggestedProducerId] = useState('');
+    const [suggestedProducerError, setSuggestedProducerError] = useState('');
     const [suggestionNotes, setSuggestionNotes] = useState('');
 
     // Busca produtos e config de pontos ao abrir
@@ -142,6 +143,7 @@ export const CreateProjectModal = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSuggestedProducerError('');
 
         if (!name || !dueDate) {
             toast.error('Preencha os campos obrigatórios (Nome, Prazo).');
@@ -155,6 +157,12 @@ export const CreateProjectModal = ({
 
         if (isVideoProduct && !selectedDuration) {
             toast.error('Selecione a duração do vídeo.');
+            return;
+        }
+
+        if (suggestProducer && !suggestedProducerId) {
+            setSuggestedProducerError('Selecione um produtor para continuar com a sugestão.');
+            toast.error('Selecione um produtor para sugestão ou desative a opção.');
             return;
         }
 
@@ -292,6 +300,7 @@ export const CreateProjectModal = ({
                 {/* Produto */}
                 <Dropdown
                     label="Produto"
+                    required
                     options={productOptions}
                     value={selectedProductId}
                     onChange={(val) => {
@@ -305,6 +314,7 @@ export const CreateProjectModal = ({
                 {isVideoProduct && (
                     <Dropdown
                         label="Duração do Vídeo"
+                        required
                         options={DURATION_OPTIONS}
                         value={selectedDuration}
                         onChange={(val) => setSelectedDuration(val as VideoDurationCategory)}
@@ -379,7 +389,12 @@ export const CreateProjectModal = ({
                         </div>
                         <Switch
                             checked={suggestProducer}
-                            onChange={setSuggestProducer}
+                            onChange={(checked) => {
+                                setSuggestProducer(checked);
+                                if (!checked) {
+                                    setSuggestedProducerError('');
+                                }
+                            }}
                         />
                     </div>
                     <p className={styles.suggestionHint}>
@@ -389,10 +404,16 @@ export const CreateProjectModal = ({
                     {suggestProducer && (
                         <div className={styles.suggestionFields}>
                             <Dropdown
+                                label="Produtor Sugerido"
+                                required={suggestProducer}
                                 options={producerOptions}
                                 value={suggestedProducerId}
-                                onChange={(val) => setSuggestedProducerId(String(val))}
+                                onChange={(val) => {
+                                    setSuggestedProducerId(String(val));
+                                    setSuggestedProducerError('');
+                                }}
                                 placeholder="Selecionar produtor..."
+                                error={suggestedProducerError}
                             />
                             <input
                                 type="text"

@@ -12,7 +12,8 @@ export function MainLayout() {
     const isFullWidth = location.pathname.startsWith(ROUTES.team.chat) ||
         location.pathname.startsWith(ROUTES.inbox.root) ||
         location.pathname.startsWith(ROUTES.production.root) ||
-        location.pathname.startsWith(ROUTES.postSales.root);
+        location.pathname.startsWith(ROUTES.postSales.root) ||
+        location.pathname.startsWith(ROUTES.strategic.root);
 
     return (
         <>

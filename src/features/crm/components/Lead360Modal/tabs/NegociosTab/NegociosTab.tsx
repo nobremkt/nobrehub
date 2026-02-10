@@ -12,7 +12,7 @@ import {
 import styles from './NegociosTab.module.css';
 import { toast } from 'react-toastify';
 import { formatCurrency } from '../../utils/helpers';
-import { LeadService } from '../../../../services/LeadService';
+import { LeadService } from '@/features/crm/services/LeadService';
 
 interface NegociosTabProps {
     lead: Lead;

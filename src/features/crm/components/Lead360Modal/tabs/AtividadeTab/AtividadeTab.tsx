@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Activity, Copy, Send } from 'lucide-react';
 import { Checkbox } from '@/design-system';
 import styles from './AtividadeTab.module.css';
-import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS } from './data';
+import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS, SENDABLE_SCRIPT_IDS } from './data';
 import { toast } from 'react-toastify';
 import { Lead } from '@/types/lead.types';
 import { LeadService } from '@/features/crm/services/LeadService';
@@ -44,7 +44,7 @@ const highlightVariables = (content: string) => {
 
 export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabProps) {
     const navigate = useNavigate();
-    const { conversations, selectConversation, init, setDraftMessage } = useInboxStore();
+    const { conversations, selectedConversationId, selectConversation, setDraftMessage } = useInboxStore();
 
     // Carregar progresso do lead.customFields ou iniciar em 0
     const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
@@ -55,6 +55,7 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
     // O script exibido baseia-se na atividade explicitamente selecionada OU na próxima atividade lógica
     const activeId = selectedActivityId || (completedActivities + 1);
     const currentScript = SCRIPTS[activeId] || SCRIPTS[1];
+    const isCurrentScriptSendable = SENDABLE_SCRIPT_IDS.has(activeId);
 
     // LÓGICA DE PROGRESSO VISUAL (Timeline)
     // O estágio ativo na timeline deve ser baseado na PRÓXIMA atividade a fazer (completedActivities + 1)
@@ -199,56 +200,76 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
                         </h4>
                         <div className={styles.scriptContent}>{highlightVariables(currentScript.content)}</div>
 
-                        {/* Botão Enviar Template */}
-                        <button
-                            className={styles.sendTemplateBtn}
-                            onClick={() => {
-                                // Preparar mensagem com variáveis substituídas
-                                const message = currentScript.content
-                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
-                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
+                        {/* Botão Enviar Template (somente atividades de mensagem ao lead) */}
+                        {isCurrentScriptSendable ? (
+                            <button
+                                className={styles.sendTemplateBtn}
+                                onClick={() => {
+                                    // Preparar mensagem com variáveis substituídas
+                                    const message = currentScript.content
+                                        .replace(/\[NOME\]/g, lead.name || '[NOME]')
+                                        .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
 
-                                // Se tem callback customizado (pós-venda), usar ele e sair
-                                if (onTemplateSelect) {
-                                    onTemplateSelect(message);
+                                    // Se tem callback customizado (pós-venda), usar ele e sair
+                                    if (onTemplateSelect) {
+                                        onTemplateSelect(message);
+                                        onClose();
+                                        return;
+                                    }
+
+                                    // Fluxo padrão: resolver conversa por leadId/telefone e navegar para Inbox
+                                    const normalizePhone = (value?: string) => value?.replace(/\D/g, '') || '';
+                                    const phone = normalizePhone(lead.phone);
+
+                                    const selectedConversation = selectedConversationId
+                                        ? conversations.find(c => c.id === selectedConversationId)
+                                        : null;
+
+                                    const existingConversation =
+                                        conversations.find(c => lead.id && c.leadId === lead.id) ||
+                                        (phone
+                                            ? conversations.find(c => normalizePhone(c.leadPhone) === phone && c.channel === 'whatsapp')
+                                            : null) ||
+                                        selectedConversation ||
+                                        null;
+
+                                    if (!existingConversation && !phone && !lead.id) {
+                                        toast.error('Lead sem telefone e sem conversa vinculada');
+                                        return;
+                                    }
+
+                                    // Setar mensagem no input do chat (via store)
+                                    setDraftMessage(message);
+
+                                    // Fechar Modal360
                                     onClose();
-                                    return;
-                                }
 
-                                // Fluxo padrão: validar telefone e navegar para Inbox
-                                const phone = lead.phone?.replace(/\D/g, '');
-                                if (!phone) {
-                                    toast.error('Lead não possui telefone cadastrado');
-                                    return;
-                                }
+                                    if (existingConversation) {
+                                        selectConversation(existingConversation.id);
+                                        navigate(`/inbox?id=${existingConversation.id}`);
+                                        return;
+                                    }
 
-                                // Inicializar store se necessário
-                                if (conversations.length === 0) {
-                                    init();
-                                }
+                                    // Navegar para Inbox com params para buscar/criar conversa
+                                    const params = new URLSearchParams({
+                                        name: lead.name || 'Novo Contato',
+                                        ...(lead.email && { email: lead.email }),
+                                        ...(lead.company && { company: lead.company }),
+                                        ...(lead.id && { leadId: lead.id }),
+                                        ...(phone && { phone }),
+                                    });
 
-                                // Buscar conversa existente do lead
-                                const existingConversation = conversations.find(c =>
-                                    c.leadPhone?.replace(/\D/g, '') === phone && c.channel === 'whatsapp'
-                                );
-
-                                if (existingConversation) {
-                                    selectConversation(existingConversation.id);
-                                }
-
-                                // Setar mensagem no input do chat (via store)
-                                setDraftMessage(message);
-
-                                // Fechar Modal360
-                                onClose();
-
-                                // Navegar para Inbox
-                                navigate('/inbox');
-                            }}
-                        >
-                            <Send size={16} />
-                            Enviar Template ao Cliente
-                        </button>
+                                    navigate(`/inbox?${params.toString()}`);
+                                }}
+                            >
+                                <Send size={16} />
+                                Enviar Template ao Cliente
+                            </button>
+                        ) : (
+                            <div className={styles.internalInstructionHint}>
+                                Esta atividade é uma instrução interna do playbook e não envia mensagem ao lead.
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

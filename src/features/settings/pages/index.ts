@@ -10,3 +10,4 @@ export * from './PermissionsPage';
 export * from './GoalsPage';
 export * from './HolidaysPage';
 export * from './LeadDistributionPage';
+export * from './PipelinePage';

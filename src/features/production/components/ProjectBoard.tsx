@@ -95,16 +95,6 @@ export const ProjectBoard = () => {
         );
     }
 
-    // ... rest of the component ... 
-    // Wait, I need to replace the whole beginning including the header to inject the search bar.
-    // I will replace up to line 152 in the original file (header section).
-
-    /* 
-       Actually, replacing the whole component logic is safer to ensure all hooks are in place.
-       But standard replace tool works on blocks. 
-       I will modify the imports and the logic part first properly.
-    */
-
     // Status weights for sorting
     const getStatusWeight = (status: string) => {
         const weights: Record<string, number> = {

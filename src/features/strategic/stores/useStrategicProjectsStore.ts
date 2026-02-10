@@ -56,6 +56,9 @@ interface StrategicProjectsState {
     getProjectProgress: (projectId: string) => { completed: number; total: number; percentage: number };
 }
 
+// Guard against rapid clicks causing race conditions
+const _togglingTasks = new Set<string>();
+
 export const useStrategicProjectsStore = create<StrategicProjectsState>((set, get) => ({
     projects: [],
     tasks: {},
@@ -202,10 +205,47 @@ export const useStrategicProjectsStore = create<StrategicProjectsState>((set, ge
     },
 
     toggleTaskCompletion: async (projectId, taskId) => {
-        const tasks = get().tasks[projectId] || [];
-        const task = tasks.find(t => t.id === taskId);
-        if (task) {
-            await get().updateTask(projectId, taskId, { completed: !task.completed });
+        // Prevent race conditions from rapid clicks
+        if (_togglingTasks.has(taskId)) return;
+        _togglingTasks.add(taskId);
+
+        try {
+            const tasks = get().tasks[projectId] || [];
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const newCompleted = !task.completed;
+
+            // Toggle the task itself
+            await get().updateTask(projectId, taskId, { completed: newCompleted });
+
+            if (!task.parentTaskId) {
+                // ── Parent task toggled → cascade to all subtasks ──
+                const subTasks = tasks.filter(t => t.parentTaskId === taskId);
+                await Promise.all(
+                    subTasks
+                        .filter(st => st.completed !== newCompleted)
+                        .map(st => get().updateTask(projectId, st.id, { completed: newCompleted }))
+                );
+            } else {
+                // ── Subtask toggled → sync parent automatically ──
+                const parentId = task.parentTaskId;
+                const siblings = tasks.filter(t => t.parentTaskId === parentId && t.id !== taskId);
+                const allSiblingsCompleted = siblings.every(s => s.completed);
+                const parentTask = tasks.find(t => t.id === parentId);
+
+                if (parentTask) {
+                    if (newCompleted && allSiblingsCompleted && !parentTask.completed) {
+                        // All subtasks now completed → auto-check parent
+                        await get().updateTask(projectId, parentId, { completed: true });
+                    } else if (!newCompleted && parentTask.completed) {
+                        // A subtask was unchecked → uncheck parent
+                        await get().updateTask(projectId, parentId, { completed: false });
+                    }
+                }
+            }
+        } finally {
+            _togglingTasks.delete(taskId);
         }
     },
 

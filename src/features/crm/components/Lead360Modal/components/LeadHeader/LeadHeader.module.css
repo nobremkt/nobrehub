@@ -163,6 +163,39 @@
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
+/* Criar Projeto Button */
+.createProjectBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+    color: #22c55e;
+    animation: createProjectPulse 2s ease-in-out infinite;
+}
+
+.createProjectBtn:hover {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(34, 197, 94, 0.15));
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow: 0 2px 12px rgba(34, 197, 94, 0.3);
+    transform: translateY(-1px);
+}
+
+.createProjectBtn:active {
+    transform: translateY(0);
+}
+
+@keyframes createProjectPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    50% { box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.15); }
+}
+
 /* Tags */
 .tagsContainer {
     display: flex;

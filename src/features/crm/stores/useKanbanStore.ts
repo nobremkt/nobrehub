@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Lead, PipelineStage } from '@/types/lead.types';
 import { LeadService } from '../services/LeadService';
+import { PipelineService } from '@/features/settings/services/PipelineService';
 
 export type PipelineType = 'high-ticket' | 'low-ticket';
 
@@ -13,6 +14,7 @@ interface KanbanState {
 
     // Actions
     fetchLeads: () => Promise<void>;
+    fetchStages: () => Promise<void>;
     addLead: (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateLead: (leadId: string, updates: Partial<Lead>) => Promise<void>;
 
@@ -29,31 +31,33 @@ interface KanbanState {
     getLeadsByStage: (stageId: string) => Lead[];
 }
 
-const MOCK_STAGES: PipelineStage[] = [
-    // High Ticket Pipeline
-    { id: 'ht-novo', name: 'Novo Lead', color: '#6366F1', order: 0, pipeline: 'high-ticket' },
-    { id: 'ht-qualificacao', name: 'Qualificação', color: '#F59E0B', order: 1, pipeline: 'high-ticket' },
-    { id: 'ht-proposta', name: 'Proposta Enviada', color: '#8B5CF6', order: 2, pipeline: 'high-ticket' },
-    { id: 'ht-negociacao', name: 'Em Negociação', color: '#EC4899', order: 3, pipeline: 'high-ticket' },
-    { id: 'ht-fechado', name: 'Fechado Ganho', color: '#10B981', order: 4, pipeline: 'high-ticket' },
-
-    // Low Ticket Pipeline
-    { id: 'lt-entrada', name: 'Entrada', color: '#3B82F6', order: 0, pipeline: 'low-ticket' },
-    { id: 'lt-interesse', name: 'Demonstrou Interesse', color: '#F59E0B', order: 1, pipeline: 'low-ticket' },
-    { id: 'lt-carrinho', name: 'Carrinho', color: '#8B5CF6', order: 2, pipeline: 'low-ticket' },
-    { id: 'lt-compra', name: 'Compra Realizada', color: '#10B981', order: 3, pipeline: 'low-ticket' },
-];
-
 export const useKanbanStore = create<KanbanState>((set, get) => ({
-    leads: [], // Initialize empty
-    stages: MOCK_STAGES,
+    leads: [],
+    stages: [],
     activePipeline: 'high-ticket',
     isLoading: false,
     error: null,
 
+    fetchStages: async () => {
+        try {
+            let stages = await PipelineService.getStages();
+            // Se não existirem stages no Firestore, faz seed dos padrão
+            if (stages.length === 0) {
+                stages = await PipelineService.seedDefaultStages();
+            }
+            set({ stages });
+        } catch (error: any) {
+            console.error('Failed to fetch pipeline stages:', error);
+        }
+    },
+
     fetchLeads: async () => {
         set({ isLoading: true, error: null });
         try {
+            // Carrega stages junto se ainda não carregou
+            if (get().stages.length === 0) {
+                await get().fetchStages();
+            }
             const leads = await LeadService.getLeads();
             set({ leads, isLoading: false });
         } catch (error: any) {

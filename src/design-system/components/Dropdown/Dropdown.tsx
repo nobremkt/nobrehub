@@ -17,6 +17,7 @@ export interface DropdownProps {
     onChange: (value: string | number) => void;
     placeholder?: string;
     label?: string;
+    required?: boolean;
     disabled?: boolean;
     className?: string;
     error?: string;
@@ -30,6 +31,7 @@ export function Dropdown({
     onChange,
     placeholder = 'Selecione...',
     label,
+    required = false,
     disabled = false,
     className,
     error,
@@ -165,7 +167,12 @@ export function Dropdown({
 
     return (
         <div className={clsx(styles.container, className)}>
-            {label && <label className={styles.label}>{label}</label>}
+            {label && (
+                <label className={styles.label}>
+                    {label}
+                    {required && <span className={styles.required}>*</span>}
+                </label>
+            )}
             <div className={styles.relative}>
                 <button
                     ref={triggerRef}
