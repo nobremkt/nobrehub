@@ -7,7 +7,7 @@
  * from Firestore, returning usable progress objects for any component.
  */
 
-import { collection, getDocs, getFirestore } from 'firebase/firestore';
+import { collection, getDocs, getFirestore, query, where } from 'firebase/firestore';
 import { GoalsService, type GoalsConfig, type SalesGoals, type PostSalesGoals, type StrategicGoals } from './goalsService';
 
 const getDb = () => getFirestore();
@@ -118,14 +118,22 @@ export const GoalTrackingService = {
         monthStart: Date,
         monthEnd: Date,
     ): Promise<SectorGoalProgress> {
-        const snapshot = await getDocs(collection(db, 'projects'));
+        // Query only this producer's projects (not the entire collection)
+        const snapshot = await getDocs(query(
+            collection(db, 'projects'),
+            where('producerId', '==', collaboratorId)
+        ));
         let points = 0, delivered = 0;
 
         snapshot.docs.forEach(doc => {
             const d = doc.data();
-            if (d.producerId !== collaboratorId) return;
             const deliveredAt = d.deliveredAt?.toDate?.() || (d.deliveredAt ? new Date(d.deliveredAt) : null);
-            if (!deliveredAt || deliveredAt < monthStart || deliveredAt > monthEnd) return;
+            const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+            const status = d.status || '';
+            const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
+            // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
+            const relevantDate = deliveredAt || (isFinished ? createdAt : null);
+            if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;
             const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
             if (isAlt) return;
             delivered++;
@@ -168,14 +176,17 @@ export const GoalTrackingService = {
         monthStart: Date,
         monthEnd: Date,
     ): Promise<SectorGoalProgress> {
-        const snapshot = await getDocs(collection(db, 'leads'));
+        // Query only this seller's leads (not the entire collection)
+        const snapshot = await getDocs(query(
+            collection(db, 'leads'),
+            where('responsibleId', '==', collaboratorId)
+        ));
         let totalSold = 0, closed = 0, total = 0;
         const closedStatuses = ['won', 'closed', 'contracted'];
         const lostStatuses = ['lost', 'churned'];
 
         snapshot.docs.forEach(doc => {
             const d = doc.data();
-            if (d.responsibleId !== collaboratorId) return;
             const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
             if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
             total++;
@@ -227,12 +238,15 @@ export const GoalTrackingService = {
         collaboratorId: string,
         postSalesGoals: PostSalesGoals | undefined,
     ): Promise<SectorGoalProgress> {
-        const snapshot = await getDocs(collection(db, 'leads'));
+        // Query only this post-sales rep's leads (not the entire collection)
+        const snapshot = await getDocs(query(
+            collection(db, 'leads'),
+            where('postSalesId', '==', collaboratorId)
+        ));
         let clientsAttended = 0, completed = 0;
 
         snapshot.docs.forEach(doc => {
             const d = doc.data();
-            if (d.postSalesId !== collaboratorId) return;
             clientsAttended++;
             if (d.clientStatus === 'concluido') completed++;
         });

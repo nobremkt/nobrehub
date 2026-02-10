@@ -2,7 +2,8 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - DASHBOARD STORE
  * ═══════════════════════════════════════════════════════════════════════════════
- * Zustand store for dashboard state management with unified metrics
+ * Zustand store for dashboard state management with unified metrics.
+ * Includes TTL cache to avoid redundant Firestore reads.
  */
 
 import { create } from 'zustand';
@@ -19,6 +20,9 @@ import {
 } from '../services/DashboardAnalyticsService';
 import { toast } from 'react-toastify';
 
+// Cache TTL: 5 minutes (dashboard shows aggregated stats, not realtime operational data)
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 interface DashboardState {
     // Unified metrics (contains all sections)
     unifiedMetrics: UnifiedDashboardMetrics | null;
@@ -31,7 +35,7 @@ interface DashboardState {
     dateFilter: DateFilter;
 
     // Actions
-    fetchMetrics: () => Promise<void>;
+    fetchMetrics: (forceRefresh?: boolean) => Promise<void>;
     setDateFilter: (filter: DateFilter) => void;
 
     // Selectors for each section
@@ -50,15 +54,29 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     error: null,
     dateFilter: 'month',
 
-    fetchMetrics: async () => {
+    fetchMetrics: async (forceRefresh = false) => {
+        const { dateFilter, unifiedMetrics, isLoading } = get();
+
+        // Prevent concurrent fetches
+        if (isLoading) return;
+
+        // Cache hit: skip fetch if data exists, same filter, and not expired
+        if (
+            !forceRefresh &&
+            unifiedMetrics &&
+            unifiedMetrics.dateFilter === dateFilter &&
+            (Date.now() - unifiedMetrics.fetchedAt.getTime()) < CACHE_TTL_MS
+        ) {
+            return;
+        }
+
         set({ isLoading: true, error: null });
         try {
-            const { dateFilter } = get();
-            const unifiedMetrics = await DashboardAnalyticsService.getAllMetrics(dateFilter);
+            const result = await DashboardAnalyticsService.getAllMetrics(dateFilter);
             set({
-                unifiedMetrics,
+                unifiedMetrics: result,
                 // Keep legacy metrics for backward compatibility
-                metrics: unifiedMetrics.production
+                metrics: result.production
             });
         } catch (error) {
             console.error('Error fetching dashboard metrics:', error);
@@ -71,7 +89,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
     setDateFilter: (filter: DateFilter) => {
         set({ dateFilter: filter });
-        get().fetchMetrics();
+        // Force refresh when filter changes (invalidates cache)
+        get().fetchMetrics(true);
     },
 
     // Selectors
