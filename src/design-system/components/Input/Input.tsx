@@ -60,6 +60,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
         const inputId = id || generatedId;
         const isPassword = type === 'password';
         const inputType = isPassword && showPassword ? 'text' : type;
+        const isRequired = Boolean(props.required);
 
         const commonClasses = clsx(
             styles.inputWrapper,
@@ -84,6 +85,7 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
                 {label && (
                     <label htmlFor={inputId} className={styles.label}>
                         {label}
+                        {isRequired && <span className={styles.required}>*</span>}
                     </label>
                 )}
                 <div className={commonClasses}>

@@ -15,6 +15,11 @@
     color: var(--color-text-primary);
 }
 
+.required {
+    color: var(--color-danger-500);
+    margin-left: 2px;
+}
+
 .inputWrapper {
     position: relative;
     display: flex;

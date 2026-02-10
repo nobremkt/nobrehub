@@ -26,6 +26,21 @@ export const ACTIVITIES = [
     { id: 13, label: 'Fechamento do contrato', stage: 'finalizada' },
 ];
 
+/**
+ * IDs de scripts que são mensagens direcionadas ao lead (cliente)
+ * e podem exibir CTA de envio para o Inbox.
+ */
+export const SENDABLE_SCRIPT_IDS = new Set<number>([
+    2, // Primeira tentativa de contato
+    3, // Segunda tentativa de contato
+    4, // Terceira tentativa de contato
+    5, // Abordagem inicial
+    7, // Reagendamento (no-show)
+    9, // Apresentação da solução
+    10, // Envio da proposta
+    11, // Follow-up da proposta
+]);
+
 export const SCRIPTS: Record<number, { title: string; content: string }> = {
     1: {
         title: '📋 Cadastro do Lead',

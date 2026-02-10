@@ -11,6 +11,11 @@
     color: var(--color-text-primary);
 }
 
+.required {
+    color: var(--color-danger-500);
+    margin-left: 2px;
+}
+
 .relative {
     position: relative;
     /* position: relative é mantido apenas para referência, mas o menu flutua fora */
