@@ -1,5 +1,11 @@
 
-// Imports needed: useState, useRef, Project, ProductionService, Search, X, Badge, etc.
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - PRODUCERS SIDEBAR
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * Lista de produtores com contagem de projetos por etapa (estilo pós-vendas)
+ */
+
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
@@ -7,11 +13,15 @@ import { useProductionStore } from '../stores/useProductionStore';
 import { ProductionService } from '../services/ProductionService';
 import { Project } from '@/types/project.types';
 import { Spinner, Badge } from '@/design-system';
-import { User, ChevronRight, Search, X } from 'lucide-react';
+import {
+    User, Search, X,
+    Clock, Play, Eye, CheckCircle, AlertTriangle
+} from 'lucide-react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { COLLECTIONS } from '@/config';
 
-// Helper for status colors/labels - duplicate from ProjectBoard or move to common utils?
-// For now, I'll inline a simple version or just use text to keep it simple as Sidebar space is small.
-// Actually, user wants "results show Producer Name".
+// ── Status helpers ─────────────────────────────────────────────────────────────
 
 const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -35,6 +45,19 @@ const getStatusColor = (status: string) => {
     return colors[status] || 'default';
 };
 
+// ── Stats per producer ─────────────────────────────────────────────────────────
+
+interface ProducerStats {
+    aguardando: number;
+    emProducao: number;
+    aRevisar: number;
+    revisado: number;
+    alteracao: number;
+    total: number;
+}
+
+const emptyStats: ProducerStats = { aguardando: 0, emProducao: 0, aRevisar: 0, revisado: 0, alteracao: 0, total: 0 };
+
 export const ProducersSidebar = () => {
     const { collaborators, fetchCollaborators, isLoading: isLoadingCollabs } = useCollaboratorStore();
     const { sectors, fetchSectors, isLoading: isLoadingSectors } = useSectorStore();
@@ -46,6 +69,9 @@ export const ProducersSidebar = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
+
+    // Per-producer project stats (lightweight realtime listener)
+    const [statsByProducer, setStatsByProducer] = useState<Record<string, ProducerStats>>({});
 
     useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
@@ -59,6 +85,36 @@ export const ProducersSidebar = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [fetchCollaborators, fetchSectors, collaborators.length, sectors.length]);
+
+    // Subscribe to all active production projects for stats
+    useEffect(() => {
+        const activeStatuses = ['aguardando', 'em-producao', 'a-revisar', 'revisado', 'alteracao'];
+        const q = query(
+            collection(db, COLLECTIONS.PRODUCTION_PROJECTS),
+            where('status', 'in', activeStatuses)
+        );
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            const stats: Record<string, ProducerStats> = {};
+            snapshot.docs.forEach(doc => {
+                const d = doc.data();
+                const pid = d.producerId;
+                if (!pid) return;
+                if (!stats[pid]) stats[pid] = { ...emptyStats };
+                stats[pid].total++;
+                switch (d.status) {
+                    case 'aguardando': stats[pid].aguardando++; break;
+                    case 'em-producao': stats[pid].emProducao++; break;
+                    case 'a-revisar': stats[pid].aRevisar++; break;
+                    case 'revisado': stats[pid].revisado++; break;
+                    case 'alteracao': stats[pid].alteracao++; break;
+                }
+            });
+            setStatsByProducer(stats);
+        });
+
+        return () => unsub();
+    }, []);
 
     const productionSectorId = useMemo(() => {
         const sector = sectors.find(s => s.name.toLowerCase() === 'produção' || s.name.toLowerCase() === 'production');
@@ -187,26 +243,27 @@ export const ProducersSidebar = () => {
                 <p className="text-xs text-text-muted">{producers.length} produtores</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-2">
+            <div className="flex-1 overflow-y-auto py-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--color-border) transparent' }}>
                 {producers.length > 0 ? (
                     <div className="space-y-1 px-2">
                         {producers.map(producer => {
                             const isSelected = selectedProducerId === producer.id;
+                            const stats = statsByProducer[producer.id] || emptyStats;
 
                             return (
                                 <button
                                     key={producer.id}
                                     onClick={() => setSelectedProducerId(producer.id)}
                                     className={`
-                                        w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors
+                                        w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all
                                         ${isSelected
-                                            ? 'bg-primary-500/10 text-primary-500'
-                                            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary'
+                                            ? 'bg-primary-500/10 border border-primary-500'
+                                            : 'text-text-secondary hover:bg-surface-secondary hover:text-text-primary border border-transparent'
                                         }
                                     `}
                                 >
                                     <div className={`
-                                        w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0
+                                        w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shrink-0
                                         ${isSelected ? 'ring-2 ring-primary-500' : 'bg-surface-tertiary'}
                                     `}>
                                         {(producer.profilePhotoUrl || producer.photoUrl) ? (
@@ -217,11 +274,30 @@ export const ProducersSidebar = () => {
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{producer.name}</p>
-                                        <p className="text-xs opacity-70 truncate">{producer.email}</p>
+                                        <p className="text-sm font-semibold truncate text-text-primary">{producer.name}</p>
+                                        <div style={{ display: 'flex', gap: 'var(--spacing-2)', marginTop: '4px' }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: 'var(--color-text-muted)' }} title="Aguardando">
+                                                <Clock size={12} style={{ opacity: 0.7 }} />
+                                                {stats.aguardando}
+                                            </span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: 'var(--color-text-muted)' }} title="Em Produção">
+                                                <Play size={12} style={{ opacity: 0.7 }} />
+                                                {stats.emProducao}
+                                            </span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: 'var(--color-text-muted)' }} title="A Revisar">
+                                                <Eye size={12} style={{ opacity: 0.7 }} />
+                                                {stats.aRevisar}
+                                            </span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: 'var(--color-text-muted)' }} title="Revisado">
+                                                <CheckCircle size={12} style={{ opacity: 0.7 }} />
+                                                {stats.revisado}
+                                            </span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '11px', color: 'var(--color-text-muted)' }} title="Alteração">
+                                                <AlertTriangle size={12} style={{ opacity: 0.7 }} />
+                                                {stats.alteracao}
+                                            </span>
+                                        </div>
                                     </div>
-
-                                    {isSelected && <ChevronRight size={16} />}
                                 </button>
                             );
                         })}

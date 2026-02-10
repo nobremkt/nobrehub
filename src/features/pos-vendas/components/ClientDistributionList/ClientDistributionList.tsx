@@ -11,16 +11,16 @@ import { useCollaboratorStore } from '@/features/settings/stores/useCollaborator
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { PostSalesDistributionService } from '../../services/PostSalesDistributionService';
 import { Lead } from '@/types/lead.types';
-import { Button, Spinner, Dropdown } from '@/design-system';
+import { Button, Spinner } from '@/design-system';
 import {
     Inbox,
     Clock,
     Zap,
-    UserCheck,
     RefreshCw,
     DollarSign,
     Thermometer
 } from 'lucide-react';
+import { ClientDistributionModal } from './ClientDistributionModal';
 import styles from './ClientDistributionList.module.css';
 
 interface DistributionClient extends Lead {
@@ -34,7 +34,9 @@ export const ClientDistributionList = () => {
     const [clients, setClients] = useState<DistributionClient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState<string | null>(null);
-    const [selectedPostSales, setSelectedPostSales] = useState<Record<string, string>>({});
+
+    // Modal state
+    const [selectedClient, setSelectedClient] = useState<DistributionClient | null>(null);
 
     // Encontra o setor de pós-vendas (aceita variações do nome)
     const postSalesSectorId = useMemo(() => {
@@ -54,13 +56,6 @@ export const ClientDistributionList = () => {
         return collaborators.filter(c => c.sectorId === postSalesSectorId && c.active);
     }, [collaborators, postSalesSectorId]);
 
-    const postSalesOptions = useMemo(() => {
-        return postSalesTeam.map(p => ({
-            value: p.id,
-            label: p.name
-        }));
-    }, [postSalesTeam]);
-
     // Carrega dados iniciais
     useEffect(() => {
         if (collaborators.length === 0) fetchCollaborators();
@@ -77,11 +72,8 @@ export const ClientDistributionList = () => {
         return () => unsubscribe();
     }, []);
 
-    // Handler para atribuir manualmente
-    const handleAssign = async (leadId: string) => {
-        const postSalesId = selectedPostSales[leadId];
-        if (!postSalesId) return;
-
+    // Handler para atribuir manualmente (via modal)
+    const handleAssign = async (leadId: string, postSalesId: string) => {
         const postSales = postSalesTeam.find(p => p.id === postSalesId);
         if (!postSales) return;
 
@@ -92,11 +84,6 @@ export const ClientDistributionList = () => {
                 postSalesId,
                 postSales.name
             );
-            setSelectedPostSales(prev => {
-                const next = { ...prev };
-                delete next[leadId];
-                return next;
-            });
         } catch (error) {
             console.error('Error assigning client:', error);
         } finally {
@@ -183,7 +170,11 @@ export const ClientDistributionList = () => {
                     </div>
                 ) : (
                     clients.map(client => (
-                        <div key={client.id} className={styles.clientCard}>
+                        <div
+                            key={client.id}
+                            className={styles.clientCard}
+                            onClick={() => setSelectedClient(client)}
+                        >
                             {/* Returning Client Badge */}
                             {(client.previousPostSalesIds?.length ?? 0) > 0 && (
                                 <div className={styles.returningBadge}>
@@ -225,34 +216,21 @@ export const ClientDistributionList = () => {
                                     📱 {client.phone}
                                 </div>
                             )}
-
-                            {/* Card Actions */}
-                            <div className={styles.cardActions}>
-                                <div className={styles.postSalesSelect}>
-                                    <Dropdown
-                                        options={postSalesOptions}
-                                        value={selectedPostSales[client.id] || ''}
-                                        onChange={(value) => setSelectedPostSales(prev => ({
-                                            ...prev,
-                                            [client.id]: String(value)
-                                        }))}
-                                        placeholder="Selecionar atendente..."
-                                    />
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handleAssign(client.id)}
-                                    disabled={!selectedPostSales[client.id] || isAssigning === client.id}
-                                    leftIcon={<UserCheck size={14} />}
-                                >
-                                    {isAssigning === client.id ? '...' : 'Atribuir'}
-                                </Button>
-                            </div>
                         </div>
                     ))
                 )}
             </div>
+
+            {/* Assignment Modal */}
+            <ClientDistributionModal
+                client={selectedClient}
+                isOpen={!!selectedClient}
+                onClose={() => setSelectedClient(null)}
+                postSalesTeam={postSalesTeam}
+                collaborators={collaborators}
+                onAssign={handleAssign}
+                isAssigning={isAssigning === selectedClient?.id}
+            />
         </div>
     );
 };

@@ -45,7 +45,7 @@ gh pr create --base main --head <NOME_DA_BRANCH> --title "Merge <NOME_DA_BRANCH>
 ### 5. Merge do PR no GitHub
 > Opção A (via CLI):
 ```powershell
-gh pr merge <NUMERO_DO_PR> --merge --delete-branch
+gh pr merge <NUMERO_DO_PR> --merge
 ```
 > Opção B: Clique em "Merge pull request" no GitHub.
 
@@ -70,6 +70,13 @@ npm run build
 npm run dev
 ```
 > Abra o app no browser e teste as áreas afetadas.
+
+### 9. Voltar para a branch de trabalho
+// turbo
+```powershell
+git checkout <NOME_DA_BRANCH>
+```
+> Retorna para a branch de trabalho para continuar desenvolvendo.
 
 ---
 
