@@ -73,6 +73,22 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             const result = await DashboardAnalyticsService.getAllMetrics(dateFilter);
+
+            // Detect goal_reached: individual production goal crosses 100%
+            const prevPct = get().metrics?.goalPercentage ?? null;
+            const newPct = result.production?.goalPercentage ?? 0;
+
+            if (newPct >= 100 && (prevPct === null || prevPct < 100)) {
+                import('@/stores/useNotificationStore').then(({ useNotificationStore }) => {
+                    useNotificationStore.getState().addNotification({
+                        type: 'goal_reached',
+                        title: '🏆 Meta atingida!',
+                        body: `Você atingiu ${newPct}% da sua meta de produção!`,
+                        link: '/dashboard',
+                    });
+                });
+            }
+
             set({
                 unifiedMetrics: result,
                 // Keep legacy metrics for backward compatibility

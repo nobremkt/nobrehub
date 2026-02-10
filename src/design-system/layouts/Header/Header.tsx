@@ -11,14 +11,12 @@
 import { Bell } from 'lucide-react';
 import { Badge } from '@/design-system/components';
 import { useOrganizationStore } from '@/features/settings/stores/useOrganizationStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import styles from './Header.module.css';
 
-interface HeaderProps {
-    notificationCount?: number;
-}
-
-export function Header({ notificationCount = 0 }: HeaderProps) {
+export function Header() {
     const { companyName, logoUrl } = useOrganizationStore();
+    const { unreadCount, toggleDrawer } = useNotificationStore();
 
     return (
         <header className={styles.header}>
@@ -41,9 +39,13 @@ export function Header({ notificationCount = 0 }: HeaderProps) {
             <div className={styles.spacer} />
 
             {/* Notifications */}
-            <button className={styles.notificationBtn} title="Notificações">
-                {notificationCount > 0 ? (
-                    <Badge content={notificationCount} variant="danger">
+            <button
+                className={styles.notificationBtn}
+                title="Notificações"
+                onClick={toggleDrawer}
+            >
+                {unreadCount > 0 ? (
+                    <Badge content={unreadCount} variant="danger">
                         <Bell size={20} />
                     </Badge>
                 ) : (
@@ -53,3 +55,4 @@ export function Header({ notificationCount = 0 }: HeaderProps) {
         </header>
     );
 }
+
