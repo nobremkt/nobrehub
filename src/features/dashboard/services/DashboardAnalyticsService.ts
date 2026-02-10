@@ -12,7 +12,9 @@ import {
     query,
     Timestamp,
     doc,
-    getDoc
+    getDoc,
+    QuerySnapshot,
+    DocumentData
 } from 'firebase/firestore';
 import { COLLECTIONS } from '@/config';
 import { db } from '@/config/firebase';
@@ -331,6 +333,18 @@ interface CollaboratorsData {
     producerCount: number;
 }
 
+/**
+ * Pre-fetched Firestore snapshots, shared across sub-methods within getAllMetrics()
+ * to avoid redundant collection reads.
+ */
+interface SharedSnapshots {
+    collaboratorsDocs: QuerySnapshot<DocumentData>;
+    projectsDocs: QuerySnapshot<DocumentData>;
+    leadsDocs: QuerySnapshot<DocumentData>;
+    sectorsDocs: QuerySnapshot<DocumentData>;
+    rolesDocs: QuerySnapshot<DocumentData>;
+}
+
 // Sector ID for "Produção"
 const PRODUCAO_SECTOR_ID = '7OhlXcRc8Vih9n7p4PdZ';
 
@@ -338,10 +352,11 @@ const PRODUCAO_SECTOR_ID = '7OhlXcRc8Vih9n7p4PdZ';
 const LIDER_ROLE_ID = '2Qb0NHjub0kaYFYDITqQ';
 
 /** Fetch collaborators data for name lookups and producer counting */
-async function getCollaboratorsData(): Promise<CollaboratorsData> {
-    // Fetch collaborators
-    const collabRef = collection(db, 'collaborators');
-    const snapshot = await getDocs(collabRef);
+async function getCollaboratorsData(preloaded?: SharedSnapshots): Promise<CollaboratorsData> {
+    // Use pre-fetched snapshot if available, otherwise fetch
+    const snapshot = preloaded
+        ? preloaded.collaboratorsDocs
+        : await getDocs(collection(db, 'collaborators'));
 
     const nameMap: Record<string, string> = {};
     const photoMap: Record<string, string> = {};
@@ -471,15 +486,15 @@ export const DashboardAnalyticsService = {
     /**
      * Fetches all projects and calculates dashboard metrics
      */
-    getMetrics: async (filter: DateFilter = 'month'): Promise<DashboardMetrics> => {
+    getMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<DashboardMetrics> => {
         const { start, end } = getDateRange(filter);
 
         // Fetch collaborators for name resolution, photos, and producer count
-        const { nameMap: collaboratorsMap, photoMap: collaboratorsPhotoMap, producerCount } = await getCollaboratorsData();
+        const { nameMap: collaboratorsMap, photoMap: collaboratorsPhotoMap, producerCount } = await getCollaboratorsData(_shared);
 
-        // Fetch all projects
+        // Fetch all projects (use shared snapshot if available)
         const projectsRef = collection(db, PROJECTS_COLLECTION);
-        const snapshot = await getDocs(query(projectsRef));
+        const snapshot = _shared ? _shared.projectsDocs : await getDocs(query(projectsRef));
 
         const allProjects: InternalProject[] = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -517,7 +532,7 @@ export const DashboardAnalyticsService = {
 
         // Delivered projects in period
         const deliveredProjects = projectsInPeriod.filter(p =>
-            p.deliveredAt || p.status === 'entregue' || p.isHistorical
+            p.deliveredAt || p.status === 'entregue' || p.status === 'revisado' || p.status === 'concluido' || p.isHistorical
         );
         const deliveredCount = deliveredProjects.length;
 
@@ -736,11 +751,11 @@ export const DashboardAnalyticsService = {
     /**
      * Fetches sales/CRM metrics from leads collection
      */
-    getSalesMetrics: async (filter: DateFilter = 'month'): Promise<SalesMetrics> => {
+    getSalesMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<SalesMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        const leadsRef = collection(db, 'leads');
-        const snapshot = await getDocs(leadsRef);
+        // Use shared snapshot if available, otherwise fetch
+        const snapshot = _shared ? _shared.leadsDocs : await getDocs(collection(db, 'leads'));
 
         const allLeads: Lead[] = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -897,12 +912,11 @@ export const DashboardAnalyticsService = {
     /**
      * Fetches admin metrics with full team data
      */
-    getAdminMetrics: async (filter: DateFilter = 'month'): Promise<AdminMetrics> => {
+    getAdminMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<AdminMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Fetch collaborators (exclude DEBUG account)
-        const collabRef = collection(db, 'collaborators');
-        const collabSnapshot = await getDocs(collabRef);
+        // Fetch collaborators (use shared snapshot or fetch independently)
+        const collabSnapshot = _shared ? _shared.collaboratorsDocs : await getDocs(collection(db, 'collaborators'));
 
         // Filter out DEBUG account from collaborators
         const filteredCollaborators = collabSnapshot.docs.filter(doc => {
@@ -911,25 +925,22 @@ export const DashboardAnalyticsService = {
         });
         const totalCollaborators = filteredCollaborators.length;
 
-        // Fetch sectors for name lookups
-        const sectorsRef = collection(db, 'sectors');
-        const sectorsSnapshot = await getDocs(sectorsRef);
+        // Fetch sectors for name lookups (use shared or fetch)
+        const sectorsSnapshot = _shared ? _shared.sectorsDocs : await getDocs(collection(db, 'sectors'));
         const sectorsMap: Record<string, string> = {};
         sectorsSnapshot.docs.forEach(doc => {
             sectorsMap[doc.id] = doc.data().name || 'Sem Setor';
         });
 
-        // Fetch roles for name lookups
-        const rolesRef = collection(db, 'roles');
-        const rolesSnapshot = await getDocs(rolesRef);
+        // Fetch roles for name lookups (use shared or fetch)
+        const rolesSnapshot = _shared ? _shared.rolesDocs : await getDocs(collection(db, 'roles'));
         const rolesMap: Record<string, string> = {};
         rolesSnapshot.docs.forEach(doc => {
             rolesMap[doc.id] = doc.data().name || 'Sem Cargo';
         });
 
-        // Fetch projects for productivity calculations
-        const projectsRef = collection(db, PROJECTS_COLLECTION);
-        const projectsSnapshot = await getDocs(projectsRef);
+        // Fetch projects for productivity calculations (use shared or fetch)
+        const projectsSnapshot = _shared ? _shared.projectsDocs : await getDocs(collection(db, PROJECTS_COLLECTION));
 
         // Calculate per-collaborator project stats
         const projectsByCollaborator: Record<string, { count: number; points: number }> = {};
@@ -1030,12 +1041,11 @@ export const DashboardAnalyticsService = {
      * Fetches financial metrics - derived from sales data
      * Note: Expenses and accounts are placeholder values until a financial module is implemented
      */
-    getFinancialMetrics: async (filter: DateFilter = 'month'): Promise<FinancialMetrics> => {
+    getFinancialMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<FinancialMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Fetch leads for revenue calculations
-        const leadsRef = collection(db, 'leads');
-        const snapshot = await getDocs(leadsRef);
+        // Use shared snapshot if available, otherwise fetch
+        const snapshot = _shared ? _shared.leadsDocs : await getDocs(collection(db, 'leads'));
 
         const closedStatuses = ['won', 'closed', 'contracted'];
         const openStatuses = ['new', 'qualified', 'negotiation', 'proposal'];
@@ -1135,13 +1145,12 @@ export const DashboardAnalyticsService = {
      * Fetches post-sales metrics
      * Note: Currently returns placeholder data - requires tickets/payments collections
      */
-    getPostSalesMetrics: async (_filter: DateFilter = 'month'): Promise<PostSalesMetrics> => {
+    getPostSalesMetrics: async (_filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<PostSalesMetrics> => {
         // Date range will be used when tickets/payments collections are available
         // const { start, end } = getDateRange(filter);
 
-        // Fetch collaborators from post-sales sector for ranking
-        const collabRef = collection(db, 'collaborators');
-        const collabSnapshot = await getDocs(collabRef);
+        // Use shared snapshot if available, otherwise fetch
+        const collabSnapshot = _shared ? _shared.collaboratorsDocs : await getDocs(collection(db, 'collaborators'));
 
         // Sector ID for "Pós-vendas"
         const POS_VENDAS_SECTOR_ID = '2OByfKttFYPi5Cxbcs2t';
@@ -1203,15 +1212,29 @@ export const DashboardAnalyticsService = {
     },
 
     /**
-     * Fetches all metrics unified
+     * Fetches all metrics unified.
+     * Fetches shared collections ONCE and passes them to all sub-methods,
+     * reducing Firestore reads from 9 to 5 per dashboard load.
      */
     getAllMetrics: async (filter: DateFilter = 'month'): Promise<UnifiedDashboardMetrics> => {
+        // ── Shared data fetch (1 read per collection) ──────────────────────
+        const [collaboratorsDocs, projectsDocs, leadsDocs, sectorsDocs, rolesDocs] = await Promise.all([
+            getDocs(collection(db, 'collaborators')),
+            getDocs(collection(db, PROJECTS_COLLECTION)),
+            getDocs(collection(db, 'leads')),
+            getDocs(collection(db, 'sectors')),
+            getDocs(collection(db, 'roles')),
+        ]);
+
+        const shared: SharedSnapshots = { collaboratorsDocs, projectsDocs, leadsDocs, sectorsDocs, rolesDocs };
+
+        // ── Compute all metrics using shared data ──────────────────────────
         const [production, sales, admin, financial, postSales] = await Promise.all([
-            DashboardAnalyticsService.getMetrics(filter),
-            DashboardAnalyticsService.getSalesMetrics(filter),
-            DashboardAnalyticsService.getAdminMetrics(filter),
-            DashboardAnalyticsService.getFinancialMetrics(filter),
-            DashboardAnalyticsService.getPostSalesMetrics(filter)
+            DashboardAnalyticsService.getMetrics(filter, shared),
+            DashboardAnalyticsService.getSalesMetrics(filter, shared),
+            DashboardAnalyticsService.getAdminMetrics(filter, shared),
+            DashboardAnalyticsService.getFinancialMetrics(filter, shared),
+            DashboardAnalyticsService.getPostSalesMetrics(filter, shared)
         ]);
 
         const general: GeneralMetrics = {
