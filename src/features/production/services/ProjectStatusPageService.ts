@@ -26,7 +26,12 @@ export interface PublicProjectStatus {
     statusPageUrl: string;
     projectName: string;
     leadName: string;
+    sellerName?: string;
+    sellerPhotoUrl?: string;
     producerName?: string;
+    producerPhotoUrl?: string;
+    postSalesName?: string;
+    postSalesPhotoUrl?: string;
     status: ProjectStatus;
     dueDate?: Date;
     deliveredToClientAt?: Date;
@@ -37,7 +42,13 @@ interface ProjectStatusSnapshot {
     id: string;
     name: string;
     leadName: string;
+    leadId?: string;
+    sellerName?: string;
+    sellerPhotoUrl?: string;
     producerName?: string;
+    producerPhotoUrl?: string;
+    postSalesName?: string;
+    postSalesPhotoUrl?: string;
     status: ProjectStatus;
     dueDate?: FirestoreDate;
     deliveredToClientAt?: FirestoreDate;
@@ -83,7 +94,12 @@ const toPublicStatusPayload = (project: ProjectStatusSnapshot, token: string, st
     statusPageUrl,
     projectName: project.name,
     leadName: project.leadName,
+    sellerName: project.sellerName || '',
+    sellerPhotoUrl: project.sellerPhotoUrl || '',
     producerName: project.producerName || '',
+    producerPhotoUrl: project.producerPhotoUrl || '',
+    postSalesName: project.postSalesName || '',
+    postSalesPhotoUrl: project.postSalesPhotoUrl || '',
     status: project.status,
     dueDate: parseDate(project.dueDate) || null,
     deliveredToClientAt: parseDate(project.deliveredToClientAt) || null,
@@ -125,7 +141,12 @@ const mapStatusDoc = (data: Record<string, unknown>): PublicProjectStatus | null
         statusPageUrl: String(data.statusPageUrl),
         projectName: String(data.projectName),
         leadName: String(data.leadName),
+        sellerName: data.sellerName ? String(data.sellerName) : undefined,
+        sellerPhotoUrl: data.sellerPhotoUrl ? String(data.sellerPhotoUrl) : undefined,
         producerName: data.producerName ? String(data.producerName) : undefined,
+        producerPhotoUrl: data.producerPhotoUrl ? String(data.producerPhotoUrl) : undefined,
+        postSalesName: data.postSalesName ? String(data.postSalesName) : undefined,
+        postSalesPhotoUrl: data.postSalesPhotoUrl ? String(data.postSalesPhotoUrl) : undefined,
         status: String(data.status) as ProjectStatus,
         dueDate: parseDate(data.dueDate as FirestoreDate),
         deliveredToClientAt: parseDate(data.deliveredToClientAt as FirestoreDate),
@@ -163,11 +184,75 @@ export const ProjectStatusPageService = {
 
         const data = projectDoc.data() as Record<string, unknown>;
 
+        // Resolve team names + photos from lead → collaborators
+        let sellerName = '';
+        let sellerPhotoUrl = '';
+        let producerPhotoUrl = '';
+        let resolvedPostSalesName = data.postSalesName ? String(data.postSalesName) : '';
+        let postSalesPhotoUrl = '';
+        const leadId = data.leadId ? String(data.leadId) : '';
+        const producerId = data.producerId ? String(data.producerId) : '';
+
+        try {
+            // Build parallel fetch list
+            const fetchPromises: Promise<any>[] = [];
+
+            // 1. Lead doc (for seller + post-sales IDs)
+            const leadPromise = (leadId && leadId !== 'manual')
+                ? getDoc(doc(db, 'leads', leadId))
+                : Promise.resolve(null);
+            fetchPromises.push(leadPromise);
+
+            // 2. Producer doc (for photo)
+            const producerPromise = producerId
+                ? getDoc(doc(db, 'collaborators', producerId))
+                : Promise.resolve(null);
+            fetchPromises.push(producerPromise);
+
+            const [leadDoc, producerDoc] = await Promise.all(fetchPromises);
+
+            // Extract producer photo
+            if (producerDoc?.exists()) {
+                producerPhotoUrl = String(producerDoc.data()?.profilePhotoUrl || '');
+            }
+
+            // Extract seller + post-sales from lead
+            if (leadDoc?.exists()) {
+                const leadData = leadDoc.data();
+                const responsibleId = leadData?.responsibleId ? String(leadData.responsibleId) : '';
+                const postSalesId = leadData?.postSalesId ? String(leadData.postSalesId) : '';
+
+                const [sellerDoc, postSalesDoc] = await Promise.all([
+                    responsibleId ? getDoc(doc(db, 'collaborators', responsibleId)) : Promise.resolve(null),
+                    postSalesId ? getDoc(doc(db, 'collaborators', postSalesId)) : Promise.resolve(null),
+                ]);
+
+                if (sellerDoc?.exists()) {
+                    const d = sellerDoc.data();
+                    sellerName = String(d?.name || '');
+                    sellerPhotoUrl = String(d?.profilePhotoUrl || '');
+                }
+                if (postSalesDoc?.exists()) {
+                    const d = postSalesDoc.data();
+                    resolvedPostSalesName = String(d?.name || '');
+                    postSalesPhotoUrl = String(d?.profilePhotoUrl || '');
+                }
+            }
+        } catch {
+            // Non-critical: team info is optional
+        }
+
         const snapshot: ProjectStatusSnapshot = {
             id: projectDoc.id,
             name: String(data.name || 'Projeto sem nome'),
             leadName: String(data.leadName || 'Cliente'),
+            leadId,
+            sellerName,
+            sellerPhotoUrl,
             producerName: data.producerName ? String(data.producerName) : '',
+            producerPhotoUrl,
+            postSalesName: resolvedPostSalesName,
+            postSalesPhotoUrl,
             status: (String(data.status || 'aguardando') as ProjectStatus),
             dueDate: data.dueDate as FirestoreDate,
             deliveredToClientAt: data.deliveredToClientAt as FirestoreDate,

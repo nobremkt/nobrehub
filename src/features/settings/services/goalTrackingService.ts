@@ -134,7 +134,7 @@ export const GoalTrackingService = {
             // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
             const relevantDate = deliveredAt || (isFinished ? createdAt : null);
             if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;
-            const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
+            const isAlt = d.type === 'alteracao' || d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
             if (isAlt) return;
             delivered++;
             points += Number(d.points) || 1;

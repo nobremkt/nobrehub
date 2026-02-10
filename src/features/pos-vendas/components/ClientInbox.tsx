@@ -58,6 +58,8 @@ const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
     'a-revisar': 'A Revisar',
     'revisado': 'Revisado',
     'alteracao': 'Em Alteração',
+    'alteracao_interna': 'Alt. Interna',
+    'alteracao_cliente': 'Alt. Cliente',
     'entregue': 'Entregue',
     'concluido': 'Concluído'
 };

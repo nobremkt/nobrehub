@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@/config/permissions';
 import { Button, Card, Spinner, Badge } from '@/design-system';
 import { Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
 import { ProjectDetailsModal } from './ProjectDetailsModal';
+import { arrayUnion } from 'firebase/firestore';
 
 // Helper de status
 const getStatusLabel = (status: string) => {
@@ -13,7 +14,9 @@ const getStatusLabel = (status: string) => {
         'em-producao': 'Em Produção',
         'a-revisar': 'A Revisar',
         'revisado': 'Revisado',
-        'alteracao': 'Em Alteração'
+        'alteracao': 'Em Alteração',
+        'alteracao_interna': 'Alteração Interna',
+        'alteracao_cliente': 'Alteração Cliente'
     };
     return labels[status] || status;
 };
@@ -24,7 +27,9 @@ const getStatusColor = (status: string) => {
         'em-producao': 'primary',
         'a-revisar': 'warning',
         'revisado': 'success',
-        'alteracao': 'warning'
+        'alteracao': 'warning',
+        'alteracao_interna': 'warning',
+        'alteracao_cliente': 'danger'
     };
     return colors[status] || 'default';
 };
@@ -34,7 +39,7 @@ type TabType = 'production' | 'changes' | 'finished';
 
 const TABS: { id: TabType; label: string; statuses: string[] }[] = [
     { id: 'production', label: 'Produção', statuses: ['aguardando', 'em-producao'] },
-    { id: 'changes', label: 'Alterações', statuses: ['alteracao'] },
+    { id: 'changes', label: 'Alterações', statuses: ['alteracao', 'alteracao_interna', 'alteracao_cliente'] },
     { id: 'finished', label: 'Finalizados', statuses: ['revisado', 'a-revisar'] },
 ];
 
@@ -102,7 +107,9 @@ export const ProjectBoard = () => {
             'em-producao': 3,
             'aguardando': 2,
             'revisado': 1,
-            'alteracao': 0
+            'alteracao': 0,
+            'alteracao_interna': 0,
+            'alteracao_cliente': 0
         };
         return weights[status] || 0;
     };
@@ -231,7 +238,20 @@ export const ProjectBoard = () => {
                                                                 variant="primary"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    updateProject(project.id, { status: 'alteracao' });
+                                                                    updateProject(project.id, {
+                                                                        status: 'alteracao_interna',
+                                                                        internalRevisionCount: (project.internalRevisionCount || 0) + 1,
+                                                                        revisionCount: (project.revisionCount || 0) + 1,
+                                                                        revisionHistory: arrayUnion({
+                                                                            type: 'internal',
+                                                                            reason: '',
+                                                                            requestedBy: user?.id || '',
+                                                                            requestedByName: user?.name || 'Líder',
+                                                                            requestedAt: new Date()
+                                                                        }) as any,
+                                                                        lastRevisionRequestedAt: new Date(),
+                                                                        lastRevisionRequestedBy: user?.id || ''
+                                                                    });
                                                                 }}
                                                                 leftIcon={<FilePenLine size={14} />}
                                                                 title="Solicitar Alteração"
@@ -253,7 +273,7 @@ export const ProjectBoard = () => {
                                                                 Aprovar
                                                             </Button>
                                                         </div>
-                                                    ) : project.status === 'alteracao' ? (
+                                                    ) : (project.status === 'alteracao' || project.status === 'alteracao_interna' || project.status === 'alteracao_cliente') ? (
                                                         <div className="flex items-center gap-2">
                                                             <Button
                                                                 size="sm"
@@ -306,12 +326,18 @@ export const ProjectBoard = () => {
                                             {!canManageProjects && project.status === 'em-producao' && (
                                                 <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); updateProject(project.id, { status: 'a-revisar' }); }}>Finalizar</Button>
                                             )}
-                                            {!canManageProjects && project.status === 'alteracao' && (
+                                            {!canManageProjects && (project.status === 'alteracao' || project.status === 'alteracao_interna' || project.status === 'alteracao_cliente') && (
                                                 <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); updateProject(project.id, { status: 'a-revisar' }); }} leftIcon={<Check size={14} />}>Finalizar</Button>
                                             )}
                                         </div>
                                         {project.priority === 'high' && <Badge variant="danger" content="Prioridade Alta" />}
                                         <Badge variant={getStatusColor(project.status)} content={getStatusLabel(project.status)} />
+                                        {((project.internalRevisionCount || 0) + (project.clientRevisionCount || 0)) > 0 && (
+                                            <Badge
+                                                variant="default"
+                                                content={`🔁 ${(project.internalRevisionCount || 0) + (project.clientRevisionCount || 0)}`}
+                                            />
+                                        )}
                                         {project.driveLink && (
                                             <a href={project.driveLink} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-primary-500 hover:bg-surface-secondary rounded-full transition-colors" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} /></a>
                                         )}

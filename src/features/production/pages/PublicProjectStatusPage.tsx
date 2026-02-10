@@ -5,11 +5,14 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Clock3,
+    Headset,
     Loader2,
+    Palette,
     RefreshCcw,
     Rocket,
     ShieldCheck,
     Sparkles,
+    TrendingUp,
     Truck
 } from 'lucide-react';
 import { ProjectStatus } from '@/types/project.types';
@@ -20,7 +23,7 @@ import {
 import styles from './PublicProjectStatusPage.module.css';
 
 type FlowStep = {
-    status: Exclude<ProjectStatus, 'alteracao'>;
+    status: Exclude<ProjectStatus, 'alteracao' | 'alteracao_interna' | 'alteracao_cliente'>;
     title: string;
     subtitle: string;
 };
@@ -64,6 +67,8 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
     'a-revisar': 'A revisar',
     revisado: 'Revisado',
     alteracao: 'Em alteracao',
+    alteracao_interna: 'Alteracao interna',
+    alteracao_cliente: 'Alteracao do cliente',
     entregue: 'Entregue',
     concluido: 'Concluido'
 };
@@ -74,13 +79,20 @@ const STATUS_MESSAGES: Record<ProjectStatus, string> = {
     'a-revisar': 'Seu projeto esta em revisao interna de qualidade.',
     revisado: 'Projeto revisado e pronto para a etapa de entrega.',
     alteracao: 'Recebemos um pedido de ajuste e o projeto voltou para alteracao.',
+    alteracao_interna: 'O projeto esta passando por ajustes internos da equipe de producao.',
+    alteracao_cliente: 'Recebemos seu pedido de alteracao e a equipe ja esta trabalhando nisso.',
     entregue: 'Projeto entregue. Estamos aguardando seu retorno.',
     concluido: 'Projeto finalizado. Obrigado por confiar no time Nobre Hub.'
 };
 
 const getProgressIndex = (status: ProjectStatus): number => {
-    if (status === 'alteracao') {
+    // Internal revision: project hasn't left production, back to em-producao
+    if (status === 'alteracao_interna') {
         return FLOW.findIndex((step) => step.status === 'em-producao');
+    }
+    // Client revision: project was reviewed + delivered, client asked changes — keep "Pronto" checked
+    if (status === 'alteracao_cliente' || status === 'alteracao') {
+        return FLOW.findIndex((step) => step.status === 'revisado');
     }
 
     const index = FLOW.findIndex((step) => step.status === status);
@@ -155,7 +167,7 @@ export const PublicProjectStatusPage = () => {
 
         if (projectStatus.status === 'concluido') return ShieldCheck;
         if (projectStatus.status === 'entregue') return Truck;
-        if (projectStatus.status === 'alteracao') return RefreshCcw;
+        if (projectStatus.status === 'alteracao' || projectStatus.status === 'alteracao_interna' || projectStatus.status === 'alteracao_cliente') return RefreshCcw;
         if (projectStatus.status === 'revisado') return ClipboardCheck;
         if (projectStatus.status === 'em-producao') return Rocket;
         return Clock3;
@@ -219,10 +231,6 @@ export const PublicProjectStatusPage = () => {
                             <span>Prazo previsto</span>
                             <strong>{formatDate(projectStatus.dueDate)}</strong>
                         </div>
-                        <div>
-                            <span>Responsavel atual</span>
-                            <strong>{projectStatus.producerName || 'Equipe Nobre Hub'}</strong>
-                        </div>
                     </div>
                     {isDelayed && (
                         <div className={styles.delayAlert}>
@@ -230,6 +238,51 @@ export const PublicProjectStatusPage = () => {
                             <span>Projeto em andamento fora do prazo previsto. O time ja esta atuando nisso.</span>
                         </div>
                     )}
+                </section>
+
+                <section className={styles.teamSection}>
+                    <h2>Equipe responsavel</h2>
+                    <div className={styles.teamGrid}>
+                        <div className={styles.teamCard}>
+                            {projectStatus.sellerPhotoUrl ? (
+                                <img src={projectStatus.sellerPhotoUrl} alt="" className={styles.teamAvatar} />
+                            ) : (
+                                <div className={styles.teamAvatarFallback}>
+                                    <TrendingUp size={18} />
+                                </div>
+                            )}
+                            <div className={styles.teamInfo}>
+                                <span className={styles.teamRole}><TrendingUp size={12} /> Vendedor(a)</span>
+                                <strong>{projectStatus.sellerName || 'Equipe Nobre Hub'}</strong>
+                            </div>
+                        </div>
+                        <div className={styles.teamCard}>
+                            {projectStatus.producerPhotoUrl ? (
+                                <img src={projectStatus.producerPhotoUrl} alt="" className={styles.teamAvatar} />
+                            ) : (
+                                <div className={styles.teamAvatarFallback}>
+                                    <Palette size={18} />
+                                </div>
+                            )}
+                            <div className={styles.teamInfo}>
+                                <span className={styles.teamRole}><Palette size={12} /> Produtor(a)</span>
+                                <strong>{projectStatus.producerName || 'A definir'}</strong>
+                            </div>
+                        </div>
+                        <div className={styles.teamCard}>
+                            {projectStatus.postSalesPhotoUrl ? (
+                                <img src={projectStatus.postSalesPhotoUrl} alt="" className={styles.teamAvatar} />
+                            ) : (
+                                <div className={styles.teamAvatarFallback}>
+                                    <Headset size={18} />
+                                </div>
+                            )}
+                            <div className={styles.teamInfo}>
+                                <span className={styles.teamRole}><Headset size={12} /> Pos-Vendas</span>
+                                <strong>{projectStatus.postSalesName || 'A definir'}</strong>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <section className={styles.timelineSection}>
