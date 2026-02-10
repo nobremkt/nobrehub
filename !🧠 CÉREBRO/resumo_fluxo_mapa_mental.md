@@ -3,41 +3,44 @@
 ## 🎯 CICLO COMPLETO DO CLIENTE
 
 ```
-LEAD CHEGA
-    ↓
-BASE DE CONTATOS
-    ↓
-INBOX VENDAS (vendedora negocia)
-    ↓
-    ├── NÃO FECHOU → Lead Perdido
-    │
-    └── FECHOU VENDA → CRIA PROJETO
-                            ↓
-            ┌───────────────┴───────────────┐
-            ↓                               ↓
-    LISTA PRODUÇÃO              LISTA PÓS-VENDAS
-    (Líder distribui)           (Líder distribui)
-            ↓                               ↓
-    PRODUTOR RECEBE             PÓS-VENDA RECEBE
-            ↓                               ↓
-    EM PRODUÇÃO                 AGUARDANDO PROJETO
-            ↓                               ↓
-    REVISADO ←──────────────────── VÊ STATUS
-            ↓
-    ENTREGA LINK → PÓS-VENDA ENVIA AO CLIENTE
-                            ↓
-                    CLIENTE APROVOU?
-                    ├── NÃO → ALTERAÇÃO (volta pro MESMO produtor)
-                    │
-                    └── SIM → AGUARDANDO PAGAMENTO
-                                    ↓
-                            PAGAMENTO RECEBIDO
-                                    ↓
-                            100% CONCLUÍDO
-                                    ↓
-                        SAI DO INBOX PÓS-VENDA
-                                    ↓
-                        VOLTA PRA BASE DE CONTATOS
+LEAD CHEGA (webhook WhatsApp)
+     ↓
+CONVERSA + LEAD criados simultaneamente
+     ↓
+     ├── INBOX VENDAS (vendedora negocia via WhatsApp)
+     └── BASE DE CONTATOS (lead aparece no CRM/Kanban)
+     ↓
+     ├── NÃO FECHOU → Lead Perdido
+     │
+     └── FECHOU VENDA → CRIA PROJETO
+                             ↓
+             ┌───────────────┴───────────────┐
+             ↓                               ↓
+     LISTA PRODUÇÃO              LISTA PÓS-VENDAS
+     (Líder distribui)           (Líder distribui)
+             ↓                               ↓
+     PRODUTOR RECEBE             PÓS-VENDA RECEBE
+             ↓                               ↓
+     EM PRODUÇÃO                 AGUARDANDO PROJETO
+             ↓                         (acompanha status)
+     FINALIZADO (produtor)              ↓
+             ↓                   VÊ "REVISADO" →
+     QUALIDADE (líder revisa)    ENTREGA AO CLIENTE
+             ↓                               ↓
+     REVISADO                    CLIENTE APROVOU?
+                                 ├── NÃO → ALTERAÇÃO (volta pro MESMO produtor)
+                                 │
+                                 └── SIM → AGUARDANDO PAGAMENTO
+                                                 ↓
+                                         PAGAMENTO RECEBIDO
+                                                 ↓
+                                         100% CONCLUÍDO
+                                                 ↓
+                                     SAI DO INBOX PÓS-VENDA
+                                                 ↓
+                                     VOLTA PRA BASE DE CONTATOS
+                                                 ↓
+                                  (Se mandar mensagem, reinicia ciclo)
 ```
 
 ---
@@ -51,7 +54,6 @@ LISTA DE DISTRIBUIÇÃO (só líder vê)
       │
       ├── INFO: Projeto + Cliente + Pontos
       ├── INFO: Produtor sugerido (destacado)
-      ├── INFO: Quem já atendeu esse cliente
       └── INFO: Observações da vendedora
       │
       └── LÍDER DECIDE:
@@ -65,9 +67,17 @@ LISTA DE DISTRIBUIÇÃO (só líder vê)
 - Extra = vendedora pode aumentar manualmente
 - Vídeos = pontos por duração (30s/60s/60+)
 
+**FLUXO DO PROJETO NA PRODUÇÃO:**
+```
+Aguardando → Em Produção → Finalizado → Qualidade (líder) → Revisado → Entregue
+                                                                          ↓
+                                                                  Alteração? → volta pro MESMO produtor
+                                                                              (NUNCA volta pra lista)
+```
+
 **ALTERAÇÕES:**
 - SEMPRE voltam pro MESMO produtor
-- NUNCA voltam pra lista
+- NUNCA voltam pra lista de distribuição
 
 ---
 
@@ -82,7 +92,7 @@ LISTA DE DISTRIBUIÇÃO PÓS-VENDAS
       │
       ├── INFO: Cliente + Projeto
       ├── INFO: Produtor que fez
-      ├── INFO: Quem já atendeu esse cliente
+      ├── INFO: Quem já atendeu esse cliente (histórico)
       └── INFO: Carga de cada pós-venda
       │
       └── LÍDER DECIDE:
@@ -101,20 +111,20 @@ LISTA DE DISTRIBUIÇÃO PÓS-VENDAS
 ┌─────────────────────────────────────┐
 │           ABAS/FILTROS              │
 ├─────────────────────────────────────┤
-│ • AGUARDANDO PROJETO                │
-│ • AGUARDANDO ALTERAÇÃO              │
-│ • ENTREGUE                          │
-│ • AGUARDANDO PAGAMENTO              │
-│ • TODOS                             │
-│ • OUTROS                            │
+│ • TODOS                            │
+│ • AGUARDANDO PROJETO               │
+│ • ENTREGUE                         │
+│ • AGUARDANDO ALTERAÇÃO             │
+│ • AGUARDANDO PAGAMENTO             │
+│ • CONCLUÍDOS                       │
 └─────────────────────────────────────┘
 ```
 
 **AÇÕES:**
 - Ver status do projeto (tempo real da produção)
+- Marcar entregue (quando projeto está revisado)
 - Solicitar alteração → volta pro MESMO produtor
-- Marcar entregue
-- Cliente aprovou
+- Cliente aprovou → Aguardando Pagamento
 - Pagamento recebido → CONCLUÍDO
 
 ---
@@ -132,6 +142,19 @@ CONCLUSÃO: Só sai quando TODOS os projetos concluídos
 
 ---
 
+## 🔗 RASTRO COMPLETO DO LEAD
+
+```
+Cada lead carrega o histórico de quem participou:
+
+VENDEDOR:    assignedTo (quem vendeu)
+PRODUTOR:    producerId (quem produziu, por projeto)
+PÓS-VENDA:  postSalesId (quem atende)
+             previousPostSalesIds[] (histórico de atendentes)
+```
+
+---
+
 ## ✅ PROJETO 100% CONCLUÍDO
 
 ```
@@ -142,7 +165,8 @@ CONCLUSÃO: Só sai quando TODOS os projetos concluídos
            ↓
    Volta pra Base de Contatos
            ↓
-   (Pode iniciar novo ciclo)
+   (Se entrar em contato novamente,
+    reinicia o ciclo de vendas)
 ```
 
 ---
