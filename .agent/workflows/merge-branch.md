@@ -57,7 +57,7 @@ git push origin main
 npx tsc --noEmit
 ```
 
-### 6. Voltar para a branch do agente (opcional)
+### 6. Voltar para a branch do agente
 // turbo
 ```powershell
 git checkout <NOME_DA_BRANCH>
