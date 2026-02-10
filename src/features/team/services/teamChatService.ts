@@ -10,7 +10,6 @@ import {
     getDoc,
     getDocs,
     updateDoc,
-    deleteDoc,
     onSnapshot,
     query,
     orderBy,

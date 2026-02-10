@@ -14,7 +14,7 @@ import { ProductionService } from '../services/ProductionService';
 import { Project } from '@/types/project.types';
 import { Spinner, Badge } from '@/design-system';
 import {
-    User, Search, X, ChevronRight,
+    User, Search, X,
     Clock, Play, Eye, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
