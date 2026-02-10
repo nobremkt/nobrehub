@@ -14,40 +14,13 @@ import { ProductionService } from '../services/ProductionService';
 import { Project } from '@/types/project.types';
 import { Spinner, Badge } from '@/design-system';
 import {
-    User, Search, X,
+    User, Search, X, ChevronRight,
     Clock, Play, Eye, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { COLLECTIONS } from '@/config';
-
-// ── Status helpers ─────────────────────────────────────────────────────────────
-
-const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-        'aguardando': 'Aguardando',
-        'em-producao': 'Em Produção',
-        'a-revisar': 'A Revisar',
-        'revisado': 'Revisado',
-        'alteracao': 'Em Alteração',
-        'alteracao_interna': 'Alt. Interna',
-        'alteracao_cliente': 'Alt. Cliente'
-    };
-    return labels[status] || status;
-};
-
-const getStatusColor = (status: string) => {
-    const colors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'danger'> = {
-        'aguardando': 'default',
-        'em-producao': 'primary',
-        'a-revisar': 'warning',
-        'revisado': 'success',
-        'alteracao': 'warning',
-        'alteracao_interna': 'warning',
-        'alteracao_cliente': 'danger'
-    };
-    return colors[status] || 'default';
-};
+import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
 // ── Stats per producer ─────────────────────────────────────────────────────────
 

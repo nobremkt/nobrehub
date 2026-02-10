@@ -6,33 +6,8 @@ import { Button, Card, Spinner, Badge } from '@/design-system';
 import { Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
 import { ProjectDetailsModal } from './ProjectDetailsModal';
 import { arrayUnion } from 'firebase/firestore';
+import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
-// Helper de status
-const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-        'aguardando': 'Aguardando',
-        'em-producao': 'Em Produção',
-        'a-revisar': 'A Revisar',
-        'revisado': 'Revisado',
-        'alteracao': 'Em Alteração',
-        'alteracao_interna': 'Alteração Interna',
-        'alteracao_cliente': 'Alteração Cliente'
-    };
-    return labels[status] || status;
-};
-
-const getStatusColor = (status: string) => {
-    const colors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'danger'> = {
-        'aguardando': 'default',
-        'em-producao': 'primary',
-        'a-revisar': 'warning',
-        'revisado': 'success',
-        'alteracao': 'warning',
-        'alteracao_interna': 'warning',
-        'alteracao_cliente': 'danger'
-    };
-    return colors[status] || 'default';
-};
 
 // Tabs Configuration
 type TabType = 'production' | 'changes' | 'finished';

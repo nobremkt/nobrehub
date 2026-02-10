@@ -19,7 +19,7 @@ export interface ContactFilters {
     dataFim?: Date;
     comNegocioOrigem?: string;
     comNegocioEtapa?: string;
-    comNegocioStatus?: 'ganho' | 'perdido' | 'aberto';
+    comNegocioStatus?: 'won' | 'lost' | 'open';
     comDono?: string;
     semDono?: boolean;
     comTelefone?: boolean;
@@ -193,6 +193,26 @@ export const useFilteredContacts = () => {
         // Filtro com/sem telefone
         if (filters.comTelefone && !contact.phone) return false;
         if (filters.semTelefone && contact.phone) return false;
+
+        // Filtro por origem (source)
+        if (filters.comNegocioOrigem && contact.source !== filters.comNegocioOrigem) return false;
+
+        // Filtro por etapa (stage/status da pipeline)
+        if (filters.comNegocioEtapa && contact.status !== filters.comNegocioEtapa) return false;
+
+        // Filtro por status do negócio (won/lost/open)
+        if (filters.comNegocioStatus) {
+            const dealStatus = contact.dealStatus || 'open';
+            if (dealStatus !== filters.comNegocioStatus) return false;
+        }
+
+        // Filtro por dono
+        if (filters.comDono && contact.responsibleId !== filters.comDono) return false;
+        if (filters.semDono && contact.responsibleId && contact.responsibleId !== 'admin') return false;
+
+        // Filtro por data
+        if (filters.dataInicio && contact.createdAt < filters.dataInicio) return false;
+        if (filters.dataFim && contact.createdAt > filters.dataFim) return false;
 
         return true;
     });

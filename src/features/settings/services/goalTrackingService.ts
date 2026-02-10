@@ -154,7 +154,7 @@ export const GoalTrackingService = {
     ): Promise<SectorGoalProgress> {
         // Query only this producer's projects (not the entire collection)
         const snapshot = await getDocs(query(
-            collection(db, 'projects'),
+            collection(db, 'production_projects'),
             where('producerId', '==', collaboratorId)
         ));
         let points = 0, delivered = 0;
@@ -333,7 +333,7 @@ export const GoalTrackingService = {
 
         try {
             const snapshot = await getDocs(query(
-                collection(db, 'strategic_notes'),
+                collection(db, 'notes'),
                 where('createdBy', '==', collaboratorId)
             ));
             snapshot.docs.forEach(doc => {

@@ -96,7 +96,7 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
             if (sectorId === SECTOR_IDS.PRODUCAO) {
                 // Query only this producer's projects
                 const snapshot = await getDocs(query(
-                    collection(db, 'projects'),
+                    collection(db, 'production_projects'),
                     where('producerId', '==', collaboratorId)
                 ));
                 let points = 0, delivered = 0, alteracoes = 0, totalDays = 0, deliveryCount = 0;

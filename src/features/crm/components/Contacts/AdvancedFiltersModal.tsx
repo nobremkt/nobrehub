@@ -55,9 +55,11 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
     const origemOptions = [
         { label: 'Todas as origens', value: '' },
         { label: 'Landing Page', value: 'landing-page' },
+        { label: 'Site', value: 'site' },
         { label: 'WhatsApp', value: 'whatsapp' },
         { label: 'Instagram', value: 'instagram' },
         { label: 'Indicação', value: 'indicacao' },
+        { label: 'Manual', value: 'manual' },
     ];
 
     const etapaOptions = [
@@ -71,9 +73,9 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
 
     const statusOptions = [
         { label: 'Todos os status', value: '' },
-        { label: 'Aberto', value: 'aberto' },
-        { label: 'Ganho', value: 'ganho' },
-        { label: 'Perdido', value: 'perdido' },
+        { label: 'Aberto', value: 'open' },
+        { label: 'Ganho', value: 'won' },
+        { label: 'Perdido', value: 'lost' },
     ];
 
     return (
@@ -136,7 +138,7 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
                         <Dropdown
                             options={statusOptions}
                             value={filters.comNegocioStatus || ''}
-                            onChange={(value) => setFilter('comNegocioStatus', (value as 'ganho' | 'perdido' | 'aberto') || undefined)}
+                            onChange={(value) => setFilter('comNegocioStatus', (value as 'won' | 'lost' | 'open') || undefined)}
                             placeholder="Todos os status"
                         />
                     </div>

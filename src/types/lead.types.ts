@@ -66,6 +66,9 @@ export interface Lead {
 
     // Temperatura do lead
     temperature?: 'cold' | 'warm' | 'hot';
+
+    // Origem do lead (canal de entrada)
+    source?: string;
 }
 
 export interface LeadActivity {

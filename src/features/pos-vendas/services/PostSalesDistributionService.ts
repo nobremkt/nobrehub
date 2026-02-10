@@ -9,10 +9,10 @@ import {
     query,
     Timestamp,
     updateDoc,
-    where
+    where,
+    limit,
 } from 'firebase/firestore';
-import { get, ref, update as updateRealtime } from 'firebase/database';
-import { db, getRealtimeDb } from '@/config/firebase';
+import { db } from '@/config/firebase';
 import { COLLECTIONS } from '@/config';
 import { Lead, ClientStatus } from '@/types/lead.types';
 import { Project } from '@/types/project.types';
@@ -154,22 +154,23 @@ export const PostSalesDistributionService = {
 
     syncConversationAssignment: async (leadId: string, postSalesId: string): Promise<void> => {
         try {
-            const realtimeDb = getRealtimeDb();
-            const conversationsRef = ref(realtimeDb, 'conversations');
-            const snapshot = await get(conversationsRef);
+            const conversationsRef = collection(db, 'conversations');
+            const q = query(
+                conversationsRef,
+                where('leadId', '==', leadId),
+                limit(1)
+            );
+            const snapshot = await getDocs(q);
 
-            if (!snapshot.exists()) return;
+            if (snapshot.empty) return;
 
-            const data = snapshot.val() as Record<string, any>;
-            const conversationId = Object.keys(data).find(id => data[id]?.leadId === leadId);
-            if (!conversationId) return;
-
-            await updateRealtime(ref(realtimeDb, `conversations/${conversationId}`), {
+            const conversationDoc = snapshot.docs[0];
+            await updateDoc(conversationDoc.ref, {
                 assignedTo: postSalesId,
                 postSalesId,
                 context: 'post_sales',
                 status: 'open',
-                updatedAt: Date.now()
+                updatedAt: Timestamp.now(),
             });
         } catch (error) {
             console.error('Error syncing post-sales conversation assignment:', error);

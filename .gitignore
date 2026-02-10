@@ -29,3 +29,7 @@ coverage/
 
 # Misc
 *.pem
+
+# Firebase Service Account
+serviceAccountKey.json
+scripts/serviceAccountKey.json
