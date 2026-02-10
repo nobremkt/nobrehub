@@ -7,13 +7,16 @@ import { ChatInput } from './ChatInput';
 import { Phone, Video, Users, User, Info, MessageSquare } from 'lucide-react';
 import { TeamMessage } from '../../types/chat';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
+import { useTypingIndicator } from '@/features/presence/hooks/useTypingIndicator';
 import { GroupDetailsModal } from './GroupDetailsModal';
+import { TypingIndicator } from './TypingIndicator';
 import styles from './ChatWindow.module.css';
 
 export const ChatWindow = () => {
-    const { activeChat, messages, isLoadingMessages, sendMessage } = useTeamChatStore();
+    const { activeChat, activeChatId, messages, isLoadingMessages, sendMessage } = useTeamChatStore();
     const { collaborators } = useCollaboratorStore();
     const teamStatus = useTeamStatus();
+    const { typingUsers, handleTyping, stopTyping } = useTypingIndicator(activeChatId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
 
@@ -173,8 +176,11 @@ export const ChatWindow = () => {
                 )}
             </div>
 
+            {/* Typing Indicator */}
+            <TypingIndicator typingUsers={typingUsers} />
+
             {/* Input */}
-            <ChatInput onSend={handleSendMessage} />
+            <ChatInput onSend={handleSendMessage} onTyping={handleTyping} onStopTyping={stopTyping} />
 
             {/* Lightbox */}
             {lightboxImage && (
