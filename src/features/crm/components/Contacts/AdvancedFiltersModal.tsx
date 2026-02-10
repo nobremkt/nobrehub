@@ -1,13 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - ADVANCED FILTERS MODAL
- * Modal expandido com filtros avançados seguindo análise do Clint CRM
+ * Painel de filtros avançados para operação CRM
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import React from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
-import { Modal, Button, Dropdown } from '@/design-system';
+import { Modal, Button, Checkbox } from '@/design-system';
 import styles from './AdvancedFiltersModal.module.css';
 
 interface AdvancedFiltersModalProps {
@@ -24,17 +24,22 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
 }) => {
     const { filters, setFilter, clearFilters } = useContactsStore();
 
-    // State local para controlar seleção (já que o store não tem flag específica para 'com responsável')
+    // Estados locais para segmented controls
     const [responsavelFilter, setResponsavelFilter] = React.useState<ResponsavelFilter>('todos');
-    const [telefoneFilter, setTelefoneFilter] = React.useState<TelefoneFilter>(
-        filters.comTelefone ? 'com' : filters.semTelefone ? 'sem' : 'todos'
-    );
+    const [telefoneFilter, setTelefoneFilter] = React.useState<TelefoneFilter>('todos');
+
+    React.useEffect(() => {
+        setResponsavelFilter(filters.comDono ? 'com' : filters.semDono ? 'sem' : 'todos');
+    }, [filters.comDono, filters.semDono]);
+
+    React.useEffect(() => {
+        setTelefoneFilter(filters.comTelefone ? 'com' : filters.semTelefone ? 'sem' : 'todos');
+    }, [filters.comTelefone, filters.semTelefone]);
 
     const handleResponsavelChange = (value: ResponsavelFilter) => {
         setResponsavelFilter(value);
-        // Atualiza o store
+        setFilter('comDono', value === 'com');
         setFilter('semDono', value === 'sem');
-        // Nota: 'com' poderia filtrar por comDono !== undefined futuramente
     };
 
     const handleTelefoneChange = (value: TelefoneFilter) => {
@@ -51,30 +56,25 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
         clearFilters();
     };
 
-    // Opções para os dropdowns
-    const origemOptions = [
-        { label: 'Todas as origens', value: '' },
-        { label: 'Landing Page', value: 'landing-page' },
-        { label: 'WhatsApp', value: 'whatsapp' },
-        { label: 'Instagram', value: 'instagram' },
-        { label: 'Indicação', value: 'indicacao' },
-    ];
+    const toggleTemperature = (temperature: 'cold' | 'warm' | 'hot') => {
+        const current = filters.temperatures || [];
+        const next = current.includes(temperature)
+            ? current.filter(t => t !== temperature)
+            : [...current, temperature];
+        setFilter('temperatures', next);
+    };
 
-    const etapaOptions = [
-        { label: 'Todas as etapas', value: '' },
-        { label: 'Novo', value: 'novo' },
-        { label: 'Qualificado', value: 'qualificado' },
-        { label: 'Proposta', value: 'proposta' },
-        { label: 'Negociação', value: 'negociacao' },
-        { label: 'Fechamento', value: 'fechamento' },
-    ];
+    const parseNumber = (value: string): number | undefined => {
+        if (!value.trim()) return undefined;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    };
 
-    const statusOptions = [
-        { label: 'Todos os status', value: '' },
-        { label: 'Aberto', value: 'aberto' },
-        { label: 'Ganho', value: 'ganho' },
-        { label: 'Perdido', value: 'perdido' },
-    ];
+    const toDateInputValue = (date?: Date) => {
+        if (!date) return '';
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().split('T')[0];
+    };
 
     return (
         <Modal
@@ -84,60 +84,102 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
             size="md"
         >
             <div className={styles.content}>
-                {/* Data de Criação */}
+                {/* Datas */}
                 <div className={styles.section}>
-                    <h3 className={styles.sectionTitle}>Filtrar por data de criação</h3>
-                    <div className={styles.dateRange}>
-                        <div className={styles.dateInput}>
-                            <label>De</label>
+                    <h3 className={styles.sectionTitle}>Períodos</h3>
+
+                    <div className={styles.filterRow}>
+                        <label>Data de criação</label>
+                        <div className={styles.dateRange}>
+                            <div className={styles.dateInput}>
+                                <label>De</label>
+                                <input
+                                    type="date"
+                                    value={toDateInputValue(filters.dataCriacaoInicio)}
+                                    onChange={(e) => setFilter('dataCriacaoInicio', e.target.value ? new Date(`${e.target.value}T00:00:00`) : undefined)}
+                                />
+                            </div>
+                            <div className={styles.dateInput}>
+                                <label>Até</label>
+                                <input
+                                    type="date"
+                                    value={toDateInputValue(filters.dataCriacaoFim)}
+                                    onChange={(e) => setFilter('dataCriacaoFim', e.target.value ? new Date(`${e.target.value}T23:59:59`) : undefined)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.filterRow}>
+                        <label>Última atualização</label>
+                        <div className={styles.dateRange}>
+                            <div className={styles.dateInput}>
+                                <label>De</label>
+                                <input
+                                    type="date"
+                                    value={toDateInputValue(filters.dataAtualizacaoInicio)}
+                                    onChange={(e) => setFilter('dataAtualizacaoInicio', e.target.value ? new Date(`${e.target.value}T00:00:00`) : undefined)}
+                                />
+                            </div>
+                            <div className={styles.dateInput}>
+                                <label>Até</label>
+                                <input
+                                    type="date"
+                                    value={toDateInputValue(filters.dataAtualizacaoFim)}
+                                    onChange={(e) => setFilter('dataAtualizacaoFim', e.target.value ? new Date(`${e.target.value}T23:59:59`) : undefined)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Valor */}
+                <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Faixa de valor do negócio</h3>
+                    <div className={styles.inlineRow}>
+                        <div className={styles.numberInput}>
+                            <label>Mínimo</label>
                             <input
-                                type="date"
-                                value={filters.dataInicio?.toISOString().split('T')[0] || ''}
-                                onChange={(e) => setFilter('dataInicio', e.target.value ? new Date(e.target.value) : undefined)}
+                                type="number"
+                                min={0}
+                                step={100}
+                                value={filters.valorMin ?? ''}
+                                onChange={(e) => setFilter('valorMin', parseNumber(e.target.value))}
+                                placeholder="0"
                             />
                         </div>
-                        <div className={styles.dateInput}>
-                            <label>Até</label>
+                        <div className={styles.numberInput}>
+                            <label>Máximo</label>
                             <input
-                                type="date"
-                                value={filters.dataFim?.toISOString().split('T')[0] || ''}
-                                onChange={(e) => setFilter('dataFim', e.target.value ? new Date(e.target.value) : undefined)}
+                                type="number"
+                                min={0}
+                                step={100}
+                                value={filters.valorMax ?? ''}
+                                onChange={(e) => setFilter('valorMax', parseNumber(e.target.value))}
+                                placeholder="Sem limite"
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* Negócio */}
+                {/* Temperatura */}
                 <div className={styles.section}>
-                    <h3 className={styles.sectionTitle}>Negócio</h3>
-
-                    <div className={styles.filterRow}>
-                        <label>Origem do negócio</label>
-                        <Dropdown
-                            options={origemOptions}
-                            value={filters.comNegocioOrigem || ''}
-                            onChange={(value) => setFilter('comNegocioOrigem', value as string || undefined)}
-                            placeholder="Todas as origens"
+                    <h3 className={styles.sectionTitle}>Temperatura do lead</h3>
+                    <div className={styles.checkboxGrid}>
+                        <Checkbox
+                            checked={filters.temperatures.includes('hot')}
+                            onChange={() => toggleTemperature('hot')}
+                            label="Quente"
                         />
-                    </div>
-
-                    <div className={styles.filterRow}>
-                        <label>Etapa do negócio</label>
-                        <Dropdown
-                            options={etapaOptions}
-                            value={filters.comNegocioEtapa || ''}
-                            onChange={(value) => setFilter('comNegocioEtapa', value as string || undefined)}
-                            placeholder="Todas as etapas"
+                        <Checkbox
+                            checked={filters.temperatures.includes('warm')}
+                            onChange={() => toggleTemperature('warm')}
+                            label="Morno"
                         />
-                    </div>
-
-                    <div className={styles.filterRow}>
-                        <label>Status do negócio</label>
-                        <Dropdown
-                            options={statusOptions}
-                            value={filters.comNegocioStatus || ''}
-                            onChange={(value) => setFilter('comNegocioStatus', (value as 'ganho' | 'perdido' | 'aberto') || undefined)}
-                            placeholder="Todos os status"
+                        <Checkbox
+                            checked={filters.temperatures.includes('cold')}
+                            onChange={() => toggleTemperature('cold')}
+                            label="Frio"
                         />
                     </div>
                 </div>

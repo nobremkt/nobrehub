@@ -58,6 +58,8 @@ export const ContactsPage: React.FC = () => {
         setSelectedLead(contact as Lead);
     };
 
+    const selectedFilteredCount = filteredContacts.filter(contact => selectedIds.has(contact.id)).length;
+
     const handleSync = async () => {
         const count = await syncContacts();
         if (count > 0) {
@@ -111,7 +113,7 @@ export const ContactsPage: React.FC = () => {
             <div className={styles.tableHeader}>
                 <div className={styles.selectionInfo}>
                     {selectedIds.size > 0 ? (
-                        <span>{selectedIds.size} selecionado(s)</span>
+                        <span>{selectedFilteredCount} selecionado(s) na visualização atual</span>
                     ) : (
                         <span>{filteredContacts.length.toLocaleString('pt-BR')} contatos</span>
                     )}

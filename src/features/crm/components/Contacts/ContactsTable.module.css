@@ -5,17 +5,113 @@
 
 .tableWrapper {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
 }
 
+.tableContainer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    min-height: 0;
+    flex: 1;
+}
+
+.tableToolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+}
+
+.presetGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+}
+
+.presetButton {
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.presetButton:hover {
+    color: var(--color-text-primary);
+    background: var(--color-background-hover);
+}
+
+.activePreset {
+    color: var(--color-text-primary);
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px var(--color-border) inset;
+}
+
+.columnsWrapper {
+    position: relative;
+}
+
+.columnsMenu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 220px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+    padding: var(--spacing-2);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.columnOption {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.columnOption:hover {
+    background: var(--color-background-hover);
+}
+
 .table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     font-size: 0.8125rem;
     /* 13px */
+    table-layout: fixed;
+}
+
+.tableComercial {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.tableOperacao {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.tableGestao {
+    width: 100%;
+    table-layout: fixed;
 }
 
 /* Header */
@@ -27,7 +123,7 @@
 }
 
 .table th {
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.75rem;
     text-align: left;
     font-weight: 500;
     color: var(--color-text-secondary);
@@ -36,6 +132,8 @@
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Rows */
@@ -57,9 +155,55 @@
 }
 
 .table td {
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.75rem;
     /* Mais compacto */
     vertical-align: middle;
+    overflow: hidden;
+}
+
+.colContact {
+    width: 20%;
+}
+
+.colPipeline {
+    width: 12%;
+}
+
+.colResponsible {
+    width: 8%;
+}
+
+.colPostSales {
+    width: 8%;
+}
+
+.colDealStatus {
+    width: 8%;
+}
+
+.colValue {
+    width: 6%;
+}
+
+.colTags {
+    width: 8%;
+    max-width: 8%;
+}
+
+.colUpdatedAt {
+    width: 8%;
+}
+
+.colTemperature {
+    width: 8%;
+}
+
+.colLossReason {
+    width: 8%;
+}
+
+.colCreatedAt {
+    width: 7%;
 }
 
 .selectedRow {
@@ -69,7 +213,11 @@
 
 /* Checkbox Cell */
 .checkboxCell {
-    width: 48px;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     text-align: center !important;
 }
 
@@ -77,13 +225,13 @@
 .nameCell {
     display: flex;
     align-items: center;
-    gap: var(--spacing-3);
-    min-width: 200px;
+    gap: var(--spacing-2);
+    min-width: 0;
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--radius-full);
     background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
     color: white;
@@ -95,11 +243,146 @@
     flex-shrink: 0;
 }
 
+.table th.colContact,
+.table td.colContact {
+    padding-left: 0;
+}
+
+.tableComercial .checkboxCell {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+}
+
+.tableComercial .colContact {
+    width: 50%;
+}
+
+.tableComercial .colPipeline {
+    width: 14%;
+}
+
+.tableComercial .colResponsible {
+    width: 10%;
+}
+
+.tableComercial .colDealStatus {
+    width: 9%;
+}
+
+.tableComercial .colValue {
+    width: 7%;
+}
+
+.tableComercial .colTags {
+    width: 10%;
+    max-width: 10%;
+}
+
+.tableComercial .colUpdatedAt {
+    width: 11%;
+}
+
+.tableOperacao .checkboxCell {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+}
+
+.tableOperacao .colContact {
+    width: 46%;
+}
+
+.tableOperacao .colPipeline {
+    width: 14%;
+}
+
+.tableOperacao .colResponsible {
+    width: 10%;
+}
+
+.tableOperacao .colPostSales {
+    width: 10%;
+}
+
+.tableOperacao .colTemperature {
+    width: 8%;
+}
+
+.tableOperacao .colTags {
+    width: 9%;
+    max-width: 9%;
+}
+
+.tableOperacao .colUpdatedAt {
+    width: 11%;
+}
+
+.tableGestao .checkboxCell {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+}
+
+.tableGestao .colContact {
+    width: 32%;
+}
+
+.tableGestao .colPipeline {
+    width: 11%;
+}
+
+.tableGestao .colResponsible {
+    width: 8%;
+}
+
+.tableGestao .colPostSales {
+    width: 8%;
+}
+
+.tableGestao .colDealStatus {
+    width: 8%;
+}
+
+.tableGestao .colValue {
+    width: 7%;
+}
+
+.tableGestao .colLossReason {
+    width: 8%;
+}
+
+.tableGestao .colCreatedAt {
+    width: 8%;
+}
+
+.tableGestao .colUpdatedAt {
+    width: 10%;
+}
+
 .nameInfo {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+}
+
+.contactMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+.inlineMeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .name {
@@ -108,6 +391,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .company {
@@ -133,6 +417,49 @@
 
 .noData {
     color: var(--color-text-muted);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pipelineCell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pipelineBadge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stageName {
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.valueText {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Deals Count Badge */
@@ -150,9 +477,28 @@
 /* Tags Cell */
 .tagsCell {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--spacing-1);
     align-items: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.tagsColumn {
+    min-width: 0;
+}
+
+.compactTag {
+    min-width: 0;
+    max-width: 110px;
+}
+
+.compactTag :global(span) {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .moreTags {
@@ -161,6 +507,7 @@
     padding: 2px 6px;
     background: var(--color-background);
     border-radius: var(--radius-sm);
+    flex-shrink: 0;
 }
 
 /* Loading State */
@@ -204,6 +551,15 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+
+    .tableToolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .presetGroup {
+        width: fit-content;
+    }
 
     .table th:nth-child(4),
     .table td:nth-child(4),
@@ -261,4 +617,8 @@
 .personName {
     color: var(--color-text-primary);
     font-size: var(--font-size-sm);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

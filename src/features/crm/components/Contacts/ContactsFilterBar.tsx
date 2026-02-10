@@ -1,8 +1,8 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - CONTACTS FILTER BAR
- * Barra de filtros seguindo análise do Clint CRM:
- * [🔍] [Campos ▼] [Tags ▼] [Motivo de Perda ▼] [Mais filtros ▼]
+ * Barra de filtros persistentes para operação CRM:
+ * [🔍] [Pipeline ▼] [Etapa ▼] [Status ▼] [Resp. Vendas ▼] [Pós-venda ▼] [Tags ▼] [Perda ▼] [Mais filtros]
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -11,6 +11,8 @@ import { useContactsStore } from '../../stores/useContactsStore';
 import { Input, Tag, Checkbox } from '@/design-system';
 import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { AdvancedFiltersModal } from './AdvancedFiltersModal';
+import { useKanbanStore } from '../../stores/useKanbanStore';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import styles from './ContactsFilterBar.module.css';
 
 interface DropdownMenuProps {
@@ -43,6 +45,25 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ isOpen, onClose, children }
     );
 };
 
+type DropdownKey = 'pipeline' | 'stage' | 'dealStatus' | 'responsible' | 'postSales' | 'tags' | 'loss';
+
+const PIPELINE_OPTIONS = [
+    { value: 'high-ticket', label: 'High Ticket' },
+    { value: 'low-ticket', label: 'Low Ticket' },
+] as const;
+
+const DEAL_STATUS_OPTIONS = [
+    { value: 'open', label: 'Aberto' },
+    { value: 'won', label: 'Ganho' },
+    { value: 'lost', label: 'Perdido' },
+] as const;
+
+const toggleArrayValue = <T extends string>(arr: T[], value: T): T[] => {
+    return arr.includes(value)
+        ? arr.filter(item => item !== value)
+        : [...arr, value];
+};
+
 export const ContactsFilterBar: React.FC = () => {
     const {
         filters,
@@ -51,33 +72,91 @@ export const ContactsFilterBar: React.FC = () => {
         availableTags,
         availableLossReasons,
     } = useContactsStore();
+    const { stages, fetchStages } = useKanbanStore();
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
 
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-    const [openDropdown, setOpenDropdown] = useState<'campos' | 'tags' | 'perda' | null>(null);
+    const [openDropdown, setOpenDropdown] = useState<DropdownKey | null>(null);
+
+    useEffect(() => {
+        if (stages.length === 0) fetchStages();
+        if (collaborators.length === 0) fetchCollaborators();
+    }, [stages.length, collaborators.length, fetchStages, fetchCollaborators]);
+
+    const sortedStages = [...stages].sort((a, b) => a.order - b.order);
+    const sortedCollaborators = [...collaborators]
+        .filter(c => c.active !== false)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+    const stageMap = sortedStages.reduce<Record<string, string>>((acc, stage) => {
+        acc[stage.id] = stage.name;
+        return acc;
+    }, {});
+
+    const collaboratorMap = sortedCollaborators.reduce<Record<string, string>>((acc, collab) => {
+        acc[collab.id] = collab.name;
+        return acc;
+    }, {});
+
+    const lossReasonMap = availableLossReasons.reduce<Record<string, string>>((acc, reason) => {
+        acc[reason.id] = reason.name;
+        return acc;
+    }, {});
 
     // Conta filtros ativos
     const activeFiltersCount = [
+        filters.search.trim().length > 0,
+        filters.pipelines.length > 0,
+        filters.stages.length > 0,
+        filters.dealStatus.length > 0,
+        filters.responsibleIds.length > 0,
+        filters.postSalesIds.length > 0,
+        filters.temperatures.length > 0,
         filters.tags.length > 0,
         filters.motivoPerda.length > 0,
-        filters.campos.length > 0,
+        filters.comDono,
+        filters.semDono,
         filters.comTelefone,
         filters.semTelefone,
-        filters.dataInicio,
-        filters.dataFim,
+        filters.dataCriacaoInicio,
+        filters.dataCriacaoFim,
+        filters.dataAtualizacaoInicio,
+        filters.dataAtualizacaoFim,
+        typeof filters.valorMin === 'number',
+        typeof filters.valorMax === 'number',
     ].filter(Boolean).length;
 
     const handleTagToggle = (tag: string) => {
-        const newTags = filters.tags.includes(tag)
-            ? filters.tags.filter(t => t !== tag)
-            : [...filters.tags, tag];
-        setFilter('tags', newTags);
+        setFilter('tags', toggleArrayValue(filters.tags, tag));
     };
 
-    const handleLossReasonToggle = (reason: string) => {
-        const newReasons = filters.motivoPerda.includes(reason)
-            ? filters.motivoPerda.filter(r => r !== reason)
-            : [...filters.motivoPerda, reason];
-        setFilter('motivoPerda', newReasons);
+    const handleLossReasonToggle = (reasonId: string) => {
+        setFilter('motivoPerda', toggleArrayValue(filters.motivoPerda, reasonId));
+    };
+
+    const handleDealStatusToggle = (status: 'open' | 'won' | 'lost') => {
+        setFilter('dealStatus', toggleArrayValue(filters.dealStatus, status));
+    };
+
+    const handlePipelineToggle = (pipeline: 'high-ticket' | 'low-ticket') => {
+        setFilter('pipelines', toggleArrayValue(filters.pipelines, pipeline));
+    };
+
+    const handleStageToggle = (stageId: string) => {
+        setFilter('stages', toggleArrayValue(filters.stages, stageId));
+    };
+
+    const handleResponsibleToggle = (responsibleId: string) => {
+        setFilter('responsibleIds', toggleArrayValue(filters.responsibleIds, responsibleId));
+    };
+
+    const handlePostSalesToggle = (postSalesId: string) => {
+        setFilter('postSalesIds', toggleArrayValue(filters.postSalesIds, postSalesId));
+    };
+
+    const formatDateChip = (date?: Date) => {
+        if (!date) return null;
+        return date.toLocaleDateString('pt-BR');
     };
 
     return (
@@ -95,54 +174,167 @@ export const ContactsFilterBar: React.FC = () => {
                     />
                 </div>
 
-                {/* Campos - Dropdown */}
+                {/* Pipeline */}
                 <div className={styles.dropdownWrapper}>
                     <button
                         className={styles.filterButton}
-                        onClick={() => setOpenDropdown(openDropdown === 'campos' ? null : 'campos')}
+                        onClick={() => setOpenDropdown(openDropdown === 'pipeline' ? null : 'pipeline')}
                     >
-                        Campos
-                        {filters.campos.length > 0 && (
-                            <span className={styles.filterCount}>{filters.campos.length}</span>
+                        Pipeline
+                        {filters.pipelines.length > 0 && (
+                            <span className={styles.filterCount}>{filters.pipelines.length}</span>
                         )}
                         <ChevronDown size={14} />
                     </button>
                     <DropdownMenu
-                        isOpen={openDropdown === 'campos'}
+                        isOpen={openDropdown === 'pipeline'}
                         onClose={() => setOpenDropdown(null)}
                     >
                         <div className={styles.dropdownContent}>
                             <div className={styles.optionsList}>
-                                <label className={styles.checkboxLabel}>
-                                    <Checkbox
-                                        checked={filters.campos.includes('contato')}
-                                        onChange={() => {
-                                            const newCampos = filters.campos.includes('contato')
-                                                ? filters.campos.filter(c => c !== 'contato')
-                                                : [...filters.campos, 'contato' as const];
-                                            setFilter('campos', newCampos);
-                                        }}
-                                    />
-                                    Contato
-                                </label>
-                                <label className={styles.checkboxLabel}>
-                                    <Checkbox
-                                        checked={filters.campos.includes('empresa')}
-                                        onChange={() => {
-                                            const newCampos = filters.campos.includes('empresa')
-                                                ? filters.campos.filter(c => c !== 'empresa')
-                                                : [...filters.campos, 'empresa' as const];
-                                            setFilter('campos', newCampos);
-                                        }}
-                                    />
-                                    Empresa
-                                </label>
+                                {PIPELINE_OPTIONS.map(option => (
+                                    <label key={option.value} className={styles.checkboxLabel}>
+                                        <Checkbox
+                                            checked={filters.pipelines.includes(option.value)}
+                                            onChange={() => handlePipelineToggle(option.value)}
+                                        />
+                                        {option.label}
+                                    </label>
+                                ))}
                             </div>
                         </div>
                     </DropdownMenu>
                 </div>
 
-                {/* Tags - Dropdown */}
+                {/* Etapa */}
+                <div className={styles.dropdownWrapper}>
+                    <button
+                        className={styles.filterButton}
+                        onClick={() => setOpenDropdown(openDropdown === 'stage' ? null : 'stage')}
+                    >
+                        Etapa
+                        {filters.stages.length > 0 && (
+                            <span className={styles.filterCount}>{filters.stages.length}</span>
+                        )}
+                        <ChevronDown size={14} />
+                    </button>
+                    <DropdownMenu
+                        isOpen={openDropdown === 'stage'}
+                        onClose={() => setOpenDropdown(null)}
+                    >
+                        <div className={styles.dropdownContent}>
+                            <div className={styles.optionsList}>
+                                {sortedStages.map(stage => (
+                                    <label key={stage.id} className={styles.checkboxLabel}>
+                                        <Checkbox
+                                            checked={filters.stages.includes(stage.id)}
+                                            onChange={() => handleStageToggle(stage.id)}
+                                        />
+                                        {stage.name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </DropdownMenu>
+                </div>
+
+                {/* Status do negócio */}
+                <div className={styles.dropdownWrapper}>
+                    <button
+                        className={styles.filterButton}
+                        onClick={() => setOpenDropdown(openDropdown === 'dealStatus' ? null : 'dealStatus')}
+                    >
+                        Status
+                        {filters.dealStatus.length > 0 && (
+                            <span className={styles.filterCount}>{filters.dealStatus.length}</span>
+                        )}
+                        <ChevronDown size={14} />
+                    </button>
+                    <DropdownMenu
+                        isOpen={openDropdown === 'dealStatus'}
+                        onClose={() => setOpenDropdown(null)}
+                    >
+                        <div className={styles.dropdownContent}>
+                            <div className={styles.optionsList}>
+                                {DEAL_STATUS_OPTIONS.map(status => (
+                                    <label key={status.value} className={styles.checkboxLabel}>
+                                        <Checkbox
+                                            checked={filters.dealStatus.includes(status.value)}
+                                            onChange={() => handleDealStatusToggle(status.value)}
+                                        />
+                                        {status.label}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </DropdownMenu>
+                </div>
+
+                {/* Responsável Vendas */}
+                <div className={styles.dropdownWrapper}>
+                    <button
+                        className={styles.filterButton}
+                        onClick={() => setOpenDropdown(openDropdown === 'responsible' ? null : 'responsible')}
+                    >
+                        Resp. Vendas
+                        {filters.responsibleIds.length > 0 && (
+                            <span className={styles.filterCount}>{filters.responsibleIds.length}</span>
+                        )}
+                        <ChevronDown size={14} />
+                    </button>
+                    <DropdownMenu
+                        isOpen={openDropdown === 'responsible'}
+                        onClose={() => setOpenDropdown(null)}
+                    >
+                        <div className={styles.dropdownContent}>
+                            <div className={styles.optionsList}>
+                                {sortedCollaborators.map(collab => (
+                                    <label key={collab.id} className={styles.checkboxLabel}>
+                                        <Checkbox
+                                            checked={filters.responsibleIds.includes(collab.id)}
+                                            onChange={() => handleResponsibleToggle(collab.id)}
+                                        />
+                                        {collab.name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </DropdownMenu>
+                </div>
+
+                {/* Pós-venda */}
+                <div className={styles.dropdownWrapper}>
+                    <button
+                        className={styles.filterButton}
+                        onClick={() => setOpenDropdown(openDropdown === 'postSales' ? null : 'postSales')}
+                    >
+                        Pós-venda
+                        {filters.postSalesIds.length > 0 && (
+                            <span className={styles.filterCount}>{filters.postSalesIds.length}</span>
+                        )}
+                        <ChevronDown size={14} />
+                    </button>
+                    <DropdownMenu
+                        isOpen={openDropdown === 'postSales'}
+                        onClose={() => setOpenDropdown(null)}
+                    >
+                        <div className={styles.dropdownContent}>
+                            <div className={styles.optionsList}>
+                                {sortedCollaborators.map(collab => (
+                                    <label key={collab.id} className={styles.checkboxLabel}>
+                                        <Checkbox
+                                            checked={filters.postSalesIds.includes(collab.id)}
+                                            onChange={() => handlePostSalesToggle(collab.id)}
+                                        />
+                                        {collab.name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </DropdownMenu>
+                </div>
+
+                {/* Tags */}
                 <div className={styles.dropdownWrapper}>
                     <button
                         className={styles.filterButton}
@@ -159,18 +351,7 @@ export const ContactsFilterBar: React.FC = () => {
                         onClose={() => setOpenDropdown(null)}
                     >
                         <div className={styles.dropdownContent}>
-                            <div className={styles.dropdownSearch}>
-                                <Search size={14} />
-                                <input type="text" placeholder="Buscar por..." />
-                            </div>
                             <div className={styles.optionsList}>
-                                <label className={styles.checkboxLabel}>
-                                    <Checkbox
-                                        checked={filters.tags.length === 0}
-                                        onChange={() => setFilter('tags', [])}
-                                    />
-                                    Sem tag
-                                </label>
                                 {availableTags.map(tag => (
                                     <label key={tag} className={styles.checkboxLabel}>
                                         <Checkbox
@@ -195,20 +376,20 @@ export const ContactsFilterBar: React.FC = () => {
                     </DropdownMenu>
                 </div>
 
-                {/* Motivo de Perda - Dropdown */}
+                {/* Motivo de perda */}
                 <div className={styles.dropdownWrapper}>
                     <button
                         className={styles.filterButton}
-                        onClick={() => setOpenDropdown(openDropdown === 'perda' ? null : 'perda')}
+                        onClick={() => setOpenDropdown(openDropdown === 'loss' ? null : 'loss')}
                     >
-                        Motivo de Perda
+                        Motivo de perda
                         {filters.motivoPerda.length > 0 && (
                             <span className={styles.filterCount}>{filters.motivoPerda.length}</span>
                         )}
                         <ChevronDown size={14} />
                     </button>
                     <DropdownMenu
-                        isOpen={openDropdown === 'perda'}
+                        isOpen={openDropdown === 'loss'}
                         onClose={() => setOpenDropdown(null)}
                     >
                         <div className={styles.dropdownContent}>
@@ -216,8 +397,8 @@ export const ContactsFilterBar: React.FC = () => {
                                 {availableLossReasons.map(reason => (
                                     <label key={reason.id} className={styles.checkboxLabel}>
                                         <Checkbox
-                                            checked={filters.motivoPerda.includes(reason.name)}
-                                            onChange={() => handleLossReasonToggle(reason.name)}
+                                            checked={filters.motivoPerda.includes(reason.id)}
+                                            onChange={() => handleLossReasonToggle(reason.id)}
                                         />
                                         {reason.name}
                                     </label>
@@ -252,8 +433,49 @@ export const ContactsFilterBar: React.FC = () => {
             </div>
 
             {/* Tags ativas (pills) */}
-            {(filters.tags.length > 0 || filters.motivoPerda.length > 0) && (
+            {activeFiltersCount > 0 && (
                 <div className={styles.activeTags}>
+                    {filters.search.trim() && (
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('search', '')}>
+                            Busca: {filters.search.trim()}
+                        </Tag>
+                    )}
+
+                    {filters.pipelines.map(pipeline => (
+                        <Tag
+                            key={pipeline}
+                            variant="default"
+                            size="sm"
+                            onRemove={() => handlePipelineToggle(pipeline)}
+                        >
+                            Pipeline: {pipeline === 'high-ticket' ? 'High Ticket' : 'Low Ticket'}
+                        </Tag>
+                    ))}
+
+                    {filters.stages.map(stageId => (
+                        <Tag key={stageId} variant="default" size="sm" onRemove={() => handleStageToggle(stageId)}>
+                            Etapa: {stageMap[stageId] || stageId}
+                        </Tag>
+                    ))}
+
+                    {filters.dealStatus.map(status => (
+                        <Tag key={status} variant="default" size="sm" onRemove={() => handleDealStatusToggle(status)}>
+                            Status: {status === 'open' ? 'Aberto' : status === 'won' ? 'Ganho' : 'Perdido'}
+                        </Tag>
+                    ))}
+
+                    {filters.responsibleIds.map(id => (
+                        <Tag key={id} variant="default" size="sm" onRemove={() => handleResponsibleToggle(id)}>
+                            Resp: {collaboratorMap[id] || id}
+                        </Tag>
+                    ))}
+
+                    {filters.postSalesIds.map(id => (
+                        <Tag key={id} variant="default" size="sm" onRemove={() => handlePostSalesToggle(id)}>
+                            Pós-venda: {collaboratorMap[id] || id}
+                        </Tag>
+                    ))}
+
                     {filters.tags.map(tag => (
                         <Tag
                             key={tag}
@@ -271,9 +493,74 @@ export const ContactsFilterBar: React.FC = () => {
                             size="sm"
                             onRemove={() => handleLossReasonToggle(reason)}
                         >
-                            {reason}
+                            Perda: {lossReasonMap[reason] || reason}
                         </Tag>
                     ))}
+
+                    {filters.comDono && (
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('comDono', false)}>
+                            Com responsável
+                        </Tag>
+                    )}
+
+                    {filters.semDono && (
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('semDono', false)}>
+                            Sem responsável
+                        </Tag>
+                    )}
+
+                    {filters.comTelefone && (
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('comTelefone', false)}>
+                            Com telefone
+                        </Tag>
+                    )}
+
+                    {filters.semTelefone && (
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('semTelefone', false)}>
+                            Sem telefone
+                        </Tag>
+                    )}
+
+                    {(typeof filters.valorMin === 'number' || typeof filters.valorMax === 'number') && (
+                        <Tag
+                            variant="default"
+                            size="sm"
+                            onRemove={() => {
+                                setFilter('valorMin', undefined);
+                                setFilter('valorMax', undefined);
+                            }}
+                        >
+                            Valor: {typeof filters.valorMin === 'number' ? filters.valorMin.toLocaleString('pt-BR') : '0'}
+                            {' - '}
+                            {typeof filters.valorMax === 'number' ? filters.valorMax.toLocaleString('pt-BR') : '∞'}
+                        </Tag>
+                    )}
+
+                    {(filters.dataCriacaoInicio || filters.dataCriacaoFim) && (
+                        <Tag
+                            variant="default"
+                            size="sm"
+                            onRemove={() => {
+                                setFilter('dataCriacaoInicio', undefined);
+                                setFilter('dataCriacaoFim', undefined);
+                            }}
+                        >
+                            Criação: {formatDateChip(filters.dataCriacaoInicio) || '...'} até {formatDateChip(filters.dataCriacaoFim) || '...'}
+                        </Tag>
+                    )}
+
+                    {(filters.dataAtualizacaoInicio || filters.dataAtualizacaoFim) && (
+                        <Tag
+                            variant="default"
+                            size="sm"
+                            onRemove={() => {
+                                setFilter('dataAtualizacaoInicio', undefined);
+                                setFilter('dataAtualizacaoFim', undefined);
+                            }}
+                        >
+                            Atualização: {formatDateChip(filters.dataAtualizacaoInicio) || '...'} até {formatDateChip(filters.dataAtualizacaoFim) || '...'}
+                        </Tag>
+                    )}
                 </div>
             )}
 

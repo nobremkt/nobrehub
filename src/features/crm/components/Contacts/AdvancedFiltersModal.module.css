@@ -65,6 +65,45 @@
     gap: var(--spacing-3);
 }
 
+.inlineRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-3);
+}
+
+.numberInput {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.numberInput label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.numberInput input[type="number"] {
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-bg-primary, var(--color-background));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: all var(--duration-normal, 0.15s) var(--ease-in-out, ease);
+}
+
+.numberInput input[type="number"]:focus {
+    border-color: var(--color-primary-500, var(--color-primary));
+    box-shadow: 0 0 10px var(--color-primary-500, var(--color-primary));
+}
+
+.checkboxGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-2);
+}
+
 .dateInput {
     display: flex;
     flex-direction: column;
@@ -146,4 +185,15 @@
     padding-top: var(--spacing-4);
     margin-top: var(--spacing-2);
     border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+    .dateRange,
+    .inlineRow {
+        grid-template-columns: 1fr;
+    }
+
+    .checkboxGrid {
+        grid-template-columns: 1fr;
+    }
 }
