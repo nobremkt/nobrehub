@@ -84,7 +84,10 @@ export interface PipelineStage {
     color: string;
     order: number;
     pipeline: 'high-ticket' | 'low-ticket';
-    isDefault?: boolean;
+    isSystemStage?: boolean; // true = Ganho/Perdido, não pode ser excluído
+    active?: boolean;
+    createdAt?: number;
+    updatedAt?: number;
 }
 
 export interface LossReason {

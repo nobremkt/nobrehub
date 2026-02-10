@@ -26,7 +26,7 @@ import { InboxPage } from '@/features/inbox/pages/InboxPage';
 import { ProductionPage } from '@/features/production/pages/ProductionPage';
 import { PublicProjectStatusPage } from '@/features/production/pages/PublicProjectStatusPage';
 import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
-import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage } from '@/features/settings/pages';
+import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage, PipelinePage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
@@ -186,6 +186,8 @@ export function App() {
                         <Route path={ROUTES.settings.holidays} element={<HolidaysPage />} />
 
                         <Route path={ROUTES.settings.leadDistribution} element={<LeadDistributionPage />} />
+
+                        <Route path={ROUTES.settings.pipeline} element={<PipelinePage />} />
                     </Route>
 
                     {/* Catch-all redirect */}

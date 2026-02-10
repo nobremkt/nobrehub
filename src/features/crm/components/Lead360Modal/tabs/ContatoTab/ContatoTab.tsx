@@ -8,6 +8,7 @@ import { Input, PhoneInput } from '@/design-system';
 import { Save, X, Pencil, Calendar, Mail, Phone, Instagram, Briefcase, FileText, Link2 } from 'lucide-react';
 import styles from './ContatoTab.module.css';
 import { toast } from 'react-toastify';
+import { LeadService } from '@/features/crm/services/LeadService';
 
 interface ContatoTabProps {
     lead: Lead;
@@ -18,13 +19,14 @@ export function ContatoTab({ lead }: ContatoTabProps) {
     const customFields = lead.customFields || {};
 
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
         name: lead.name || '',
-        birthday: '',
+        birthday: (customFields.birthday as string) || '',
         email: lead.email || '',
         phone: lead.phone || '',
         instagram: (customFields.instagram as string) || '',
-        position: '',
+        position: (customFields.position as string) || '',
         notes: lead.notes || '',
         utm_source: (customFields.utmSource as string) || (customFields.formOrigin as string) || '',
     });
@@ -45,9 +47,30 @@ export function ContatoTab({ lead }: ContatoTabProps) {
         setFormData(prev => ({ ...prev, instagram: formatted }));
     };
 
-    const handleSave = () => {
-        toast.success('Informações de contato salvas!');
-        setIsEditing(false);
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await LeadService.updateLead(lead.id, {
+                name: formData.name,
+                email: formData.email || undefined,
+                phone: formData.phone,
+                notes: formData.notes || undefined,
+                customFields: {
+                    ...lead.customFields,
+                    instagram: formData.instagram || undefined,
+                    birthday: formData.birthday || undefined,
+                    position: formData.position || undefined,
+                    utmSource: formData.utm_source || undefined,
+                },
+            });
+            toast.success('Informações de contato salvas!');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Erro ao salvar contato:', error);
+            toast.error('Erro ao salvar informações');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleCancel = () => {
@@ -79,9 +102,9 @@ export function ContatoTab({ lead }: ContatoTabProps) {
                             <X size={14} />
                             Cancelar
                         </button>
-                        <button className={styles.saveBtn} onClick={handleSave}>
+                        <button className={styles.saveBtn} onClick={handleSave} disabled={isSaving}>
                             <Save size={14} />
-                            Salvar
+                            {isSaving ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 )}
