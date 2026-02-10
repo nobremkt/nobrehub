@@ -7,17 +7,22 @@ import {
     Star,
     Pin,
     CheckCircle,
-    XCircle
+    XCircle,
+    Rocket
 } from 'lucide-react';
 import styles from './LeadHeader.module.css';
 import { getInitials } from '../../utils/helpers';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
+import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
+import { CreateProjectModal } from '@/features/production/components/CreateProjectModal';
+import { Modal, Button } from '@/design-system';
 import { toast } from 'react-toastify';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface LeadHeaderProps {
     lead: Lead;
-    onStatusChange?: (status: 'won' | 'lost' | 'open') => void;
+    onStatusChange?: (status: 'won' | 'lost' | 'open', lossReasonId?: string) => void;
+    onLeadUpdated?: () => void;
 }
 
 // Normaliza telefone para comparação
@@ -25,11 +30,32 @@ const normalizePhone = (phone: string): string => {
     return phone?.replace(/\D/g, '') || '';
 };
 
-export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
+export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderProps) {
     const navigate = useNavigate();
     const { conversations, selectConversation, init } = useInboxStore();
+    const { lossReasons, fetchLossReasons } = useLossReasonStore();
     const [isFavorite, setIsFavorite] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
+    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+    const [showLostModal, setShowLostModal] = useState(false);
+    const [selectedLossReason, setSelectedLossReason] = useState('');
+
+    // Carrega motivos de perda
+    useEffect(() => {
+        if (lossReasons.length === 0) fetchLossReasons();
+    }, [lossReasons.length, fetchLossReasons]);
+
+    // Motivos ativos e ordenados
+    const LOSS_REASONS = [...lossReasons]
+        .filter(r => r.active)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+        .map(r => ({ value: r.id, label: r.name }));
+
+    // Verifica se o deal está ganho (status no stage ou dealStatus)
+    const isDealWon = lead.dealStatus === 'won' || lead.status?.endsWith('-ganho');
+
+    // Verifica se o deal está perdido
+    const isDealLost = lead.dealStatus === 'lost' || lead.status?.endsWith('-perdido');
 
     // Handler para ligar
     const handleCall = () => {
@@ -96,10 +122,22 @@ export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
         toast.success('Lead marcado como GANHO!');
     };
 
-    // Handler para Perdido
-    const handleLost = () => {
-        onStatusChange?.('lost');
-        toast.info('Lead marcado como perdido');
+    // Handler para Perdido — abre modal de motivo
+    const handleLostClick = () => {
+        setShowLostModal(true);
+    };
+
+    // Confirma o motivo de perda
+    const handleLostConfirm = () => {
+        if (!selectedLossReason) return;
+
+        onStatusChange?.('lost', selectedLossReason);
+
+        const reasonName = LOSS_REASONS.find(r => r.value === selectedLossReason)?.label || 'Perdido';
+        toast.info(`Lead marcado como perdido: ${reasonName}`);
+
+        setShowLostModal(false);
+        setSelectedLossReason('');
     };
 
     return (
@@ -160,7 +198,7 @@ export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
             {/* Status Buttons - Ganho/Perdido */}
             <div className={styles.statusButtons}>
                 <button
-                    className={`${styles.wonBtn} ${lead.status === 'won' ? styles.active : ''}`}
+                    className={`${styles.wonBtn} ${isDealWon ? styles.active : ''}`}
                     onClick={handleWon}
                     title="Marcar como Ganho"
                 >
@@ -168,14 +206,104 @@ export function LeadHeader({ lead, onStatusChange }: LeadHeaderProps) {
                     <span>Ganho</span>
                 </button>
                 <button
-                    className={`${styles.lostBtn} ${lead.status === 'lost' ? styles.active : ''}`}
-                    onClick={handleLost}
+                    className={`${styles.lostBtn} ${isDealLost ? styles.active : ''}`}
+                    onClick={handleLostClick}
                     title="Marcar como Perdido"
                 >
                     <XCircle size={16} />
                     <span>Perdido</span>
                 </button>
+
+                {/* CTA Criar Projeto - aparece quando deal é ganho */}
+                {isDealWon && (
+                    <>
+                        <div className={styles.separator} />
+                        <button
+                            className={styles.createProjectBtn}
+                            onClick={() => setShowCreateProjectModal(true)}
+                            title="Criar Projeto na Produção"
+                        >
+                            <Rocket size={16} />
+                            <span>Criar Projeto</span>
+                        </button>
+                    </>
+                )}
             </div>
+
+            {/* Modal de Motivo de Perda */}
+            <Modal
+                isOpen={showLostModal}
+                onClose={() => {
+                    setShowLostModal(false);
+                    setSelectedLossReason('');
+                }}
+                title="Motivo da Perda"
+                size="auto"
+                footer={
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowLostModal(false);
+                                setSelectedLossReason('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="primary"
+                            disabled={!selectedLossReason}
+                            onClick={handleLostConfirm}
+                        >
+                            Confirmar
+                        </Button>
+                    </div>
+                }
+            >
+                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
+                    Selecione o motivo pelo qual este lead foi perdido:
+                </p>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '12px'
+                }}>
+                    {LOSS_REASONS.map((reason) => (
+                        <Button
+                            key={reason.value}
+                            variant={selectedLossReason === reason.value ? 'primary' : 'ghost'}
+                            onClick={() => setSelectedLossReason(reason.value)}
+                            fullWidth
+                            style={{
+                                height: '60px',
+                                justifyContent: 'flex-start',
+                                textAlign: 'left',
+                                opacity: selectedLossReason && selectedLossReason !== reason.value ? 0.5 : 1,
+                                border: selectedLossReason === reason.value
+                                    ? 'none'
+                                    : '1px solid var(--color-border)',
+                                boxShadow: selectedLossReason === reason.value
+                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
+                                    : 'none',
+                            }}
+                        >
+                            {reason.label}
+                        </Button>
+                    ))}
+                </div>
+            </Modal>
+
+            {/* Create Project Modal */}
+            <CreateProjectModal
+                isOpen={showCreateProjectModal}
+                onClose={() => setShowCreateProjectModal(false)}
+                leadId={lead.id}
+                leadName={lead.name}
+                onProjectCreated={(projectId) => {
+                    toast.success(`Projeto criado com sucesso! ID: ${projectId}`);
+                    onLeadUpdated?.();
+                }}
+            />
         </header>
     );
 }

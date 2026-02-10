@@ -23,6 +23,7 @@ import {
 import { Modal } from '@/design-system';
 import { useKanbanStore } from '../../stores/useKanbanStore';
 import { useContactsStore } from '../../stores/useContactsStore';
+import { toast } from 'react-toastify';
 
 import { LeadHeader } from './components/LeadHeader/LeadHeader';
 import { AtividadeTab } from './tabs/AtividadeTab/AtividadeTab';
@@ -43,7 +44,7 @@ type TabType = 'ATIVIDADE' | 'CONTATO' | 'EMPRESA' | 'NEGÓCIOS' | 'CONVERSAS' |
 
 export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
-    const { updateLead, moveLead, stages } = useKanbanStore();
+    const { updateLead, moveLead } = useKanbanStore();
     const { fetchContacts } = useContactsStore();
 
     const handleLeadUpdated = () => {
@@ -51,34 +52,31 @@ export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead36
     };
 
     // Handler para mudar status (Ganho/Perdido)
-    const handleStatusChange = async (status: 'won' | 'lost' | 'open') => {
+    const handleStatusChange = async (status: 'won' | 'lost' | 'open', lossReasonId?: string) => {
         if (!lead) return;
 
         try {
-            if (status === 'won') {
-                // Encontra a etapa de "Fechado Ganho" para o pipeline do lead
-                const currentPipeline = lead.status?.startsWith('lt-') ? 'low-ticket' : 'high-ticket';
-                const wonStage = stages.find(s =>
-                    s.pipeline === currentPipeline &&
-                    (s.name.toLowerCase().includes('ganho') || s.name.toLowerCase().includes('fechado') || s.id.includes('fechado'))
-                );
+            const prefix = lead.status?.startsWith('lt-') ? 'lt' : 'ht';
 
-                if (wonStage) {
-                    await moveLead(lead.id, wonStage.id);
-                }
-            } else if (status === 'lost') {
-                // Para "Perdido", atualiza apenas o campo de metadata ou cria uma coluna específica
-                // Por enquanto, marca no próprio lead
+            if (status === 'won') {
+                await moveLead(lead.id, `${prefix}-ganho`);
                 await updateLead(lead.id, {
-                    customFields: {
-                        ...lead.customFields,
-                        dealStatus: 'lost',
-                        lostAt: new Date().toISOString()
-                    }
+                    dealStatus: 'won',
+                    dealClosedAt: new Date(),
+                });
+            } else if (status === 'lost') {
+                await moveLead(lead.id, `${prefix}-perdido`);
+                await updateLead(lead.id, {
+                    dealStatus: 'lost',
+                    lostReason: lossReasonId || '',
+                    lostAt: new Date(),
                 });
             }
+
+            fetchContacts();
         } catch (error) {
             console.error('Erro ao atualizar status:', error);
+            toast.error('Erro ao atualizar status do lead');
         }
     };
 
@@ -122,7 +120,7 @@ export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead36
             size="full"
         >
             <div className={styles.container}>
-                <LeadHeader lead={lead} onStatusChange={handleStatusChange} />
+                <LeadHeader lead={lead} onStatusChange={handleStatusChange} onLeadUpdated={handleLeadUpdated} />
 
                 <nav className={styles.tabsNav}>
                     {tabs.map((tab) => (

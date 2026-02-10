@@ -75,3 +75,6 @@ export interface MessageTemplate {
     createdAt: number;
     updatedAt: number;
 }
+
+// Re-export da source of truth (evita duplicação)
+export type { PipelineStage } from '@/types/lead.types';
