@@ -39,7 +39,8 @@ import {
     CalendarDays,
     Shuffle,
     Lightbulb,
-    Share2
+    Share2,
+    Database
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -126,6 +127,8 @@ const navCategories: NavCategory[] = [
         subItems: [
             { id: 'debug-ui', label: 'DEBUG UI', path: ROUTES.debug_ui, icon: <Palette size={18} /> },
             { id: 'data-import', label: 'Importar Dados', path: ROUTES.data_import, icon: <Upload size={18} /> },
+            { id: 'debug-integrations', label: 'Integrações', path: ROUTES.debug_integrations, icon: <Plug size={18} /> },
+            { id: 'debug-database', label: 'Banco de Dados', path: ROUTES.debug_database, icon: <Database size={18} /> },
         ]
     },
     {
@@ -155,7 +158,6 @@ const navCategories: NavCategory[] = [
 
             // Técnico
             { id: 'customFields', label: 'Campos Customizados', path: ROUTES.settings.customFields, icon: <Palette size={18} /> },
-            { id: 'integrations', label: 'Integrações', path: ROUTES.settings.integrations, icon: <Plug size={18} /> },
         ]
     },
     {

@@ -21,6 +21,8 @@ export const ROUTES = {
     dashboard: '/',
     debug_ui: '/debug-ui',
     data_import: '/data-import',
+    debug_integrations: '/debug/integracoes',
+    debug_database: '/debug/banco-de-dados',
     publicProjectStatus: (token: string) => `/status/projeto/${token}`,
 
     // CRM

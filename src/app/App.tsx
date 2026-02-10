@@ -19,7 +19,7 @@ import { DashboardPage } from '@/features/dashboard';
 import { AppearancePage } from '@/features/settings/pages';
 import { IntegrationsPage } from '@/features/settings/pages/IntegrationsPage';
 import { CRMPage } from '@/features/crm/pages/CRMPage';
-import { DebugUIPage, DataImportPage } from '@/pages';
+import { DebugUIPage, DataImportPage, DatabasePage } from '@/pages';
 import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
 import { InboxPage } from '@/features/inbox/pages/InboxPage';
@@ -138,6 +138,8 @@ export function App() {
 
                         <Route path={ROUTES.debug_ui} element={<DebugUIPage />} />
                         <Route path={ROUTES.data_import} element={<DataImportPage />} />
+                        <Route path={ROUTES.debug_integrations} element={<IntegrationsPage />} />
+                        <Route path={ROUTES.debug_database} element={<DatabasePage />} />
 
                         <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
 
@@ -167,7 +169,7 @@ export function App() {
 
                         <Route path={ROUTES.settings.root + '/*'} element={<PlaceholderPage title="Configurações" />} />
 
-                        <Route path={ROUTES.settings.integrations} element={<IntegrationsPage />} />
+                        {/* Integrations moved to Debug category */}
 
                         <Route path={ROUTES.settings.organization} element={<OrganizationPage />} />
 
