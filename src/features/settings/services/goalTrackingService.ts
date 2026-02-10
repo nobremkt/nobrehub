@@ -118,7 +118,7 @@ export const GoalTrackingService = {
         monthStart: Date,
         monthEnd: Date,
     ): Promise<SectorGoalProgress> {
-        const snapshot = await getDocs(collection(db, 'projects'));
+        const snapshot = await getDocs(collection(db, 'production_projects'));
         let points = 0, delivered = 0;
 
         snapshot.docs.forEach(doc => {
@@ -276,7 +276,7 @@ export const GoalTrackingService = {
         let notesThisMonth = 0;
 
         try {
-            const snapshot = await getDocs(collection(db, 'strategic_notes'));
+            const snapshot = await getDocs(collection(db, 'notes'));
             snapshot.docs.forEach(doc => {
                 const d = doc.data();
                 const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);

@@ -8,32 +8,7 @@ import { ProductionService } from '../services/ProductionService';
 import { Project } from '@/types/project.types';
 import { Spinner, Badge } from '@/design-system';
 import { User, ChevronRight, Search, X } from 'lucide-react';
-
-// Helper for status colors/labels - duplicate from ProjectBoard or move to common utils?
-// For now, I'll inline a simple version or just use text to keep it simple as Sidebar space is small.
-// Actually, user wants "results show Producer Name".
-
-const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-        'aguardando': 'Aguardando',
-        'em-producao': 'Em Produção',
-        'a-revisar': 'A Revisar',
-        'revisado': 'Revisado',
-        'alteracao': 'Em Alteração'
-    };
-    return labels[status] || status;
-};
-
-const getStatusColor = (status: string) => {
-    const colors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'danger'> = {
-        'aguardando': 'default',
-        'em-producao': 'primary',
-        'a-revisar': 'warning',
-        'revisado': 'success',
-        'alteracao': 'warning'
-    };
-    return colors[status] || 'default';
-};
+import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
 export const ProducersSidebar = () => {
     const { collaborators, fetchCollaborators, isLoading: isLoadingCollabs } = useCollaboratorStore();

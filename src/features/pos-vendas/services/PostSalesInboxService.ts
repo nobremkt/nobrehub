@@ -3,15 +3,23 @@
  * NOBRE HUB - POST SALES INBOX SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
  * Serviço para buscar conversas do contexto pós-venda
+ * Now reads from Firestore (conversations collection)
  */
 
-import { getRealtimeDb } from '@/config/firebase';
-import { ref, onValue, query, orderByChild, update, serverTimestamp } from 'firebase/database';
+import { getFirestoreDb } from '@/config/firebase';
+import {
+    collection,
+    doc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    updateDoc,
+    Timestamp,
+} from 'firebase/firestore';
 import { Conversation } from '@/features/inbox/types';
 
-const DB_PATHS = {
-    CONVERSATIONS: 'conversations',
-};
+const COL_CONVERSATIONS = 'conversations';
 
 export const PostSalesInboxService = {
     /**
@@ -22,37 +30,39 @@ export const PostSalesInboxService = {
         postSalesId: string | null,
         callback: (conversations: Conversation[]) => void
     ) => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const q = query(conversationsRef, orderByChild('updatedAt'));
+        const db = getFirestoreDb();
 
-        return onValue(q, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                callback([]);
-                return;
+        // Build query constraints
+        const constraints = [
+            where('context', '==', 'post_sales'),
+            where('status', '==', 'open'),
+        ];
+
+        if (postSalesId) {
+            constraints.push(where('assignedTo', '==', postSalesId));
+        }
+
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            ...constraints,
+            orderBy('updatedAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            let conversations: Conversation[] = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
+                    createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
+                } as Conversation;
+            });
+
+            // If postSalesId is null, filter to unassigned only (distribution queue)
+            if (!postSalesId) {
+                conversations = conversations.filter(conv => !conv.assignedTo);
             }
-
-            const conversations: Conversation[] = Object.keys(data)
-                .map((key) => ({
-                    id: key,
-                    ...data[key],
-                }))
-                // Filter by post_sales context
-                .filter((conv) => conv.context === 'post_sales')
-                // Filter by assigned to this post-sales attendant (or unassigned for distribution)
-                .filter((conv) =>
-                    postSalesId
-                        ? conv.assignedTo === postSalesId
-                        : !conv.assignedTo // Unassigned = distribution queue
-                )
-                // Only open conversations
-                .filter((conv) => conv.status === 'open')
-                .sort((a, b) => {
-                    const timeA = a.lastMessage?.timestamp || 0;
-                    const timeB = b.lastMessage?.timestamp || 0;
-                    return timeB - timeA;
-                });
 
             callback(conversations);
         });
@@ -71,13 +81,13 @@ export const PostSalesInboxService = {
      * Assign a post-sales conversation to an attendant.
      */
     assignConversation: async (conversationId: string, postSalesId: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        const db = getFirestoreDb();
+        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
 
-        await update(conversationRef, {
+        await updateDoc(conversationRef, {
             assignedTo: postSalesId,
             postSalesId: postSalesId,
-            updatedAt: serverTimestamp()
+            updatedAt: Timestamp.now(),
         });
     },
 
@@ -87,20 +97,20 @@ export const PostSalesInboxService = {
     getConversationCounts: (
         callback: (counts: Record<string, number>) => void
     ) => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+        const db = getFirestoreDb();
 
-        return onValue(conversationsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                callback({});
-                return;
-            }
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            where('context', '==', 'post_sales'),
+            where('status', '==', 'open')
+        );
 
+        return onSnapshot(q, (snapshot) => {
             const counts: Record<string, number> = {};
 
-            Object.values(data).forEach((conv: any) => {
-                if (conv.context === 'post_sales' && conv.assignedTo && conv.status === 'open') {
+            snapshot.docs.forEach((docSnap) => {
+                const conv = docSnap.data();
+                if (conv.assignedTo) {
                     counts[conv.assignedTo] = (counts[conv.assignedTo] || 0) + 1;
                 }
             });

@@ -1,4 +1,4 @@
-import { getFirestoreDb, getRealtimeDb } from '@/config/firebase';
+import { getFirestoreDb } from '@/config/firebase';
 import { COLLECTIONS } from '@/config';
 import {
     collection,
@@ -13,7 +13,6 @@ import {
     orderBy,
     Timestamp
 } from 'firebase/firestore';
-import { ref, get } from 'firebase/database';
 import { Lead } from '@/types/lead.types';
 
 const COLLECTION_NAME = COLLECTIONS.LEADS;
@@ -241,24 +240,17 @@ export const LeadService = {
      */
     syncFromInbox: async (): Promise<number> => {
         try {
-            const realtimeDb = getRealtimeDb();
             const firestoreDb = getFirestoreDb();
 
-            // 1. Get all conversations
-            const conversationsSnapshot = await get(ref(realtimeDb, 'conversations'));
-            const conversationsData = conversationsSnapshot.val();
+            // 1. Get all conversations from Firestore
+            const conversationsSnapshot = await getDocs(collection(firestoreDb, 'conversations'));
 
-            if (!conversationsData) return 0;
-
-            // Keep conversation keys for updating leadId back to RTDB
-            const conversationEntries = Object.entries(conversationsData) as [string, any][];
+            if (conversationsSnapshot.empty) return 0;
 
             // 2. Get all existing leads - build lookup maps
             const leadsQuery = await getDocs(collection(firestoreDb, COLLECTION_NAME));
 
-            // Map by Firestore doc ID (for leadId matching)
             const existingById = new Map<string, { id: string, data: any }>();
-            // Map by normalized phone (fallback)
             const existingByPhone = new Map<string, { id: string, data: any }>();
 
             leadsQuery.docs.forEach(docSnap => {
@@ -269,15 +261,16 @@ export const LeadService = {
                 }
             });
 
-            // Track phones we've processed to avoid duplicates in same run
             const processedPhones = new Set<string>();
-
-            // 3. Process each conversation
             const dataPromises: Promise<any>[] = [];
             const now = new Date();
             let count = 0;
 
-            for (const [convId, conv] of conversationEntries) {
+            // 3. Process each conversation
+            for (const convDoc of conversationsSnapshot.docs) {
+                const conv = convDoc.data();
+                const convId = convDoc.id;
+
                 if (!conv.leadPhone) continue;
 
                 const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
@@ -287,22 +280,20 @@ export const LeadService = {
 
                 let existingLead: { id: string, data: any } | undefined;
 
-                // Priority 1: Match by leadId (stored in conversation)
+                // Priority 1: Match by leadId
                 if (conv.leadId && existingById.has(conv.leadId)) {
                     existingLead = existingById.get(conv.leadId);
                 }
-                // Priority 2: Match by phone (fallback for older conversations)
+                // Priority 2: Match by phone
                 else if (existingByPhone.has(normalizedPhone)) {
                     existingLead = existingByPhone.get(normalizedPhone);
                 }
 
                 if (existingLead) {
-                    // Lead exists - update with latest data from conversation
                     const updates: any = {
                         updatedAt: Timestamp.fromDate(now)
                     };
 
-                    // Sync name, email, company if changed in conversation
                     if (conv.leadName && conv.leadName !== existingLead.data.name) {
                         updates.name = conv.leadName;
                     }
@@ -312,39 +303,32 @@ export const LeadService = {
                     if (conv.leadCompany && conv.leadCompany !== existingLead.data.company) {
                         updates.company = conv.leadCompany;
                     }
-                    // Sync phone if changed (important for the duplication fix)
                     if (conv.leadPhone && conv.leadPhone !== existingLead.data.phone) {
                         updates.phone = conv.leadPhone;
                     }
 
-                    // Fix pipeline if needed (WhatsApp should be low-ticket)
                     if (isWhatsApp && existingLead.data.pipeline === 'high-ticket' && existingLead.data.status === 'ht-novo') {
                         updates.pipeline = correctPipeline;
                         updates.status = correctStatus;
                     }
 
-                    // Only update if there are actual changes beyond updatedAt
                     if (Object.keys(updates).length > 1) {
                         dataPromises.push(updateDoc(doc(firestoreDb, COLLECTION_NAME, existingLead.id), updates));
                         count++;
                     }
 
-                    // If conversation doesn't have leadId but we found by phone, update the conversation
+                    // If conversation doesn't have leadId, link it
                     if (!conv.leadId && existingLead) {
-                        const { update: rtdbUpdate } = await import('firebase/database');
-                        dataPromises.push(rtdbUpdate(ref(realtimeDb, `conversations/${convId}`), {
+                        dataPromises.push(updateDoc(doc(firestoreDb, 'conversations', convId), {
                             leadId: existingLead.id
                         }));
                     }
                 } else {
-                    // No existing lead found - create new one
-                    // Check if we already processed this phone in this run
                     if (processedPhones.has(normalizedPhone)) continue;
                     processedPhones.add(normalizedPhone);
 
                     count++;
 
-                    // Create the lead and update the conversation with the new leadId
                     const createAndLink = async () => {
                         const newDocRef = await addDoc(collection(firestoreDb, COLLECTION_NAME), {
                             name: conv.leadName || normalizedPhone,
@@ -361,13 +345,11 @@ export const LeadService = {
                             updatedAt: Timestamp.fromDate(now),
                         });
 
-                        // Update conversation with the new leadId for future syncs
-                        const { update: rtdbUpdate } = await import('firebase/database');
-                        await rtdbUpdate(ref(realtimeDb, `conversations/${convId}`), {
+                        // Update conversation with new leadId in Firestore
+                        await updateDoc(doc(firestoreDb, 'conversations', convId), {
                             leadId: newDocRef.id
                         });
 
-                        // Add to our maps to prevent duplicates within same run
                         existingById.set(newDocRef.id, { id: newDocRef.id, data: { phone: conv.leadPhone } });
                         existingByPhone.set(normalizedPhone, { id: newDocRef.id, data: { phone: conv.leadPhone } });
                     };
@@ -376,9 +358,7 @@ export const LeadService = {
                 }
             }
 
-            // 4. Execute all operations
             await Promise.all(dataPromises);
-
             return count;
         } catch (error) {
             console.error('Error syncing from inbox:', error);

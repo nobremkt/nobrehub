@@ -94,7 +94,7 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
             if (sectorId === SECTOR_IDS.PRODUCAO) {
-                const snapshot = await getDocs(collection(db, 'projects'));
+                const snapshot = await getDocs(collection(db, 'production_projects'));
                 let points = 0, delivered = 0, alteracoes = 0, totalDays = 0, deliveryCount = 0;
 
                 snapshot.docs.forEach(doc => {

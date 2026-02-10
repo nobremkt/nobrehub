@@ -837,16 +837,16 @@ export const DashboardAnalyticsService = {
                 };
             });
 
-        // Calculate source data from lead origin field
+        // Calculate source data from lead source field
         const sourceMap: Record<string, number> = {};
         leadsInPeriod.forEach(l => {
-            const source = (l as { origin?: string }).origin || 'outros';
+            const source = (l as { source?: string }).source || 'outros';
             sourceMap[source] = (sourceMap[source] || 0) + 1;
         });
         const sourceData = Object.entries(sourceMap)
             .map(([source, count]) => ({ source, count }))
             .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+            .slice(0, 6);
 
         // Calculate performance metrics
         const contactedLeads = leadsInPeriod.filter(l =>
@@ -886,8 +886,10 @@ export const DashboardAnalyticsService = {
             topSellers,
             trendData,
             sourceData: sourceData.length > 0 ? sourceData : [
-                { source: 'instagram', count: 0 },
+                { source: 'landing-page', count: 0 },
+                { source: 'site', count: 0 },
                 { source: 'whatsapp', count: 0 },
+                { source: 'instagram', count: 0 },
                 { source: 'indicacao', count: 0 },
             ],
             performanceMetrics

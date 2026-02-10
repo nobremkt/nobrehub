@@ -1,38 +1,66 @@
-import { getRealtimeDb } from '@/config/firebase';
-import { ref, onValue, push, set, serverTimestamp, query, orderByChild, limitToLast, update, get } from 'firebase/database';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - INBOX SERVICE
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * All data in Firestore:
+ *   conversations/{conversationId}          → Conversation metadata
+ *   conversations/{conversationId}/messages  → Messages subcollection
+ *   settings/leadDistribution               → Distribution config
+ *
+ * RTDB is NOT used here — only Firestore with onSnapshot for real-time.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+import { getFirestoreDb } from '@/config/firebase';
+import {
+    collection,
+    doc,
+    addDoc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    setDoc,
+    onSnapshot,
+    query,
+    orderBy,
+    limit,
+    where,
+    Timestamp,
+} from 'firebase/firestore';
 import { Conversation, Message } from '../types';
 import { useSettingsStore } from '../../settings/stores/useSettingsStore';
 
-const DB_PATHS = {
-    CONVERSATIONS: 'conversations',
-    MESSAGES: 'messages',
-};
+const COL_CONVERSATIONS = 'conversations';
+const SUBCOL_MESSAGES = 'messages';
 
 export const InboxService = {
     /**
      * Subscribe to the list of conversations.
-     * In a real app, this should probably filter by assigned user or organization.
      */
     subscribeToConversations: (callback: (conversations: Conversation[]) => void) => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const q = query(conversationsRef, orderByChild('lastMessage/timestamp'), limitToLast(50));
+        const db = getFirestoreDb();
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            orderBy('updatedAt', 'desc'),
+            limit(50)
+        );
 
-        return onValue(q, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                callback([]);
-                return;
-            }
-
-            const conversations: Conversation[] = Object.keys(data).map((key) => ({
-                id: key,
-                ...data[key],
-            })).sort((a, b) => {
-                // Sort by newest first
-                const timeA = a.lastMessage?.timestamp || 0;
-                const timeB = b.lastMessage?.timestamp || 0;
-                return timeB - timeA;
+        return onSnapshot(q, (snapshot) => {
+            const conversations: Conversation[] = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    // Normalize timestamps for components that expect number
+                    updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
+                    createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
+                    lastMessage: data.lastMessage ? {
+                        ...data.lastMessage,
+                        timestamp: data.lastMessage.timestamp?.toMillis?.() || data.lastMessage.timestamp || 0,
+                    } : null,
+                } as Conversation;
             });
 
             callback(conversations);
@@ -43,26 +71,21 @@ export const InboxService = {
      * Subscribe to messages for a specific conversation.
      */
     subscribeToMessages: (conversationId: string, callback: (messages: Message[]) => void) => {
-        const db = getRealtimeDb();
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        // Limit to last 50 messages for performance
-        const q = query(messagesRef, orderByChild('timestamp'), limitToLast(50));
+        const db = getFirestoreDb();
+        const q = query(
+            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
+            orderBy('timestamp', 'asc'),
+            limit(50)
+        );
 
-        return onValue(q, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                callback([]);
-                return;
-            }
-
-            const messages: Message[] = Object.keys(data).map((key) => {
-                const msg = data[key];
+        return onSnapshot(q, (snapshot) => {
+            const messages: Message[] = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data();
                 return {
-                    id: key,
-                    ...msg,
-                    // Map Firebase 'timestamp' to 'createdAt' that the Message type expects
-                    createdAt: msg.timestamp ? new Date(msg.timestamp) : new Date(msg.createdAt || Date.now()),
-                };
+                    id: docSnap.id,
+                    ...data,
+                    createdAt: data.timestamp?.toDate?.() || new Date(data.timestamp || data.createdAt || Date.now()),
+                } as Message;
             });
 
             callback(messages);
@@ -77,27 +100,27 @@ export const InboxService = {
         leadId: string,
         callback: (conversation: Conversation | null) => void
     ) => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
+        const db = getFirestoreDb();
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            where('leadId', '==', leadId),
+            limit(1)
+        );
 
-        return onValue(conversationsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
+        return onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
                 callback(null);
                 return;
             }
 
-            // Find conversation with matching leadId
-            const found = Object.keys(data).find(key => data[key].leadId === leadId);
-
-            if (found) {
-                callback({
-                    id: found,
-                    ...data[found]
-                } as Conversation);
-            } else {
-                callback(null);
-            }
+            const docSnap = snapshot.docs[0];
+            const data = docSnap.data();
+            callback({
+                id: docSnap.id,
+                ...data,
+                updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
+                createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
+            } as Conversation);
         });
     },
 
@@ -113,15 +136,11 @@ export const InboxService = {
         leadCompany?: string;
         tags?: string[];
     }): Promise<string> => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const newConvRef = push(conversationsRef);
-        const conversationId = newConvRef.key!;
+        const db = getFirestoreDb();
+        const now = Timestamp.now();
 
-        const now = Date.now();
-
-        await set(newConvRef, {
-            leadId: leadData.leadId || `lead_${now}`,
+        const conversationData = {
+            leadId: leadData.leadId || `lead_${Date.now()}`,
             leadName: leadData.leadName,
             leadPhone: leadData.leadPhone,
             leadEmail: leadData.leadEmail || '',
@@ -135,57 +154,57 @@ export const InboxService = {
             lastMessage: null,
             createdAt: now,
             updatedAt: now,
-        });
+        };
 
-        return conversationId;
+        const docRef = await addDoc(collection(db, COL_CONVERSATIONS), conversationData);
+        return docRef.id;
     },
 
     /**
      * Send a new message.
      */
     sendMessage: async (conversationId: string, text: string, senderId: string = 'agent') => {
-        const db = getRealtimeDb();
+        const db = getFirestoreDb();
 
         // 0. Get Conversation Details (to get phone number)
-        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
-        const conversation = conversationRefSnapshot.val() as Conversation;
+        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
+        const convSnap = await getDoc(conversationRef);
+        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
 
         if (!conversation) {
             throw new Error('Conversation not found');
         }
 
-        // 1. Create message in messages node IMMEDIATELY (Save-First)
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-        const messageId = newMessageRef.key!;
-
-        const timestamp = serverTimestamp();
+        // 1. Create message in messages subcollection
+        const now = Timestamp.now();
 
         const messageData = {
-            id: messageId,
             content: text,
             senderId,
-            timestamp: timestamp,
+            timestamp: now,
             direction: 'out',
-            status: 'pending', // Initial status
+            status: 'pending',
             type: 'text',
         };
 
-        // Batch updates for atomicity (Message + Conversation Last Message)
-        const updates: Record<string, any> = {};
-        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0; // Reset unread since we are acting
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+        const msgRef = await addDoc(
+            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
+            messageData
+        );
+        const messageId = msgRef.id;
 
-        await update(ref(db), updates);
+        // 2. Update conversation lastMessage + unreadCount
+        await updateDoc(conversationRef, {
+            lastMessage: { ...messageData, id: messageId },
+            unreadCount: 0,
+            updatedAt: now,
+        });
 
-        // 2. Send to WhatsApp (if configured)
+        // 3. Send to WhatsApp (if configured)
         const { whatsapp } = useSettingsStore.getState();
 
         if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
             try {
-                // Determine destination phone
                 const phone = conversation.leadPhone.replace(/\D/g, '');
 
                 const response = await fetch('/api/send-message', {
@@ -208,24 +227,20 @@ export const InboxService = {
                 const responseData = await response.json();
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
-                // 3. Update status to SENT on success
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                // Update status to SENT on success
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'sent',
                     whatsappMessageId: whatsappMessageId
                 });
 
             } catch (error) {
                 console.error('Failed to send WhatsApp message:', error);
-                // 3. Update status to ERROR on failure
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'error'
                 });
-                // We do NOT throw here to avoid crashing the UI, visual feedback is enough via 'error' status
             }
         } else {
-            // If no WhatsApp config, we might want to mark as sent (simulated) or keep as pending
-            // For now, let's mark as sent since it's "sent to system"
-            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                 status: 'sent'
             });
         }
@@ -234,12 +249,11 @@ export const InboxService = {
     },
 
     /**
-     * Helper to update lead phone (for testing/editing).
+     * Helper to update lead phone.
      */
     updateLeadPhone: async (conversationId: string, newPhone: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
+        const db = getFirestoreDb();
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
             leadPhone: newPhone
         });
     },
@@ -255,42 +269,41 @@ export const InboxService = {
         previewText: string,
         senderId: string = 'agent'
     ) => {
-        const db = getRealtimeDb();
+        const db = getFirestoreDb();
 
         // 0. Get Conversation
-        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
-        const conversation = conversationRefSnapshot.val() as Conversation;
+        const convSnap = await getDoc(doc(db, COL_CONVERSATIONS, conversationId));
+        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
 
         if (!conversation) {
             throw new Error('Conversation not found');
         }
 
-        // 1. Create message in Firebase IMMEDIATELY
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-        const messageId = newMessageRef.key!;
-
-        const timestamp = serverTimestamp();
+        // 1. Create message in Firestore
+        const now = Timestamp.now();
 
         const messageData = {
-            id: messageId,
             content: previewText,
             senderId,
-            timestamp: timestamp,
+            timestamp: now,
             direction: 'out',
             status: 'pending',
             type: 'template',
-            templateName: templateName
+            templateName: templateName,
         };
 
-        // Batch update
-        const updates: Record<string, any> = {};
-        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+        const msgRef = await addDoc(
+            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
+            messageData
+        );
+        const messageId = msgRef.id;
 
-        await update(ref(db), updates);
+        // Update conversation
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
+            lastMessage: { ...messageData, id: messageId },
+            unreadCount: 0,
+            updatedAt: now,
+        });
 
         // 2. Send to WhatsApp
         const { whatsapp } = useSettingsStore.getState();
@@ -321,21 +334,19 @@ export const InboxService = {
                 const responseData = await response.json();
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
-                // 3. Update success
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'sent',
                     whatsappMessageId: whatsappMessageId
                 });
 
             } catch (error) {
                 console.error('Failed to send WhatsApp template:', error);
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'error'
                 });
             }
         } else {
-            // If no WhatsApp config, mark as sent
-            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                 status: 'sent'
             });
         }
@@ -347,13 +358,14 @@ export const InboxService = {
      * Toggle favorite status for a conversation.
      */
     toggleFavorite: async (conversationId: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        const db = getFirestoreDb();
+        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
+        const convSnap = await getDoc(convRef);
 
-        const snapshot = await get(conversationRef);
-        const conversation = snapshot.val() as Conversation;
+        if (!convSnap.exists()) return;
+        const conversation = convSnap.data();
 
-        await update(conversationRef, {
+        await updateDoc(convRef, {
             isFavorite: !conversation?.isFavorite
         });
     },
@@ -362,21 +374,20 @@ export const InboxService = {
      * Toggle pinned status for a conversation.
      */
     togglePin: async (conversationId: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        const db = getFirestoreDb();
+        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
+        const convSnap = await getDoc(convRef);
 
-        const snapshot = await get(conversationRef);
-        const conversation = snapshot.val() as Conversation;
+        if (!convSnap.exists()) return;
+        const conversation = convSnap.data();
 
-        await update(conversationRef, {
+        await updateDoc(convRef, {
             isPinned: !conversation?.isPinned
         });
     },
 
     /**
      * Schedule a message for future delivery.
-     * The message is saved with status 'scheduled' and a scheduledFor timestamp.
-     * A separate cron/cloud function should process and send scheduled messages.
      */
     scheduleMessage: async (
         conversationId: string,
@@ -384,25 +395,24 @@ export const InboxService = {
         scheduledFor: Date,
         senderId: string = 'agent'
     ) => {
-        const db = getRealtimeDb();
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-        const messageId = newMessageRef.key!;
+        const db = getFirestoreDb();
 
         const messageData = {
-            id: messageId,
             content,
             senderId,
-            timestamp: serverTimestamp(),
-            scheduledFor: scheduledFor.getTime(),
+            timestamp: Timestamp.now(),
+            scheduledFor: Timestamp.fromDate(scheduledFor),
             direction: 'out',
             status: 'scheduled',
-            type: 'text'
+            type: 'text',
         };
 
-        await set(newMessageRef, messageData);
+        const msgRef = await addDoc(
+            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
+            messageData
+        );
 
-        return messageId;
+        return msgRef.id;
     },
 
     /**
@@ -416,21 +426,17 @@ export const InboxService = {
         senderId: string = 'agent',
         viewOnce?: boolean
     ) => {
-        const db = getRealtimeDb();
+        const db = getFirestoreDb();
 
         // 0. Get Conversation
-        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
-        const conversation = conversationRefSnapshot.val() as Conversation;
+        const convSnap = await getDoc(doc(db, COL_CONVERSATIONS, conversationId));
+        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
 
         if (!conversation) {
             throw new Error('Conversation not found');
         }
 
-        // 1. Create message in Firebase IMMEDIATELY (Save-First)
-        const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${conversationId}`);
-        const newMessageRef = push(messagesRef);
-        const messageId = newMessageRef.key!;
-
+        // 1. Create message
         const contentMap = {
             image: '[Imagem]',
             video: '[Vídeo]',
@@ -438,29 +444,33 @@ export const InboxService = {
             document: mediaName || '[Documento]'
         };
 
-        const timestamp = serverTimestamp();
+        const now = Timestamp.now();
 
-        const messageData = {
-            id: messageId,
+        const messageData: Record<string, any> = {
             content: contentMap[mediaType],
             senderId,
-            timestamp: timestamp,
+            timestamp: now,
             direction: 'out',
             status: 'pending',
             type: mediaType,
             mediaUrl: mediaUrl,
             mediaName: mediaName,
-            ...(viewOnce && { viewOnce: true }) // Only add if true
         };
 
-        // Batch update
-        const updates: Record<string, any> = {};
-        updates[`${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/lastMessage`] = messageData;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/unreadCount`] = 0;
-        updates[`${DB_PATHS.CONVERSATIONS}/${conversationId}/updatedAt`] = timestamp;
+        if (viewOnce) messageData.viewOnce = true;
 
-        await update(ref(db), updates);
+        const msgRef = await addDoc(
+            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
+            messageData
+        );
+        const messageId = msgRef.id;
+
+        // Update conversation
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
+            lastMessage: { ...messageData, id: messageId },
+            unreadCount: 0,
+            updatedAt: now,
+        });
 
         // 2. Send to WhatsApp
         const { whatsapp } = useSettingsStore.getState();
@@ -479,7 +489,7 @@ export const InboxService = {
                         mediaType: mediaType,
                         mediaUrl: mediaUrl,
                         caption: mediaName,
-                        viewOnce: viewOnce // View Once support
+                        viewOnce: viewOnce
                     })
                 });
 
@@ -492,21 +502,19 @@ export const InboxService = {
                 const responseData = await response.json();
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
-                // 3. Update success
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'sent',
                     whatsappMessageId: whatsappMessageId
                 });
 
             } catch (error) {
                 console.error('Failed to send WhatsApp media:', error);
-                await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                     status: 'error'
                 });
             }
         } else {
-            // If no WhatsApp config, mark as sent
-            await update(ref(db, `${DB_PATHS.MESSAGES}/${conversationId}/${messageId}`), {
+            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
                 status: 'sent'
             });
         }
@@ -519,26 +527,22 @@ export const InboxService = {
      * Also syncs relevant fields to the corresponding Firestore Lead if leadId exists.
      */
     updateConversationDetails: async (conversationId: string, data: Partial<Conversation>) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
+        const db = getFirestoreDb();
+        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
 
-        // 1. Update conversation in RTDB
-        await update(conversationRef, {
+        // 1. Update conversation in Firestore
+        await updateDoc(conversationRef, {
             ...data
         });
 
         // 2. Get conversation to check for leadId
-        const snapshot = await get(conversationRef);
-        const conv = snapshot.val();
+        const snapshot = await getDoc(conversationRef);
+        const conv = snapshot.data();
 
         // 3. If leadId exists, sync relevant fields to Firestore Lead
         if (conv?.leadId) {
             try {
-                const { getFirestoreDb } = await import('@/config/firebase');
-                const { doc, getDoc, updateDoc, Timestamp } = await import('firebase/firestore');
-
-                const firestoreDb = getFirestoreDb();
-                const leadRef = doc(firestoreDb, 'leads', conv.leadId);
+                const leadRef = doc(db, 'leads', conv.leadId);
                 const leadSnap = await getDoc(leadRef);
 
                 if (leadSnap.exists()) {
@@ -560,7 +564,6 @@ export const InboxService = {
                     }
                 }
             } catch (error) {
-                // Don't fail the conversation update if lead sync fails
                 console.error('[InboxService] Failed to sync to Firestore Lead:', error);
             }
         }
@@ -570,11 +573,10 @@ export const InboxService = {
      * Assign conversation to a team member.
      */
     assignConversation: async (conversationId: string, userId: string | null) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
+        const db = getFirestoreDb();
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
             assignedTo: userId,
-            updatedAt: serverTimestamp()
+            updatedAt: Timestamp.now(),
         });
     },
 
@@ -582,16 +584,16 @@ export const InboxService = {
      * Close or reopen a conversation.
      */
     toggleConversationStatus: async (conversationId: string) => {
-        const db = getRealtimeDb();
-        const conversationRefSnapshot = await get(ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`));
-        const conversation = conversationRefSnapshot.val() as Conversation;
+        const db = getFirestoreDb();
+        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
+        const convSnap = await getDoc(convRef);
+        const conversation = convSnap.data() as Conversation;
 
         const newStatus = conversation.status === 'open' ? 'closed' : 'open';
 
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
+        await updateDoc(convRef, {
             status: newStatus,
-            updatedAt: serverTimestamp()
+            updatedAt: Timestamp.now(),
         });
 
         return newStatus;
@@ -599,20 +601,15 @@ export const InboxService = {
 
     /**
      * Transfer conversation to post-sales sector.
-     * Keeps conversation open but changes context to 'post_sales'.
-     * Used when a sale is closed and project is created.
      */
     transferToPostSales: async (conversationId: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-
-        await update(conversationRef, {
+        const db = getFirestoreDb();
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
             context: 'post_sales',
             status: 'open',
-            // Clear sales assignment, will be reassigned in post-sales
             assignedTo: null,
-            transferredToPostSalesAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            transferredToPostSalesAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
         });
     },
 
@@ -620,9 +617,8 @@ export const InboxService = {
      * Mark conversation as read.
      */
     markAsRead: async (conversationId: string) => {
-        const db = getRealtimeDb();
-        const conversationRef = ref(db, `${DB_PATHS.CONVERSATIONS}/${conversationId}`);
-        await update(conversationRef, {
+        const db = getFirestoreDb();
+        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
             unreadCount: 0
         });
     },
@@ -631,12 +627,7 @@ export const InboxService = {
      * Seeds the database with mock data for testing.
      */
     seedDatabase: async () => {
-        const db = getRealtimeDb();
-
-        // 1. Clear existing data to prevent duplicates
-        console.log('Clearing database...');
-        await set(ref(db, DB_PATHS.CONVERSATIONS), null);
-        await set(ref(db, DB_PATHS.MESSAGES), null);
+        const db = getFirestoreDb();
 
         // Mock Data
         const mocks = [
@@ -649,7 +640,7 @@ export const InboxService = {
                 unreadCount: 2,
                 status: 'open',
                 tags: ['Interessado', 'Quente', 'Novo Lead'],
-                notes: 'Cliente interessado no plano anual. Entrar em contato na próxima semana para fechar contrato.',
+                notes: 'Cliente interessado no plano anual.',
                 messages: [
                     { content: 'Olá, gostaria de saber mais sobre o serviço.', direction: 'in' },
                     { content: 'Claro, João! Como posso ajudar?', direction: 'out' },
@@ -665,7 +656,7 @@ export const InboxService = {
                 unreadCount: 0,
                 status: 'closed',
                 tags: ['Cliente Antigo', 'Suporte'],
-                notes: 'Dúvida técnica resolvida. Cliente satisfeito com o atendimento.',
+                notes: 'Dúvida técnica resolvida.',
                 messages: [
                     { content: 'Obrigado pelo atendimento!', direction: 'in' },
                     { content: 'Por nada! Conte conosco.', direction: 'out' }
@@ -680,7 +671,7 @@ export const InboxService = {
                 unreadCount: 0,
                 status: 'open',
                 tags: ['Parceria', 'Frio'],
-                notes: 'Agência buscando parceria para terceirização de demandas.',
+                notes: 'Agência buscando parceria.',
                 messages: [
                     { content: 'Quanto custa o plano mensal?', direction: 'in' }
                 ]
@@ -688,36 +679,10 @@ export const InboxService = {
         ];
 
         for (const mock of mocks) {
+            const now = Timestamp.now();
+
             // Create Conversation
-            const convRef = push(ref(db, DB_PATHS.CONVERSATIONS));
-            const convId = convRef.key!;
-
-            // Create Messages
-            let lastMessageData = null;
-
-            for (const [index, msg] of mock.messages.entries()) {
-                const messagesRef = ref(db, `${DB_PATHS.MESSAGES}/${convId}`);
-                const newMsgRef = push(messagesRef);
-
-                // Stagger timestamps slightly
-                const timestamp = Date.now() - (1000 * 60 * (mock.messages.length - index));
-
-                const msgData = {
-                    id: newMsgRef.key,
-                    content: msg.content,
-                    senderId: msg.direction === 'out' ? 'agent' : 'lead',
-                    direction: msg.direction,
-                    timestamp: timestamp,
-                    status: 'read',
-                    type: 'text',
-                };
-
-                await set(newMsgRef, msgData);
-                lastMessageData = msgData;
-            }
-
-            // Save Conversation Metadata
-            await set(convRef, {
+            const convRef = await addDoc(collection(db, COL_CONVERSATIONS), {
                 leadId: `mock_${Date.now()}_${Math.random()}`,
                 leadName: mock.leadName,
                 leadPhone: mock.leadPhone,
@@ -728,9 +693,43 @@ export const InboxService = {
                 unreadCount: mock.unreadCount,
                 channel: mock.channel,
                 status: mock.status,
-                lastMessage: lastMessageData,
-                updatedAt: lastMessageData?.timestamp || Date.now(),
+                context: 'sales',
+                lastMessage: null,
+                createdAt: now,
+                updatedAt: now,
             });
+
+            // Create Messages
+            let lastMessageData = null;
+
+            for (const [index, msg] of mock.messages.entries()) {
+                const timestamp = Timestamp.fromMillis(
+                    Date.now() - (1000 * 60 * (mock.messages.length - index))
+                );
+
+                const msgData = {
+                    content: msg.content,
+                    senderId: msg.direction === 'out' ? 'agent' : 'lead',
+                    direction: msg.direction,
+                    timestamp: timestamp,
+                    status: 'read',
+                    type: 'text',
+                };
+
+                await addDoc(
+                    collection(db, COL_CONVERSATIONS, convRef.id, SUBCOL_MESSAGES),
+                    msgData
+                );
+                lastMessageData = msgData;
+            }
+
+            // Update conversation with lastMessage
+            if (lastMessageData) {
+                await updateDoc(doc(db, COL_CONVERSATIONS, convRef.id), {
+                    lastMessage: lastMessageData,
+                    updatedAt: lastMessageData.timestamp,
+                });
+            }
         }
 
         console.log('Database seeded successfully!');
@@ -742,15 +741,16 @@ export const InboxService = {
 
     /**
      * Get lead distribution settings.
+     * Reads from Firestore: settings/leadDistribution
      */
     getDistributionSettings: async (): Promise<{
         enabled: boolean;
         mode: 'auto' | 'manual';
         participants: string[];
     }> => {
-        const db = getRealtimeDb();
-        const settingsRef = ref(db, 'settings/leadDistribution');
-        const snapshot = await get(settingsRef);
+        const db = getFirestoreDb();
+        const settingsRef = doc(db, 'settings', 'leadDistribution');
+        const snapshot = await getDoc(settingsRef);
 
         if (!snapshot.exists()) {
             return {
@@ -760,42 +760,46 @@ export const InboxService = {
             };
         }
 
-        return snapshot.val();
+        return snapshot.data() as {
+            enabled: boolean;
+            mode: 'auto' | 'manual';
+            participants: string[];
+        };
     },
 
     /**
      * Save lead distribution settings.
+     * Writes to Firestore: settings/leadDistribution
      */
     saveDistributionSettings: async (settings: {
         enabled: boolean;
         mode: 'auto' | 'manual';
         participants: string[];
     }): Promise<void> => {
-        const db = getRealtimeDb();
-        const settingsRef = ref(db, 'settings/leadDistribution');
-        await set(settingsRef, {
+        const db = getFirestoreDb();
+        const settingsRef = doc(db, 'settings', 'leadDistribution');
+        await setDoc(settingsRef, {
             ...settings,
-            updatedAt: serverTimestamp()
-        });
+            updatedAt: Timestamp.fromDate(new Date())
+        }, { merge: true });
     },
 
     /**
      * Get count of active (open) leads per collaborator.
      */
     getActiveLeadsCount: async (): Promise<Record<string, number>> => {
-        const db = getRealtimeDb();
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const snapshot = await get(conversationsRef);
-
-        if (!snapshot.exists()) {
-            return {};
-        }
+        const db = getFirestoreDb();
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            where('status', '!=', 'closed')
+        );
+        const snapshot = await getDocs(q);
 
         const counts: Record<string, number> = {};
-        const data = snapshot.val();
 
-        Object.values(data).forEach((conv: any) => {
-            if (conv.assignedTo && conv.status !== 'closed') {
+        snapshot.docs.forEach((docSnap) => {
+            const conv = docSnap.data();
+            if (conv.assignedTo) {
                 counts[conv.assignedTo] = (counts[conv.assignedTo] || 0) + 1;
             }
         });
@@ -805,7 +809,6 @@ export const InboxService = {
 
     /**
      * Get the next collaborator to assign based on "Least Loaded" strategy.
-     * Returns the participant with the fewest active leads.
      */
     getNextCollaborator: async (participants: string[]): Promise<string | null> => {
         if (!participants || participants.length === 0) {
@@ -814,13 +817,11 @@ export const InboxService = {
 
         const counts = await InboxService.getActiveLeadsCount();
 
-        // Map participants to their lead counts
         const participantCounts = participants.map(id => ({
             id,
             count: counts[id] || 0
         }));
 
-        // Sort by count ascending (least loaded first)
         participantCounts.sort((a, b) => a.count - b.count);
 
         return participantCounts[0]?.id || null;
@@ -828,28 +829,25 @@ export const InboxService = {
 
     /**
      * Distribute all unassigned leads to participants.
-     * Returns the number of leads distributed.
      */
     distributeUnassignedLeads: async (): Promise<{ distributed: number; errors: number }> => {
-        const db = getRealtimeDb();
+        const db = getFirestoreDb();
         const settings = await InboxService.getDistributionSettings();
 
         if (!settings.enabled || settings.participants.length === 0) {
             return { distributed: 0, errors: 0 };
         }
 
-        // Get all unassigned conversations
-        const conversationsRef = ref(db, DB_PATHS.CONVERSATIONS);
-        const snapshot = await get(conversationsRef);
+        // Get all unassigned open conversations
+        const q = query(
+            collection(db, COL_CONVERSATIONS),
+            where('status', '!=', 'closed')
+        );
+        const snapshot = await getDocs(q);
 
-        if (!snapshot.exists()) {
-            return { distributed: 0, errors: 0 };
-        }
-
-        const data = snapshot.val();
-        const unassigned = Object.entries(data)
-            .filter(([_, conv]: [string, any]) => !conv.assignedTo && conv.status !== 'closed')
-            .map(([id]) => id);
+        const unassigned = snapshot.docs
+            .filter(docSnap => !docSnap.data().assignedTo)
+            .map(docSnap => docSnap.id);
 
         let distributed = 0;
         let errors = 0;
