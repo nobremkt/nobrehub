@@ -152,6 +152,7 @@ export function App() {
                         <Route path={ROUTES.team.members} element={<MembersPage />} />
 
                         <Route path={ROUTES.team.chat} element={<TeamChatPage />} />
+                        <Route path={ROUTES.team.chat + '/:chatId'} element={<TeamChatPage />} />
 
                         <Route path={ROUTES.team.root + '/*'} element={<PlaceholderPage title="Equipe" />} />
 

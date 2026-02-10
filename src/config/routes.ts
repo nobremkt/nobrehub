@@ -57,6 +57,7 @@ export const ROUTES = {
         members: '/equipe/membros',
         member: (id: string) => `/equipe/membros/${id}`,
         chat: '/equipe/chat',
+        chatConversation: (chatId: string) => `/equipe/chat/${chatId}`,
     },
 
     // Analytics

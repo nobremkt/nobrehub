@@ -62,12 +62,49 @@ export const useTeamChatStore = create<TeamChatState>((set, get) => ({
                     const isNewUpdate = !oldChat || chat.updatedAt > oldChat.updatedAt;
 
                     if (isNewUpdate && chat.lastMessage && chat.lastMessage.senderId !== userId) {
-                        // Notify if: App is hidden OR User is not on this chat
                         const isChatActive = prevState.activeChatId === chat.id;
 
-                        // Only play sound if user is NOT viewing this specific chat
                         if (!isChatActive) {
+                            // Play message-specific sound
                             playMessageSound();
+
+                            // Push notification (async IIFE because forEach callback is sync)
+                            (async () => {
+                                const senderDetail = chat.participantDetails?.[chat.lastMessage!.senderId];
+                                const senderName = senderDetail?.name || 'Alguém';
+
+                                // Use profilePhotoUrl from collaborator store (1:1, optimized)
+                                const { useCollaboratorStore } = await import('@/features/settings/stores/useCollaboratorStore');
+                                const collaborators = useCollaboratorStore.getState().collaborators;
+                                const senderCollab = collaborators.find(
+                                    c => c.authUid === chat.lastMessage!.senderId || c.id === chat.lastMessage!.senderId
+                                );
+                                const senderPhoto = senderCollab?.profilePhotoUrl || senderDetail?.photoUrl;
+                                const chatName = chat.type === 'group' && chat.name
+                                    ? chat.name
+                                    : senderName;
+
+                                const msgPreview = chat.lastMessage!.type === 'text'
+                                    ? chat.lastMessage!.content
+                                    : chat.lastMessage!.type === 'image'
+                                        ? '📷 Imagem'
+                                        : chat.lastMessage!.type === 'audio'
+                                            ? '🎤 Áudio'
+                                            : '📎 Arquivo';
+
+                                const { useNotificationStore } = await import('@/stores/useNotificationStore');
+                                useNotificationStore.getState().addNotification({
+                                    type: 'teamchat',
+                                    title: chat.type === 'group'
+                                        ? `${senderName} em ${chatName}`
+                                        : `Nova mensagem de ${senderName}`,
+                                    body: msgPreview,
+                                    link: `/equipe/chat/${chat.id}`,
+                                    senderName,
+                                    senderPhotoUrl: senderPhoto,
+                                    chatId: chat.id,
+                                }, { playSound: false });
+                            })();
                         }
                     }
                 });

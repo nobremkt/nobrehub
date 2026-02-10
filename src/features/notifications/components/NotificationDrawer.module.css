@@ -1,0 +1,269 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - NOTIFICATION POPOVER STYLES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Popover dropdown que aparece abaixo do botão de notificações no header.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * BACKDROP (invisível, só para fechar ao clicar fora)
+ * ───────────────────────────────────────────────────────────────────────────── */
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * POPOVER PANEL
+ * ───────────────────────────────────────────────────────────────────────────── */
+.popover {
+    position: fixed;
+    top: calc(var(--header-height, 48px) + var(--space-2));
+    right: var(--space-4);
+    width: 380px;
+    max-width: calc(100vw - var(--space-8));
+    max-height: 480px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: popoverIn var(--duration-normal) var(--ease-spring) forwards;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ARROW (ponta do popover)
+ * ───────────────────────────────────────────────────────────────────────────── */
+.arrow {
+    position: absolute;
+    top: -6px;
+    right: 14px;
+    width: 12px;
+    height: 12px;
+    background: var(--color-bg-primary);
+    border-left: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
+    transform: rotate(45deg);
+    z-index: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * HEADER
+ * ───────────────────────────────────────────────────────────────────────────── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.headerTitle {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.headerBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: none;
+    color: var(--color-primary-500);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--duration-fast);
+}
+
+.headerBtn:hover {
+    background: rgba(239, 17, 54, 0.08);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * NOTIFICATION LIST
+ * ───────────────────────────────────────────────────────────────────────────── */
+.list {
+    flex: 1;
+    overflow-y: auto;
+
+    /* Custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.list::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * NOTIFICATION ITEM
+ * ───────────────────────────────────────────────────────────────────────────── */
+.item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    transition: background var(--duration-fast);
+    position: relative;
+}
+
+.item:hover {
+    background: var(--color-hover);
+}
+
+.itemUnread {
+    background: rgba(239, 17, 54, 0.04);
+}
+
+.itemUnread::before {
+    content: '';
+    position: absolute;
+    left: var(--space-1-5);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    background: var(--color-primary-500);
+    border-radius: var(--radius-full);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ITEM CONTENT
+ * ───────────────────────────────────────────────────────────────────────────── */
+.itemAvatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+    overflow: hidden;
+}
+
+.itemAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.itemContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.itemTitle {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    line-height: 1.3;
+}
+
+.itemTitleUnread {
+    font-weight: var(--font-weight-semibold);
+}
+
+.itemBody {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 2px;
+}
+
+.itemTime {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * EMPTY STATE
+ * ───────────────────────────────────────────────────────────────────────────── */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-10) var(--space-6);
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+}
+
+.emptyIcon {
+    opacity: 0.25;
+}
+
+.emptyText {
+    font-size: var(--font-size-sm);
+    text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * TYPE ICON COLORS
+ * ───────────────────────────────────────────────────────────────────────────── */
+.iconTeamchat {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.iconLead {
+    background: linear-gradient(135deg, var(--color-success-500), var(--color-success-700));
+}
+
+.iconProject {
+    background: linear-gradient(135deg, var(--color-warning-500), var(--color-warning-700));
+}
+
+.iconGoal {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+}
+
+.iconSystem {
+    background: linear-gradient(135deg, var(--color-neutral-500), var(--color-neutral-700));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * KEYFRAMES
+ * ───────────────────────────────────────────────────────────────────────────── */
+@keyframes popoverIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

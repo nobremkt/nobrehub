@@ -12,15 +12,16 @@ import { ReactNode } from 'react';
 import { Sidebar } from '../Sidebar';
 import { Header } from '../Header';
 import { useUIStore } from '@/stores';
+import { NotificationToast } from '@/features/notifications/components/NotificationToast';
+import { NotificationDrawer } from '@/features/notifications/components/NotificationDrawer';
 import styles from './AppLayout.module.css';
 
 interface AppLayoutProps {
     children: ReactNode;
-    notificationCount?: number;
     fullWidth?: boolean;
 }
 
-export function AppLayout({ children, notificationCount = 0, fullWidth = false }: AppLayoutProps) {
+export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
     const { sidebarCollapsed } = useUIStore();
     const sidebarWidth = sidebarCollapsed ? '72px' : '260px';
 
@@ -32,12 +33,17 @@ export function AppLayout({ children, notificationCount = 0, fullWidth = false }
             <Sidebar />
 
             <div className={styles.main}>
-                <Header notificationCount={notificationCount} />
+                <Header />
 
                 <main className={fullWidth ? styles.contentFullWidth : styles.content}>
                     {children}
                 </main>
             </div>
+
+            {/* Global Notification System */}
+            <NotificationToast />
+            <NotificationDrawer />
         </div>
     );
 }
+

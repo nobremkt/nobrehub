@@ -51,7 +51,7 @@ const DEFAULT_VIDEO_DURATION_POINTS: VideoDurationPoints = {
 };
 
 const DEFAULT_CONFIG: GoalsConfig = {
-    dailyProductionGoal: 100,
+    dailyProductionGoal: 5,
     workdaysPerWeek: 5,
     workdaysPerMonth: 22,
     videoDurationPoints: DEFAULT_VIDEO_DURATION_POINTS,
