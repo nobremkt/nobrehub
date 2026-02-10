@@ -25,7 +25,7 @@ export const ProductionPage = () => {
     }, [hasViewAllPermission, user?.id, setSelectedProducerId]);
 
     return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex h-full overflow-hidden">
             {/* Sidebar só aparece se tiver permissão */}
             {hasViewAllPermission && (
                 <div className="flex flex-col w-64 border-r border-border bg-surface-primary">
@@ -34,8 +34,8 @@ export const ProductionPage = () => {
                         <button
                             onClick={() => setActiveTab('distribution')}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'distribution'
-                                    ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                    : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
+                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
+                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
                                 }`}
                         >
                             <Inbox size={16} />
@@ -44,8 +44,8 @@ export const ProductionPage = () => {
                         <button
                             onClick={() => setActiveTab('board')}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'board'
-                                    ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                    : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
+                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
+                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
                                 }`}
                         >
                             <LayoutGrid size={16} />

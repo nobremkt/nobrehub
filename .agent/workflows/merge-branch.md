@@ -45,7 +45,7 @@ gh pr create --base main --head <NOME_DA_BRANCH> --title "Merge <NOME_DA_BRANCH>
 ### 5. Merge do PR no GitHub
 > Opção A (via CLI):
 ```powershell
-gh pr merge <NUMERO_DO_PR> --merge --delete-branch
+gh pr merge <NUMERO_DO_PR> --merge
 ```
 > Opção B: Clique em "Merge pull request" no GitHub.
 
