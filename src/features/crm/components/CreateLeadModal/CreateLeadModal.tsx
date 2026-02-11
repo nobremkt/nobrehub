@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Save } from 'lucide-react';
 import { Button, Input, PhoneInput, Modal, Dropdown } from '@/design-system';
 import { useKanbanStore } from '../../stores/useKanbanStore';
+import { useAuthStore } from '@/stores';
 import styles from './CreateLeadModal.module.css';
 
 interface CreateLeadModalProps {
@@ -11,7 +12,8 @@ interface CreateLeadModalProps {
 }
 
 export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalProps) {
-    const { addLead } = useKanbanStore();
+    const { addLead, stages } = useKanbanStore();
+    const user = useAuthStore((s) => s.user);
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -20,6 +22,14 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
         company: '',
         pipeline: 'high-ticket',
     });
+
+    /** Get first non-system stage UUID for the selected pipeline */
+    const getFirstStageId = (pipeline: string): string => {
+        const pipelineStages = stages
+            .filter(s => s.pipeline === pipeline && !s.isSystemStage)
+            .sort((a, b) => a.order - b.order);
+        return pipelineStages[0]?.id ?? '';
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,11 +42,11 @@ export function CreateLeadModal({ isOpen, onClose, onSuccess }: CreateLeadModalP
                 email: formData.email || undefined,
                 company: formData.company || undefined,
                 pipeline: formData.pipeline,
-                status: formData.pipeline === 'high-ticket' ? 'ht-novo' : 'lt-entrada',
+                status: getFirstStageId(formData.pipeline),
                 tags: ['Novo'],
                 order: 0,
                 estimatedValue: 0,
-                responsibleId: 'admin',
+                responsibleId: user?.id ?? '',
             } as any);
 
             setFormData({ name: '', phone: '', email: '', company: '', pipeline: 'high-ticket' });
