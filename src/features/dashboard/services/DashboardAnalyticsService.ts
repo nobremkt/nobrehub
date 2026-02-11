@@ -11,8 +11,6 @@ import {
     getDocs,
     query,
     Timestamp,
-    doc,
-    getDoc,
     QuerySnapshot,
     DocumentData
 } from 'firebase/firestore';
@@ -20,6 +18,7 @@ import { COLLECTIONS } from '@/config';
 import { db } from '@/config/firebase';
 import { Lead } from '@/types/lead.types';
 import { HolidaysService } from '@/features/settings/services/holidaysService';
+import { GoalsService, type GoalsConfig } from '@/features/settings/services/goalsService';
 
 const PROJECTS_COLLECTION = COLLECTIONS.PRODUCTION_PROJECTS;
 
@@ -383,39 +382,9 @@ async function getCollaboratorsData(preloaded?: SharedSnapshots): Promise<Collab
     return { nameMap, photoMap, producerCount };
 }
 
-/** Goal configuration interface */
-interface GoalConfig {
-    dailyProductionGoal: number;
-    workdaysPerWeek: number;
-    workdaysPerMonth: number;
-}
-
-/** Fetch goal configuration from Firebase */
-async function getGoalConfig(): Promise<GoalConfig> {
-    const DEFAULT_CONFIG: GoalConfig = {
-        dailyProductionGoal: 100,
-        workdaysPerWeek: 5,
-        workdaysPerMonth: 22
-    };
-
-    try {
-        const docRef = doc(db, 'settings/goals');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            return {
-                dailyProductionGoal: data.dailyProductionGoal ?? DEFAULT_CONFIG.dailyProductionGoal,
-                workdaysPerWeek: data.workdaysPerWeek ?? DEFAULT_CONFIG.workdaysPerWeek,
-                workdaysPerMonth: data.workdaysPerMonth ?? DEFAULT_CONFIG.workdaysPerMonth
-            };
-        }
-
-        return DEFAULT_CONFIG;
-    } catch (error) {
-        console.error('Error fetching goal config:', error);
-        return DEFAULT_CONFIG;
-    }
+/** Fetch goal configuration from centralized GoalsService (single source of truth) */
+async function getGoalConfig(): Promise<GoalsConfig> {
+    return GoalsService.getConfig();
 }
 
 /** 
@@ -466,7 +435,7 @@ async function getWorkdaysInPeriod(startDate: Date, endDate: Date): Promise<numb
  * Now async to fetch holidays and calculate actual workdays
  */
 async function calculateGoalForPeriod(
-    config: GoalConfig,
+    config: GoalsConfig,
     period: DateFilter,
     startDate: Date,
     endDate: Date
@@ -516,8 +485,9 @@ export const DashboardAnalyticsService = {
         });
 
         // Filter by type: exclude alteracoes from main projects count
-        const projects = allProjects.filter(p => p.type !== 'alteracao' && p.status !== 'alteracao');
-        const alteracoes = allProjects.filter(p => p.type === 'alteracao' || p.status === 'alteracao');
+        const isAlteracao = (p: any) => p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
+        const projects = allProjects.filter(p => !isAlteracao(p));
+        const alteracoes = allProjects.filter(p => isAlteracao(p));
 
         // Filter projects by date range
         const projectsInPeriod = projects.filter(p => {
@@ -852,16 +822,16 @@ export const DashboardAnalyticsService = {
                 };
             });
 
-        // Calculate source data from lead origin field
+        // Calculate source data from lead source field
         const sourceMap: Record<string, number> = {};
         leadsInPeriod.forEach(l => {
-            const source = (l as { origin?: string }).origin || 'outros';
+            const source = (l as { source?: string }).source || 'outros';
             sourceMap[source] = (sourceMap[source] || 0) + 1;
         });
         const sourceData = Object.entries(sourceMap)
             .map(([source, count]) => ({ source, count }))
             .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+            .slice(0, 6);
 
         // Calculate performance metrics
         const contactedLeads = leadsInPeriod.filter(l =>
@@ -901,8 +871,10 @@ export const DashboardAnalyticsService = {
             topSellers,
             trendData,
             sourceData: sourceData.length > 0 ? sourceData : [
-                { source: 'instagram', count: 0 },
+                { source: 'landing-page', count: 0 },
+                { source: 'site', count: 0 },
                 { source: 'whatsapp', count: 0 },
+                { source: 'instagram', count: 0 },
                 { source: 'indicacao', count: 0 },
             ],
             performanceMetrics

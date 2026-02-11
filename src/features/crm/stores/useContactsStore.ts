@@ -28,6 +28,7 @@ export interface ContactFilters {
     dataCriacaoFim?: Date;
     dataAtualizacaoInicio?: Date;
     dataAtualizacaoFim?: Date;
+    comNegocioStatus?: 'won' | 'lost' | 'open';
     comDono?: boolean;
     semDono?: boolean;
     comTelefone?: boolean;
@@ -265,6 +266,12 @@ export const useFilteredContacts = () => {
         // Filtro por faixa de valor
         if (typeof filters.valorMin === 'number' && normalizedValue < filters.valorMin) return false;
         if (typeof filters.valorMax === 'number' && normalizedValue > filters.valorMax) return false;
+
+        // Filtro por status do negócio (won/lost/open)
+        if (filters.comNegocioStatus) {
+            const dealStatus = contact.dealStatus || 'open';
+            if (dealStatus !== filters.comNegocioStatus) return false;
+        }
 
         return true;
     });

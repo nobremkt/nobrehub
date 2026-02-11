@@ -46,3 +46,5 @@ export function useGoalProgress(
 
     return { progress, loading, error, refresh: fetch };
 }
+
+

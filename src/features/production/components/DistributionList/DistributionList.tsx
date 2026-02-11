@@ -12,16 +12,18 @@ import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ProductionDistributionService } from '../../services/ProductionDistributionService';
 import { Project } from '@/types/project.types';
-import { Button, Spinner, Dropdown } from '@/design-system';
+import { Button, Spinner } from '@/design-system';
 import {
     Inbox,
     Star,
     Clock,
     MessageSquare,
     Zap,
-    UserCheck,
-    History
+    History,
+    Calendar,
+    AlertTriangle
 } from 'lucide-react';
+import { ProjectDistributionModal } from './ProjectDistributionModal';
 import styles from './DistributionList.module.css';
 
 interface DistributionProject extends Project {
@@ -36,7 +38,9 @@ export const DistributionList = () => {
     const [projects, setProjects] = useState<DistributionProject[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState<string | null>(null);
-    const [selectedProducers, setSelectedProducers] = useState<Record<string, string>>({});
+
+    // Modal state
+    const [selectedProject, setSelectedProject] = useState<DistributionProject | null>(null);
 
     // Encontra o setor de produção
     const productionSectorId = useMemo(() => {
@@ -51,14 +55,6 @@ export const DistributionList = () => {
         if (!productionSectorId) return [];
         return collaborators.filter(c => c.sectorId === productionSectorId && c.active);
     }, [collaborators, productionSectorId]);
-
-    // Opções do dropdown
-    const producerOptions = useMemo(() => {
-        return producers.map(p => ({
-            value: p.id,
-            label: p.name
-        }));
-    }, [producers]);
 
     // Carrega dados iniciais
     useEffect(() => {
@@ -76,11 +72,9 @@ export const DistributionList = () => {
         return () => unsubscribe();
     }, []);
 
-    // Handler para atribuir manualmente
-    const handleAssign = async (projectId: string) => {
-        const producerId = selectedProducers[projectId];
-        if (!producerId || !user?.id) return;
-
+    // Handler para atribuir manualmente (via modal)
+    const handleAssign = async (projectId: string, producerId: string) => {
+        if (!user?.id) return;
         const producer = producers.find(p => p.id === producerId);
         if (!producer) return;
 
@@ -92,12 +86,6 @@ export const DistributionList = () => {
                 producer.name,
                 user.id
             );
-            // Remove da seleção local
-            setSelectedProducers(prev => {
-                const next = { ...prev };
-                delete next[projectId];
-                return next;
-            });
         } catch (error) {
             console.error('Error assigning project:', error);
         } finally {
@@ -122,6 +110,20 @@ export const DistributionList = () => {
         } finally {
             setIsAssigning(null);
         }
+    };
+
+    // Verifica se projeto está atrasado
+    const isOverdue = (project: DistributionProject) => {
+        if (!project.dueDate) return false;
+        const due = project.dueDate instanceof Date ? project.dueDate : new Date(project.dueDate);
+        return due < new Date();
+    };
+
+    // Formata prazo
+    const formatDueDate = (date?: Date) => {
+        if (!date) return null;
+        const d = date instanceof Date ? date : new Date(date);
+        return d.toLocaleDateString('pt-BR');
     };
 
     // Encontra nome do produtor sugerido
@@ -180,7 +182,8 @@ export const DistributionList = () => {
                     projects.map(project => (
                         <div
                             key={project.id}
-                            className={`${styles.projectCard} ${project.isHighlighted ? styles.highlighted : ''}`}
+                            className={`${styles.projectCard} ${project.isHighlighted ? styles.highlighted : ''} ${isOverdue(project) ? styles.overdue : ''}`}
+                            onClick={() => setSelectedProject(project)}
                         >
                             {/* Suggestion Badge */}
                             {project.suggestedProducerId && (
@@ -200,6 +203,15 @@ export const DistributionList = () => {
                                     {project.totalPoints || project.basePoints || 1} pts
                                 </div>
                             </div>
+
+                            {/* Due Date */}
+                            {project.dueDate && (
+                                <div className={`${styles.infoRow} ${isOverdue(project) ? styles.overdueLine : ''}`}>
+                                    {isOverdue(project) ? <AlertTriangle size={12} /> : <Calendar size={12} />}
+                                    Prazo: {formatDueDate(project.dueDate)}
+                                    {isOverdue(project) && ' — Atrasado!'}
+                                </div>
+                            )}
 
                             {/* Info Rows */}
                             {project.productType && (
@@ -225,34 +237,21 @@ export const DistributionList = () => {
                                     {project.suggestionNotes}
                                 </div>
                             )}
-
-                            {/* Card Actions */}
-                            <div className={styles.cardActions}>
-                                <div className={styles.producerSelect}>
-                                    <Dropdown
-                                        options={producerOptions}
-                                        value={selectedProducers[project.id] || ''}
-                                        onChange={(value) => setSelectedProducers(prev => ({
-                                            ...prev,
-                                            [project.id]: String(value)
-                                        }))}
-                                        placeholder="Selecionar produtor..."
-                                    />
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handleAssign(project.id)}
-                                    disabled={!selectedProducers[project.id] || isAssigning === project.id}
-                                    leftIcon={<UserCheck size={14} />}
-                                >
-                                    {isAssigning === project.id ? '...' : 'Atribuir'}
-                                </Button>
-                            </div>
                         </div>
                     ))
                 )}
             </div>
+
+            {/* Assignment Modal */}
+            <ProjectDistributionModal
+                project={selectedProject}
+                isOpen={!!selectedProject}
+                onClose={() => setSelectedProject(null)}
+                producers={producers}
+                collaborators={collaborators}
+                onAssign={handleAssign}
+                isAssigning={isAssigning === selectedProject?.id}
+            />
         </div>
     );
 };

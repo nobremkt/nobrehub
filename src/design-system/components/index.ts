@@ -71,3 +71,24 @@ export type { PersonCardProps } from './PersonCard';
 
 export { LazyImage } from './LazyImage';
 export type { LazyImageProps } from './LazyImage';
+
+// Navigation
+export { Tabs } from './Tabs';
+export type { TabsProps, TabItem } from './Tabs';
+
+// Feedback
+export { ProgressBar } from './ProgressBar';
+export type { ProgressBarProps } from './ProgressBar';
+
+export { EmptyState } from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';
+
+export { Skeleton } from './Skeleton';
+export type { SkeletonProps } from './Skeleton';
+
+export { Tooltip } from './Tooltip';
+export type { TooltipProps } from './Tooltip';
+
+// Form Elements
+export { Textarea } from './Textarea';
+export type { TextareaProps } from './Textarea';

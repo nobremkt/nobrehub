@@ -1,30 +1,31 @@
-import { getFirestoreDb } from '@/config/firebase';
-import {
-    collection,
-    doc,
-    getDocs,
-    deleteDoc,
-    query,
-    orderBy,
-    addDoc,
-    updateDoc
-} from 'firebase/firestore';
-import { Product } from '../types';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - PRODUCT SERVICE (Supabase)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
 
-const COLLECTION_NAME = 'products';
+import { supabase } from '@/config/supabase';
+import { Product } from '../types';
 
 export const ProductService = {
     /**
      * Lista todos os produtos
      */
     getProducts: async (): Promise<Product[]> => {
-        const db = getFirestoreDb();
-        const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
+        if (error) throw error;
+
+        return (data ?? []).map(row => ({
+            id: row.id,
+            name: row.name,
+            basePoints: row.base_points ?? 0,
+            active: row.active ?? true,
+            createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+            updatedAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
         })) as Product[];
     },
 
@@ -32,33 +33,47 @@ export const ProductService = {
      * Cria um novo produto
      */
     createProduct: async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-        const db = getFirestoreDb();
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-            ...product,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-        });
-        return docRef.id;
+        const { data, error } = await supabase
+            .from('products')
+            .insert({
+                name: product.name,
+                base_points: product.basePoints ?? product.points ?? 0,
+                active: product.active ?? true,
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return data.id;
     },
 
     /**
      * Atualiza um produto existente
      */
     updateProduct: async (id: string, updates: Partial<Omit<Product, 'id' | 'createdAt'>>): Promise<void> => {
-        const db = getFirestoreDb();
-        const docRef = doc(db, COLLECTION_NAME, id);
-        await updateDoc(docRef, {
-            ...updates,
-            updatedAt: Date.now()
-        });
+        const dbUpdates: Record<string, unknown> = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.active !== undefined) dbUpdates.active = updates.active;
+        if (updates.basePoints !== undefined) dbUpdates.base_points = updates.basePoints;
+        if ((updates as any).points !== undefined) dbUpdates.base_points = (updates as any).points;
+
+        const { error } = await supabase
+            .from('products')
+            .update(dbUpdates)
+            .eq('id', id);
+
+        if (error) throw error;
     },
 
     /**
      * Remove (ou arquiva) um produto
      */
     deleteProduct: async (id: string): Promise<void> => {
-        const db = getFirestoreDb();
-        const docRef = doc(db, COLLECTION_NAME, id);
-        await deleteDoc(docRef);
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 };

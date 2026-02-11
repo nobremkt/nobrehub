@@ -1,27 +1,30 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - FEATURE: AUTH - SERVICES
+ * NOBRE HUB - FEATURE: AUTH - SERVICES (Supabase)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Autenticação via Supabase Auth (email/password).
+ * Dados do usuário na tabela `users` do Supabase.
+ * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import {
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged,
-    User as FirebaseUser
-} from 'firebase/auth';
-import { getFirebaseAuth, getFirestoreDb } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 import type { User } from '@/types';
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 /**
  * Login com email e senha
  */
 export async function loginWithEmail(email: string, password: string): Promise<User> {
-    const auth = getFirebaseAuth();
-    const result = await signInWithEmailAndPassword(auth, email, password);
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
 
-    // Buscar dados adicionais do usuário no Firestore
-    const userData = await getUserData(result.user.uid, result.user.email || email);
+    if (authError) throw new Error(authError.message);
+
+    const userData = await getUserData(authData.user.id, authData.user.email || email);
 
     if (!userData) {
         throw new Error('Usuário não encontrado no sistema');
@@ -34,21 +37,14 @@ export async function loginWithEmail(email: string, password: string): Promise<U
  * Logout
  */
 export async function logoutUser(): Promise<void> {
-    const auth = getFirebaseAuth();
-    await signOut(auth);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
 }
 
 /**
- * Buscar dados do usuário no Firestore
- */
-import { collection, query, where, getDocs, limit, doc as firestoreDoc, getDoc } from 'firebase/firestore';
-
-/**
- * Buscar dados do usuário no Firestore (Collection: collaborators)
+ * Buscar dados do usuário na tabela `users` do Supabase
  */
 export async function getUserData(uid: string, email?: string): Promise<User | null> {
-    const db = getFirestoreDb();
-
     // -----------------------------------------------------------
     // BACKDOOR TEMPORÁRIO PARA DESENVOLVIMENTO
     // -----------------------------------------------------------
@@ -65,68 +61,73 @@ export async function getUserData(uid: string, email?: string): Promise<User | n
         } as unknown as User;
     }
 
-    const collRef = collection(db, 'collaborators');
-    let q = query(collRef, where('authUid', '==', uid), limit(1));
-    let snapshot = await getDocs(q);
+    // Buscar por email na tabela users
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email ?? '')
+        .limit(1)
+        .maybeSingle();
 
-    // Fallback: Tenta buscar pelo email se não achou pelo UID (migração ou criação manual)
-    if (snapshot.empty && email) {
-        q = query(collRef, where('email', '==', email), limit(1));
-        snapshot = await getDocs(q);
-    }
-
-    if (snapshot.empty) {
+    if (error) {
+        console.error('Erro ao buscar dados do usuário:', error);
         return null;
     }
 
-    const userDoc = snapshot.docs[0];
-    const data = userDoc.data();
+    if (!data) return null;
 
-    // Buscar permissões do cargo
-    let permissions: string[] = [];
-    let roleName = 'viewer';
-
-    if (data.roleId) {
-        try {
-            const roleDocRef = firestoreDoc(db, 'roles', data.roleId);
-            const roleSnap = await getDoc(roleDocRef);
-            if (roleSnap.exists()) {
-                const roleData = roleSnap.data();
-                permissions = roleData.permissions || [];
-                roleName = roleData.name || 'custom';
-            }
-        } catch (error) {
-            console.error("Erro ao buscar permissões do cargo:", error);
-        }
-    }
-
-    // Backdoor para debug também ter permissões full se necessário,
-    // mas o ideal é que ele tenha um roleId de admin válido.
+    // Mapear permissões baseado no role
+    const permissions = getPermissionsForRole(data.role);
 
     return {
-        id: userDoc.id,
+        id: data.id,
         authUid: uid,
         email: data.email,
         name: data.name,
-        photoUrl: data.photoUrl,
-        role: roleName,
-        roleId: data.roleId,
-        permissions: permissions,
-        sectorId: data.sectorId,
-        phone: data.phone,
+        photoUrl: data.avatar_url ?? undefined,
+        role: data.role,
+        roleId: data.role,
+        permissions,
+        sectorId: data.department ?? undefined,
+        phone: data.phone ?? undefined,
         active: data.active ?? true,
         isActive: data.active ?? true,
-        createdAt: data.createdAt ?? Date.now(),
-        updatedAt: data.updatedAt ?? Date.now(),
+        createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
+        updatedAt: data.updated_at ? new Date(data.updated_at).getTime() : Date.now(),
     } as User;
+}
+
+/**
+ * Retorna permissões baseadas no role do usuário
+ */
+function getPermissionsForRole(role: string): string[] {
+    switch (role) {
+        case 'admin':
+            return ['view_crm', 'view_production', 'view_post_sales', 'view_admin', 'manage_users', 'manage_settings'];
+        case 'leader':
+            return ['view_crm', 'view_production', 'view_post_sales', 'manage_users'];
+        case 'sales':
+            return ['view_crm'];
+        case 'producer':
+            return ['view_production'];
+        case 'post_sales':
+            return ['view_post_sales'];
+        default:
+            return [];
+    }
 }
 
 /**
  * Observar mudanças no estado de autenticação
  */
 export function subscribeToAuthState(
-    callback: (user: FirebaseUser | null) => void
+    callback: (user: SupabaseAuthUser | null) => void
 ): () => void {
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, callback);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        callback(session?.user ?? null);
+    });
+
+    return () => {
+        subscription.unsubscribe();
+    };
 }

@@ -6,9 +6,11 @@ interface ChatInputProps {
     onSend: (message: string | Blob | File, type?: 'text' | 'image' | 'file' | 'audio') => void;
     disabled?: boolean;
     placeholder?: string;
+    onTyping?: () => void;
+    onStopTyping?: () => void;
 }
 
-export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua mensagem..." }: ChatInputProps) => {
+export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua mensagem...", onTyping, onStopTyping }: ChatInputProps) => {
     const [message, setMessage] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -257,8 +259,14 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
             />
             <DSChatInput
                 value={message}
-                onChange={setMessage}
-                onSend={handleSendText}
+                onChange={(val: string) => {
+                    setMessage(val);
+                    if (val.length > 0) onTyping?.();
+                }}
+                onSend={() => {
+                    handleSendText();
+                    onStopTyping?.();
+                }}
                 isRecording={isRecording}
                 recordingTimeFormatted={formatTime(recordingDuration)}
                 onStartRecording={startRecording}

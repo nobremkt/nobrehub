@@ -1,0 +1,33 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * SKELETON COMPONENT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─── Text wrapper ─────────────────────────────────────────────────────────── */
+.textWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    width: 100%;
+}
+
+/* ─── Shimmer effect ───────────────────────────────────────────────────────── */
+.shimmer {
+    background: linear-gradient(90deg,
+            var(--color-bg-tertiary) 0%,
+            var(--color-border) 50%,
+            var(--color-bg-tertiary) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s var(--ease-in-out) infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}

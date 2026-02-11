@@ -10,11 +10,35 @@ if (!admin.apps.length) {
 
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DATABASE_URL,
     });
 }
 
-const db = admin.database();
+const firestore = admin.firestore();
+
+// ═══════════════════════════════════════════════════════════════
+// Source & Tag Configuration
+// ═══════════════════════════════════════════════════════════════
+
+/** Official lead sources — validated enum */
+const VALID_SOURCES = ['whatsapp', 'landing-page', 'instagram', 'indicacao', 'site', 'manual'];
+
+/** Map formOrigin → auto-generated tags */
+const FORM_ORIGIN_TAGS = {
+    'lp-social-media': 'LP-Social-Media',
+    'captacao-social-media': 'LP-Captação',
+    'lp-proposta': 'LP-Proposta',
+    'site-contato': 'Site',
+    'site-institucional': 'Site',
+};
+
+/** Map formOrigin → source (fallback when source is not explicitly sent) */
+const FORM_ORIGIN_SOURCE = {
+    'lp-social-media': 'landing-page',
+    'captacao-social-media': 'landing-page',
+    'lp-proposta': 'landing-page',
+    'site-contato': 'site',
+    'site-institucional': 'site',
+};
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -51,14 +75,6 @@ export default async function handler(req, res) {
         // Extract and normalize fields from different form formats
         const leadData = normalizeLeadData(data);
         console.log('NORMALIZED leadData:', JSON.stringify(leadData, null, 2));
-        console.log('CustomFields going to save:', {
-            instagram: leadData.instagram,
-            segment: leadData.segment,
-            teamSize: leadData.teamSize,
-            revenue: leadData.revenue,
-            formOrigin: leadData.formOrigin,
-            source: leadData.source
-        });
 
         if (!leadData.name && !leadData.phone && !leadData.email) {
             return res.status(400).json({
@@ -67,59 +83,62 @@ export default async function handler(req, res) {
             });
         }
 
-        // Check if lead already exists (by phone or email)
+        // ═══════════════════════════════════════════════════════════════
+        // Check for existing conversation in Firestore
+        // ═══════════════════════════════════════════════════════════════
+
         let existingConversationId = null;
 
         if (leadData.phone) {
             const phoneNormalized = leadData.phone.replace(/\D/g, '');
-            const existingByPhone = await db.ref('conversations')
-                .orderByChild('leadPhone')
-                .equalTo(phoneNormalized)
-                .once('value');
+            const existingQuery = await firestore
+                .collection('conversations')
+                .where('leadPhone', '==', phoneNormalized)
+                .limit(1)
+                .get();
 
-            if (existingByPhone.exists()) {
-                const convs = existingByPhone.val();
-                existingConversationId = Object.keys(convs)[0];
+            if (!existingQuery.empty) {
+                existingConversationId = existingQuery.docs[0].id;
             }
         }
 
-        const timestamp = Date.now();
+        const now = admin.firestore.Timestamp.now();
 
         if (existingConversationId) {
-            // Update existing conversation
-            const conversationRef = db.ref(`conversations/${existingConversationId}`);
+            // ═══════════════════════════════════════════════════════════
+            // UPDATE existing conversation
+            // ═══════════════════════════════════════════════════════════
+
+            const conversationRef = firestore.collection('conversations').doc(existingConversationId);
 
             // Add a system message about the new form submission
-            const messagesRef = db.ref(`messages/${existingConversationId}`);
-            const newMsgRef = messagesRef.push();
-
             const systemMessage = {
-                id: newMsgRef.key,
                 content: formatFormSubmissionMessage(leadData),
                 senderId: 'system',
                 direction: 'in',
-                timestamp: timestamp,
+                timestamp: now,
                 status: 'received',
                 type: 'text',
                 isSystemMessage: true
             };
 
-            await newMsgRef.set(systemMessage);
+            await conversationRef.collection('messages').add(systemMessage);
 
             // Update conversation
+            const convSnap = await conversationRef.get();
+            const existingTags = convSnap.data()?.tags || [];
+
+            // Merge tags
+            const mergedTags = [...new Set([...existingTags, ...(leadData.tags || [])])];
+
             await conversationRef.update({
                 lastMessage: systemMessage,
-                unreadCount: admin.database.ServerValue.increment(1),
-                updatedAt: timestamp,
-                // Update any new info
+                unreadCount: admin.firestore.FieldValue.increment(1),
+                updatedAt: now,
+                tags: mergedTags,
                 ...(leadData.company && { leadCompany: leadData.company }),
                 ...(leadData.email && { leadEmail: leadData.email }),
-                // Add new tags
-                tags: admin.database.ServerValue.increment(0) // We'll handle tags separately
             });
-
-            // Add form-specific tags
-            await addTagsToConversation(existingConversationId, leadData.tags);
 
             console.log(`Updated existing conversation ${existingConversationId}`);
 
@@ -131,34 +150,26 @@ export default async function handler(req, res) {
             });
 
         } else {
-            const firestore = admin.firestore();
+            // ═══════════════════════════════════════════════════════════
+            // CREATE new conversation in Firestore
+            // ═══════════════════════════════════════════════════════════
 
-            // Create new conversation (Realtime DB)
-            const conversationsRef = db.ref('conversations');
-            const newConvRef = conversationsRef.push();
-            const conversationId = newConvRef.key;
+            const leadId = `form_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
             // Create initial system message
-            const messagesRef = db.ref(`messages/${conversationId}`);
-            const newMsgRef = messagesRef.push();
-
             const initialMessage = {
-                id: newMsgRef.key,
                 content: formatFormSubmissionMessage(leadData),
                 senderId: 'system',
                 direction: 'in',
-                timestamp: timestamp,
+                timestamp: now,
                 status: 'received',
                 type: 'text',
                 isSystemMessage: true
             };
 
-            await newMsgRef.set(initialMessage);
-
             // Create conversation
             const conversationData = {
-                // ... fields
-                leadId: `form_${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
+                leadId: leadId,
                 leadName: leadData.name || 'Lead sem nome',
                 leadPhone: leadData.phone?.replace(/\D/g, '') || '',
                 leadEmail: leadData.email || '',
@@ -168,7 +179,8 @@ export default async function handler(req, res) {
                 unreadCount: 1,
                 channel: 'form',
                 status: 'open',
-                source: leadData.source || 'website',
+                context: 'sales',
+                source: leadData.source,
                 customFields: {
                     teamSize: leadData.teamSize || null,
                     revenue: leadData.revenue || null,
@@ -176,22 +188,27 @@ export default async function handler(req, res) {
                     formOrigin: leadData.formOrigin || 'unknown'
                 },
                 lastMessage: initialMessage,
-                createdAt: timestamp,
-                updatedAt: timestamp,
+                createdAt: now,
+                updatedAt: now,
             };
 
-            await newConvRef.set(conversationData);
+            const convRef = await firestore.collection('conversations').add(conversationData);
+            const conversationId = convRef.id;
 
+            // Add the initial message to subcollection
+            await convRef.collection('messages').add(initialMessage);
+
+            // ═══════════════════════════════════════════════════════════
             // Create Lead in Firestore (CRM)
+            // ═══════════════════════════════════════════════════════════
+
             try {
-                const now = new Date();
                 const cleanPhone = conversationData.leadPhone;
 
-                // Only create if we have at least a name
                 if (conversationData.leadName) {
                     const leadsRef = firestore.collection('leads');
 
-                    // Check duplicate by phone if exists
+                    // Check duplicate by phone
                     let existingLeadId = null;
                     if (cleanPhone) {
                         const q = await leadsRef.where('phone', '==', cleanPhone).get();
@@ -200,27 +217,28 @@ export default async function handler(req, res) {
                         }
                     }
 
+                    const crmCustomFields = {
+                        instagram: leadData.instagram || null,
+                        segment: leadData.segment || null,
+                        teamSize: leadData.teamSize || null,
+                        revenue: leadData.revenue || null,
+                        challenge: leadData.challenge || null,
+                        formOrigin: leadData.formOrigin || 'unknown',
+                    };
+
                     if (existingLeadId) {
-                        // UPDATE existing lead with new customFields
+                        // UPDATE existing lead
                         await leadsRef.doc(existingLeadId).update({
                             company: conversationData.leadCompany || undefined,
                             email: conversationData.leadEmail || undefined,
-                            customFields: {
-                                instagram: leadData.instagram || null,
-                                segment: leadData.segment || null,
-                                teamSize: leadData.teamSize || null,
-                                revenue: leadData.revenue || null,
-                                challenge: leadData.challenge || null,
-                                formOrigin: leadData.formOrigin || 'website',
-                                utmSource: leadData.source || null
-                            },
+                            source: leadData.source,
+                            customFields: crmCustomFields,
                             updatedAt: now,
                         });
                         console.log(`Updated existing CRM lead: ${existingLeadId}`);
                     } else {
-                        // CREATE new lead with SAME ID as conversation leadId
-                        // This ensures RTDB and Firestore are synchronized
-                        await leadsRef.doc(conversationData.leadId).set({
+                        // CREATE new lead
+                        await leadsRef.doc(leadId).set({
                             name: conversationData.leadName,
                             phone: conversationData.leadPhone,
                             email: conversationData.leadEmail,
@@ -231,20 +249,12 @@ export default async function handler(req, res) {
                             estimatedValue: 0,
                             tags: conversationData.tags,
                             responsibleId: 'admin',
-                            source: leadData.source || 'form',
-                            customFields: {
-                                instagram: leadData.instagram || null,
-                                segment: leadData.segment || null,
-                                teamSize: leadData.teamSize || null,
-                                revenue: leadData.revenue || null,
-                                challenge: leadData.challenge || null,
-                                formOrigin: leadData.formOrigin || 'website',
-                                utmSource: leadData.source || null
-                            },
+                            source: leadData.source,
+                            customFields: crmCustomFields,
                             createdAt: now,
                             updatedAt: now,
                         });
-                        console.log(`Created new CRM lead with ID: ${conversationData.leadId}`);
+                        console.log(`Created new CRM lead with ID: ${leadId}`);
                     }
                 }
             } catch (err) {
@@ -279,7 +289,6 @@ export default async function handler(req, res) {
  * Normalize lead data from different form formats
  */
 function normalizeLeadData(data) {
-    // Map common field variations to standard names
     const fieldMappings = {
         name: ['name', 'nome', 'seu_nome', 'seuNome', 'fullName', 'full_name'],
         email: ['email', 'e-mail', 'emailCorporativo', 'email_corporativo', 'corporateEmail'],
@@ -305,20 +314,22 @@ function normalizeLeadData(data) {
         }
     }
 
-    // Determine tags based on form origin or source
-    normalized.tags = ['Novo', 'Formulário'];
+    // ── Resolve source (explicit > derived from formOrigin > fallback) ──
+    const formOrigin = (normalized.formOrigin || '').toLowerCase();
 
-    const origin = (data.formOrigin || data.form_origin || data.source || '').toLowerCase();
-
-    if (origin.includes('proposta') || origin.includes('proposal')) {
-        normalized.tags.push('LP-Proposta');
-    } else if (origin.includes('social') || origin.includes('instagram')) {
-        normalized.tags.push('LP-Social-Media');
-    } else if (origin.includes('site') || origin.includes('contato')) {
-        normalized.tags.push('Site');
+    if (!normalized.source || !VALID_SOURCES.includes(normalized.source)) {
+        normalized.source = FORM_ORIGIN_SOURCE[formOrigin] || 'manual';
     }
 
-    // Check for qualification level
+    // ── Tags via lookup table ──
+    normalized.tags = ['Novo', 'Formulário'];
+
+    const formTag = FORM_ORIGIN_TAGS[formOrigin];
+    if (formTag) {
+        normalized.tags.push(formTag);
+    }
+
+    // Qualification tag
     if (normalized.revenue || normalized.teamSize) {
         normalized.tags.push('Qualificado');
     }
@@ -351,22 +362,6 @@ function formatFormSubmissionMessage(data) {
     }
 
     return lines.join('\n');
-}
-
-/**
- * Add tags to an existing conversation
- */
-async function addTagsToConversation(conversationId, newTags) {
-    if (!newTags || newTags.length === 0) return;
-
-    const conversationRef = db.ref(`conversations/${conversationId}`);
-    const snapshot = await conversationRef.child('tags').once('value');
-    const existingTags = snapshot.val() || [];
-
-    // Merge tags, avoiding duplicates
-    const mergedTags = [...new Set([...existingTags, ...newTags])];
-
-    await conversationRef.update({ tags: mergedTags });
 }
 
 /**

@@ -2,21 +2,18 @@ import admin from 'firebase-admin';
 
 // Initialize Firebase Admin (only once)
 if (!admin.apps.length) {
-    // For Vercel, we use environment variables
     const serviceAccount = {
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // The private key needs to handle escaped newlines
         privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     };
 
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DATABASE_URL,
     });
 }
 
-const db = admin.database();
+const firestore = admin.firestore();
 
 export default async function handler(req, res) {
     // Handle webhook verification (GET request from 360Dialog/Meta)
@@ -25,7 +22,6 @@ export default async function handler(req, res) {
         const token = req.query['hub.verify_token'];
         const challenge = req.query['hub.challenge'];
 
-        // You should set WEBHOOK_VERIFY_TOKEN in your environment variables
         const verifyToken = process.env.WEBHOOK_VERIFY_TOKEN || 'nobrehub_verify_token';
 
         if (mode === 'subscribe' && token === verifyToken) {
@@ -44,7 +40,6 @@ export default async function handler(req, res) {
         console.log('Webhook received:', JSON.stringify(body, null, 2));
 
         try {
-            // 360Dialog/WhatsApp Cloud API webhook structure
             const entry = body.entry?.[0];
             const changes = entry?.changes?.[0];
             const value = changes?.value;
@@ -74,9 +69,9 @@ export default async function handler(req, res) {
 }
 
 async function processIncomingMessage(message, contact) {
-    const phoneNumber = message.from; // e.g., "5535998231509"
+    const phoneNumber = message.from;
     const messageId = message.id;
-    const timestamp = parseInt(message.timestamp) * 1000; // Convert to milliseconds
+    const timestamp = parseInt(message.timestamp) * 1000;
     const messageType = message.type;
 
     // Get message content based on type
@@ -103,99 +98,98 @@ async function processIncomingMessage(message, contact) {
 
     console.log(`Processing message from ${phoneNumber}: ${content}`);
 
-    // Find or create conversation
-    const conversationsRef = db.ref('conversations');
-    const snapshot = await conversationsRef
-        .orderByChild('leadPhone')
-        .equalTo(phoneNumber)
-        .once('value');
+    // ═══════════════════════════════════════════════════════════════════════
+    // Find or create conversation in Firestore
+    // ═══════════════════════════════════════════════════════════════════════
 
-    const firestore = admin.firestore();
+    const conversationsRef = firestore.collection('conversations');
+    const convQuery = await conversationsRef
+        .where('leadPhone', '==', phoneNumber)
+        .limit(1)
+        .get();
 
     let conversationId;
-    let existingConversation = null;
+    let existingUnreadCount = 0;
 
-    if (snapshot.exists()) {
-        // Conversation exists, get the first match
-        const conversations = snapshot.val();
-        conversationId = Object.keys(conversations)[0];
-        existingConversation = conversations[conversationId];
+    if (!convQuery.empty) {
+        // Conversation exists
+        const convDoc = convQuery.docs[0];
+        conversationId = convDoc.id;
+        existingUnreadCount = convDoc.data().unreadCount || 0;
     } else {
-        // Create new conversation
-        const newConvRef = conversationsRef.push();
-        conversationId = newConvRef.key;
+        // Create new conversation + lead
+        const now = admin.firestore.Timestamp.fromMillis(timestamp);
+        const leadId = `whatsapp_${phoneNumber}`;
 
-        const now = new Date();
-        const leadData = {
-            name: contactName,
-            phone: phoneNumber,
-            email: '',
-            company: '',
-            pipeline: 'pos-venda', // WhatsApp -> Low Ticket
-            status: 'lt-entrada',
-            order: 0,
-            estimatedValue: 0,
+        // 1. Create conversation in Firestore
+        const newConvRef = await conversationsRef.add({
+            leadId: leadId,
+            leadName: contactName,
+            leadPhone: phoneNumber,
+            leadEmail: '',
+            leadCompany: '',
             tags: ['Novo', 'WhatsApp'],
-            responsibleId: 'admin',
-            source: 'whatsapp',
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        // 1. Create in Realtime DB (Inbox)
-        await newConvRef.set({
-            leadId: `whatsapp_${phoneNumber}`,
-            leadName: leadData.name,
-            leadPhone: leadData.phone,
-            leadEmail: leadData.email,
-            leadCompany: leadData.company,
-            tags: leadData.tags,
             notes: '',
             unreadCount: 1,
             channel: 'whatsapp',
             status: 'open',
-            createdAt: timestamp,
-            updatedAt: timestamp,
+            context: 'sales',
+            lastMessage: null,
+            createdAt: now,
+            updatedAt: now,
         });
 
-        // 2. Create in Firestore (CRM)
-        // Check if lead exists in Firestore first (by phone) to be safe
+        conversationId = newConvRef.id;
+
+        // 2. Create lead in Firestore (CRM) if not exists
         const leadsRef = firestore.collection('leads');
         const leadQuery = await leadsRef.where('phone', '==', phoneNumber).get();
 
         if (leadQuery.empty) {
-            // Use the SAME leadId as the RTDB conversation
-            const leadId = `whatsapp_${phoneNumber}`;
-            await leadsRef.doc(leadId).set(leadData);
+            await leadsRef.doc(leadId).set({
+                name: contactName,
+                phone: phoneNumber,
+                email: '',
+                company: '',
+                pipeline: 'pos-venda',
+                status: 'lt-entrada',
+                order: 0,
+                estimatedValue: 0,
+                tags: ['Novo', 'WhatsApp'],
+                responsibleId: 'admin',
+                source: 'whatsapp',
+                createdAt: now,
+                updatedAt: now,
+            });
             console.log(`Created new CRM lead with ID: ${leadId}`);
         }
     }
 
-    // Create the message
-    const messagesRef = db.ref(`messages/${conversationId}`);
-    const newMsgRef = messagesRef.push();
+    // ═══════════════════════════════════════════════════════════════════════
+    // Create message in subcollection
+    // ═══════════════════════════════════════════════════════════════════════
 
     const messageData = {
-        id: newMsgRef.key,
         whatsappMessageId: messageId,
         content: content,
         senderId: 'lead',
         direction: 'in',
-        timestamp: timestamp,
+        timestamp: admin.firestore.Timestamp.fromMillis(timestamp),
         status: 'received',
         type: messageType,
     };
 
-    await newMsgRef.set(messageData);
+    await firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .add(messageData);
 
     // Update conversation with last message and increment unread count
-    const conversationRef = db.ref(`conversations/${conversationId}`);
-    const currentUnread = existingConversation?.unreadCount || 0;
-
-    await conversationRef.update({
+    await firestore.collection('conversations').doc(conversationId).update({
         lastMessage: messageData,
-        unreadCount: currentUnread + 1,
-        updatedAt: timestamp,
+        unreadCount: existingUnreadCount + 1,
+        updatedAt: admin.firestore.Timestamp.fromMillis(timestamp),
         // Update name if we got it from profile
         ...(contactName !== phoneNumber && { leadName: contactName }),
     });
@@ -204,28 +198,22 @@ async function processIncomingMessage(message, contact) {
 }
 
 async function processStatusUpdate(status) {
-    const messageId = status.id;
+    const whatsappMsgId = status.id;
     const statusType = status.status; // sent, delivered, read, failed
 
-    console.log(`Status update for message ${messageId}: ${statusType}`);
+    console.log(`Status update for message ${whatsappMsgId}: ${statusType}`);
 
-    // Find the message by whatsappMessageId and update its status
-    // This is a simplified approach - in production you'd want an index
-    const messagesRef = db.ref('messages');
-    const snapshot = await messagesRef.once('value');
+    // Query across all conversations' messages subcollections for the whatsappMessageId
+    // Using collectionGroup query for efficiency
+    const msgQuery = await firestore
+        .collectionGroup('messages')
+        .where('whatsappMessageId', '==', whatsappMsgId)
+        .limit(1)
+        .get();
 
-    if (snapshot.exists()) {
-        const allConversations = snapshot.val();
-
-        for (const convId in allConversations) {
-            const messages = allConversations[convId];
-            for (const msgId in messages) {
-                if (messages[msgId].whatsappMessageId === messageId) {
-                    await db.ref(`messages/${convId}/${msgId}/status`).set(statusType);
-                    console.log(`Updated message ${msgId} status to ${statusType}`);
-                    return;
-                }
-            }
-        }
+    if (!msgQuery.empty) {
+        const msgDoc = msgQuery.docs[0];
+        await msgDoc.ref.update({ status: statusType });
+        console.log(`Updated message ${msgDoc.id} status to ${statusType}`);
     }
 }

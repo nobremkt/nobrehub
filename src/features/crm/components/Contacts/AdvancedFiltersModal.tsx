@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { useContactsStore } from '../../stores/useContactsStore';
-import { Modal, Button, Checkbox } from '@/design-system';
+import { Modal, Button, Checkbox, Dropdown } from '@/design-system';
 import styles from './AdvancedFiltersModal.module.css';
 
 interface AdvancedFiltersModalProps {
@@ -63,6 +63,13 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
             : [...current, temperature];
         setFilter('temperatures', next);
     };
+
+    const statusOptions = [
+        { label: 'Todos os status', value: '' },
+        { label: 'Aberto', value: 'open' },
+        { label: 'Ganho', value: 'won' },
+        { label: 'Perdido', value: 'lost' },
+    ];
 
     const parseNumber = (value: string): number | undefined => {
         if (!value.trim()) return undefined;
@@ -180,6 +187,20 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
                             checked={filters.temperatures.includes('cold')}
                             onChange={() => toggleTemperature('cold')}
                             label="Frio"
+                        />
+                    </div>
+                </div>
+
+                {/* Negócio */}
+                <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Negócio</h3>
+                    <div className={styles.filterRow}>
+                        <label>Status do negócio</label>
+                        <Dropdown
+                            options={statusOptions}
+                            value={filters.comNegocioStatus || ''}
+                            onChange={(value) => setFilter('comNegocioStatus', (value as 'won' | 'lost' | 'open') || undefined)}
+                            placeholder="Todos os status"
                         />
                     </div>
                 </div>

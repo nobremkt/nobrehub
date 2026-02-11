@@ -9,6 +9,7 @@
 
 import { collection, getDocs, getFirestore, query, where } from 'firebase/firestore';
 import { GoalsService, type GoalsConfig, type SalesGoals, type PostSalesGoals, type StrategicGoals } from './goalsService';
+import { HolidaysService } from './holidaysService';
 
 const getDb = () => getFirestore();
 
@@ -32,7 +33,7 @@ export interface SectorGoalProgress {
 export interface CollaboratorGoalSummary {
     collaboratorId: string;
     sectorId: string;
-    period: 'month';
+    period: 'week' | 'month';
     progress: SectorGoalProgress;
 }
 
@@ -45,11 +46,44 @@ const SECTOR_IDS = {
     ESTRATEGICO: 'zeekJ4iY9voX3AURpar5',
 };
 
-// ─── Helper ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function pct(actual: number, target: number): number {
     if (target <= 0) return 0;
     return Math.min(Math.round((actual / target) * 100), 999);
+}
+
+/** Calculate real workdays in a period, excluding weekends and holidays */
+async function getWorkdaysInPeriod(startDate: Date, endDate: Date): Promise<number> {
+    const startYear = startDate.getFullYear();
+    const endYear = endDate.getFullYear();
+    const holidayDates = new Set<string>();
+
+    for (let year = startYear; year <= endYear; year++) {
+        try {
+            const holidays = await HolidaysService.getAllHolidays(year);
+            holidays.forEach(h => holidayDates.add(h.date));
+        } catch {
+            // holidays may not be configured
+        }
+    }
+
+    let workdays = 0;
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    while (current <= end) {
+        const dayOfWeek = current.getDay();
+        const dateStr = current.toISOString().split('T')[0];
+        if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidayDates.has(dateStr)) {
+            workdays++;
+        }
+        current.setDate(current.getDate() + 1);
+    }
+
+    return workdays;
 }
 
 // ─── Core service ────────────────────────────────────────────────────────────
@@ -77,11 +111,20 @@ export const GoalTrackingService = {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+        // Production uses WEEKLY period (Mon-Fri of current week)
+        const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 4); // Friday
+        weekEnd.setHours(23, 59, 59, 999);
+
         let progress: SectorGoalProgress;
 
         switch (sectorId) {
             case SECTOR_IDS.PRODUCAO:
-                progress = await this._computeProductionProgress(db, collaboratorId, config, monthStart, monthEnd);
+                progress = await this._computeProductionProgress(db, collaboratorId, config, weekStart, weekEnd);
                 break;
             case SECTOR_IDS.VENDAS:
                 progress = await this._computeSalesProgress(db, collaboratorId, config.salesGoals, monthStart, monthEnd);
@@ -104,7 +147,7 @@ export const GoalTrackingService = {
         return {
             collaboratorId,
             sectorId,
-            period: 'month',
+            period: sectorId === SECTOR_IDS.PRODUCAO ? 'week' : 'month',
             progress,
         };
     },
@@ -115,12 +158,12 @@ export const GoalTrackingService = {
         db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         config: GoalsConfig,
-        monthStart: Date,
-        monthEnd: Date,
+        weekStart: Date,
+        weekEnd: Date,
     ): Promise<SectorGoalProgress> {
         // Query only this producer's projects (not the entire collection)
         const snapshot = await getDocs(query(
-            collection(db, 'projects'),
+            collection(db, 'production_projects'),
             where('producerId', '==', collaboratorId)
         ));
         let points = 0, delivered = 0;
@@ -133,29 +176,30 @@ export const GoalTrackingService = {
             const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
             // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
             const relevantDate = deliveredAt || (isFinished ? createdAt : null);
-            if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;
-            const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
+            if (!relevantDate || relevantDate < weekStart || relevantDate > weekEnd) return;
+            const isAlt = d.type === 'alteracao' || d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
             if (isAlt) return;
             delivered++;
             points += Number(d.points) || 1;
         });
 
-        // Monthly goal = daily × 22 workdays
-        const monthlyPointsGoal = config.dailyProductionGoal * (config.workdaysPerMonth || 22);
+        // Weekly goal = daily × real workdays in this week (using HolidaysService)
+        const workdays = await getWorkdaysInPeriod(weekStart, weekEnd);
+        const weeklyPointsGoal = config.dailyProductionGoal * workdays;
 
         const goals: GoalProgress[] = [
             {
-                label: 'Pontos do Mês',
-                target: monthlyPointsGoal,
+                label: 'Pontos da Semana',
+                target: weeklyPointsGoal,
                 actual: points,
-                percentage: pct(points, monthlyPointsGoal),
+                percentage: pct(points, weeklyPointsGoal),
                 unit: 'pts',
             },
             {
                 label: 'Projetos Entregues',
-                target: monthlyPointsGoal > 0 ? Math.ceil(monthlyPointsGoal / 3) : 0,
+                target: weeklyPointsGoal > 0 ? Math.ceil(weeklyPointsGoal / 3) : 0,
                 actual: delivered,
-                percentage: monthlyPointsGoal > 0 ? pct(delivered, Math.ceil(monthlyPointsGoal / 3)) : 0,
+                percentage: weeklyPointsGoal > 0 ? pct(delivered, Math.ceil(weeklyPointsGoal / 3)) : 0,
                 unit: 'un',
             },
         ];
@@ -238,7 +282,11 @@ export const GoalTrackingService = {
         collaboratorId: string,
         postSalesGoals: PostSalesGoals | undefined,
     ): Promise<SectorGoalProgress> {
-        // Query only this post-sales rep's leads (not the entire collection)
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        // Query only this post-sales rep's leads
         const snapshot = await getDocs(query(
             collection(db, 'leads'),
             where('postSalesId', '==', collaboratorId)
@@ -247,6 +295,9 @@ export const GoalTrackingService = {
 
         snapshot.docs.forEach(doc => {
             const d = doc.data();
+            // Filter by current month
+            const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+            if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
             clientsAttended++;
             if (d.clientStatus === 'concluido') completed++;
         });
@@ -281,16 +332,19 @@ export const GoalTrackingService = {
 
     async _computeStrategicProgress(
         db: ReturnType<typeof getFirestore>,
-        _collaboratorId: string,
+        collaboratorId: string,
         strategicGoals: StrategicGoals | undefined,
     ): Promise<SectorGoalProgress> {
-        // Count notes created this month
+        // Count notes created this month by this collaborator
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         let notesThisMonth = 0;
 
         try {
-            const snapshot = await getDocs(collection(db, 'strategic_notes'));
+            const snapshot = await getDocs(query(
+                collection(db, 'notes'),
+                where('createdBy', '==', collaboratorId)
+            ));
             snapshot.docs.forEach(doc => {
                 const d = doc.data();
                 const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
