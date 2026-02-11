@@ -832,7 +832,7 @@ export const InboxService = {
     }> => {
         // For now, we read from a settings record.
         // This could also be a dedicated table or a Supabase config row.
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('settings')
             .select('value')
             .eq('key', 'leadDistribution')
@@ -846,7 +846,7 @@ export const InboxService = {
             };
         }
 
-        const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        const settings = typeof (data as any).value === 'string' ? JSON.parse((data as any).value) : (data as any).value;
         return settings as {
             enabled: boolean;
             mode: 'auto' | 'manual';
@@ -862,7 +862,7 @@ export const InboxService = {
         mode: 'auto' | 'manual';
         participants: string[];
     }): Promise<void> => {
-        await supabase
+        await (supabase as any)
             .from('settings')
             .upsert({
                 key: 'leadDistribution',

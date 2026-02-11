@@ -29,6 +29,7 @@ export interface Conversation {
     // Quick actions
     isFavorite?: boolean;
     isPinned?: boolean;
+    isBlocked?: boolean;
     isArchived?: boolean;
     // Campos de Contato (sincronizados com Modal360)
     birthday?: string;
@@ -39,6 +40,7 @@ export interface Conversation {
     employees?: string;
     revenue?: string;
     website?: string;
+    profilePicUrl?: string;
     createdAt: Date;
     updatedAt: Date;
 }

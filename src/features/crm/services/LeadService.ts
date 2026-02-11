@@ -124,7 +124,7 @@ export const LeadService = {
 
         const { data, error } = await supabase
             .from('leads')
-            .insert(dbData)
+            .insert(dbData as any)
             .select('*')
             .single();
 
@@ -319,8 +319,8 @@ export const LeadService = {
 
                 if (Object.keys(updates).length > 0) {
                     promises.push(
-                        supabase.from('leads').update(updates).eq('id', existing.id)
-                            .then(({ error }) => { if (error) throw error; })
+                        supabase.from('leads').update(updates as any).eq('id', existing.id)
+                            .then(({ error }) => { if (error) throw error; }) as Promise<void>
                     );
                     count++;
                 }
@@ -329,7 +329,7 @@ export const LeadService = {
                 if (!conv.lead_id && existing) {
                     promises.push(
                         supabase.from('conversations').update({ lead_id: existing.id }).eq('id', conv.id)
-                            .then(({ error }) => { if (error) throw error; })
+                            .then(({ error }) => { if (error) throw error; }) as Promise<void>
                     );
                 }
             } else {
@@ -359,7 +359,7 @@ export const LeadService = {
                             .update({ lead_id: newLead.id })
                             .eq('id', conv.id);
 
-                        existingById.set(newLead.id, { ...newLead, phone: conv.phone, name: conv.name, email: null, company: null, pipeline: correctPipeline, stage_id: null });
+                        existingById.set(newLead.id, { ...newLead, phone: conv.phone, name: conv.name || '', email: null, company: null, pipeline: correctPipeline || '', stage_id: null });
                         existingByPhone.set(normalizedPhone, existingById.get(newLead.id)!);
                     })()
                 );

@@ -22,7 +22,8 @@ export const ProductService = {
         return (data ?? []).map(row => ({
             id: row.id,
             name: row.name,
-            basePoints: row.base_points ?? 0,
+            category: (row as any).category || '',
+            points: row.base_points ?? 0,
             active: row.active ?? true,
             createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
             updatedAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
@@ -37,7 +38,7 @@ export const ProductService = {
             .from('products')
             .insert({
                 name: product.name,
-                base_points: product.basePoints ?? product.points ?? 0,
+                base_points: product.points ?? 0,
                 active: product.active ?? true,
             })
             .select('id')
@@ -54,8 +55,8 @@ export const ProductService = {
         const dbUpdates: Record<string, unknown> = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.active !== undefined) dbUpdates.active = updates.active;
-        if (updates.basePoints !== undefined) dbUpdates.base_points = updates.basePoints;
-        if ((updates as any).points !== undefined) dbUpdates.base_points = (updates as any).points;
+        if (updates.points !== undefined) dbUpdates.base_points = updates.points;
+        if ((updates as any).basePoints !== undefined) dbUpdates.base_points = (updates as any).basePoints;
 
         const { error } = await supabase
             .from('products')

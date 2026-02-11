@@ -172,12 +172,12 @@ export const ProjectStatusPageService = {
                     .maybeSingle();
 
                 if (lead) {
-                    const userIds = [project.producer_id, lead.responsible_id, lead.post_sales_id].filter(Boolean);
+                    const userIds = [project.producer_id, lead.responsible_id, lead.post_sales_id].filter((id): id is string => Boolean(id));
 
                     if (userIds.length > 0) {
                         const { data: users } = await supabase
                             .from('users')
-                            .select('id, name, profile_photo_url')
+                            .select('id, name, avatar_url')
                             .in('id', userIds);
 
                         const usersMap = new Map((users ?? []).map(u => [u.id, u]));
@@ -185,18 +185,18 @@ export const ProjectStatusPageService = {
                         if (lead.responsible_id && usersMap.has(lead.responsible_id)) {
                             const seller = usersMap.get(lead.responsible_id)!;
                             result.sellerName = seller.name;
-                            result.sellerPhotoUrl = seller.profile_photo_url || undefined;
+                            result.sellerPhotoUrl = seller.avatar_url || undefined;
                         }
 
                         if (project.producer_id && usersMap.has(project.producer_id)) {
                             const producer = usersMap.get(project.producer_id)!;
-                            result.producerPhotoUrl = producer.profile_photo_url || undefined;
+                            result.producerPhotoUrl = producer.avatar_url || undefined;
                         }
 
                         if (lead.post_sales_id && usersMap.has(lead.post_sales_id)) {
                             const postSales = usersMap.get(lead.post_sales_id)!;
                             result.postSalesName = postSales.name;
-                            result.postSalesPhotoUrl = postSales.profile_photo_url || undefined;
+                            result.postSalesPhotoUrl = postSales.avatar_url || undefined;
                         }
                     }
                 }

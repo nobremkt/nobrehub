@@ -83,4 +83,27 @@ export const PipelineService = {
 
         if (error) throw error;
     },
+
+    /**
+     * Seed default pipeline stages if none exist
+     */
+    seedDefaultStages: async (): Promise<PipelineStage[]> => {
+        const defaults = [
+            { name: 'Novo Lead', color: '#3B82F6', order: 0, pipeline: 'high-ticket', is_system_stage: true, active: true },
+            { name: 'Qualificação', color: '#F59E0B', order: 1, pipeline: 'high-ticket', is_system_stage: false, active: true },
+            { name: 'Proposta', color: '#8B5CF6', order: 2, pipeline: 'high-ticket', is_system_stage: false, active: true },
+            { name: 'Negociação', color: '#EF4444', order: 3, pipeline: 'high-ticket', is_system_stage: false, active: true },
+            { name: 'Fechamento', color: '#10B981', order: 4, pipeline: 'high-ticket', is_system_stage: true, active: true },
+            { name: 'Novo Lead', color: '#3B82F6', order: 0, pipeline: 'low-ticket', is_system_stage: true, active: true },
+            { name: 'Interesse', color: '#F59E0B', order: 1, pipeline: 'low-ticket', is_system_stage: false, active: true },
+            { name: 'Fechamento', color: '#10B981', order: 2, pipeline: 'low-ticket', is_system_stage: true, active: true },
+        ];
+
+        const { error } = await supabase
+            .from('pipeline_stages')
+            .insert(defaults);
+
+        if (error) throw error;
+        return PipelineService.getStages();
+    },
 };
