@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Card, CardBody, Button, Spinner, ConfirmModal } from '@/design-system';
+import { Card, CardBody, Button, Spinner, ConfirmModal, Tabs, EmptyState } from '@/design-system';
 import { usePipelineSettingsStore } from '../stores/usePipelineSettingsStore';
 import { PipelineStageModal } from '../components/PipelineStageModal';
 import { Plus, Pencil, Trash2, GripVertical, Lock, Layers } from 'lucide-react';
@@ -246,34 +246,13 @@ export const PipelinePage = () => {
             </div>
 
             {/* Tabs de Pipeline */}
-            <div style={{
-                display: 'flex',
-                gap: '4px',
-                padding: '4px',
-                borderRadius: 'var(--radius-lg)',
-                background: 'var(--color-surface)',
-                width: 'fit-content',
-            }}>
-                {tabs.map(tab => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            padding: '8px 20px',
-                            borderRadius: 'var(--radius-md)',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            transition: 'all 0.2s ease',
-                            background: activeTab === tab.key ? 'var(--color-primary-500)' : 'transparent',
-                            color: activeTab === tab.key ? '#fff' : 'var(--color-text-secondary)',
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs
+                value={activeTab}
+                onChange={(v) => setActiveTab(v as PipelineTab)}
+                variant="pills"
+                size="sm"
+                items={tabs.map(tab => ({ value: tab.key, label: tab.label }))}
+            />
 
             {isLoading && stages.length === 0 ? (
                 <div className="flex justify-center p-12">
@@ -299,32 +278,23 @@ export const PipelinePage = () => {
                                 />
                             ))}
 
-                            {/* Empty State */}
                             {pipelineStages.length === 0 && (
-                                <div className="text-center py-12">
-                                    <div style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '56px',
-                                        height: '56px',
-                                        borderRadius: 'var(--radius-xl)',
-                                        background: 'var(--color-surface)',
-                                        marginBottom: '16px',
-                                    }}>
-                                        <Layers size={28} style={{ color: 'var(--color-text-muted)' }} />
-                                    </div>
-                                    <p className="text-text-muted mb-4">Nenhuma etapa configurada para este pipeline.</p>
-                                    {stages.length === 0 && (
-                                        <Button
-                                            onClick={handleSeedDefaults}
-                                            isLoading={isSeeding}
-                                            variant="secondary"
-                                        >
-                                            Carregar Etapas Padrão
-                                        </Button>
-                                    )}
-                                </div>
+                                <EmptyState
+                                    icon={<Layers size={28} />}
+                                    title="Nenhuma etapa configurada"
+                                    description="Nenhuma etapa configurada para este pipeline."
+                                    action={
+                                        stages.length === 0 ? (
+                                            <Button
+                                                onClick={handleSeedDefaults}
+                                                isLoading={isSeeding}
+                                                variant="secondary"
+                                            >
+                                                Carregar Etapas Padrão
+                                            </Button>
+                                        ) : undefined
+                                    }
+                                />
                             )}
                         </div>
                     </SortableContext>

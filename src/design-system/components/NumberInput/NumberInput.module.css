@@ -1,7 +1,14 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NUMBER INPUT COMPONENT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─── Wrapper ──────────────────────────────────────────────────────────────── */
 .wrapper {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--spacing-1_5);
     width: auto;
 }
 
@@ -9,50 +16,47 @@
     width: 100%;
 }
 
+/* ─── Label ────────────────────────────────────────────────────────────────── */
 .label {
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-primary);
+    font-weight: 500;
+    color: var(--color-text-secondary);
 }
 
+/* ─── Input Container ──────────────────────────────────────────────────────── */
 .inputContainer {
     position: relative;
     display: flex;
     align-items: center;
     background-color: var(--color-bg-primary);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    transition: all var(--duration-normal) var(--ease-in-out);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--duration-normal) var(--ease-out),
+        box-shadow var(--duration-normal) var(--ease-out);
     overflow: hidden;
-    /* Ensures buttons don't spill out */
 }
 
 .inputContainer:focus-within {
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px var(--color-primary-100);
-}
-
-:global(.dark) .inputContainer:focus-within,
-:global([data-theme="dark"]) .inputContainer:focus-within {
     box-shadow: 0 0 10px var(--color-primary-500);
 }
 
 .hasError {
-    border-color: var(--color-danger-500);
+    border-color: var(--color-danger, #ef4444);
 }
 
 .hasError:focus-within {
-    border-color: var(--color-danger-500);
-    box-shadow: 0 0 0 3px var(--color-danger-100);
+    border-color: var(--color-danger, #ef4444);
+    box-shadow: 0 0 10px var(--color-danger, #ef4444);
 }
 
 .disabled {
     background-color: var(--color-bg-secondary);
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
-/* Tamanhos */
+/* ─── Sizes ────────────────────────────────────────────────────────────────── */
 .sm {
     min-height: 32px;
 }
@@ -65,19 +69,32 @@
     min-height: 48px;
 }
 
+.sm .controlButton {
+    width: 28px;
+}
+
+.md .controlButton {
+    width: 34px;
+}
+
+.lg .controlButton {
+    width: 40px;
+}
+
+/* ─── Input ────────────────────────────────────────────────────────────────── */
 .input {
     flex: 1;
     width: 100%;
     background: transparent;
     border: none;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--spacing-2) var(--spacing-3);
     font-size: var(--font-size-sm);
+    font-weight: 500;
     color: var(--color-text-primary);
     outline: none;
     text-align: left;
-    /* Or center if preferred */
     -moz-appearance: textfield;
-    /* Remove controls in Firefox */
+    font-family: inherit;
 }
 
 .input::-webkit-outer-spin-button,
@@ -94,65 +111,68 @@
     cursor: not-allowed;
 }
 
-/* Control Buttons */
+/* ─── Control Buttons ──────────────────────────────────────────────────────── */
 .controls {
     display: flex;
     align-items: center;
-    border-left: 1px solid var(--color-border);
-    height: 100%;
+    gap: var(--spacing-1);
+    padding-right: var(--spacing-1_5);
+    flex-shrink: 0;
 }
 
 .controlButton {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    /* Standardize button width */
-    height: 100%;
-    border: none;
-    background-color: var(--color-bg-secondary);
-    /* Subtle background for buttons */
+    width: 34px;
+    height: 28px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
     color: var(--color-text-secondary);
     cursor: pointer;
-    transition: all var(--duration-fast);
+    transition: all var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
 }
 
 .controlButton:hover:not(:disabled) {
-    background-color: var(--color-hover);
-    color: var(--color-primary-600);
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: 0 0 8px var(--color-primary-500);
 }
 
 .controlButton:active:not(:disabled) {
-    background-color: var(--color-surface-tertiary);
+    transform: scale(0.95);
 }
 
 .controlButton:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.35;
 }
 
-/* Divider between buttons */
+/* ─── Separator (replaced by gap, remove visual line) ──────────────────────── */
 .separator {
-    width: 1px;
-    height: 60%;
-    background-color: var(--color-border);
+    display: none;
 }
 
-/* Icon Styles */
+/* ─── Icon ─────────────────────────────────────────────────────────────────── */
 .leftIcon {
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--color-text-muted);
-    padding-left: var(--space-3);
+    padding-left: var(--spacing-3);
     padding-right: 0;
 }
 
+/* ─── Helper / Error ───────────────────────────────────────────────────────── */
 .helper {
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
 }
 
 .errorText {
-    color: var(--color-danger-500);
+    color: var(--color-danger, #ef4444);
 }

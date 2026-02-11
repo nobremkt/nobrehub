@@ -20,7 +20,7 @@ import {
     CalendarDays,
     ListPlus,
 } from 'lucide-react';
-import { Checkbox, Input, Button, Dropdown, ConfirmModal, Badge, Switch } from '@/design-system';
+import { Checkbox, Input, Button, Dropdown, ConfirmModal, Badge, Switch, ProgressBar, EmptyState } from '@/design-system';
 import { useStrategicProjectsStore } from '../../stores/useStrategicProjectsStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useAuthStore } from '@/stores';
@@ -457,11 +457,11 @@ export function ProjectDetail() {
     if (!project) {
         return (
             <div className={styles.container}>
-                <div className={styles.emptyState}>
-                    <FolderOpen size={48} className={styles.emptyIcon} />
-                    <h3>Selecione um projeto</h3>
-                    <p>Escolha um projeto na sidebar para visualizar os detalhes.</p>
-                </div>
+                <EmptyState
+                    icon={<FolderOpen size={48} />}
+                    title="Selecione um projeto"
+                    description="Escolha um projeto na sidebar para visualizar os detalhes."
+                />
             </div>
         );
     }
@@ -532,15 +532,13 @@ export function ProjectDetail() {
 
             {/* Progress */}
             <div className={styles.progressSection}>
-                <div className={styles.progressBar}>
-                    <div
-                        className={styles.progressFill}
-                        style={{ width: `${progress.percentage}%` }}
-                    />
-                </div>
-                <span className={styles.progressText}>
-                    {progress.completed} de {progress.total} tarefas concluídas ({progress.percentage}%)
-                </span>
+                <ProgressBar
+                    value={progress.completed}
+                    max={progress.total}
+                    size="sm"
+                    showLabel
+                    label={`${progress.completed} de ${progress.total} tarefas concluídas (${progress.percentage}%)`}
+                />
             </div>
 
             {/* Tasks List */}

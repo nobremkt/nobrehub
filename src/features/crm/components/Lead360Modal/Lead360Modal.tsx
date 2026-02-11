@@ -20,7 +20,7 @@ import {
     User,
     Building2
 } from 'lucide-react';
-import { Modal } from '@/design-system';
+import { Modal, Tabs } from '@/design-system';
 import { useKanbanStore } from '../../stores/useKanbanStore';
 import { useContactsStore } from '../../stores/useContactsStore';
 import { toast } from 'react-toastify';
@@ -122,18 +122,18 @@ export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead36
             <div className={styles.container}>
                 <LeadHeader lead={lead} onStatusChange={handleStatusChange} onLeadUpdated={handleLeadUpdated} />
 
-                <nav className={styles.tabsNav}>
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
+                <Tabs
+                    value={activeTab}
+                    onChange={(v) => setActiveTab(v as TabType)}
+                    variant="underline"
+                    size="sm"
+                    fullWidth
+                    items={tabs.map(tab => ({
+                        value: tab.id,
+                        label: tab.label,
+                        icon: tab.icon,
+                    }))}
+                />
 
                 <div className={styles.content}>
                     {renderTabContent()}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProductionStore } from '../stores/useProductionStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { PERMISSIONS } from '@/config/permissions';
-import { Button, Card, Spinner, Badge } from '@/design-system';
+import { Button, Card, Spinner, Badge, Tabs, EmptyState } from '@/design-system';
 import { Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
 import { ProjectDetailsModal } from './ProjectDetailsModal';
 
@@ -89,9 +89,11 @@ export const ProjectBoard = () => {
 
     if (!selectedProducerId) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-text-muted">
-                <p>Selecione um produtor para visualizar seus projetos.</p>
-            </div>
+            <EmptyState
+                title="Selecione um produtor"
+                description="Escolha um produtor na barra lateral para visualizar seus projetos."
+                style={{ height: '100%', justifyContent: 'center' }}
+            />
         );
     }
 
@@ -139,38 +141,17 @@ export const ProjectBoard = () => {
 
 
 
-                        {/* Tabs */}
-                        <div className="flex p-1 bg-surface-tertiary rounded-lg">
-                            {TABS.map(tab => {
-                                const count = getTabCount(tab.id);
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`
-                                            px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2
-                                            ${activeTab === tab.id
-                                                ? 'bg-surface-primary text-text-primary shadow-sm'
-                                                : 'text-text-muted hover:text-text-secondary'
-                                            }
-                                        `}
-                                    >
-                                        {tab.label}
-                                        {count > 0 && (
-                                            <span className={`
-                                                text-xs px-1.5 py-0.5 rounded-full
-                                                ${activeTab === tab.id
-                                                    ? 'bg-surface-secondary text-text-primary'
-                                                    : 'bg-surface-primary/50 text-text-muted'
-                                                }
-                                            `}>
-                                                {count}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <Tabs
+                            value={activeTab}
+                            onChange={(v) => setActiveTab(v as TabType)}
+                            variant="enclosed"
+                            size="sm"
+                            items={TABS.map(tab => ({
+                                value: tab.id,
+                                label: tab.label,
+                                badge: getTabCount(tab.id),
+                            }))}
+                        />
                     </div>
                 </div>
             </div>
@@ -321,10 +302,11 @@ export const ProjectBoard = () => {
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-text-muted border-2 border-dashed border-border rounded-lg">
-                        <Clock size={40} className="mb-2 opacity-20" />
-                        <p>Nenhum projeto encontrado para este produtor.</p>
-                    </div>
+                    <EmptyState
+                        icon={<Clock size={40} />}
+                        title="Nenhum projeto encontrado"
+                        description="Este produtor não possui projetos nesta categoria."
+                    />
                 )}
             </div>
 

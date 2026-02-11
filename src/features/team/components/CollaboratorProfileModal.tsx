@@ -10,7 +10,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Modal, Spinner } from '@/design-system';
+import { Modal, Spinner, Tabs, ProgressBar } from '@/design-system';
 import { Collaborator } from '@/features/settings/types';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import { HolidaysService } from '@/features/settings/services/holidaysService';
@@ -249,7 +249,6 @@ function GoalProgressBars({ collaborator }: { collaborator: Collaborator }) {
             {/* Individual goals */}
             <div className={styles.goalProgressList}>
                 {progress.goals.filter((g: GoalProgress) => g.target > 0).map((goal: GoalProgress) => {
-                    const barWidth = Math.min(goal.percentage, 100);
                     const isComplete = goal.percentage >= 100;
                     const formatValue = (value: number, unit: string) => {
                         if (unit === 'R$') return `R$ ${value.toLocaleString('pt-BR')}`;
@@ -264,12 +263,12 @@ function GoalProgressBars({ collaborator }: { collaborator: Collaborator }) {
                                     {formatValue(goal.actual, goal.unit)} / {formatValue(goal.target, goal.unit)}
                                 </span>
                             </div>
-                            <div className={styles.goalProgressBarBg}>
-                                <div
-                                    className={`${styles.goalProgressBarFill} ${isComplete ? styles.success : ''}`}
-                                    style={{ width: `${barWidth}%` }}
-                                />
-                            </div>
+                            <ProgressBar
+                                value={goal.actual}
+                                max={goal.target}
+                                size="sm"
+                                variant={isComplete ? 'success' : 'primary'}
+                            />
                         </div>
                     );
                 })}
@@ -809,20 +808,19 @@ export const CollaboratorProfileModal: React.FC<CollaboratorProfileModalProps> =
                     </div>
                 </div>
 
-                {/* Tabs Navigation */}
                 <div className={styles.tabsContainer}>
-                    <div className={styles.tabs}>
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
-                                <tab.icon size={18} />
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                    <Tabs
+                        value={activeTab}
+                        onChange={(v) => setActiveTab(v as TabType)}
+                        variant="underline"
+                        size="sm"
+                        fullWidth
+                        items={tabs.map(tab => ({
+                            value: tab.id,
+                            label: tab.label,
+                            icon: <tab.icon size={18} />,
+                        }))}
+                    />
                 </div>
 
                 {/* Content */}
@@ -874,17 +872,13 @@ export const CollaboratorProfileModal: React.FC<CollaboratorProfileModalProps> =
                     {activeTab === 'metas' && (
                         <div className={styles.goalsSection}>
                             {/* Period Filters */}
-                            <div className={styles.periodFilters}>
-                                {periodFilters.map((filter) => (
-                                    <button
-                                        key={filter.id}
-                                        className={`${styles.periodButton} ${goalPeriod === filter.id ? styles.periodActive : ''}`}
-                                        onClick={() => setGoalPeriod(filter.id)}
-                                    >
-                                        {filter.label}
-                                    </button>
-                                ))}
-                            </div>
+                            <Tabs
+                                value={goalPeriod}
+                                onChange={(v) => setGoalPeriod(v as GoalPeriod)}
+                                variant="pills"
+                                size="sm"
+                                items={periodFilters.map(f => ({ value: f.id, label: f.label }))}
+                            />
 
                             {/* Stats Cards */}
                             <div className={styles.statsGrid}>

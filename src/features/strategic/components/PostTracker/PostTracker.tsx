@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { Calendar, Check, X } from 'lucide-react';
+import { ProgressBar } from '@/design-system';
 import { useSocialMediaStore } from '../../stores/useSocialMediaStore';
 import styles from './PostTracker.module.css';
 
@@ -148,12 +149,11 @@ export const PostTracker = ({ clientId }: PostTrackerProps) => {
                         <span className={styles.statLabel}>Pendentes</span>
                     </div>
                     <div className={styles.progressWrapper}>
-                        <div className={styles.progressBar}>
-                            <div
-                                className={styles.progressFill}
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
+                        <ProgressBar
+                            value={progressPercent}
+                            size="sm"
+                            variant="success"
+                        />
                         <span className={styles.progressText}>{progressPercent}%</span>
                     </div>
                 </div>
