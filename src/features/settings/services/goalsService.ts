@@ -1,14 +1,17 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - GOALS SERVICE
+ * NOBRE HUB - GOALS SERVICE (Supabase)
  * ═══════════════════════════════════════════════════════════════════════════════
- * Firebase service for managing production and sector goals
+ * 
+ * Gerencia configurações de metas de produção e setores.
+ * No schema v4 Supabase, as metas individuais ficam na tabela `goals`.
+ * Configurações globais (dailyProductionGoal, videoDurationPoints) são
+ * armazenadas como um registro especial ou em memória com defaults.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-
-const SETTINGS_DOC = 'settings/goals';
+import { supabase } from '@/config/supabase';
 
 export interface VideoDurationPoints {
     '30s': number;
@@ -35,8 +38,8 @@ export interface StrategicGoals {
 
 export interface GoalsConfig {
     dailyProductionGoal: number;
-    workdaysPerWeek: number;   // kept for backward compatibility with DashboardAnalyticsService
-    workdaysPerMonth: number;  // kept for backward compatibility with DashboardAnalyticsService
+    workdaysPerWeek: number;
+    workdaysPerMonth: number;
     videoDurationPoints: VideoDurationPoints;
     salesGoals?: SalesGoals;
     postSalesGoals?: PostSalesGoals;
@@ -58,26 +61,27 @@ const DEFAULT_CONFIG: GoalsConfig = {
     updatedAt: new Date()
 };
 
+/**
+ * Busca config de goals como JSONB de uma tabela settings se existir,
+ * senão retorna defaults. Usamos a tabela goals para metas individuais
+ * e um approach simplificado para config global.
+ */
 export const GoalsService = {
     /**
-     * Busca as configurações de metas do Firebase
+     * Busca as configurações de metas
+     * Por ora usa defaults + localStorage como cache.
+     * TODO: Mover para tabela `settings` no Supabase quando criada.
      */
     async getConfig(): Promise<GoalsConfig> {
         try {
-            const docRef = doc(db, SETTINGS_DOC);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            // Tenta buscar do localStorage (cache local)
+            const cached = localStorage.getItem('nobre_goals_config');
+            if (cached) {
+                const parsed = JSON.parse(cached);
                 return {
-                    dailyProductionGoal: data.dailyProductionGoal ?? DEFAULT_CONFIG.dailyProductionGoal,
-                    workdaysPerWeek: data.workdaysPerWeek ?? DEFAULT_CONFIG.workdaysPerWeek,
-                    workdaysPerMonth: data.workdaysPerMonth ?? DEFAULT_CONFIG.workdaysPerMonth,
-                    videoDurationPoints: data.videoDurationPoints ?? DEFAULT_VIDEO_DURATION_POINTS,
-                    salesGoals: data.salesGoals ?? undefined,
-                    postSalesGoals: data.postSalesGoals ?? undefined,
-                    strategicGoals: data.strategicGoals ?? undefined,
-                    updatedAt: data.updatedAt?.toDate?.() ?? new Date()
+                    ...DEFAULT_CONFIG,
+                    ...parsed,
+                    updatedAt: new Date(parsed.updatedAt ?? Date.now()),
                 };
             }
 
@@ -89,11 +93,10 @@ export const GoalsService = {
     },
 
     /**
-     * Salva as configurações de metas no Firebase
+     * Salva as configurações de metas
+     * Cache em localStorage até tabela settings ser criada.
      */
     async saveConfig(config: Partial<GoalsConfig>): Promise<void> {
-        const docRef = doc(db, SETTINGS_DOC);
-
         const currentConfig = await this.getConfig();
         const newConfig = {
             ...currentConfig,
@@ -101,7 +104,43 @@ export const GoalsService = {
             updatedAt: new Date()
         };
 
-        await setDoc(docRef, newConfig, { merge: true });
+        localStorage.setItem('nobre_goals_config', JSON.stringify(newConfig));
+    },
+
+    /**
+     * Busca metas individuais de um usuário para uma data
+     */
+    async getUserGoal(userId: string, date: string): Promise<{ dailyTarget: number; pointsDelivered: number } | null> {
+        const { data, error } = await supabase
+            .from('goals')
+            .select('daily_target, points_delivered')
+            .eq('user_id', userId)
+            .eq('date', date)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+        if (!data) return null;
+
+        return {
+            dailyTarget: data.daily_target,
+            pointsDelivered: data.points_delivered,
+        };
+    },
+
+    /**
+     * Cria ou atualiza meta individual de um usuário
+     */
+    async upsertUserGoal(userId: string, date: string, dailyTarget: number, pointsDelivered?: number): Promise<void> {
+        const { error } = await supabase
+            .from('goals')
+            .upsert({
+                user_id: userId,
+                date,
+                daily_target: dailyTarget,
+                points_delivered: pointsDelivered ?? 0,
+            }, { onConflict: 'user_id,date' });
+
+        if (error) throw error;
     },
 
     /**
