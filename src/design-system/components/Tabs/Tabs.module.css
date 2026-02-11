@@ -1,0 +1,185 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * TABS COMPONENT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
+.tabs {
+    display: flex;
+    position: relative;
+    gap: var(--spacing-1);
+}
+
+.fullWidth .tab {
+    flex: 1;
+}
+
+/* ─── Tab Button ───────────────────────────────────────────────────────────── */
+.tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    transition: all var(--duration-normal) var(--ease-out);
+    white-space: nowrap;
+    position: relative;
+    font-family: inherit;
+}
+
+.tab:hover:not(.disabled) {
+    color: var(--color-text-primary);
+}
+
+.tab.active {
+    color: var(--color-primary-500);
+}
+
+.tab.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-primary-500);
+    border-radius: var(--radius-sm);
+}
+
+/* ─── Icon ─────────────────────────────────────────────────────────────────── */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* ─── Badge ────────────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 var(--spacing-1);
+    border-radius: var(--radius-full);
+    background: var(--color-primary-500);
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * VARIANT: Underline
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.underline {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.underline .tab {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: 0;
+}
+
+.underline .tab:hover:not(.disabled) {
+    background: var(--color-bg-tertiary);
+}
+
+.indicator {
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    background: var(--color-primary-500);
+    border-radius: var(--radius-full);
+    transition: left var(--duration-slow) var(--ease-out),
+        width var(--duration-slow) var(--ease-out);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * VARIANT: Pills (segmented)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.pills {
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-1);
+    border: 1px solid var(--color-border);
+}
+
+.pills .tab {
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius-md);
+}
+
+.pills .tab:hover:not(.disabled):not(.active) {
+    background: var(--color-bg-tertiary);
+}
+
+.pills .tab.active {
+    background: var(--color-primary-500);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.pills .tab.active .badge {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * VARIANT: Enclosed (boxed tabs)
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.enclosed {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.enclosed .tab {
+    padding: var(--spacing-3) var(--spacing-4);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    margin-bottom: -1px;
+}
+
+.enclosed .tab.active {
+    background: var(--color-bg-primary);
+    border-color: var(--color-border);
+    color: var(--color-primary-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * SIZES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+.sm .tab {
+    font-size: var(--font-size-xs);
+    padding-top: var(--spacing-2);
+    padding-bottom: var(--spacing-2);
+}
+
+.sm .icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.md .tab {
+    font-size: var(--font-size-sm);
+}
+
+.md .icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.lg .tab {
+    font-size: var(--font-size-base);
+    padding-top: var(--spacing-4);
+    padding-bottom: var(--spacing-4);
+}
+
+.lg .icon svg {
+    width: 18px;
+    height: 18px;
+}

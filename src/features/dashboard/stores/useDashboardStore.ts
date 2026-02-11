@@ -74,19 +74,39 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         try {
             const result = await DashboardAnalyticsService.getAllMetrics(dateFilter);
 
-            // Detect goal_reached: individual production goal crosses 100%
-            const prevPct = get().metrics?.goalPercentage ?? null;
-            const newPct = result.production?.goalPercentage ?? 0;
+            // Detect goal_reached for the INDIVIDUAL logged-in user (not the team)
+            // Only check if we have production metrics
+            if (result.production) {
+                (async () => {
+                    try {
+                        const { useAuthStore } = await import('@/stores/useAuthStore');
+                        const user = useAuthStore.getState().user;
+                        if (!user?.id || !user?.sectorId) return;
 
-            if (newPct >= 100 && (prevPct === null || prevPct < 100)) {
-                import('@/stores/useNotificationStore').then(({ useNotificationStore }) => {
-                    useNotificationStore.getState().addNotification({
-                        type: 'goal_reached',
-                        title: '🏆 Meta atingida!',
-                        body: `Você atingiu ${newPct}% da sua meta de produção!`,
-                        link: '/dashboard',
-                    });
-                });
+                        const { GoalTrackingService } = await import('@/features/settings/services/goalTrackingService');
+                        const summary = await GoalTrackingService.getCollaboratorProgress(user.id, user.sectorId);
+                        const individualPct = summary.progress.overallPercentage;
+
+                        // Compare with previous individual percentage
+                        const store = get();
+                        const prevIndividualPct = (store as DashboardState & { _prevIndividualGoalPct?: number })._prevIndividualGoalPct ?? 0;
+
+                        if (individualPct >= 100 && prevIndividualPct < 100) {
+                            const { useNotificationStore } = await import('@/stores/useNotificationStore');
+                            useNotificationStore.getState().addNotification({
+                                type: 'goal_reached',
+                                title: '🏆 Meta atingida!',
+                                body: `Você atingiu ${individualPct}% da sua meta de ${summary.progress.sectorLabel}!`,
+                                link: '/dashboard',
+                            });
+                        }
+
+                        // Store current individual percentage for next comparison
+                        set({ _prevIndividualGoalPct: individualPct } as Partial<DashboardState>);
+                    } catch (err) {
+                        console.warn('Could not check individual goal progress:', err);
+                    }
+                })();
             }
 
             set({

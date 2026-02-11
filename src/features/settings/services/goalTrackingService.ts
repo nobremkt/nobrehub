@@ -33,7 +33,7 @@ export interface SectorGoalProgress {
 export interface CollaboratorGoalSummary {
     collaboratorId: string;
     sectorId: string;
-    period: 'month';
+    period: 'week' | 'month';
     progress: SectorGoalProgress;
 }
 
@@ -111,11 +111,20 @@ export const GoalTrackingService = {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+        // Production uses WEEKLY period (Mon-Fri of current week)
+        const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 4); // Friday
+        weekEnd.setHours(23, 59, 59, 999);
+
         let progress: SectorGoalProgress;
 
         switch (sectorId) {
             case SECTOR_IDS.PRODUCAO:
-                progress = await this._computeProductionProgress(db, collaboratorId, config, monthStart, monthEnd);
+                progress = await this._computeProductionProgress(db, collaboratorId, config, weekStart, weekEnd);
                 break;
             case SECTOR_IDS.VENDAS:
                 progress = await this._computeSalesProgress(db, collaboratorId, config.salesGoals, monthStart, monthEnd);
@@ -138,7 +147,7 @@ export const GoalTrackingService = {
         return {
             collaboratorId,
             sectorId,
-            period: 'month',
+            period: sectorId === SECTOR_IDS.PRODUCAO ? 'week' : 'month',
             progress,
         };
     },
@@ -149,8 +158,8 @@ export const GoalTrackingService = {
         db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         config: GoalsConfig,
-        monthStart: Date,
-        monthEnd: Date,
+        weekStart: Date,
+        weekEnd: Date,
     ): Promise<SectorGoalProgress> {
         // Query only this producer's projects (not the entire collection)
         const snapshot = await getDocs(query(
@@ -167,30 +176,30 @@ export const GoalTrackingService = {
             const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
             // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
             const relevantDate = deliveredAt || (isFinished ? createdAt : null);
-            if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;
+            if (!relevantDate || relevantDate < weekStart || relevantDate > weekEnd) return;
             const isAlt = d.type === 'alteracao' || d.status === 'alteracao';
             if (isAlt) return;
             delivered++;
             points += Number(d.points) || 1;
         });
 
-        // Monthly goal = daily × real workdays (using HolidaysService)
-        const workdays = await getWorkdaysInPeriod(monthStart, monthEnd);
-        const monthlyPointsGoal = config.dailyProductionGoal * workdays;
+        // Weekly goal = daily × real workdays in this week (using HolidaysService)
+        const workdays = await getWorkdaysInPeriod(weekStart, weekEnd);
+        const weeklyPointsGoal = config.dailyProductionGoal * workdays;
 
         const goals: GoalProgress[] = [
             {
-                label: 'Pontos do Mês',
-                target: monthlyPointsGoal,
+                label: 'Pontos da Semana',
+                target: weeklyPointsGoal,
                 actual: points,
-                percentage: pct(points, monthlyPointsGoal),
+                percentage: pct(points, weeklyPointsGoal),
                 unit: 'pts',
             },
             {
                 label: 'Projetos Entregues',
-                target: monthlyPointsGoal > 0 ? Math.ceil(monthlyPointsGoal / 3) : 0,
+                target: weeklyPointsGoal > 0 ? Math.ceil(weeklyPointsGoal / 3) : 0,
                 actual: delivered,
-                percentage: monthlyPointsGoal > 0 ? pct(delivered, Math.ceil(monthlyPointsGoal / 3)) : 0,
+                percentage: weeklyPointsGoal > 0 ? pct(delivered, Math.ceil(weeklyPointsGoal / 3)) : 0,
                 unit: 'un',
             },
         ];
