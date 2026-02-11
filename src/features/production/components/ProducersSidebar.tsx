@@ -12,14 +12,12 @@ import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useProductionStore } from '../stores/useProductionStore';
 import { ProductionService } from '../services/ProductionService';
 import { Project } from '@/types/project.types';
+import { supabase } from '@/config/supabase';
 import { Spinner, Badge } from '@/design-system';
 import {
     User, Search, X,
     Clock, Play, Eye, CheckCircle, AlertTriangle
 } from 'lucide-react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import { COLLECTIONS } from '@/config';
 import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
 // ── Stats per producer ─────────────────────────────────────────────────────────
@@ -65,17 +63,22 @@ export const ProducersSidebar = () => {
 
     // Subscribe to all active production projects for stats
     useEffect(() => {
-        const activeStatuses = ['aguardando', 'em-producao', 'a-revisar', 'revisado', 'alteracao'];
-        const q = query(
-            collection(db, COLLECTIONS.PRODUCTION_PROJECTS),
-            where('status', 'in', activeStatuses)
-        );
+        const activeStatuses = ['aguardando', 'em-producao', 'a-revisar', 'revisado', 'alteracao', 'alteracao_interna', 'alteracao_cliente'];
 
-        const unsub = onSnapshot(q, (snapshot) => {
+        const recomputeStats = async () => {
+            const { data, error } = await supabase
+                .from('projects')
+                .select('producer_id, status')
+                .in('status', activeStatuses);
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
             const stats: Record<string, ProducerStats> = {};
-            snapshot.docs.forEach(doc => {
-                const d = doc.data();
-                const pid = d.producerId;
+            (data || []).forEach((d) => {
+                const pid = d.producer_id;
                 if (!pid) return;
                 if (!stats[pid]) stats[pid] = { ...emptyStats };
                 stats[pid].total++;
@@ -84,13 +87,28 @@ export const ProducersSidebar = () => {
                     case 'em-producao': stats[pid].emProducao++; break;
                     case 'a-revisar': stats[pid].aRevisar++; break;
                     case 'revisado': stats[pid].revisado++; break;
-                    case 'alteracao': stats[pid].alteracao++; break;
+                    case 'alteracao':
+                    case 'alteracao_interna':
+                    case 'alteracao_cliente':
+                        stats[pid].alteracao++;
+                        break;
                 }
             });
             setStatsByProducer(stats);
-        });
+        };
 
-        return () => unsub();
+        recomputeStats();
+
+        const channel = supabase
+            .channel('producers-sidebar-stats')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+                recomputeStats();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const productionSectorId = useMemo(() => {

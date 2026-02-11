@@ -1,5 +1,4 @@
-import { getFirestoreDb } from '@/config/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/config/supabase';
 
 export interface OrganizationSettings {
     companyName: string;
@@ -7,23 +6,29 @@ export interface OrganizationSettings {
     primaryColor: string;
 }
 
-const COLLECTION_NAME = 'settings';
-const DOC_ID = 'organization';
-
 export const OrganizationService = {
     /**
-     * Busca as configurações da organização no Firestore.
+     * Busca as configurações da organização no Supabase.
      */
     getSettings: async (): Promise<OrganizationSettings | null> => {
         try {
-            const db = getFirestoreDb();
-            const docRef = doc(db, COLLECTION_NAME, DOC_ID);
-            const docSnap = await getDoc(docRef);
+            const { data, error } = await supabase
+                .from('organization_settings')
+                .select('*')
+                .limit(1)
+                .single();
 
-            if (docSnap.exists()) {
-                return docSnap.data() as OrganizationSettings;
+            if (error) {
+                // PGRST116 = no rows found
+                if (error.code === 'PGRST116') return null;
+                throw error;
             }
-            return null;
+
+            return {
+                companyName: data.company_name,
+                logoUrl: data.logo_url,
+                primaryColor: data.primary_color
+            };
         } catch (error) {
             console.error('Erro ao buscar configurações da organização:', error);
             throw error;
@@ -31,15 +36,44 @@ export const OrganizationService = {
     },
 
     /**
-     * Salva as configurações da organização no Firestore.
+     * Salva as configurações da organização no Supabase.
+     * Usa upsert para criar se não existir ou atualizar se já existir.
      */
     saveSettings: async (settings: Partial<OrganizationSettings>) => {
         try {
-            const db = getFirestoreDb();
-            const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+            // First try to get the existing row
+            const { data: existing } = await supabase
+                .from('organization_settings')
+                .select('id')
+                .limit(1)
+                .single();
 
-            // Usa setDoc com merge: true para criar se não existir ou atualizar campos
-            await setDoc(docRef, settings, { merge: true });
+            const payload: Record<string, unknown> = {
+                updated_at: new Date().toISOString()
+            };
+            if (settings.companyName !== undefined) payload.company_name = settings.companyName;
+            if (settings.logoUrl !== undefined) payload.logo_url = settings.logoUrl;
+            if (settings.primaryColor !== undefined) payload.primary_color = settings.primaryColor;
+
+            if (existing) {
+                // Update existing row
+                const { error } = await supabase
+                    .from('organization_settings')
+                    .update(payload)
+                    .eq('id', existing.id);
+                if (error) throw error;
+            } else {
+                // Insert new row
+                const { error } = await supabase
+                    .from('organization_settings')
+                    .insert({
+                        company_name: settings.companyName || '',
+                        logo_url: settings.logoUrl || null,
+                        primary_color: settings.primaryColor || '#dc2626',
+                        ...payload
+                    });
+                if (error) throw error;
+            }
         } catch (error) {
             console.error('Erro ao salvar configurações da organização:', error);
             throw error;

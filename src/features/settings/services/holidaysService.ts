@@ -2,11 +2,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - HOLIDAYS SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
- * Manages holidays from Brazil API and custom days off from Firebase
+ * Manages holidays from Brazil API and custom days off from Supabase
  */
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 
 // Types
 export interface Holiday {
@@ -26,8 +25,6 @@ export interface HolidaysConfig {
     customDaysOff: DayOff[];
     updatedAt: Date;
 }
-
-const HOLIDAYS_DOC = 'settings/holidays';
 
 /**
  * Fetch national holidays from Brasil API
@@ -54,19 +51,23 @@ export async function fetchNationalHolidays(year: number): Promise<Holiday[]> {
 }
 
 /**
- * Get custom days off from Firebase
+ * Get custom days off from Supabase
  */
 export async function getCustomDaysOff(): Promise<DayOff[]> {
     try {
-        const docRef = doc(db, HOLIDAYS_DOC);
-        const docSnap = await getDoc(docRef);
+        const { data, error } = await supabase
+            .from('holidays_config')
+            .select('custom_days_off')
+            .limit(1)
+            .single();
 
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            return data.customDaysOff || [];
+        if (error) {
+            // No row found yet
+            if (error.code === 'PGRST116') return [];
+            throw error;
         }
 
-        return [];
+        return (data.custom_days_off as unknown as DayOff[]) || [];
     } catch (error) {
         console.error('Error fetching custom days off:', error);
         return [];
@@ -74,15 +75,34 @@ export async function getCustomDaysOff(): Promise<DayOff[]> {
 }
 
 /**
- * Save custom days off to Firebase
+ * Save custom days off to Supabase
  */
 export async function saveCustomDaysOff(daysOff: DayOff[]): Promise<void> {
     try {
-        const docRef = doc(db, HOLIDAYS_DOC);
-        await setDoc(docRef, {
-            customDaysOff: daysOff,
-            updatedAt: new Date()
-        }, { merge: true });
+        // Check if row exists
+        const { data: existing } = await supabase
+            .from('holidays_config')
+            .select('id')
+            .limit(1)
+            .single();
+
+        const payload = {
+            custom_days_off: daysOff as unknown,
+            updated_at: new Date().toISOString()
+        } as any;
+
+        if (existing) {
+            const { error } = await supabase
+                .from('holidays_config')
+                .update(payload)
+                .eq('id', existing.id);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase
+                .from('holidays_config')
+                .insert(payload);
+            if (error) throw error;
+        }
     } catch (error) {
         console.error('Error saving custom days off:', error);
         throw error;

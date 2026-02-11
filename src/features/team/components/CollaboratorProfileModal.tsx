@@ -17,8 +17,7 @@ import { HolidaysService } from '@/features/settings/services/holidaysService';
 import { useGoalProgress } from '@/features/settings/hooks/useGoalProgress';
 import type { GoalProgress } from '@/features/settings/services/goalTrackingService';
 import { formatPhone } from '@/utils';
-import { getFirestoreDb } from '@/config/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { supabase } from '@/config/supabase';
 import {
     Mail,
     Phone,
@@ -88,32 +87,34 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
         if (!collaboratorId || !sectorId || !isActive) return;
         setLoading(true);
         try {
-            const db = getFirestoreDb();
             const now = new Date();
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
             if (sectorId === SECTOR_IDS.PRODUCAO) {
-                // Query only this producer's projects
-                const snapshot = await getDocs(query(
-                    collection(db, 'production_projects'),
-                    where('producerId', '==', collaboratorId)
-                ));
+                const { data, error } = await supabase
+                    .from('projects')
+                    .select('*')
+                    .eq('producer_id', collaboratorId)
+                    .gte('created_at', monthStart.toISOString())
+                    .lte('created_at', monthEnd.toISOString());
+
+                if (error) throw error;
+
                 let points = 0, delivered = 0, alteracoes = 0, totalDays = 0, deliveryCount = 0;
 
-                snapshot.docs.forEach(doc => {
-                    const d = doc.data();
-                    const deliveredAt = d.deliveredAt?.toDate?.() || (d.deliveredAt ? new Date(d.deliveredAt) : null);
-                    const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+                (data || []).forEach((d: any) => {
+                    const deliveredAt = d.delivered_at ? new Date(d.delivered_at) : null;
+                    const createdAt = d.created_at ? new Date(d.created_at) : null;
                     const status = d.status || '';
                     const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
-                    const isAlt = d.type === 'alteracao' || d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
+                    const isAlt = d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
                     // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
                     const relevantDate = deliveredAt || (isFinished ? createdAt : null);
                     if (!relevantDate || relevantDate < monthStart || relevantDate > monthEnd) return;
                     if (isAlt) { alteracoes++; return; }
                     delivered++;
-                    points += Number(d.points) || 1;
+                    points += Number(d.total_points ?? d.base_points ?? 1) || 1;
                     if (createdAt && deliveredAt) {
                         totalDays += Math.max(0, Math.ceil((deliveredAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
                         deliveryCount++;
@@ -130,24 +131,28 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
                     clientsAttended: 0, completedProjects: 0,
                 });
             } else if (sectorId === SECTOR_IDS.VENDAS) {
-                // Query only this seller's leads
-                const snapshot = await getDocs(query(
-                    collection(db, 'leads'),
-                    where('responsibleId', '==', collaboratorId)
-                ));
+                const { data, error } = await supabase
+                    .from('leads')
+                    .select('*')
+                    .eq('responsible_id', collaboratorId)
+                    .gte('created_at', monthStart.toISOString())
+                    .lte('created_at', monthEnd.toISOString());
+
+                if (error) throw error;
+
                 let totalSold = 0, closed = 0, lost = 0;
                 const closedStatuses = ['won', 'closed', 'contracted'];
                 const lostStatuses = ['lost', 'churned'];
 
-                snapshot.docs.forEach(doc => {
-                    const d = doc.data();
-                    const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+                (data || []).forEach((d: any) => {
+                    const createdAt = d.created_at ? new Date(d.created_at) : null;
                     if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
-                    if (closedStatuses.includes(d.status)) {
+                    const status = d.deal_status || d.status || 'open';
+                    if (closedStatuses.includes(status)) {
                         closed++;
-                        totalSold += d.estimatedValue || 0;
+                        totalSold += Number(d.deal_value ?? d.estimated_value ?? 0);
                     }
-                    if (lostStatuses.includes(d.status)) lost++;
+                    if (lostStatuses.includes(status)) lost++;
                 });
 
                 const totalCompleted = closed + lost;
@@ -160,17 +165,18 @@ function useCollaboratorMetrics(collaboratorId: string | undefined, sectorId: st
                     clientsAttended: 0, completedProjects: 0,
                 });
             } else if (sectorId === SECTOR_IDS.POS_VENDAS) {
-                // Query only this post-sales rep's leads
-                const leadsSnap = await getDocs(query(
-                    collection(db, 'leads'),
-                    where('postSalesId', '==', collaboratorId)
-                ));
+                const { data, error } = await supabase
+                    .from('leads')
+                    .select('*')
+                    .eq('post_sales_id', collaboratorId);
+
+                if (error) throw error;
+
                 let clientsAttended = 0, completed = 0;
 
-                leadsSnap.docs.forEach(doc => {
-                    const d = doc.data();
+                (data || []).forEach((d: any) => {
                     clientsAttended++;
-                    if (d.clientStatus === 'concluido') completed++;
+                    if (d.client_status === 'concluido') completed++;
                 });
 
                 setMetrics({

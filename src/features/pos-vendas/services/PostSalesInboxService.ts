@@ -3,23 +3,11 @@
  * NOBRE HUB - POST SALES INBOX SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
  * Serviço para buscar conversas do contexto pós-venda
- * Now reads from Firestore (conversations collection)
+ * Now reads from Supabase (conversations table)
  */
 
-import { getFirestoreDb } from '@/config/firebase';
-import {
-    collection,
-    doc,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    updateDoc,
-    Timestamp,
-} from 'firebase/firestore';
+import { supabase } from '@/config/supabase';
 import { Conversation } from '@/features/inbox/types';
-
-const COL_CONVERSATIONS = 'conversations';
 
 export const PostSalesInboxService = {
     /**
@@ -30,42 +18,68 @@ export const PostSalesInboxService = {
         postSalesId: string | null,
         callback: (conversations: Conversation[]) => void
     ) => {
-        const db = getFirestoreDb();
+        const fetchConversations = async () => {
+            try {
+                let query = supabase
+                    .from('conversations')
+                    .select('*')
+                    .eq('context', 'post_sales')
+                    .eq('status', 'open')
+                    .order('updated_at', { ascending: false });
 
-        // Build query constraints
-        const constraints = [
-            where('context', '==', 'post_sales'),
-            where('status', '==', 'open'),
-        ];
+                if (postSalesId) {
+                    query = query.eq('assigned_to', postSalesId);
+                }
 
-        if (postSalesId) {
-            constraints.push(where('assignedTo', '==', postSalesId));
-        }
+                const { data, error } = await query;
+                if (error) throw error;
 
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            ...constraints,
-            orderBy('updatedAt', 'desc')
-        );
+                let conversations: Conversation[] = (data || []).map(row => ({
+                    ...row,
+                    id: row.id,
+                    updatedAt: new Date(row.updated_at || Date.now()).getTime(),
+                    createdAt: new Date(row.created_at || Date.now()).getTime(),
+                    assignedTo: row.assigned_to,
+                    leadId: row.lead_id,
+                    leadName: row.name || '',
+                    leadPhone: row.phone || '',
+                    phoneNumber: row.phone,
+                    context: row.context,
+                    status: row.status,
+                    postSalesId: row.post_sales_id,
+                    unreadCount: row.unread_count || 0,
+                })) as unknown as Conversation[];
 
-        return onSnapshot(q, (snapshot) => {
-            let conversations: Conversation[] = snapshot.docs.map((docSnap) => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
-                    createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
-                } as Conversation;
-            });
+                // If postSalesId is null, filter to unassigned only (distribution queue)
+                if (!postSalesId) {
+                    conversations = conversations.filter(conv => !conv.assignedTo);
+                }
 
-            // If postSalesId is null, filter to unassigned only (distribution queue)
-            if (!postSalesId) {
-                conversations = conversations.filter(conv => !conv.assignedTo);
+                callback(conversations);
+            } catch (error) {
+                console.error('Error fetching post-sales conversations:', error);
+                callback([]);
             }
+        };
 
-            callback(conversations);
-        });
+        // Initial fetch
+        fetchConversations();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('post_sales_conversations')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'conversations',
+            }, () => {
+                fetchConversations();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 
     /**
@@ -81,14 +95,16 @@ export const PostSalesInboxService = {
      * Assign a post-sales conversation to an attendant.
      */
     assignConversation: async (conversationId: string, postSalesId: string) => {
-        const db = getFirestoreDb();
-        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
+        const { error } = await supabase
+            .from('conversations')
+            .update({
+                assigned_to: postSalesId,
+                post_sales_id: postSalesId,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', conversationId);
 
-        await updateDoc(conversationRef, {
-            assignedTo: postSalesId,
-            postSalesId: postSalesId,
-            updatedAt: Timestamp.now(),
-        });
+        if (error) throw error;
     },
 
     /**
@@ -97,25 +113,46 @@ export const PostSalesInboxService = {
     getConversationCounts: (
         callback: (counts: Record<string, number>) => void
     ) => {
-        const db = getFirestoreDb();
+        const fetchCounts = async () => {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('assigned_to')
+                .eq('context', 'post_sales')
+                .eq('status', 'open');
 
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            where('context', '==', 'post_sales'),
-            where('status', '==', 'open')
-        );
+            if (error) {
+                console.error('Error fetching conversation counts:', error);
+                callback({});
+                return;
+            }
 
-        return onSnapshot(q, (snapshot) => {
             const counts: Record<string, number> = {};
-
-            snapshot.docs.forEach((docSnap) => {
-                const conv = docSnap.data();
-                if (conv.assignedTo) {
-                    counts[conv.assignedTo] = (counts[conv.assignedTo] || 0) + 1;
+            (data || []).forEach(row => {
+                if (row.assigned_to) {
+                    counts[row.assigned_to] = (counts[row.assigned_to] || 0) + 1;
                 }
             });
 
             callback(counts);
-        });
+        };
+
+        // Initial fetch
+        fetchCounts();
+
+        // Realtime
+        const channel = supabase
+            .channel('post_sales_conversation_counts')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'conversations',
+            }, () => {
+                fetchCounts();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }
 };

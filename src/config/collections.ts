@@ -6,6 +6,6 @@
  */
 export const COLLECTIONS = {
     LEADS: 'leads',
-    PRODUCTION_PROJECTS: 'production_projects',
+    PRODUCTION_PROJECTS: 'projects',
 } as const;
 

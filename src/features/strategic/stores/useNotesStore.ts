@@ -223,7 +223,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const unsubEditors = NotesRealtimeService.subscribeToEditors(id, (editors) => {
             const currentUser = useAuthStore.getState().user;
             // Filtra o próprio usuário da lista
-            const otherEditors = editors.filter(e => e.oderId !== currentUser?.id);
+            const otherEditors = editors.filter(e => e.userId !== currentUser?.id);
             set({ activeEditors: otherEditors });
         });
 

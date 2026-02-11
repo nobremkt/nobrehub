@@ -5,7 +5,6 @@ import { PERMISSIONS } from '@/config/permissions';
 import { Button, Card, Spinner, Badge } from '@/design-system';
 import { Calendar, ExternalLink, Clock, AlertCircle, Check, FilePenLine } from 'lucide-react';
 import { ProjectDetailsModal } from './ProjectDetailsModal';
-import { arrayUnion } from 'firebase/firestore';
 import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
 
@@ -217,13 +216,6 @@ export const ProjectBoard = () => {
                                                                         status: 'alteracao_interna',
                                                                         internalRevisionCount: (project.internalRevisionCount || 0) + 1,
                                                                         revisionCount: (project.revisionCount || 0) + 1,
-                                                                        revisionHistory: arrayUnion({
-                                                                            type: 'internal',
-                                                                            reason: '',
-                                                                            requestedBy: user?.id || '',
-                                                                            requestedByName: user?.name || 'Líder',
-                                                                            requestedAt: new Date()
-                                                                        }) as any,
                                                                         lastRevisionRequestedAt: new Date(),
                                                                         lastRevisionRequestedBy: user?.id || ''
                                                                     });

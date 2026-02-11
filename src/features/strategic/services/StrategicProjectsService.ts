@@ -3,73 +3,61 @@
  * NOBRE HUB - FEATURE: STRATEGIC - PROJECTS SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * Service para gerenciamento de projetos estratégicos no Firestore.
+ * Service para gerenciamento de projetos estratégicos no Supabase.
  * Realtime sync com subtarefas.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    getDocs,
-    Timestamp,
-    or,
-} from 'firebase/firestore';
-import { getFirestoreDb } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 import { useAuthStore } from '@/stores';
 import { StrategicProject, ProjectTask, TaskPriority, TaskComment } from '../types';
-
-const COLLECTION_NAME = 'strategic_projects';
-const TASKS_SUBCOLLECTION = 'tasks';
-const COMMENTS_SUBCOLLECTION = 'comments';
 
 // Strategic Sector ID
 export const STRATEGIC_SECTOR_ID = 'zeekJ4iY9voX3AURpar5';
 
-/**
- * Converte documento Firestore para StrategicProject
- */
-function mapDocToProject(docSnap: any): StrategicProject {
-    const data = docSnap.data();
+// ─── Row → Frontend type mappers ─────────────────────────────────────────────
+
+function mapRowToProject(row: Record<string, unknown>): StrategicProject {
     return {
-        id: docSnap.id,
-        title: data.title || 'Sem título',
-        description: data.description || '',
-        isShared: data.isShared || false,
-        ownerId: data.ownerId || '',
-        memberIds: data.memberIds || [],
-        status: data.status || 'active',
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
+        id: row.id as string,
+        title: (row.title as string) || 'Sem título',
+        description: (row.description as string) || '',
+        isShared: (row.is_shared as boolean) || false,
+        ownerId: (row.owner_id as string) || '',
+        memberIds: (row.member_ids as string[]) || [],
+        status: (row.status as StrategicProject['status']) || 'active',
+        createdAt: new Date((row.created_at as string) || Date.now()),
+        updatedAt: new Date((row.updated_at as string) || Date.now()),
     };
 }
 
-/**
- * Converte documento Firestore para ProjectTask
- */
-function mapDocToTask(docSnap: any, projectId: string): ProjectTask {
-    const data = docSnap.data();
+function mapRowToTask(row: Record<string, unknown>): ProjectTask {
     return {
-        id: docSnap.id,
-        projectId,
-        parentTaskId: data.parentTaskId || undefined,
-        title: data.title || '',
-        completed: data.completed || false,
-        order: data.order || 0,
-        priority: data.priority || 'medium',
-        assigneeId: data.assigneeId || undefined,
-        assigneeIds: data.assigneeIds || [],
-        tags: data.tags || [],
-        dueDate: data.dueDate?.toDate() || undefined,
-        createdAt: data.createdAt?.toDate() || new Date(),
+        id: row.id as string,
+        projectId: row.project_id as string,
+        parentTaskId: (row.parent_task_id as string) || undefined,
+        title: (row.title as string) || '',
+        completed: (row.completed as boolean) || false,
+        order: (row.order as number) || 0,
+        priority: (row.priority as TaskPriority) || 'medium',
+        assigneeId: (row.assignee_id as string) || undefined,
+        assigneeIds: (row.assignee_ids as string[]) || [],
+        tags: (row.tags as string[]) || [],
+        dueDate: row.due_date ? new Date(row.due_date as string) : undefined,
+        createdAt: new Date((row.created_at as string) || Date.now()),
+    };
+}
+
+function mapRowToComment(row: Record<string, unknown>): TaskComment {
+    return {
+        id: row.id as string,
+        projectId: row.project_id as string,
+        taskId: row.task_id as string,
+        authorId: (row.author_id as string) || '',
+        authorName: (row.author_name as string) || 'Anônimo',
+        content: (row.content as string) || '',
+        createdAt: new Date((row.created_at as string) || Date.now()),
     };
 }
 
@@ -78,7 +66,6 @@ export const StrategicProjectsService = {
      * Subscribe to user's projects (personal + shared with them)
      */
     subscribeToProjects(callback: (projects: StrategicProject[]) => void): () => void {
-        const db = getFirestoreDb();
         const user = useAuthStore.getState().user;
         const userId = user?.id || '';
 
@@ -87,47 +74,100 @@ export const StrategicProjectsService = {
             return () => { };
         }
 
-        // Query: projects where user is owner OR user is in memberIds
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            or(
-                where('ownerId', '==', userId),
-                where('memberIds', 'array-contains', userId)
-            ),
-            orderBy('updatedAt', 'desc')
-        );
+        // Helper to fetch and broadcast
+        const fetchAndBroadcast = async () => {
+            try {
+                // Supabase doesn't support OR across different columns in a single filter,
+                // so we fetch both sets and merge
+                const [ownedRes, sharedRes] = await Promise.all([
+                    supabase
+                        .from('strategic_projects')
+                        .select('*')
+                        .eq('owner_id', userId)
+                        .order('updated_at', { ascending: false }),
+                    supabase
+                        .from('strategic_projects')
+                        .select('*')
+                        .contains('member_ids', [userId])
+                        .order('updated_at', { ascending: false })
+                ]);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const projects = snapshot.docs.map(mapDocToProject);
-            callback(projects);
-        }, (error) => {
-            console.error('Error subscribing to projects:', error);
-            callback([]);
-        });
+                const ownedProjects = (ownedRes.data || []).map(r => mapRowToProject(r));
+                const sharedProjects = (sharedRes.data || []).map(r => mapRowToProject(r));
 
-        return unsubscribe;
+                // Deduplicate (user can be both owner and member)
+                const projectMap = new Map<string, StrategicProject>();
+                [...ownedProjects, ...sharedProjects].forEach(p => projectMap.set(p.id, p));
+
+                const allProjects = Array.from(projectMap.values());
+                allProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+                callback(allProjects);
+            } catch (error) {
+                console.error('Error fetching strategic projects:', error);
+                callback([]);
+            }
+        };
+
+        // Initial fetch
+        fetchAndBroadcast();
+
+        // Realtime
+        const channel = supabase
+            .channel('strategic_projects_changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'strategic_projects'
+            }, () => {
+                fetchAndBroadcast();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 
     /**
      * Subscribe to tasks for a specific project
      */
     subscribeToTasks(projectId: string, callback: (tasks: ProjectTask[]) => void): () => void {
-        const db = getFirestoreDb();
+        const fetchTasks = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('strategic_tasks')
+                    .select('*')
+                    .eq('project_id', projectId)
+                    .order('order', { ascending: true });
 
-        const q = query(
-            collection(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION),
-            orderBy('order', 'asc')
-        );
+                if (error) throw error;
+                callback((data || []).map(row => mapRowToTask(row)));
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                callback([]);
+            }
+        };
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const tasks = snapshot.docs.map(doc => mapDocToTask(doc, projectId));
-            callback(tasks);
-        }, (error) => {
-            console.error('Error subscribing to tasks:', error);
-            callback([]);
-        });
+        // Initial fetch
+        fetchTasks();
 
-        return unsubscribe;
+        // Realtime
+        const channel = supabase
+            .channel(`strategic_tasks_${projectId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'strategic_tasks',
+                filter: `project_id=eq.${projectId}`
+            }, () => {
+                fetchTasks();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 
     /**
@@ -139,51 +179,56 @@ export const StrategicProjectsService = {
         isShared: boolean;
         memberIds?: string[];
     }): Promise<string> {
-        const db = getFirestoreDb();
         const user = useAuthStore.getState().user;
+        const now = new Date().toISOString();
 
-        const now = Timestamp.now();
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-            title: data.title,
-            description: data.description || '',
-            isShared: data.isShared,
-            ownerId: user?.id || '',
-            memberIds: data.memberIds || [],
-            status: 'active',
-            createdAt: now,
-            updatedAt: now,
-        });
+        const { data: inserted, error } = await supabase
+            .from('strategic_projects')
+            .insert({
+                title: data.title,
+                description: data.description || '',
+                is_shared: data.isShared,
+                owner_id: user?.id || '',
+                member_ids: data.memberIds || [],
+                status: 'active',
+                created_at: now,
+                updated_at: now,
+            })
+            .select('id')
+            .single();
 
-        return docRef.id;
+        if (error) throw error;
+        return inserted.id;
     },
 
     /**
      * Update project
      */
     async updateProject(projectId: string, data: Partial<Pick<StrategicProject, 'title' | 'description' | 'status' | 'memberIds'>>): Promise<void> {
-        const db = getFirestoreDb();
+        const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (data.title !== undefined) payload.title = data.title;
+        if (data.description !== undefined) payload.description = data.description;
+        if (data.status !== undefined) payload.status = data.status;
+        if (data.memberIds !== undefined) payload.member_ids = data.memberIds;
 
-        await updateDoc(doc(db, COLLECTION_NAME, projectId), {
-            ...data,
-            updatedAt: Timestamp.now(),
-        });
+        const { error } = await supabase
+            .from('strategic_projects')
+            .update(payload)
+            .eq('id', projectId);
+
+        if (error) throw error;
     },
 
     /**
-     * Delete project and all its tasks
+     * Delete project (cascade deletes tasks and comments via FK)
      */
     async deleteProject(projectId: string): Promise<void> {
-        const db = getFirestoreDb();
+        const { error } = await supabase
+            .from('strategic_projects')
+            .delete()
+            .eq('id', projectId);
 
-        // Delete all tasks first
-        const tasksSnapshot = await getDocs(
-            collection(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION)
-        );
-        const deletePromises = tasksSnapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(deletePromises);
-
-        // Delete project
-        await deleteDoc(doc(db, COLLECTION_NAME, projectId));
+        if (error) throw error;
     },
 
     /**
@@ -198,104 +243,142 @@ export const StrategicProjectsService = {
         dueDate?: Date;
         tags?: string[];
     }): Promise<string> {
-        const db = getFirestoreDb();
+        const now = new Date().toISOString();
 
-        const docRef = await addDoc(
-            collection(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION),
-            {
+        const { data: inserted, error } = await supabase
+            .from('strategic_tasks')
+            .insert({
+                project_id: projectId,
                 title: data.title,
                 completed: false,
                 order: data.order || 0,
                 priority: data.priority || 'medium',
-                assigneeId: data.assigneeId || null,
-                parentTaskId: data.parentTaskId || null,
-                dueDate: data.dueDate ? Timestamp.fromDate(data.dueDate) : null,
+                assignee_id: data.assigneeId || null,
+                parent_task_id: data.parentTaskId || null,
+                due_date: data.dueDate ? data.dueDate.toISOString() : null,
                 tags: data.tags || [],
-                createdAt: Timestamp.now(),
-            }
-        );
+                created_at: now,
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
 
         // Update project's updatedAt
-        await updateDoc(doc(db, COLLECTION_NAME, projectId), {
-            updatedAt: Timestamp.now(),
-        });
+        await supabase
+            .from('strategic_projects')
+            .update({ updated_at: now })
+            .eq('id', projectId);
 
-        return docRef.id;
+        return inserted.id;
     },
 
     /**
      * Update task
      */
     async updateTask(projectId: string, taskId: string, data: Partial<Pick<ProjectTask, 'title' | 'completed' | 'order' | 'priority' | 'assigneeId' | 'assigneeIds' | 'parentTaskId' | 'dueDate' | 'tags'>>): Promise<void> {
-        const db = getFirestoreDb();
+        const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-        await updateDoc(
-            doc(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION, taskId),
-            data
-        );
+        if (data.title !== undefined) payload.title = data.title;
+        if (data.completed !== undefined) {
+            payload.completed = data.completed;
+            payload.completed_at = data.completed ? new Date().toISOString() : null;
+        }
+        if (data.order !== undefined) payload.order = data.order;
+        if (data.priority !== undefined) payload.priority = data.priority;
+        if (data.assigneeId !== undefined) payload.assignee_id = data.assigneeId || null;
+        if (data.assigneeIds !== undefined) payload.assignee_ids = data.assigneeIds;
+        if (data.parentTaskId !== undefined) payload.parent_task_id = data.parentTaskId || null;
+        if (data.dueDate !== undefined) payload.due_date = data.dueDate ? data.dueDate.toISOString() : null;
+        if (data.tags !== undefined) payload.tags = data.tags;
+
+        const { error } = await supabase
+            .from('strategic_tasks')
+            .update(payload)
+            .eq('id', taskId)
+            .eq('project_id', projectId);
+
+        if (error) throw error;
 
         // Update project's updatedAt
-        await updateDoc(doc(db, COLLECTION_NAME, projectId), {
-            updatedAt: Timestamp.now(),
-        });
+        await supabase
+            .from('strategic_projects')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', projectId);
     },
 
     /**
      * Delete task
      */
     async deleteTask(projectId: string, taskId: string): Promise<void> {
-        const db = getFirestoreDb();
+        const { error } = await supabase
+            .from('strategic_tasks')
+            .delete()
+            .eq('id', taskId)
+            .eq('project_id', projectId);
 
-        await deleteDoc(
-            doc(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION, taskId)
-        );
+        if (error) throw error;
 
         // Update project's updatedAt
-        await updateDoc(doc(db, COLLECTION_NAME, projectId), {
-            updatedAt: Timestamp.now(),
-        });
+        await supabase
+            .from('strategic_projects')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', projectId);
     },
 
     /**
      * Add comment to a task
      */
     async addComment(projectId: string, taskId: string, data: { content: string; authorId: string; authorName: string }): Promise<string> {
-        const db = getFirestoreDb();
-        const docRef = await addDoc(
-            collection(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION, taskId, COMMENTS_SUBCOLLECTION),
-            {
-                ...data,
-                projectId,
-                taskId,
-                createdAt: Timestamp.now(),
-            }
-        );
-        return docRef.id;
+        const { data: inserted, error } = await supabase
+            .from('task_comments')
+            .insert({
+                project_id: projectId,
+                task_id: taskId,
+                author_id: data.authorId,
+                author_name: data.authorName,
+                content: data.content,
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return inserted.id;
     },
 
     /**
      * Subscribe to task comments
      */
     subscribeToComments(projectId: string, taskId: string, callback: (comments: TaskComment[]) => void): () => void {
-        const db = getFirestoreDb();
-        const q = query(
-            collection(db, COLLECTION_NAME, projectId, TASKS_SUBCOLLECTION, taskId, COMMENTS_SUBCOLLECTION),
-            orderBy('createdAt', 'desc')
-        );
-        return onSnapshot(q, (snapshot) => {
-            const comments: TaskComment[] = snapshot.docs.map(docSnap => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    projectId,
-                    taskId,
-                    authorId: data.authorId || '',
-                    authorName: data.authorName || 'Anônimo',
-                    content: data.content || '',
-                    createdAt: data.createdAt?.toDate() || new Date(),
-                };
-            });
-            callback(comments);
-        });
+        const fetchComments = async () => {
+            const { data } = await supabase
+                .from('task_comments')
+                .select('*')
+                .eq('project_id', projectId)
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: false });
+
+            callback((data || []).map(row => mapRowToComment(row)));
+        };
+
+        // Initial fetch
+        fetchComments();
+
+        // Realtime
+        const channel = supabase
+            .channel(`task_comments_${taskId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'task_comments',
+                filter: `task_id=eq.${taskId}`
+            }, () => {
+                fetchComments();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 };

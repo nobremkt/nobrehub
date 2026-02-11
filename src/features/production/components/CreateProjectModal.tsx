@@ -17,7 +17,6 @@ import {
 import { VideoDurationCategory, DistributionStatus } from '@/types/project.types';
 import { toast } from 'react-toastify';
 import { Star, Package } from 'lucide-react';
-import { arrayUnion } from 'firebase/firestore';
 import styles from './CreateProjectModal.module.css';
 
 interface CreateProjectModalProps {
@@ -225,7 +224,6 @@ export const CreateProjectModal = ({
                             // 'distribution' para aparecer na lista de distribuição do pós-venda
                             currentSector: 'distribution',
                             clientStatus: 'aguardando_projeto',
-                            projectIds: arrayUnion(projectId) as unknown as string[],
                             postSalesDistributionStatus: 'pending',
                             dealStatus: 'won',
                             dealClosedAt: new Date(), // Marca quando fechou a venda

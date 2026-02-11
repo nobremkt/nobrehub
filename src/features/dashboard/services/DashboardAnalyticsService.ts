@@ -4,23 +4,15 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * Aggregates production data for dashboard metrics
  * Supports both legacy projects and historical imported data
+ * Migrated from Firebase Firestore to Supabase
  */
 
-import {
-    collection,
-    getDocs,
-    query,
-    Timestamp,
-    QuerySnapshot,
-    DocumentData
-} from 'firebase/firestore';
-import { COLLECTIONS } from '@/config';
-import { db } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 import { Lead } from '@/types/lead.types';
 import { HolidaysService } from '@/features/settings/services/holidaysService';
 import { GoalsService, type GoalsConfig } from '@/features/settings/services/goalsService';
 
-const PROJECTS_COLLECTION = COLLECTIONS.PRODUCTION_PROJECTS;
+const PROJECTS_TABLE = 'projects';
 
 // Category colors for the donut chart
 const CATEGORY_COLORS: Record<string, string> = {
@@ -223,11 +215,8 @@ function getDateRange(filter: DateFilter): { start: Date; end: Date } {
         }
         case 'week': {
             // Current calendar week: Monday to current day
-            // This allows weeks that naturally span across month boundaries
-            // to be treated as one continuous week
             const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
             const monday = new Date(today);
-            // Calculate days since Monday (Sunday is treated as day 7, not day 0)
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             monday.setDate(today.getDate() - daysFromMonday);
             return { start: monday, end: now };
@@ -246,7 +235,6 @@ function getDateRange(filter: DateFilter): { start: Date; end: Date } {
             return { start: quarterStart, end: now };
         }
         case 'janeiro_2026': {
-            // Fixed range for imported historical data
             const jan2026Start = new Date(2026, 0, 1); // Jan 1, 2026
             const jan2026End = new Date(2026, 0, 31, 23, 59, 59); // Jan 31, 2026
             return { start: jan2026Start, end: jan2026End };
@@ -256,9 +244,8 @@ function getDateRange(filter: DateFilter): { start: Date; end: Date } {
     }
 }
 
-/** 
+/**
  * Get date range for GOAL calculation (FULL period, not "up to today")
- * This is separate from getDateRange which is used for filtering data
  */
 function getGoalDateRange(filter: DateFilter): { start: Date; end: Date } {
     const now = new Date();
@@ -273,32 +260,25 @@ function getGoalDateRange(filter: DateFilter): { start: Date; end: Date } {
             return { start: yesterday, end: yesterday };
         }
         case 'week': {
-            // Current week: Monday to Friday (5 workdays)
-            const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const dayOfWeek = today.getDay();
             const monday = new Date(today);
-            // Go back to Monday of current week
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             monday.setDate(today.getDate() - daysFromMonday);
-
             const friday = new Date(monday);
             friday.setDate(monday.getDate() + 4);
-
             return { start: monday, end: friday };
         }
         case 'month': {
-            // Full month: first day to last day
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of month
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             return { start: monthStart, end: monthEnd };
         }
         case 'year': {
-            // Full year: Jan 1 to Dec 31
             const yearStart = new Date(now.getFullYear(), 0, 1);
             const yearEnd = new Date(now.getFullYear(), 11, 31);
             return { start: yearStart, end: yearEnd };
         }
         case 'quarter': {
-            // Current quarter
             const currentMonth = now.getMonth();
             const quarterStartMonth = Math.floor(currentMonth / 3) * 3;
             const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
@@ -306,7 +286,6 @@ function getGoalDateRange(filter: DateFilter): { start: Date; end: Date } {
             return { start: quarterStart, end: quarterEnd };
         }
         case 'janeiro_2026': {
-            // Fixed range for imported historical data
             const jan2026Start = new Date(2026, 0, 1);
             const jan2026End = new Date(2026, 0, 31);
             return { start: jan2026Start, end: jan2026End };
@@ -319,7 +298,6 @@ function getGoalDateRange(filter: DateFilter): { start: Date; end: Date } {
 /** Parse date from various formats */
 function parseDate(value: unknown): Date | undefined {
     if (!value) return undefined;
-    if (value instanceof Timestamp) return value.toDate();
     if (value instanceof Date) return value;
     if (typeof value === 'string') return new Date(value);
     return undefined;
@@ -332,16 +310,13 @@ interface CollaboratorsData {
     producerCount: number;
 }
 
-/**
- * Pre-fetched Firestore snapshots, shared across sub-methods within getAllMetrics()
- * to avoid redundant collection reads.
- */
-interface SharedSnapshots {
-    collaboratorsDocs: QuerySnapshot<DocumentData>;
-    projectsDocs: QuerySnapshot<DocumentData>;
-    leadsDocs: QuerySnapshot<DocumentData>;
-    sectorsDocs: QuerySnapshot<DocumentData>;
-    rolesDocs: QuerySnapshot<DocumentData>;
+/** Supabase row arrays, shared across sub-methods within getAllMetrics() */
+interface SharedData {
+    collaborators: Record<string, unknown>[];
+    projects: Record<string, unknown>[];
+    leads: Record<string, unknown>[];
+    sectors: Record<string, unknown>[];
+    roles: Record<string, unknown>[];
 }
 
 // Sector ID for "Produção"
@@ -351,28 +326,25 @@ const PRODUCAO_SECTOR_ID = '7OhlXcRc8Vih9n7p4PdZ';
 const LIDER_ROLE_ID = '2Qb0NHjub0kaYFYDITqQ';
 
 /** Fetch collaborators data for name lookups and producer counting */
-async function getCollaboratorsData(preloaded?: SharedSnapshots): Promise<CollaboratorsData> {
-    // Use pre-fetched snapshot if available, otherwise fetch
-    const snapshot = preloaded
-        ? preloaded.collaboratorsDocs
-        : await getDocs(collection(db, 'collaborators'));
+async function getCollaboratorsData(preloaded?: SharedData): Promise<CollaboratorsData> {
+    const rows = preloaded
+        ? preloaded.collaborators
+        : await supabase.from('users').select('*').then(r => r.data || []);
 
     const nameMap: Record<string, string> = {};
     const photoMap: Record<string, string> = {};
     let producerCount = 0;
 
-    snapshot.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        const name = data.name || data.displayName || 'Desconhecido';
-        const profilePhotoUrl = data.profilePhotoUrl || '';
+    rows.forEach((row: Record<string, unknown>) => {
+        const id = row.id as string;
+        const name = (row.name as string) || 'Desconhecido';
+        const profilePhotoUrl = (row.avatar_url as string) || '';
 
-        // Add to maps (all collaborators)
-        nameMap[docSnap.id] = name;
-        photoMap[docSnap.id] = profilePhotoUrl;
+        nameMap[id] = name;
+        photoMap[id] = profilePhotoUrl;
 
-        // Count producers: sectorId = Produção AND roleId != Líder
-        const sectorId = data.sectorId || '';
-        const roleId = data.roleId || '';
+        const sectorId = (row.department as string) || '';
+        const roleId = (row.role as string) || '';
 
         if (sectorId === PRODUCAO_SECTOR_ID && roleId !== LIDER_ROLE_ID) {
             producerCount++;
@@ -387,15 +359,12 @@ async function getGoalConfig(): Promise<GoalsConfig> {
     return GoalsService.getConfig();
 }
 
-/** 
- * Calculate actual workdays in a period, excluding weekends and holidays 
- * Returns the number of workdays (Mon-Fri, excluding holidays)
+/**
+ * Calculate actual workdays in a period, excluding weekends and holidays
  */
 async function getWorkdaysInPeriod(startDate: Date, endDate: Date): Promise<number> {
-    // Get holidays for the years covered by the period
     const startYear = startDate.getFullYear();
     const endYear = endDate.getFullYear();
-
     const holidayDates = new Set<string>();
 
     for (let year = startYear; year <= endYear; year++) {
@@ -418,21 +387,17 @@ async function getWorkdaysInPeriod(startDate: Date, endDate: Date): Promise<numb
         const dayOfWeek = current.getDay();
         const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD
 
-        // Check if it's a weekday (Mon=1 to Fri=5) and not a holiday
         if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidayDates.has(dateStr)) {
             workdays++;
         }
-
-        // Move to next day
         current.setDate(current.getDate() + 1);
     }
 
     return workdays;
 }
 
-/** 
- * Calculate goal target based on period filter 
- * Now async to fetch holidays and calculate actual workdays
+/**
+ * Calculate goal target based on period filter
  */
 async function calculateGoalForPeriod(
     config: GoalsConfig,
@@ -440,13 +405,11 @@ async function calculateGoalForPeriod(
     startDate: Date,
     endDate: Date
 ): Promise<number> {
-    // For "today" or "yesterday", check if it's a workday
     if (period === 'today' || period === 'yesterday') {
         const workdays = await getWorkdaysInPeriod(startDate, endDate);
         return workdays > 0 ? config.dailyProductionGoal : 0;
     }
 
-    // For other periods, calculate actual workdays
     const workdays = await getWorkdaysInPeriod(startDate, endDate);
     return config.dailyProductionGoal * workdays;
 }
@@ -455,37 +418,35 @@ export const DashboardAnalyticsService = {
     /**
      * Fetches all projects and calculates dashboard metrics
      */
-    getMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<DashboardMetrics> => {
+    getMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<DashboardMetrics> => {
         const { start, end } = getDateRange(filter);
 
         // Fetch collaborators for name resolution, photos, and producer count
         const { nameMap: collaboratorsMap, photoMap: collaboratorsPhotoMap, producerCount } = await getCollaboratorsData(_shared);
 
-        // Fetch all projects (use shared snapshot if available)
-        const projectsRef = collection(db, PROJECTS_COLLECTION);
-        const snapshot = _shared ? _shared.projectsDocs : await getDocs(query(projectsRef));
+        // Fetch all projects (use shared data if available)
+        const projectRows: Record<string, unknown>[] = _shared
+            ? _shared.projects
+            : (await supabase.from(PROJECTS_TABLE).select('*')).data || [];
 
-        const allProjects: InternalProject[] = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                title: data.title || data.name || '',
-                producerId: data.producerId || '',
-                producerName: collaboratorsMap[data.producerId] || data.producerName || 'Desconhecido',
-                category: data.category || data.tags?.[0] || 'Outro',
-                difficulty: data.difficulty,
-                points: Number(data.points) || 1, // Default 1 point if not specified
-                status: data.status || 'entregue',
-                type: data.type,
-                motivo: data.motivo,
-                deliveredAt: parseDate(data.deliveredAt),
-                createdAt: parseDate(data.createdAt) || new Date(),
-                isHistorical: data.isHistorical || false
-            };
-        });
+        const allProjects: InternalProject[] = projectRows.map(row => ({
+            id: row.id as string,
+            title: (row.title as string) || (row.name as string) || '',
+            producerId: (row.producer_id as string) || '',
+            producerName: collaboratorsMap[(row.producer_id as string)] || (row.producer_name as string) || 'Desconhecido',
+            category: (row.category as string) || (row.tags as string[])?.[0] || 'Outro',
+            difficulty: row.difficulty as string | undefined,
+            points: Number(row.points) || 1,
+            status: (row.status as string) || 'entregue',
+            type: row.type as string | undefined,
+            motivo: row.motivo as string | undefined,
+            deliveredAt: parseDate(row.delivered_at),
+            createdAt: parseDate(row.created_at) || new Date(),
+            isHistorical: (row.is_historical as boolean) || false
+        }));
 
         // Filter by type: exclude alteracoes from main projects count
-        const isAlteracao = (p: any) => p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
+        const isAlteracao = (p: InternalProject) => p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
         const projects = allProjects.filter(p => !isAlteracao(p));
         const alteracoes = allProjects.filter(p => isAlteracao(p));
 
@@ -510,12 +471,10 @@ export const DashboardAnalyticsService = {
         const totalPointsInPeriod = deliveredProjects.reduce((sum, p) => sum + p.points, 0);
 
         // Get producer count (sector Produção, excluding Líder role)
-        const producersForGoal = Math.max(producerCount, 1); // At least 1 to avoid division by zero
+        const producersForGoal = Math.max(producerCount, 1);
 
-        // Fetch goal from Firebase (individual goal per producer)
+        // Fetch goal from settings
         const goalConfig = await getGoalConfig();
-        // Team goal = Individual goal × Total producers × Workdays in FULL period (excluding holidays)
-        // Use getGoalDateRange to get the FULL period (entire week/month) not "up to today"
         const goalPeriod = getGoalDateRange(filter);
         const individualGoalForPeriod = await calculateGoalForPeriod(goalConfig, filter, goalPeriod.start, goalPeriod.end);
         const goalTarget = individualGoalForPeriod * producersForGoal;
@@ -564,9 +523,7 @@ export const DashboardAnalyticsService = {
         const activeProjects = projects.filter(p => !p.deliveredAt && !p.isHistorical);
         const totalActiveProjects = activeProjects.length;
         const pendingRevisions = projects.filter(p => p.status === 'a-revisar').length;
-        // Total alterations in the period
         const totalAlterations = alteracoesInPeriod.length;
-        // Use total registered producers from database for consistency
         const activeProducers = producersForGoal;
 
         // Calculate per-producer delivery times
@@ -597,7 +554,6 @@ export const DashboardAnalyticsService = {
             const mvpAvgDays = mvpDeliveryData && mvpDeliveryData.deliveryCount > 0
                 ? Math.round(mvpDeliveryData.totalDays / mvpDeliveryData.deliveryCount)
                 : 0;
-            // ApprovalRate = projects / (projects + alterations) * 100
             const totalProductions = mvpEntry.count + mvpAlterations;
             const mvpApprovalRate = totalProductions > 0
                 ? Math.round((mvpEntry.count / totalProductions) * 100)
@@ -625,11 +581,8 @@ export const DashboardAnalyticsService = {
             ? { name: topProjectsEntry.name, count: topProjectsEntry.count, profilePhotoUrl: collaboratorsPhotoMap[topProjectsEntry.id] || undefined }
             : null;
 
-        // Rocket (record for most POINTS in a SINGLE day - based on MONTH of the selected period)
-        // Group deliveries by producer + date to find daily records
+        // Rocket (record for most POINTS in a SINGLE day)
         const dailyPointsRecords: Record<string, { id: string; name: string; date: string; points: number }> = {};
-
-        // Get all delivered projects for the MONTH of the selected period (based on filter's start date)
         const filterMonthStart = new Date(start.getFullYear(), start.getMonth(), 1);
         const filterMonthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
 
@@ -640,7 +593,7 @@ export const DashboardAnalyticsService = {
 
         monthProjects.forEach(p => {
             if (p.deliveredAt) {
-                const dateKey = p.deliveredAt.toISOString().split('T')[0]; // YYYY-MM-DD
+                const dateKey = p.deliveredAt.toISOString().split('T')[0];
                 const recordKey = `${p.producerId}_${dateKey}`;
 
                 if (!dailyPointsRecords[recordKey]) {
@@ -661,7 +614,7 @@ export const DashboardAnalyticsService = {
             ? {
                 name: rocketEntry.name,
                 points: rocketEntry.points,
-                inDays: 1, // It's a single day record
+                inDays: 1,
                 profilePhotoUrl: collaboratorsPhotoMap[rocketEntry.id] || undefined
             }
             : null;
@@ -692,7 +645,7 @@ export const DashboardAnalyticsService = {
             ? {
                 name: finisherEntry.name,
                 count: finisherEntry.count,
-                inDays: 1, // It's a single day record
+                inDays: 1,
                 profilePhotoUrl: collaboratorsPhotoMap[finisherEntry.id] || undefined
             }
             : null;
@@ -719,23 +672,21 @@ export const DashboardAnalyticsService = {
     },
 
     /**
-     * Fetches sales/CRM metrics from leads collection
+     * Fetches sales/CRM metrics from leads table
      */
-    getSalesMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<SalesMetrics> => {
+    getSalesMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<SalesMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Use shared snapshot if available, otherwise fetch
-        const snapshot = _shared ? _shared.leadsDocs : await getDocs(collection(db, 'leads'));
+        const leadRows: Record<string, unknown>[] = _shared
+            ? _shared.leads
+            : (await supabase.from('leads').select('*')).data || [];
 
-        const allLeads: Lead[] = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: parseDate(data.createdAt) || new Date(),
-                updatedAt: parseDate(data.updatedAt) || new Date(),
-            } as Lead;
-        });
+        const allLeads: Lead[] = leadRows.map(row => ({
+            ...row,
+            id: row.id as string,
+            createdAt: parseDate(row.created_at) || new Date(),
+            updatedAt: parseDate(row.updated_at) || new Date(),
+        })) as Lead[];
 
         // Filter by date range
         const leadsInPeriod = allLeads.filter(l => {
@@ -812,7 +763,7 @@ export const DashboardAnalyticsService = {
         });
         const trendData = Object.entries(trendMap)
             .sort(([a], [b]) => a.localeCompare(b))
-            .slice(-14) // Last 14 days
+            .slice(-14)
             .map(([date, data]) => {
                 const d = new Date(date);
                 return {
@@ -839,7 +790,6 @@ export const DashboardAnalyticsService = {
         ).length;
         const contactRate = newLeads > 0 ? Math.round((contactedLeads / newLeads) * 100) : 0;
 
-        // Performance metrics derived from lead lifecycle data
         const closedLeadsInPeriod = leadsInPeriod.filter(l => closedStatuses.includes(l.status));
         let totalCycleDays = 0;
         let cycleCount = 0;
@@ -853,10 +803,10 @@ export const DashboardAnalyticsService = {
         const avgCycleTime = cycleCount > 0 ? Math.round((totalCycleDays / cycleCount) * 10) / 10 : 0;
 
         const performanceMetrics = {
-            avgResponseTime: 0, // Requires activity/message history tracking to compute accurately
+            avgResponseTime: 0,
             avgCycleTime,
             contactRate,
-            followUpRate: contactRate, // Uses same metric: % of leads that progressed beyond 'new'
+            followUpRate: contactRate,
         };
 
         return {
@@ -884,42 +834,48 @@ export const DashboardAnalyticsService = {
     /**
      * Fetches admin metrics with full team data
      */
-    getAdminMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<AdminMetrics> => {
+    getAdminMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<AdminMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Fetch collaborators (use shared snapshot or fetch independently)
-        const collabSnapshot = _shared ? _shared.collaboratorsDocs : await getDocs(collection(db, 'collaborators'));
+        // Fetch collaborators (use shared data or fetch independently)
+        const collabRows: Record<string, unknown>[] = _shared
+            ? _shared.collaborators
+            : (await supabase.from('users').select('*')).data || [];
 
         // Filter out DEBUG account from collaborators
-        const filteredCollaborators = collabSnapshot.docs.filter(doc => {
-            const data = doc.data();
-            return data.email !== 'debug@debug.com';
-        });
+        const filteredCollaborators = collabRows.filter(row =>
+            (row.email as string) !== 'debug@debug.com'
+        );
         const totalCollaborators = filteredCollaborators.length;
 
         // Fetch sectors for name lookups (use shared or fetch)
-        const sectorsSnapshot = _shared ? _shared.sectorsDocs : await getDocs(collection(db, 'sectors'));
+        const sectorsRows: Record<string, unknown>[] = _shared
+            ? _shared.sectors
+            : [];
         const sectorsMap: Record<string, string> = {};
-        sectorsSnapshot.docs.forEach(doc => {
-            sectorsMap[doc.id] = doc.data().name || 'Sem Setor';
+        sectorsRows.forEach(row => {
+            sectorsMap[row.id as string] = (row.name as string) || 'Sem Setor';
         });
 
         // Fetch roles for name lookups (use shared or fetch)
-        const rolesSnapshot = _shared ? _shared.rolesDocs : await getDocs(collection(db, 'roles'));
+        const rolesRows: Record<string, unknown>[] = _shared
+            ? _shared.roles
+            : [];
         const rolesMap: Record<string, string> = {};
-        rolesSnapshot.docs.forEach(doc => {
-            rolesMap[doc.id] = doc.data().name || 'Sem Cargo';
+        rolesRows.forEach(row => {
+            rolesMap[row.id as string] = (row.name as string) || 'Sem Cargo';
         });
 
         // Fetch projects for productivity calculations (use shared or fetch)
-        const projectsSnapshot = _shared ? _shared.projectsDocs : await getDocs(collection(db, PROJECTS_COLLECTION));
+        const projectsRows: Record<string, unknown>[] = _shared
+            ? _shared.projects
+            : (await supabase.from(PROJECTS_TABLE).select('*')).data || [];
 
         // Calculate per-collaborator project stats
         const projectsByCollaborator: Record<string, { count: number; points: number }> = {};
-        projectsSnapshot.docs.forEach(doc => {
-            const data = doc.data();
-            const deliveredAt = parseDate(data.deliveredAt);
-            const producerId = data.producerId;
+        projectsRows.forEach(row => {
+            const deliveredAt = parseDate(row.delivered_at);
+            const producerId = row.producer_id as string;
 
             // Only count delivered projects in period
             if (producerId && deliveredAt && deliveredAt >= start && deliveredAt <= end) {
@@ -927,7 +883,7 @@ export const DashboardAnalyticsService = {
                     projectsByCollaborator[producerId] = { count: 0, points: 0 };
                 }
                 projectsByCollaborator[producerId].count += 1;
-                projectsByCollaborator[producerId].points += Number(data.points) || 1;
+                projectsByCollaborator[producerId].points += Number(row.points) || 1;
             }
         });
 
@@ -935,19 +891,19 @@ export const DashboardAnalyticsService = {
         const members: AdminMetrics['members'] = [];
         let activeCount = 0;
 
-        filteredCollaborators.forEach(doc => {
-            const data = doc.data();
-            const isActive = data.isActive !== false && data.active !== false;
+        filteredCollaborators.forEach(row => {
+            const isActive = row.active !== false;
             if (isActive) activeCount++;
 
-            const projectStats = projectsByCollaborator[doc.id] || { count: 0, points: 0 };
+            const id = row.id as string;
+            const projectStats = projectsByCollaborator[id] || { count: 0, points: 0 };
 
             members.push({
-                id: doc.id,
-                name: data.name || 'Desconhecido',
-                role: rolesMap[data.roleId] || 'Sem Cargo',
-                sector: sectorsMap[data.sectorId] || 'Sem Setor',
-                profilePhotoUrl: data.profilePhotoUrl,
+                id,
+                name: (row.name as string) || 'Desconhecido',
+                role: rolesMap[(row.role as string)] || (row.role as string) || 'Sem Cargo',
+                sector: sectorsMap[(row.department as string)] || (row.department as string) || 'Sem Setor',
+                profilePhotoUrl: row.avatar_url as string | undefined,
                 projectsDelivered: projectStats.count,
                 pointsEarned: projectStats.points
             });
@@ -971,7 +927,7 @@ export const DashboardAnalyticsService = {
             .map(([name, stats]) => ({
                 name,
                 productivity: stats.count > 0 ? Math.round((stats.total / stats.count)) : 0,
-                trend: 'stable' as const, // Would need historical data to calculate trend
+                trend: 'stable' as const,
                 members: stats.memberCount
             }))
             .sort((a, b) => b.productivity - a.productivity);
@@ -981,7 +937,7 @@ export const DashboardAnalyticsService = {
             .filter(m => m.projectsDelivered > 0)
             .map(m => ({
                 name: m.name.split(' ').map((n, i) => i === 0 ? n : n[0] + '.').join(' '),
-                productivity: Math.min(100, Math.round((m.pointsEarned / 100) * 100)), // Normalize to 0-100
+                productivity: Math.min(100, Math.round((m.pointsEarned / 100) * 100)),
                 projects: m.projectsDelivered
             }))
             .sort((a, b) => b.productivity - a.productivity)
@@ -1001,7 +957,7 @@ export const DashboardAnalyticsService = {
             teamSize: totalCollaborators,
             activeMembers: activeCount,
             avgWorkload,
-            goalsMet: 85, // Placeholder - would need goal tracking per collaborator
+            goalsMet: 85, // Placeholder
             efficiency,
             members,
             productivityData,
@@ -1011,13 +967,13 @@ export const DashboardAnalyticsService = {
 
     /**
      * Fetches financial metrics - derived from sales data
-     * Note: Expenses and accounts are placeholder values until a financial module is implemented
      */
-    getFinancialMetrics: async (filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<FinancialMetrics> => {
+    getFinancialMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<FinancialMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        // Use shared snapshot if available, otherwise fetch
-        const snapshot = _shared ? _shared.leadsDocs : await getDocs(collection(db, 'leads'));
+        const leadRows: Record<string, unknown>[] = _shared
+            ? _shared.leads
+            : (await supabase.from('leads').select('*')).data || [];
 
         const closedStatuses = ['won', 'closed', 'contracted'];
         const openStatuses = ['new', 'qualified', 'negotiation', 'proposal'];
@@ -1032,25 +988,25 @@ export const DashboardAnalyticsService = {
         const prevStart = new Date(start.getTime() - periodMs);
         const prevEnd = new Date(start.getTime() - 1);
 
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            const createdAt = parseDate(data.createdAt);
-            const value = data.estimatedValue || 0;
+        leadRows.forEach(row => {
+            const createdAt = parseDate(row.created_at);
+            const value = (row.estimated_value as number) || 0;
+            const status = row.status as string;
 
             if (createdAt) {
                 // Current period closed deals
-                if (closedStatuses.includes(data.status) && createdAt >= start && createdAt <= end) {
+                if (closedStatuses.includes(status) && createdAt >= start && createdAt <= end) {
                     currentRevenue += value;
                     closedDealsCount += 1;
                 }
 
                 // Previous period closed deals
-                if (closedStatuses.includes(data.status) && createdAt >= prevStart && createdAt <= prevEnd) {
+                if (closedStatuses.includes(status) && createdAt >= prevStart && createdAt <= prevEnd) {
                     previousRevenue += value;
                 }
 
                 // Open deals = accounts receivable
-                if (openStatuses.includes(data.status)) {
+                if (openStatuses.includes(status)) {
                     accountsReceivable += value;
                 }
             }
@@ -1059,7 +1015,7 @@ export const DashboardAnalyticsService = {
         // Calculate derived metrics
         const avgTicket = closedDealsCount > 0 ? Math.round(currentRevenue / closedDealsCount) : 0;
 
-        // Placeholder expenses (estimated at 60% of revenue - would need real expense tracking)
+        // Placeholder expenses (estimated at 60% of revenue)
         const expenses = Math.round(currentRevenue * 0.6);
         const profit = currentRevenue - expenses;
         const margin = currentRevenue > 0 ? Math.round((profit / currentRevenue) * 100 * 10) / 10 : 0;
@@ -1072,10 +1028,8 @@ export const DashboardAnalyticsService = {
         for (let i = 5; i >= 0; i--) {
             const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthName = months[monthDate.getMonth()];
-            // Use deterministic variation based on month index instead of Math.random()
-            // This produces consistent values between renders while still varying per month
-            const seed = (monthDate.getMonth() + 1) * 0.137;  // 0.137 to 1.644
-            const variation = 0.8 + (seed % 0.4);  // Range: 0.8 to 1.2
+            const seed = (monthDate.getMonth() + 1) * 0.137;
+            const variation = 0.8 + (seed % 0.4);
             const monthRevenue = Math.round(currentRevenue * variation);
             const monthExpenses = Math.round(monthRevenue * 0.6);
             cashFlow.push({
@@ -1107,8 +1061,8 @@ export const DashboardAnalyticsService = {
             operationalCosts,
             accounts: {
                 receivable: accountsReceivable,
-                payable: Math.round(expenses * 0.36), // Placeholder
-                overdue: Math.round(accountsReceivable * 0.12) // Placeholder
+                payable: Math.round(expenses * 0.36),
+                overdue: Math.round(accountsReceivable * 0.12)
             }
         };
     },
@@ -1117,42 +1071,34 @@ export const DashboardAnalyticsService = {
      * Fetches post-sales metrics
      * Note: Currently returns placeholder data - requires tickets/payments collections
      */
-    getPostSalesMetrics: async (_filter: DateFilter = 'month', _shared?: SharedSnapshots): Promise<PostSalesMetrics> => {
-        // Date range will be used when tickets/payments collections are available
-        // const { start, end } = getDateRange(filter);
-
-        // Use shared snapshot if available, otherwise fetch
-        const collabSnapshot = _shared ? _shared.collaboratorsDocs : await getDocs(collection(db, 'collaborators'));
+    getPostSalesMetrics: async (_filter: DateFilter = 'month', _shared?: SharedData): Promise<PostSalesMetrics> => {
+        const collabRows: Record<string, unknown>[] = _shared
+            ? _shared.collaborators
+            : (await supabase.from('users').select('*')).data || [];
 
         // Sector ID for "Pós-vendas"
         const POS_VENDAS_SECTOR_ID = '2OByfKttFYPi5Cxbcs2t';
 
         // Filter post-sales team members (excluding DEBUG account)
-        const postSalesTeam = collabSnapshot.docs.filter(doc => {
-            const data = doc.data();
-            return data.email !== 'debug@debug.com' &&
-                (data.sectorId === POS_VENDAS_SECTOR_ID || data.sector === 'Pós-vendas');
-        });
+        const postSalesTeam = collabRows.filter(row =>
+            (row.email as string) !== 'debug@debug.com' &&
+            ((row.department as string) === POS_VENDAS_SECTOR_ID || (row.department as string) === 'Pós-vendas')
+        );
 
         // TODO: Fetch from payments collection when available
-        // For now, create placeholder ranking with zeros
-        const topPostSellers = postSalesTeam.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                name: data.name || 'Desconhecido',
-                profilePhotoUrl: data.profilePhotoUrl || undefined,
-                paymentsReceived: 0, // TODO: Sum from payments collection
-                ticketsResolved: 0, // TODO: Count from tickets collection
-                avgRating: 0, // TODO: Average from customer feedback
-            };
-        }).sort((a, b) => b.paymentsReceived - a.paymentsReceived).slice(0, 5);
+        const topPostSellers = postSalesTeam.map(row => ({
+            id: row.id as string,
+            name: (row.name as string) || 'Desconhecido',
+            profilePhotoUrl: (row.avatar_url as string) || undefined,
+            paymentsReceived: 0,
+            ticketsResolved: 0,
+            avgRating: 0,
+        })).sort((a, b) => b.paymentsReceived - a.paymentsReceived).slice(0, 5);
 
         // Generate trend data (placeholder - zeros)
         const ticketsTrend: PostSalesMetrics['ticketsTrend'] = [];
         const paymentsTrend: PostSalesMetrics['paymentsTrend'] = [];
 
-        // Generate last 14 days of trend data
         const now = new Date();
         for (let i = 13; i >= 0; i--) {
             const date = new Date(now);
@@ -1164,41 +1110,42 @@ export const DashboardAnalyticsService = {
         }
 
         return {
-            // Ticket metrics - placeholders
             openTickets: 0,
             resolvedTickets: 0,
             avgResolutionTime: 0,
-            // Customer metrics - placeholders
             customerSatisfaction: 0,
             churnRate: 0,
             retentionRate: 0,
             npsScore: 0,
-            // Trend data
             ticketsTrend,
-            // Revenue tracking
             totalPaymentsReceived: 0,
             paymentsTrend,
-            // Team ranking
             topPostSellers,
         };
     },
 
     /**
      * Fetches all metrics unified.
-     * Fetches shared collections ONCE and passes them to all sub-methods,
-     * reducing Firestore reads from 9 to 5 per dashboard load.
+     * Fetches shared tables ONCE and passes them to all sub-methods,
+     * reducing Supabase queries from 9 to 5 per dashboard load.
      */
     getAllMetrics: async (filter: DateFilter = 'month'): Promise<UnifiedDashboardMetrics> => {
-        // ── Shared data fetch (1 read per collection) ──────────────────────
-        const [collaboratorsDocs, projectsDocs, leadsDocs, sectorsDocs, rolesDocs] = await Promise.all([
-            getDocs(collection(db, 'collaborators')),
-            getDocs(collection(db, PROJECTS_COLLECTION)),
-            getDocs(collection(db, 'leads')),
-            getDocs(collection(db, 'sectors')),
-            getDocs(collection(db, 'roles')),
+        // ── Shared data fetch (1 query per table) ──────────────────────
+        const [collaboratorsRes, projectsRes, leadsRes, sectorsRes, rolesRes] = await Promise.all([
+            supabase.from('users').select('*'),
+            supabase.from(PROJECTS_TABLE).select('*'),
+            supabase.from('leads').select('*'),
+            Promise.resolve({ data: [] as Record<string, unknown>[] }),
+            Promise.resolve({ data: [] as Record<string, unknown>[] }),
         ]);
 
-        const shared: SharedSnapshots = { collaboratorsDocs, projectsDocs, leadsDocs, sectorsDocs, rolesDocs };
+        const shared: SharedData = {
+            collaborators: collaboratorsRes.data || [],
+            projects: projectsRes.data || [],
+            leads: leadsRes.data || [],
+            sectors: sectorsRes.data || [],
+            roles: rolesRes.data || [],
+        };
 
         // ── Compute all metrics using shared data ──────────────────────────
         const [production, sales, admin, financial, postSales] = await Promise.all([

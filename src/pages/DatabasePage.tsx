@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Página de gerenciamento de banco de dados para debug.
- * Permite resetar/limpar collections do Firebase para facilitar
+ * Permite resetar/limpar tabelas do Supabase para facilitar
  * a transição de dados de teste para dados reais.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -12,10 +12,11 @@
 
 import { useState } from 'react';
 import { Card, CardHeader, CardBody, Button, Badge, Modal } from '@/design-system';
-import { COLLECTIONS } from '@/config';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 import { Trash2, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+
+const LEADS_TABLE = 'leads';
+const PROJECTS_TABLE = 'projects';
 
 interface CollectionInfo {
     key: string;
@@ -29,13 +30,13 @@ const MANAGED_COLLECTIONS: CollectionInfo[] = [
         key: 'leads',
         name: 'Leads / Contatos',
         description: 'Todos os leads e contatos do CRM. Inclui dados de WhatsApp, status, campos customizados, etc.',
-        collectionPath: COLLECTIONS.LEADS,
+        collectionPath: LEADS_TABLE,
     },
     {
         key: 'production_projects',
         name: 'Projetos de Produção',
         description: 'Projetos de produção de vídeo. Inclui dados de produtores, status, entregas, etc.',
-        collectionPath: COLLECTIONS.PRODUCTION_PROJECTS,
+        collectionPath: PROJECTS_TABLE,
     },
 ];
 
@@ -71,20 +72,18 @@ export function DatabasePage() {
         });
 
         try {
-            const snapshot = await getDocs(collection(db, col.collectionPath));
-            let deletedCount = 0;
+            // Supabase requires a filter to delete — use neq on id to match all rows
+            // This is the standard pattern for "delete all" in Supabase
+            const { error, count } = await supabase
+                .from(col.collectionPath as any)
+                .delete({ count: 'exact' })
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // matches all real rows
 
-            // Delete in batches to avoid overwhelming Firebase
-            const deletePromises = snapshot.docs.map(async (docSnap) => {
-                await deleteDoc(doc(db, col.collectionPath, docSnap.id));
-                deletedCount++;
-            });
+            if (error) throw error;
 
-            await Promise.all(deletePromises);
-
-            setResults((prev) => ({ ...prev, [col.key]: { status: 'success', count: deletedCount } }));
+            setResults((prev) => ({ ...prev, [col.key]: { status: 'success', count: count || 0 } }));
         } catch (error) {
-            console.error(`Error clearing collection ${col.collectionPath}:`, error);
+            console.error(`Error clearing table ${col.collectionPath}:`, error);
             setResults((prev) => ({ ...prev, [col.key]: { status: 'error', count: 0 } }));
         } finally {
             setLoading((prev) => ({ ...prev, [col.key]: false }));
@@ -100,7 +99,7 @@ export function DatabasePage() {
                     Banco de Dados
                 </h1>
                 <p style={{ color: 'var(--color-text-muted)' }}>
-                    Gerencie as collections do Firebase. Use para limpar dados de teste antes de migrar para dados reais.
+                    Gerencie as tabelas do Supabase. Use para limpar dados de teste antes de migrar para dados reais.
                 </p>
             </div>
 
@@ -119,7 +118,7 @@ export function DatabasePage() {
                         ⚠️ Zona de Perigo
                     </p>
                     <p>
-                        As ações abaixo são <strong>irreversíveis</strong>. Todos os documentos da collection serão
+                        As ações abaixo são <strong>irreversíveis</strong>. Todos os registros da tabela serão
                         permanentemente deletados. Use apenas quando quiser limpar dados de teste.
                     </p>
                 </div>
@@ -137,7 +136,7 @@ export function DatabasePage() {
                             action={
                                 result ? (
                                     result.status === 'success' ? (
-                                        <Badge variant="success" content={`${result.count} docs removidos`} />
+                                        <Badge variant="success" content={`${result.count} registros removidos`} />
                                     ) : (
                                         <Badge variant="danger" content="Erro ao limpar" />
                                     )
@@ -170,7 +169,7 @@ export function DatabasePage() {
                                     fontWeight: 500,
                                 }}>
                                     <CheckCircle2 size={16} />
-                                    <span>Collection limpa com sucesso! {result.count} documento(s) removido(s).</span>
+                                    <span>Tabela limpa com sucesso! {result.count} registro(s) removido(s).</span>
                                 </div>
                             )}
 
@@ -182,7 +181,7 @@ export function DatabasePage() {
                                     leftIcon={isLoading ? <Loader2 size={16} /> : <Trash2 size={16} />}
                                     disabled={isLoading}
                                 >
-                                    {isLoading ? 'Limpando...' : 'Limpar Collection'}
+                                    {isLoading ? 'Limpando...' : 'Limpar Tabela'}
                                 </Button>
                             </div>
                         </CardBody>
@@ -209,7 +208,7 @@ export function DatabasePage() {
                         <AlertTriangle style={{ color: 'var(--color-primary-500)', flexShrink: 0 }} size={20} />
                         <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
                             <p>
-                                Você está prestes a deletar <strong>todos os documentos</strong> da collection{' '}
+                                Você está prestes a deletar <strong>todos os registros</strong> da tabela{' '}
                                 <strong style={{ color: 'var(--color-primary-500)' }}>
                                     {confirmModal.collection?.collectionPath}
                                 </strong>.
