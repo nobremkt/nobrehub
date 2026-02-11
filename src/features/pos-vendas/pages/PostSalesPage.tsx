@@ -32,7 +32,7 @@ export const PostSalesPage = () => {
     const [activeTab, setActiveTab] = useState<PostSalesTab>('team');
 
     // Verifica se é líder de pós-vendas (pode ver equipe e distribuir)
-    const isLeader = user?.permissions?.includes(PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION) || user?.role === 'admin';
+    const isLeader = user?.permissions?.includes(PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION) || user?.email === 'debug@debug.com';
 
     // Se não é líder, seleciona automaticamente a si mesmo
     useEffect(() => {

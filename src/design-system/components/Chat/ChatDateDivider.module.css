@@ -1,0 +1,32 @@
+.dateDivider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-4) 0;
+}
+
+.dateDividerLabel {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    background: var(--color-bg-secondary);
+    padding: 4px 16px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+}
+
+.dateDividerLabel::before,
+.dateDividerLabel::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--color-border);
+}

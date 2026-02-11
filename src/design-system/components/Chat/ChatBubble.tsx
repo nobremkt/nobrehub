@@ -50,6 +50,16 @@ export const ChatBubble = ({
         }
     };
 
+    // System messages render as centered labels, not bubbles
+    if (type === 'system') {
+        return (
+            <div className={styles.systemMessage}>
+                <span className={styles.systemText}>{content}</span>
+                <span className={styles.systemTime}>{time}</span>
+            </div>
+        );
+    }
+
     return (
         <div className={`${styles.bubbleRow} ${isMine ? styles.bubbleRowOut : styles.bubbleRowIn}`}>
 

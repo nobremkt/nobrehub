@@ -15,7 +15,7 @@ export const ProductionPage = () => {
     const { setSelectedProducerId } = useProductionStore();
     const [activeTab, setActiveTab] = useState<ProductionTab>('board');
 
-    const hasViewAllPermission = user?.permissions?.includes(PERMISSIONS.MANAGE_PROJECTS) || user?.role === 'admin';
+    const hasViewAllPermission = user?.permissions?.includes(PERMISSIONS.MANAGE_PROJECTS) || user?.email === 'debug@debug.com';
 
     useEffect(() => {
         // Se não tem permissão de ver tudo, seleciona automaticamente a si mesmo

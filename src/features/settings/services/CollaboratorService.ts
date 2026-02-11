@@ -4,8 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * Gerencia colaboradores na tabela `users` do Supabase.
- * Criação de auth users requer Edge Function (admin API) — por enquanto
- * usamos supabase.auth.signUp() para criação básica.
+ * Usa FK `role_id` → roles e `sector_id` → sectors.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -15,30 +14,40 @@ import { Collaborator } from '../types';
 
 export const CollaboratorService = {
     /**
-     * Lista todos os colaboradores
+     * Lista todos os colaboradores com JOIN em roles e sectors
      */
     getCollaborators: async (): Promise<Collaborator[]> => {
         const { data, error } = await supabase
             .from('users')
-            .select('*')
+            .select(`
+                *,
+                roles:role_id ( id, name ),
+                sectors:sector_id ( id, name )
+            `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        return (data ?? []).map(row => ({
-            id: row.id,
-            name: row.name,
-            email: row.email,
-            phone: row.phone ?? undefined,
-            role: row.role,
-            roleId: row.role, // Maps role text to roleId for compatibility
-            photoUrl: row.avatar_url ?? undefined,
-            profilePhotoUrl: row.avatar_url ?? undefined,
-            active: row.active ?? true,
-            sectorId: row.department ?? undefined,
-            createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-            updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
-        })) as Collaborator[];
+        return (data ?? []).map(row => {
+            const roleData = row.roles as { id: string; name: string } | null;
+            const sectorData = row.sectors as { id: string; name: string } | null;
+
+            return {
+                id: row.id,
+                name: row.name,
+                email: row.email,
+                phone: row.phone ?? undefined,
+                role: roleData?.name ?? '',
+                roleId: row.role_id ?? '',
+                photoUrl: row.avatar_url ?? undefined,
+                profilePhotoUrl: row.avatar_url ?? undefined,
+                active: row.active ?? true,
+                sectorId: row.sector_id ?? undefined,
+                sectorName: sectorData?.name ?? undefined,
+                createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+                updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
+            };
+        }) as Collaborator[];
     },
 
     /**
@@ -74,8 +83,8 @@ export const CollaboratorService = {
                     email: colabData.email,
                     password,
                     name: colabData.name,
-                    role: colabData.roleId ?? 'sales',
-                    department: colabData.sectorId ?? null,
+                    role_id: colabData.roleId ?? null,
+                    sector_id: colabData.sectorId ?? null,
                     phone: colabData.phone ?? null,
                     avatar_url: colabData.photoUrl ?? null,
                     active: colabData.active ?? true,
@@ -111,8 +120,8 @@ export const CollaboratorService = {
         if (colabUpdates.name !== undefined) dbUpdates.name = colabUpdates.name;
         if (colabUpdates.email !== undefined) dbUpdates.email = colabUpdates.email;
         if (colabUpdates.phone !== undefined) dbUpdates.phone = colabUpdates.phone;
-        if (colabUpdates.roleId !== undefined) dbUpdates.role = colabUpdates.roleId;
-        if (colabUpdates.sectorId !== undefined) dbUpdates.department = colabUpdates.sectorId;
+        if (colabUpdates.roleId !== undefined) dbUpdates.role_id = colabUpdates.roleId;
+        if (colabUpdates.sectorId !== undefined) dbUpdates.sector_id = colabUpdates.sectorId;
         if (colabUpdates.photoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.photoUrl;
         if (colabUpdates.profilePhotoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.profilePhotoUrl;
         if (colabUpdates.active !== undefined) dbUpdates.active = colabUpdates.active;

@@ -295,7 +295,7 @@ export function Sidebar() {
                     </div>
                     <div className={styles.userDetails}>
                         <span className={styles.userName}>{user?.name || 'Usuário'}</span>
-                        <span className={styles.userRole}>{user?.role || 'Cargo'}</span>
+                        <span className={styles.userRole}>{user?.roleName || 'Cargo'}</span>
                     </div>
                 </div>
                 <button
