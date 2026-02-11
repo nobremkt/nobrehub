@@ -1,95 +1,131 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - INBOX SERVICE
+ * NOBRE HUB - INBOX SERVICE (SUPABASE)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * All data in Firestore:
- *   conversations/{conversationId}          → Conversation metadata
- *   conversations/{conversationId}/messages  → Messages subcollection
- *   settings/leadDistribution               → Distribution config
+ * All data in Supabase PostgreSQL:
+ *   conversations              → Conversation metadata
+ *   messages                   → Messages (FK conversation_id)
+ *   settings (key-value)       → Distribution config (via SettingsService or inline)
  *
- * RTDB is NOT used here — only Firestore with onSnapshot for real-time.
+ * Real-time via Supabase Realtime (postgres_changes).
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { getFirestoreDb } from '@/config/firebase';
-import {
-    collection,
-    doc,
-    addDoc,
-    getDoc,
-    getDocs,
-    updateDoc,
-    setDoc,
-    onSnapshot,
-    query,
-    orderBy,
-    limit,
-    where,
-    Timestamp,
-} from 'firebase/firestore';
+import { supabase } from '@/config/supabase';
 import { Conversation, Message } from '../types';
 import { useSettingsStore } from '../../settings/stores/useSettingsStore';
 
-const COL_CONVERSATIONS = 'conversations';
-const SUBCOL_MESSAGES = 'messages';
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS — row ↔ frontend type mapping
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const rowToConversation = (row: any): Conversation => ({
+    id: row.id,
+    leadId: row.lead_id || '',
+    leadName: row.name || '',
+    leadPhone: row.phone || '',
+    leadEmail: row.email || '',
+    leadCompany: row.company || '',
+    tags: row.tags || [],
+    notes: row.notes || '',
+    lastMessage: row.last_message_preview
+        ? { id: '', conversationId: row.id, content: row.last_message_preview, type: 'text', direction: 'in', status: 'read', createdAt: row.last_message_at ? new Date(row.last_message_at) : new Date() }
+        : undefined,
+    unreadCount: row.unread_count || 0,
+    assignedTo: row.assigned_to || undefined,
+    channel: row.channel || 'whatsapp',
+    status: row.status || 'open',
+    context: row.context || 'sales',
+    postSalesId: row.post_sales_id || undefined,
+    isFavorite: row.is_favorite || false,
+    isPinned: row.is_pinned || false,
+    isBlocked: row.is_blocked || false,
+    profilePicUrl: row.profile_pic_url || undefined,
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+});
+
+const rowToMessage = (row: any): Message => ({
+    id: row.id,
+    conversationId: row.conversation_id,
+    content: row.content || '',
+    type: row.type || 'text',
+    direction: row.sender_type === 'agent' ? 'out' : 'in',
+    status: row.status || 'sent',
+    senderId: row.sender_id || undefined,
+    mediaUrl: row.media_url || undefined,
+    mediaName: row.metadata?.mediaName || undefined,
+    viewOnce: row.metadata?.viewOnce || undefined,
+    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+});
 
 export const InboxService = {
     /**
      * Subscribe to the list of conversations.
      */
     subscribeToConversations: (callback: (conversations: Conversation[]) => void) => {
-        const db = getFirestoreDb();
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            orderBy('updatedAt', 'desc'),
-            limit(50)
-        );
+        // 1. Initial fetch
+        const fetchConversations = async () => {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(50);
 
-        return onSnapshot(q, (snapshot) => {
-            const conversations: Conversation[] = snapshot.docs.map((docSnap) => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    // Normalize timestamps for components that expect number
-                    updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
-                    createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
-                    lastMessage: data.lastMessage ? {
-                        ...data.lastMessage,
-                        timestamp: data.lastMessage.timestamp?.toMillis?.() || data.lastMessage.timestamp || 0,
-                    } : null,
-                } as Conversation;
-            });
+            if (error) {
+                console.error('[InboxService] Error fetching conversations:', error);
+                return;
+            }
+            callback((data || []).map(rowToConversation));
+        };
 
-            callback(conversations);
-        });
+        fetchConversations();
+
+        // 2. Realtime channel
+        const channel = supabase
+            .channel('inbox-conversations')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'conversations' },
+                () => { fetchConversations(); }
+            )
+            .subscribe();
+
+        // 3. Cleanup
+        return () => { supabase.removeChannel(channel); };
     },
 
     /**
      * Subscribe to messages for a specific conversation.
      */
     subscribeToMessages: (conversationId: string, callback: (messages: Message[]) => void) => {
-        const db = getFirestoreDb();
-        const q = query(
-            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
-            orderBy('timestamp', 'asc'),
-            limit(50)
-        );
+        const fetchMessages = async () => {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true })
+                .limit(50);
 
-        return onSnapshot(q, (snapshot) => {
-            const messages: Message[] = snapshot.docs.map((docSnap) => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    createdAt: data.timestamp?.toDate?.() || new Date(data.timestamp || data.createdAt || Date.now()),
-                } as Message;
-            });
+            if (error) {
+                console.error('[InboxService] Error fetching messages:', error);
+                return;
+            }
+            callback((data || []).map(rowToMessage));
+        };
 
-            callback(messages);
-        });
+        fetchMessages();
+
+        const channel = supabase
+            .channel(`inbox-messages-${conversationId}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+                () => { fetchMessages(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     },
 
     /**
@@ -100,28 +136,33 @@ export const InboxService = {
         leadId: string,
         callback: (conversation: Conversation | null) => void
     ) => {
-        const db = getFirestoreDb();
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            where('leadId', '==', leadId),
-            limit(1)
-        );
+        const fetchConversation = async () => {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('lead_id', leadId)
+                .limit(1)
+                .maybeSingle();
 
-        return onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
+            if (error) {
+                console.error('[InboxService] Error fetching conversation by leadId:', error);
                 callback(null);
                 return;
             }
+            callback(data ? rowToConversation(data) : null);
+        };
 
-            const docSnap = snapshot.docs[0];
-            const data = docSnap.data();
-            callback({
-                id: docSnap.id,
-                ...data,
-                updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
-                createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
-            } as Conversation);
-        });
+        fetchConversation();
+
+        const channel = supabase
+            .channel(`inbox-conv-lead-${leadId}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'conversations', filter: `lead_id=eq.${leadId}` },
+                () => { fetchConversation(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     },
 
     /**
@@ -136,76 +177,82 @@ export const InboxService = {
         leadCompany?: string;
         tags?: string[];
     }): Promise<string> => {
-        const db = getFirestoreDb();
-        const now = Timestamp.now();
+        const now = new Date().toISOString();
 
-        const conversationData = {
-            leadId: leadData.leadId || `lead_${Date.now()}`,
-            leadName: leadData.leadName,
-            leadPhone: leadData.leadPhone,
-            leadEmail: leadData.leadEmail || '',
-            leadCompany: leadData.leadCompany || '',
-            tags: leadData.tags || [],
-            notes: '',
-            unreadCount: 0,
-            channel: 'whatsapp',
-            status: 'open',
-            context: 'sales',
-            lastMessage: null,
-            createdAt: now,
-            updatedAt: now,
-        };
+        const { data, error } = await supabase
+            .from('conversations')
+            .insert({
+                lead_id: leadData.leadId || `lead_${Date.now()}`,
+                name: leadData.leadName,
+                phone: leadData.leadPhone,
+                email: leadData.leadEmail || '',
+                tags: leadData.tags || [],
+                notes: '',
+                unread_count: 0,
+                channel: 'whatsapp',
+                status: 'open',
+                context: 'sales',
+                last_message_preview: null,
+                created_at: now,
+                updated_at: now,
+            })
+            .select('id')
+            .single();
 
-        const docRef = await addDoc(collection(db, COL_CONVERSATIONS), conversationData);
-        return docRef.id;
+        if (error) throw error;
+        return data.id;
     },
 
     /**
      * Send a new message.
      */
     sendMessage: async (conversationId: string, text: string, senderId: string = 'agent') => {
-        const db = getFirestoreDb();
+        const now = new Date().toISOString();
 
         // 0. Get Conversation Details (to get phone number)
-        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
-        const convSnap = await getDoc(conversationRef);
-        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
+        const { data: convData, error: convError } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .single();
 
-        if (!conversation) {
-            throw new Error('Conversation not found');
-        }
+        if (convError || !convData) throw new Error('Conversation not found');
 
-        // 1. Create message in messages subcollection
-        const now = Timestamp.now();
+        // 1. Create message in messages table
+        const { data: msgData, error: msgError } = await supabase
+            .from('messages')
+            .insert({
+                conversation_id: conversationId,
+                content: text,
+                sender_id: senderId,
+                sender_type: 'agent',
+                status: 'pending',
+                type: 'text',
+                created_at: now,
+            })
+            .select('id')
+            .single();
 
-        const messageData = {
-            content: text,
-            senderId,
-            timestamp: now,
-            direction: 'out',
-            status: 'pending',
-            type: 'text',
-        };
-
-        const msgRef = await addDoc(
-            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
-            messageData
-        );
-        const messageId = msgRef.id;
+        if (msgError) throw msgError;
+        const messageId = msgData.id;
 
         // 2. Update conversation lastMessage + unreadCount
-        await updateDoc(conversationRef, {
-            lastMessage: { ...messageData, id: messageId },
-            unreadCount: 0,
-            updatedAt: now,
-        });
+        await supabase
+            .from('conversations')
+            .update({
+                last_message_preview: text,
+                last_message_at: now,
+                unread_count: 0,
+                updated_at: now,
+            })
+            .eq('id', conversationId);
 
         // 3. Send to WhatsApp (if configured)
         const { whatsapp } = useSettingsStore.getState();
 
-        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && convData.phone) {
             try {
-                const phone = conversation.leadPhone.replace(/\D/g, '');
+                const phone = convData.phone.replace(/\D/g, '');
 
                 const response = await fetch('/api/send-message', {
                     method: 'POST',
@@ -228,21 +275,23 @@ export const InboxService = {
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
                 // Update status to SENT on success
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'sent',
-                    whatsappMessageId: whatsappMessageId
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'sent', whatsapp_message_id: whatsappMessageId })
+                    .eq('id', messageId);
 
             } catch (error) {
                 console.error('Failed to send WhatsApp message:', error);
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'error'
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'error' })
+                    .eq('id', messageId);
             }
         } else {
-            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                status: 'sent'
-            });
+            await supabase
+                .from('messages')
+                .update({ status: 'sent' })
+                .eq('id', messageId);
         }
 
         return messageId;
@@ -252,10 +301,10 @@ export const InboxService = {
      * Helper to update lead phone.
      */
     updateLeadPhone: async (conversationId: string, newPhone: string) => {
-        const db = getFirestoreDb();
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            leadPhone: newPhone
-        });
+        await supabase
+            .from('conversations')
+            .update({ phone: newPhone })
+            .eq('id', conversationId);
     },
 
     /**
@@ -269,48 +318,53 @@ export const InboxService = {
         previewText: string,
         senderId: string = 'agent'
     ) => {
-        const db = getFirestoreDb();
+        const now = new Date().toISOString();
 
         // 0. Get Conversation
-        const convSnap = await getDoc(doc(db, COL_CONVERSATIONS, conversationId));
-        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
+        const { data: convData, error: convError } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .single();
 
-        if (!conversation) {
-            throw new Error('Conversation not found');
-        }
+        if (convError || !convData) throw new Error('Conversation not found');
 
-        // 1. Create message in Firestore
-        const now = Timestamp.now();
+        // 1. Create message in messages table
+        const { data: msgData, error: msgError } = await supabase
+            .from('messages')
+            .insert({
+                conversation_id: conversationId,
+                content: previewText,
+                sender_id: senderId,
+                sender_type: 'agent',
+                status: 'pending',
+                type: 'template',
+                metadata: { templateName },
+                created_at: now,
+            })
+            .select('id')
+            .single();
 
-        const messageData = {
-            content: previewText,
-            senderId,
-            timestamp: now,
-            direction: 'out',
-            status: 'pending',
-            type: 'template',
-            templateName: templateName,
-        };
-
-        const msgRef = await addDoc(
-            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
-            messageData
-        );
-        const messageId = msgRef.id;
+        if (msgError) throw msgError;
+        const messageId = msgData.id;
 
         // Update conversation
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            lastMessage: { ...messageData, id: messageId },
-            unreadCount: 0,
-            updatedAt: now,
-        });
+        await supabase
+            .from('conversations')
+            .update({
+                last_message_preview: previewText,
+                last_message_at: now,
+                unread_count: 0,
+                updated_at: now,
+            })
+            .eq('id', conversationId);
 
         // 2. Send to WhatsApp
         const { whatsapp } = useSettingsStore.getState();
 
-        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && convData.phone) {
             try {
-                const phone = conversation.leadPhone.replace(/\D/g, '');
+                const phone = convData.phone.replace(/\D/g, '');
 
                 const response = await fetch('/api/send-template', {
                     method: 'POST',
@@ -334,21 +388,23 @@ export const InboxService = {
                 const responseData = await response.json();
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'sent',
-                    whatsappMessageId: whatsappMessageId
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'sent', whatsapp_message_id: whatsappMessageId })
+                    .eq('id', messageId);
 
             } catch (error) {
                 console.error('Failed to send WhatsApp template:', error);
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'error'
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'error' })
+                    .eq('id', messageId);
             }
         } else {
-            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                status: 'sent'
-            });
+            await supabase
+                .from('messages')
+                .update({ status: 'sent' })
+                .eq('id', messageId);
         }
 
         return messageId;
@@ -358,32 +414,36 @@ export const InboxService = {
      * Toggle favorite status for a conversation.
      */
     toggleFavorite: async (conversationId: string) => {
-        const db = getFirestoreDb();
-        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
-        const convSnap = await getDoc(convRef);
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('is_favorite')
+            .eq('id', conversationId)
+            .single();
 
-        if (!convSnap.exists()) return;
-        const conversation = convSnap.data();
+        if (error || !data) return;
 
-        await updateDoc(convRef, {
-            isFavorite: !conversation?.isFavorite
-        });
+        await supabase
+            .from('conversations')
+            .update({ is_favorite: !data.is_favorite })
+            .eq('id', conversationId);
     },
 
     /**
      * Toggle pinned status for a conversation.
      */
     togglePin: async (conversationId: string) => {
-        const db = getFirestoreDb();
-        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
-        const convSnap = await getDoc(convRef);
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('is_pinned')
+            .eq('id', conversationId)
+            .single();
 
-        if (!convSnap.exists()) return;
-        const conversation = convSnap.data();
+        if (error || !data) return;
 
-        await updateDoc(convRef, {
-            isPinned: !conversation?.isPinned
-        });
+        await supabase
+            .from('conversations')
+            .update({ is_pinned: !data.is_pinned })
+            .eq('id', conversationId);
     },
 
     /**
@@ -395,24 +455,23 @@ export const InboxService = {
         scheduledFor: Date,
         senderId: string = 'agent'
     ) => {
-        const db = getFirestoreDb();
+        const { data, error } = await supabase
+            .from('messages')
+            .insert({
+                conversation_id: conversationId,
+                content,
+                sender_id: senderId,
+                sender_type: 'agent',
+                status: 'scheduled',
+                type: 'text',
+                metadata: { scheduledFor: scheduledFor.toISOString() },
+                created_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
 
-        const messageData = {
-            content,
-            senderId,
-            timestamp: Timestamp.now(),
-            scheduledFor: Timestamp.fromDate(scheduledFor),
-            direction: 'out',
-            status: 'scheduled',
-            type: 'text',
-        };
-
-        const msgRef = await addDoc(
-            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
-            messageData
-        );
-
-        return msgRef.id;
+        if (error) throw error;
+        return data.id;
     },
 
     /**
@@ -426,15 +485,16 @@ export const InboxService = {
         senderId: string = 'agent',
         viewOnce?: boolean
     ) => {
-        const db = getFirestoreDb();
+        const now = new Date().toISOString();
 
         // 0. Get Conversation
-        const convSnap = await getDoc(doc(db, COL_CONVERSATIONS, conversationId));
-        const conversation = convSnap.exists() ? { id: convSnap.id, ...convSnap.data() } as Conversation : null;
+        const { data: convData, error: convError } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .single();
 
-        if (!conversation) {
-            throw new Error('Conversation not found');
-        }
+        if (convError || !convData) throw new Error('Conversation not found');
 
         // 1. Create message
         const contentMap = {
@@ -444,40 +504,42 @@ export const InboxService = {
             document: mediaName || '[Documento]'
         };
 
-        const now = Timestamp.now();
+        const { data: msgData, error: msgError } = await supabase
+            .from('messages')
+            .insert({
+                conversation_id: conversationId,
+                content: contentMap[mediaType],
+                sender_id: senderId,
+                sender_type: 'agent',
+                status: 'pending',
+                type: mediaType,
+                media_url: mediaUrl,
+                metadata: { mediaName, viewOnce: viewOnce || false },
+                created_at: now,
+            })
+            .select('id')
+            .single();
 
-        const messageData: Record<string, any> = {
-            content: contentMap[mediaType],
-            senderId,
-            timestamp: now,
-            direction: 'out',
-            status: 'pending',
-            type: mediaType,
-            mediaUrl: mediaUrl,
-            mediaName: mediaName,
-        };
-
-        if (viewOnce) messageData.viewOnce = true;
-
-        const msgRef = await addDoc(
-            collection(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES),
-            messageData
-        );
-        const messageId = msgRef.id;
+        if (msgError) throw msgError;
+        const messageId = msgData.id;
 
         // Update conversation
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            lastMessage: { ...messageData, id: messageId },
-            unreadCount: 0,
-            updatedAt: now,
-        });
+        await supabase
+            .from('conversations')
+            .update({
+                last_message_preview: contentMap[mediaType],
+                last_message_at: now,
+                unread_count: 0,
+                updated_at: now,
+            })
+            .eq('id', conversationId);
 
         // 2. Send to WhatsApp
         const { whatsapp } = useSettingsStore.getState();
 
-        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && conversation.leadPhone) {
+        if (whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl && convData.phone) {
             try {
-                const phone = conversation.leadPhone.replace(/\D/g, '');
+                const phone = convData.phone.replace(/\D/g, '');
 
                 const response = await fetch('/api/send-media', {
                     method: 'POST',
@@ -502,21 +564,23 @@ export const InboxService = {
                 const responseData = await response.json();
                 const whatsappMessageId = responseData.messages?.[0]?.id;
 
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'sent',
-                    whatsappMessageId: whatsappMessageId
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'sent', whatsapp_message_id: whatsappMessageId })
+                    .eq('id', messageId);
 
             } catch (error) {
                 console.error('Failed to send WhatsApp media:', error);
-                await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                    status: 'error'
-                });
+                await supabase
+                    .from('messages')
+                    .update({ status: 'error' })
+                    .eq('id', messageId);
             }
         } else {
-            await updateDoc(doc(db, COL_CONVERSATIONS, conversationId, SUBCOL_MESSAGES, messageId), {
-                status: 'sent'
-            });
+            await supabase
+                .from('messages')
+                .update({ status: 'sent' })
+                .eq('id', messageId);
         }
 
         return messageId;
@@ -524,47 +588,54 @@ export const InboxService = {
 
     /**
      * Update diverse conversation details (lead info, tags, notes, etc).
-     * Also syncs relevant fields to the corresponding Firestore Lead if leadId exists.
+     * Also syncs relevant fields to the corresponding Supabase Lead if leadId exists.
      */
     updateConversationDetails: async (conversationId: string, data: Partial<Conversation>) => {
-        const db = getFirestoreDb();
-        const conversationRef = doc(db, COL_CONVERSATIONS, conversationId);
+        // 1. Build conversation update object
+        const convUpdates: Record<string, unknown> = {};
+        if (data.leadName !== undefined) convUpdates.name = data.leadName;
+        if (data.leadPhone !== undefined) convUpdates.phone = data.leadPhone;
+        if (data.leadEmail !== undefined) convUpdates.email = data.leadEmail;
+        if (data.tags !== undefined) convUpdates.tags = data.tags;
+        if (data.notes !== undefined) convUpdates.notes = data.notes;
+        if (data.isFavorite !== undefined) convUpdates.is_favorite = data.isFavorite;
+        if (data.isPinned !== undefined) convUpdates.is_pinned = data.isPinned;
+        convUpdates.updated_at = new Date().toISOString();
 
-        // 1. Update conversation in Firestore
-        await updateDoc(conversationRef, {
-            ...data
-        });
+        await supabase
+            .from('conversations')
+            .update(convUpdates)
+            .eq('id', conversationId);
 
         // 2. Get conversation to check for leadId
-        const snapshot = await getDoc(conversationRef);
-        const conv = snapshot.data();
+        const { data: conv } = await supabase
+            .from('conversations')
+            .select('lead_id')
+            .eq('id', conversationId)
+            .single();
 
-        // 3. If leadId exists, sync relevant fields to Firestore Lead
-        if (conv?.leadId) {
+        // 3. If leadId exists, sync relevant fields to Supabase Lead
+        if (conv?.lead_id) {
             try {
-                const leadRef = doc(db, 'leads', conv.leadId);
-                const leadSnap = await getDoc(leadRef);
+                const leadUpdates: Record<string, unknown> = {};
 
-                if (leadSnap.exists()) {
-                    const leadUpdates: Record<string, any> = {};
+                if (data.leadName !== undefined) leadUpdates.name = data.leadName;
+                if (data.leadPhone !== undefined) leadUpdates.phone = data.leadPhone;
+                if (data.leadEmail !== undefined) leadUpdates.email = data.leadEmail;
+                if (data.leadCompany !== undefined) leadUpdates.company = data.leadCompany;
+                if (data.tags !== undefined) leadUpdates.tags = data.tags;
+                if (data.notes !== undefined) leadUpdates.notes = data.notes;
 
-                    // Map conversation fields to lead fields
-                    if (data.leadName !== undefined) leadUpdates.name = data.leadName;
-                    if (data.leadPhone !== undefined) leadUpdates.phone = data.leadPhone;
-                    if (data.leadEmail !== undefined) leadUpdates.email = data.leadEmail;
-                    if (data.leadCompany !== undefined) leadUpdates.company = data.leadCompany;
-                    if (data.tags !== undefined) leadUpdates.tags = data.tags;
-                    if (data.notes !== undefined) leadUpdates.notes = data.notes;
-
-                    // Only update if there are changes
-                    if (Object.keys(leadUpdates).length > 0) {
-                        leadUpdates.updatedAt = Timestamp.fromDate(new Date());
-                        await updateDoc(leadRef, leadUpdates);
-                        console.log('[InboxService] Synced conversation changes to Lead:', conv.leadId);
-                    }
+                if (Object.keys(leadUpdates).length > 0) {
+                    leadUpdates.updated_at = new Date().toISOString();
+                    await supabase
+                        .from('leads')
+                        .update(leadUpdates)
+                        .eq('id', conv.lead_id);
+                    console.log('[InboxService] Synced conversation changes to Lead:', conv.lead_id);
                 }
             } catch (error) {
-                console.error('[InboxService] Failed to sync to Firestore Lead:', error);
+                console.error('[InboxService] Failed to sync to Lead:', error);
             }
         }
     },
@@ -573,28 +644,36 @@ export const InboxService = {
      * Assign conversation to a team member.
      */
     assignConversation: async (conversationId: string, userId: string | null) => {
-        const db = getFirestoreDb();
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            assignedTo: userId,
-            updatedAt: Timestamp.now(),
-        });
+        await supabase
+            .from('conversations')
+            .update({
+                assigned_to: userId,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', conversationId);
     },
 
     /**
      * Close or reopen a conversation.
      */
     toggleConversationStatus: async (conversationId: string) => {
-        const db = getFirestoreDb();
-        const convRef = doc(db, COL_CONVERSATIONS, conversationId);
-        const convSnap = await getDoc(convRef);
-        const conversation = convSnap.data() as Conversation;
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('status')
+            .eq('id', conversationId)
+            .single();
 
-        const newStatus = conversation.status === 'open' ? 'closed' : 'open';
+        if (error || !data) return 'open';
 
-        await updateDoc(convRef, {
-            status: newStatus,
-            updatedAt: Timestamp.now(),
-        });
+        const newStatus = data.status === 'open' ? 'closed' : 'open';
+
+        await supabase
+            .from('conversations')
+            .update({
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', conversationId);
 
         return newStatus;
     },
@@ -603,132 +682,135 @@ export const InboxService = {
      * Transfer conversation to post-sales sector.
      */
     transferToPostSales: async (conversationId: string) => {
-        const db = getFirestoreDb();
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            context: 'post_sales',
-            status: 'open',
-            assignedTo: null,
-            transferredToPostSalesAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-        });
+        await supabase
+            .from('conversations')
+            .update({
+                context: 'post_sales',
+                status: 'open',
+                assigned_to: null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', conversationId);
     },
 
     /**
      * Mark conversation as read.
      */
     markAsRead: async (conversationId: string) => {
-        const db = getFirestoreDb();
-        await updateDoc(doc(db, COL_CONVERSATIONS, conversationId), {
-            unreadCount: 0
-        });
+        await supabase
+            .from('conversations')
+            .update({ unread_count: 0 })
+            .eq('id', conversationId);
     },
 
     /**
      * Seeds the database with mock data for testing.
      */
     seedDatabase: async () => {
-        const db = getFirestoreDb();
-
-        // Mock Data
         const mocks = [
             {
-                leadName: 'João Silva',
-                leadPhone: '11999999999',
-                leadEmail: 'joao.silva@empresaA.com',
-                leadCompany: 'Empresa A',
+                name: 'João Silva',
+                phone: '11999999999',
+                email: 'joao.silva@empresaA.com',
                 channel: 'whatsapp',
-                unreadCount: 2,
+                unread_count: 2,
                 status: 'open',
                 tags: ['Interessado', 'Quente', 'Novo Lead'],
                 notes: 'Cliente interessado no plano anual.',
                 messages: [
-                    { content: 'Olá, gostaria de saber mais sobre o serviço.', direction: 'in' },
-                    { content: 'Claro, João! Como posso ajudar?', direction: 'out' },
-                    { content: 'Vocês fazem desenvolvimento web?', direction: 'in' }
+                    { content: 'Olá, gostaria de saber mais sobre o serviço.', sender_type: 'lead' },
+                    { content: 'Claro, João! Como posso ajudar?', sender_type: 'agent' },
+                    { content: 'Vocês fazem desenvolvimento web?', sender_type: 'lead' }
                 ]
             },
             {
-                leadName: 'Maria Oliveira',
-                leadPhone: '11888888888',
-                leadEmail: 'maria@techsolutions.com.br',
-                leadCompany: 'Tech Solutions',
+                name: 'Maria Oliveira',
+                phone: '11888888888',
+                email: 'maria@techsolutions.com.br',
                 channel: 'instagram',
-                unreadCount: 0,
+                unread_count: 0,
                 status: 'closed',
                 tags: ['Cliente Antigo', 'Suporte'],
                 notes: 'Dúvida técnica resolvida.',
                 messages: [
-                    { content: 'Obrigado pelo atendimento!', direction: 'in' },
-                    { content: 'Por nada! Conte conosco.', direction: 'out' }
+                    { content: 'Obrigado pelo atendimento!', sender_type: 'lead' },
+                    { content: 'Por nada! Conte conosco.', sender_type: 'agent' }
                 ]
             },
             {
-                leadName: 'Carlos Pereira',
-                leadPhone: '11777777777',
-                leadEmail: 'contact@agenciaxyz.com',
-                leadCompany: 'Agência XYZ',
+                name: 'Carlos Pereira',
+                phone: '11777777777',
+                email: 'contact@agenciaxyz.com',
                 channel: 'whatsapp',
-                unreadCount: 0,
+                unread_count: 0,
                 status: 'open',
                 tags: ['Parceria', 'Frio'],
                 notes: 'Agência buscando parceria.',
                 messages: [
-                    { content: 'Quanto custa o plano mensal?', direction: 'in' }
+                    { content: 'Quanto custa o plano mensal?', sender_type: 'lead' }
                 ]
             }
         ];
 
         for (const mock of mocks) {
-            const now = Timestamp.now();
+            const now = new Date().toISOString();
 
             // Create Conversation
-            const convRef = await addDoc(collection(db, COL_CONVERSATIONS), {
-                leadId: `mock_${Date.now()}_${Math.random()}`,
-                leadName: mock.leadName,
-                leadPhone: mock.leadPhone,
-                leadEmail: mock.leadEmail,
-                leadCompany: mock.leadCompany,
-                tags: mock.tags || [],
-                notes: mock.notes || '',
-                unreadCount: mock.unreadCount,
-                channel: mock.channel,
-                status: mock.status,
-                context: 'sales',
-                lastMessage: null,
-                createdAt: now,
-                updatedAt: now,
-            });
+            const { data: convData, error: convError } = await supabase
+                .from('conversations')
+                .insert({
+                    lead_id: `mock_${Date.now()}_${Math.random()}`,
+                    name: mock.name,
+                    phone: mock.phone,
+                    email: mock.email,
+                    tags: mock.tags || [],
+                    notes: mock.notes || '',
+                    unread_count: mock.unread_count,
+                    channel: mock.channel,
+                    status: mock.status,
+                    context: 'sales',
+                    last_message_preview: null,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .select('id')
+                .single();
+
+            if (convError || !convData) continue;
 
             // Create Messages
-            let lastMessageData = null;
+            let lastContent: string | null = null;
+            let lastTimestamp = now;
 
             for (const [index, msg] of mock.messages.entries()) {
-                const timestamp = Timestamp.fromMillis(
-                    Date.now() - (1000 * 60 * (mock.messages.length - index))
-                );
+                const timestamp = new Date(Date.now() - (1000 * 60 * (mock.messages.length - index))).toISOString();
 
-                const msgData = {
-                    content: msg.content,
-                    senderId: msg.direction === 'out' ? 'agent' : 'lead',
-                    direction: msg.direction,
-                    timestamp: timestamp,
-                    status: 'read',
-                    type: 'text',
-                };
+                await supabase
+                    .from('messages')
+                    .insert({
+                        conversation_id: convData.id,
+                        content: msg.content,
+                        sender_id: msg.sender_type === 'agent' ? 'agent' : 'lead',
+                        sender_type: msg.sender_type,
+                        status: 'read',
+                        type: 'text',
+                        created_at: timestamp,
+                    });
 
-                await addDoc(
-                    collection(db, COL_CONVERSATIONS, convRef.id, SUBCOL_MESSAGES),
-                    msgData
-                );
-                lastMessageData = msgData;
+                lastContent = msg.content;
+                lastTimestamp = timestamp;
             }
 
             // Update conversation with lastMessage
-            if (lastMessageData) {
-                await updateDoc(doc(db, COL_CONVERSATIONS, convRef.id), {
-                    lastMessage: lastMessageData,
-                    updatedAt: lastMessageData.timestamp,
-                });
+            if (lastContent) {
+                await supabase
+                    .from('conversations')
+                    .update({
+                        last_message_preview: lastContent,
+                        last_message_at: lastTimestamp,
+                        updated_at: lastTimestamp,
+                    })
+                    .eq('id', convData.id);
             }
         }
 
@@ -741,18 +823,22 @@ export const InboxService = {
 
     /**
      * Get lead distribution settings.
-     * Reads from Firestore: settings/leadDistribution
+     * Reads from Supabase settings table or inline config.
      */
     getDistributionSettings: async (): Promise<{
         enabled: boolean;
         mode: 'auto' | 'manual';
         participants: string[];
     }> => {
-        const db = getFirestoreDb();
-        const settingsRef = doc(db, 'settings', 'leadDistribution');
-        const snapshot = await getDoc(settingsRef);
+        // For now, we read from a settings record.
+        // This could also be a dedicated table or a Supabase config row.
+        const { data, error } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'leadDistribution')
+            .maybeSingle();
 
-        if (!snapshot.exists()) {
+        if (error || !data) {
             return {
                 enabled: false,
                 mode: 'manual',
@@ -760,7 +846,8 @@ export const InboxService = {
             };
         }
 
-        return snapshot.data() as {
+        const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        return settings as {
             enabled: boolean;
             mode: 'auto' | 'manual';
             participants: string[];
@@ -769,38 +856,36 @@ export const InboxService = {
 
     /**
      * Save lead distribution settings.
-     * Writes to Firestore: settings/leadDistribution
      */
     saveDistributionSettings: async (settings: {
         enabled: boolean;
         mode: 'auto' | 'manual';
         participants: string[];
     }): Promise<void> => {
-        const db = getFirestoreDb();
-        const settingsRef = doc(db, 'settings', 'leadDistribution');
-        await setDoc(settingsRef, {
-            ...settings,
-            updatedAt: Timestamp.fromDate(new Date())
-        }, { merge: true });
+        await supabase
+            .from('settings')
+            .upsert({
+                key: 'leadDistribution',
+                value: settings,
+                updated_at: new Date().toISOString(),
+            }, { onConflict: 'key' });
     },
 
     /**
      * Get count of active (open) leads per collaborator.
      */
     getActiveLeadsCount: async (): Promise<Record<string, number>> => {
-        const db = getFirestoreDb();
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            where('status', '!=', 'closed')
-        );
-        const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('assigned_to')
+            .neq('status', 'closed');
+
+        if (error) throw error;
 
         const counts: Record<string, number> = {};
-
-        snapshot.docs.forEach((docSnap) => {
-            const conv = docSnap.data();
-            if (conv.assignedTo) {
-                counts[conv.assignedTo] = (counts[conv.assignedTo] || 0) + 1;
+        (data || []).forEach((row) => {
+            if (row.assigned_to) {
+                counts[row.assigned_to] = (counts[row.assigned_to] || 0) + 1;
             }
         });
 
@@ -831,7 +916,6 @@ export const InboxService = {
      * Distribute all unassigned leads to participants.
      */
     distributeUnassignedLeads: async (): Promise<{ distributed: number; errors: number }> => {
-        const db = getFirestoreDb();
         const settings = await InboxService.getDistributionSettings();
 
         if (!settings.enabled || settings.participants.length === 0) {
@@ -839,15 +923,15 @@ export const InboxService = {
         }
 
         // Get all unassigned open conversations
-        const q = query(
-            collection(db, COL_CONVERSATIONS),
-            where('status', '!=', 'closed')
-        );
-        const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('id')
+            .neq('status', 'closed')
+            .is('assigned_to', null);
 
-        const unassigned = snapshot.docs
-            .filter(docSnap => !docSnap.data().assignedTo)
-            .map(docSnap => docSnap.id);
+        if (error) throw error;
+
+        const unassigned = (data || []).map(row => row.id);
 
         let distributed = 0;
         let errors = 0;

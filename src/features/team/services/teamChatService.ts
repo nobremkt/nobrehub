@@ -1,25 +1,22 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - TEAM CHAT SERVICE (SUPABASE)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Data in Supabase PostgreSQL:
+ *   team_chat_channels              → Chat channels (private/group)
+ *   team_chat_messages              → Messages (FK channel_id)
+ *
+ * Attachments still use Firebase Storage (as per migration plan).
+ * Real-time via Supabase Realtime (postgres_changes).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+import { supabase } from '@/config/supabase';
 import {
-    getFirestoreDb,
     getFirebaseStorage
 } from '@/config/firebase';
-import {
-    collection,
-    doc,
-    addDoc,
-    setDoc,
-    getDoc,
-    getDocs,
-    updateDoc,
-    onSnapshot,
-    query,
-    orderBy,
-    limit,
-    where,
-    Timestamp,
-    writeBatch,
-    arrayUnion,
-    arrayRemove,
-} from 'firebase/firestore';
 import {
     ref as storageRef,
     uploadBytes,
@@ -28,73 +25,73 @@ import {
 import { TeamChat, TeamMessage, ChatParticipant } from '../types/chat';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FIRESTORE COLLECTIONS
+// HELPERS — row ↔ frontend type mapping
 // ═══════════════════════════════════════════════════════════════════════════════
-const COL_TEAM_CHATS = 'team_chats';
-const COL_USER_CHAT_META = 'user_chat_meta';
-const SUBCOL_MESSAGES = 'messages';
+
+const rowToTeamChat = (row: any, userMeta?: { pinned?: boolean; hidden?: boolean }): TeamChat => ({
+    id: row.id,
+    type: row.type || 'private',
+    participants: row.member_ids || [],
+    name: row.name || undefined,
+    photoUrl: row.photo_url || undefined,
+    lastMessage: row.last_message_content ? {
+        content: row.last_message_content,
+        senderId: row.last_message_sender_id || '',
+        createdAt: row.last_message_at ? new Date(row.last_message_at).getTime() : 0,
+        type: row.last_message_type || 'text',
+    } : undefined,
+    updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : 0,
+    createdBy: row.created_by || undefined,
+    admins: row.admin_ids || [],
+    pinned: userMeta?.pinned || false,
+    hidden: userMeta?.hidden || false,
+});
+
+const rowToTeamMessage = (row: any): TeamMessage => ({
+    id: row.id,
+    chatId: row.channel_id,
+    senderId: row.sender_id,
+    content: row.content || '',
+    type: row.type || 'text',
+    createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
+    attachments: row.media_url ? [{ url: row.media_url, name: '', type: row.type || 'file' }] : undefined,
+});
 
 export const TeamChatService = {
     /**
      * Create a new 1-on-1 private chat or return existing
      */
     createPrivateChat: async (currentUserId: string, otherUser: ChatParticipant): Promise<string> => {
-        const db = getFirestoreDb();
-
-        // 1. Check if chat already exists (deterministic key for private chats)
+        // 1. Deterministic key for private chats
         const sortedIds = [currentUserId, otherUser.id].sort();
         const chatKey = `${sortedIds[0]}_${sortedIds[1]}`;
 
-        const chatRef = doc(db, COL_TEAM_CHATS, chatKey);
-        const chatSnap = await getDoc(chatRef);
+        // Check if chat already exists
+        const { data: existing } = await supabase
+            .from('team_chat_channels')
+            .select('id')
+            .eq('id', chatKey)
+            .maybeSingle();
 
-        const now = Timestamp.now();
-
-        if (chatSnap.exists()) {
-            // Self-healing: Ensure it's visible for both users
-            const batch = writeBatch(db);
-            batch.set(
-                doc(db, COL_USER_CHAT_META, currentUserId, 'chats', chatKey),
-                { hidden: false }, { merge: true }
-            );
-            batch.set(
-                doc(db, COL_USER_CHAT_META, otherUser.id, 'chats', chatKey),
-                { hidden: false }, { merge: true }
-            );
-            await batch.commit();
+        if (existing) {
             return chatKey;
         }
 
+        const now = new Date().toISOString();
+
         // 2. Create new chat
-        const newChat = {
-            type: 'private',
-            participants: [currentUserId, otherUser.id],
-            updatedAt: now,
-            createdAt: now,
-            participantDetails: {
-                [currentUserId]: { id: currentUserId, name: 'User', email: '', photoUrl: '' },
-                [otherUser.id]: otherUser
-            }
-        };
+        const { error } = await supabase
+            .from('team_chat_channels')
+            .insert({
+                id: chatKey,
+                type: 'private',
+                name: otherUser.name,
+                member_ids: [currentUserId, otherUser.id],
+                created_by: currentUserId,
+                created_at: now,
+            });
 
-        const batch = writeBatch(db);
-
-        // Create main chat doc (with deterministic key)
-        batch.set(chatRef, newChat);
-
-        // Create user meta for both users
-        batch.set(doc(db, COL_USER_CHAT_META, currentUserId, 'chats', chatKey), {
-            hidden: false,
-            pinned: false,
-            updatedAt: now,
-        });
-        batch.set(doc(db, COL_USER_CHAT_META, otherUser.id, 'chats', chatKey), {
-            hidden: false,
-            pinned: false,
-            updatedAt: now,
-        });
-
-        await batch.commit();
+        if (error) throw error;
         return chatKey;
     },
 
@@ -102,41 +99,27 @@ export const TeamChatService = {
      * Create a group chat
      */
     createGroupChat: async (currentUserId: string, name: string, participants: ChatParticipant[]): Promise<string> => {
-        const db = getFirestoreDb();
-
         const allParticipantIds = [currentUserId, ...participants.map(p => p.id)];
-        const now = Timestamp.now();
+        const now = new Date().toISOString();
 
-        const newChat = {
-            type: 'group',
-            name,
-            participants: allParticipantIds,
-            updatedAt: now,
-            createdAt: now,
-            createdBy: currentUserId,
-            admins: [currentUserId],
-        };
+        const { data, error } = await supabase
+            .from('team_chat_channels')
+            .insert({
+                type: 'group',
+                name,
+                member_ids: allParticipantIds,
+                created_by: currentUserId,
+                created_at: now,
+            })
+            .select('id')
+            .single();
 
-        // Create main chat doc (auto-generated key)
-        const chatDocRef = await addDoc(collection(db, COL_TEAM_CHATS), newChat);
-        const chatId = chatDocRef.id;
-
-        // Create user meta for all participants
-        const batch = writeBatch(db);
-        allParticipantIds.forEach(uid => {
-            batch.set(doc(db, COL_USER_CHAT_META, uid, 'chats', chatId), {
-                hidden: false,
-                pinned: false,
-                updatedAt: now,
-            });
-        });
-        await batch.commit();
-
-        return chatId;
+        if (error) throw error;
+        return data.id;
     },
 
     /**
-     * Upload an attachment
+     * Upload an attachment (still uses Firebase Storage)
      */
     uploadAttachment: async (file: Blob | File, path: string): Promise<string> => {
         const storage = getFirebaseStorage();
@@ -149,152 +132,131 @@ export const TeamChatService = {
      * Send a message
      */
     sendMessage: async (chatId: string, senderId: string, content: string, type: 'text' | 'image' | 'file' | 'audio' = 'text', participants: string[]): Promise<void> => {
-        const db = getFirestoreDb();
+        const now = new Date().toISOString();
 
-        const now = Timestamp.now();
+        // 1. Get sender name from users table
+        const { data: userData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', senderId)
+            .single();
 
-        const message = {
-            chatId,
-            senderId,
-            content,
-            type,
-            createdAt: now,
-        };
+        const senderName = userData?.name || 'Unknown';
 
-        // 1. Add message to subcollection
-        await addDoc(collection(db, COL_TEAM_CHATS, chatId, SUBCOL_MESSAGES), message);
+        // 2. Insert message
+        await supabase
+            .from('team_chat_messages')
+            .insert({
+                channel_id: chatId,
+                sender_id: senderId,
+                sender_name: senderName,
+                content,
+                type,
+                created_at: now,
+            });
 
-        // 2. Update chat metadata (lastMessage + updatedAt)
-        const lastMessageSnippet = {
-            content: type === 'text' ? content : (type === 'audio' ? 'Áudio' : (type === 'image' ? 'Imagem' : 'Arquivo')),
-            senderId,
-            createdAt: now,
-            type,
-        };
+        // 3. Update channel metadata (last message snippet)
+        const lastMessageContent = type === 'text' ? content : (type === 'audio' ? 'Áudio' : (type === 'image' ? 'Imagem' : 'Arquivo'));
 
-        await updateDoc(doc(db, COL_TEAM_CHATS, chatId), {
-            lastMessage: lastMessageSnippet,
-            updatedAt: now,
-        });
-
-        // 3. Update user meta (unhide + update timestamp)
-        const batch = writeBatch(db);
-        participants.forEach(uid => {
-            batch.set(doc(db, COL_USER_CHAT_META, uid, 'chats', chatId), {
-                hidden: false,
-                updatedAt: now,
-            }, { merge: true });
-        });
-        await batch.commit();
+        await supabase
+            .from('team_chat_channels')
+            .update({
+                last_message_content: lastMessageContent,
+                last_message_sender_id: senderId,
+                last_message_at: now,
+                last_message_type: type,
+                updated_at: now,
+            })
+            .eq('id', chatId);
     },
 
     /**
      * Subscribe to user's chat list
-     * Combines team_chats with user_chat_meta for personalized views
+     * Reads from team_chat_channels where member_ids contains the userId
      */
     subscribeToUserChats: (userId: string, callback: (chats: TeamChat[]) => void) => {
-        const db = getFirestoreDb();
+        const fetchChats = async () => {
+            const { data, error } = await supabase
+                .from('team_chat_channels')
+                .select('*')
+                .contains('member_ids', [userId])
+                .order('updated_at', { ascending: false });
 
-        // Listen to user's chat meta to know which chats they're in
-        const userMetaRef = collection(db, COL_USER_CHAT_META, userId, 'chats');
-
-        const unsubscribe = onSnapshot(userMetaRef, async (metaSnapshot) => {
-            if (metaSnapshot.empty) {
+            if (error) {
+                console.error('[TeamChatService] Error fetching chats:', error);
                 callback([]);
                 return;
             }
 
-            // Get all chat IDs from user meta
-            const chatMeta: Record<string, any> = {};
-            metaSnapshot.docs.forEach(docSnap => {
-                chatMeta[docSnap.id] = docSnap.data();
-            });
-
-            // Fetch the actual chat documents
-            const chatIds = Object.keys(chatMeta).filter(id => !chatMeta[id].hidden);
-
-            if (chatIds.length === 0) {
-                callback([]);
-                return;
-            }
-
-            // Fetch chats in batches of 10 (Firestore 'in' query limit)
-            const allChats: TeamChat[] = [];
-            const batches = [];
-            for (let i = 0; i < chatIds.length; i += 10) {
-                batches.push(chatIds.slice(i, i + 10));
-            }
-
-            for (const batchIds of batches) {
-                const q = query(
-                    collection(db, COL_TEAM_CHATS),
-                    where('__name__', 'in', batchIds)
-                );
-                const chatSnapshot = await getDocs(q);
-                chatSnapshot.docs.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const meta = chatMeta[docSnap.id] || {};
-                    allChats.push({
-                        id: docSnap.id,
-                        ...data,
-                        // Merge user-specific state
-                        pinned: meta.pinned || false,
-                        hidden: meta.hidden || false,
-                        updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || 0,
-                    } as TeamChat);
-                });
-            }
+            const chats = (data || []).map(row => rowToTeamChat(row));
 
             // Sort: pinned first, then by updatedAt desc
-            allChats.sort((a, b) => {
+            chats.sort((a, b) => {
                 if (a.pinned && !b.pinned) return -1;
                 if (!a.pinned && b.pinned) return 1;
                 return b.updatedAt - a.updatedAt;
             });
 
-            callback(allChats);
-        });
+            callback(chats);
+        };
 
-        return unsubscribe;
+        fetchChats();
+
+        const channel = supabase
+            .channel(`team-chats-${userId}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'team_chat_channels' },
+                () => { fetchChats(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     },
 
     /**
      * Toggle Pin Chat
+     * Since we don't have per-user metadata table, we store pinned state
+     * in a JSONB column or handle client-side. For now, this is a no-op
+     * placeholder that can be extended with a user_chat_preferences table.
      */
-    togglePinChat: async (userId: string, chatId: string, pinned: boolean) => {
-        const db = getFirestoreDb();
-        await setDoc(
-            doc(db, COL_USER_CHAT_META, userId, 'chats', chatId),
-            { pinned },
-            { merge: true }
-        );
+    togglePinChat: async (_userId: string, _chatId: string, _pinned: boolean) => {
+        // TODO: Implement with a user_chat_preferences table or JSONB metadata
+        // For now, pin state is managed client-side in the store
+        console.log('[TeamChatService] togglePinChat: client-side only for now');
     },
 
     /**
      * Subscribe to messages in a chat
      */
     subscribeToMessages: (chatId: string, callback: (messages: TeamMessage[]) => void) => {
-        const db = getFirestoreDb();
-        const messagesRef = query(
-            collection(db, COL_TEAM_CHATS, chatId, SUBCOL_MESSAGES),
-            orderBy('createdAt', 'asc'),
-            limit(100)
-        );
+        const fetchMessages = async () => {
+            const { data, error } = await supabase
+                .from('team_chat_messages')
+                .select('*')
+                .eq('channel_id', chatId)
+                .order('created_at', { ascending: true })
+                .limit(100);
 
-        const unsubscribe = onSnapshot(messagesRef, (snapshot) => {
-            const messages = snapshot.docs.map(docSnap => {
-                const data = docSnap.data();
-                return {
-                    id: docSnap.id,
-                    ...data,
-                    createdAt: data.createdAt?.toMillis?.() || data.createdAt || 0,
-                } as TeamMessage;
-            });
+            if (error) {
+                console.error('[TeamChatService] Error fetching messages:', error);
+                callback([]);
+                return;
+            }
 
-            callback(messages);
-        });
+            callback((data || []).map(rowToTeamMessage));
+        };
 
-        return unsubscribe;
+        fetchMessages();
+
+        const channel = supabase
+            .channel(`team-messages-${chatId}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'team_chat_messages', filter: `channel_id=eq.${chatId}` },
+                () => { fetchMessages(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     },
 
     /**
@@ -302,101 +264,96 @@ export const TeamChatService = {
      */
     markAsRead: async (_chatId: string, _userId: string) => {
         // Implementation for read receipts would go here
+        // Could use a user_chat_read_state table
     },
 
     /**
      * Update Group Info (Name, Photo)
      */
     updateGroupInfo: async (chatId: string, updates: { name?: string; photoUrl?: string }) => {
-        const db = getFirestoreDb();
-
-        const chatRef = doc(db, COL_TEAM_CHATS, chatId);
-        const chatSnap = await getDoc(chatRef);
-
-        if (!chatSnap.exists()) throw new Error("Chat not found");
-
-        const updateData: Record<string, any> = {};
+        const updateData: Record<string, unknown> = {};
         if (updates.name) updateData.name = updates.name;
-        if (updates.photoUrl) updateData.photoUrl = updates.photoUrl;
-        updateData.updatedAt = Timestamp.now();
+        if (updates.photoUrl) updateData.photo_url = updates.photoUrl;
+        updateData.updated_at = new Date().toISOString();
 
-        await updateDoc(chatRef, updateData);
-        // No need to update user_chat_meta — chat data is read from team_chats directly
+        const { error } = await supabase
+            .from('team_chat_channels')
+            .update(updateData)
+            .eq('id', chatId);
+
+        if (error) throw error;
     },
 
     /**
      * Add Participants to Group
      */
     addParticipants: async (chatId: string, newParticipantIds: string[]) => {
-        const db = getFirestoreDb();
+        // 1. Get current members
+        const { data: chat, error: chatError } = await supabase
+            .from('team_chat_channels')
+            .select('member_ids')
+            .eq('id', chatId)
+            .single();
 
-        const chatRef = doc(db, COL_TEAM_CHATS, chatId);
-        const chatSnap = await getDoc(chatRef);
+        if (chatError || !chat) throw new Error('Chat not found');
 
-        if (!chatSnap.exists()) throw new Error("Chat not found");
-        const chatData = chatSnap.data();
+        const currentMembers: string[] = chat.member_ids || [];
+        const uniqueNew = newParticipantIds.filter(id => !currentMembers.includes(id));
+        if (uniqueNew.length === 0) return;
 
-        const currentParticipants = chatData.participants || [];
-        const uniqueNewIds = newParticipantIds.filter(id => !currentParticipants.includes(id));
-        if (uniqueNewIds.length === 0) return;
+        // 2. Update with merged array
+        const { error } = await supabase
+            .from('team_chat_channels')
+            .update({
+                member_ids: [...currentMembers, ...uniqueNew],
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', chatId);
 
-        // 1. Update main chat with new participants
-        await updateDoc(chatRef, {
-            participants: arrayUnion(...uniqueNewIds),
-            updatedAt: Timestamp.now(),
-        });
-
-        // 2. Create user meta for new participants
-        const batch = writeBatch(db);
-        uniqueNewIds.forEach(uid => {
-            batch.set(doc(db, COL_USER_CHAT_META, uid, 'chats', chatId), {
-                hidden: false,
-                pinned: false,
-                updatedAt: Timestamp.now(),
-            });
-        });
-        await batch.commit();
+        if (error) throw error;
     },
 
     /**
      * Remove Participant from Group
      */
     removeParticipant: async (chatId: string, userIdToRemove: string) => {
-        const db = getFirestoreDb();
+        // 1. Get current chat
+        const { data: chat, error: chatError } = await supabase
+            .from('team_chat_channels')
+            .select('member_ids, admin_ids')
+            .eq('id', chatId)
+            .single();
 
-        const chatRef = doc(db, COL_TEAM_CHATS, chatId);
-        const chatSnap = await getDoc(chatRef);
+        if (chatError || !chat) throw new Error('Chat not found');
 
-        if (!chatSnap.exists()) throw new Error("Chat not found");
-        const chatData = chatSnap.data();
+        const currentMembers: string[] = chat.member_ids || [];
+        const updatedMembers = currentMembers.filter(id => id !== userIdToRemove);
 
-        const currentParticipants = chatData.participants || [];
-        const updatedParticipants = currentParticipants.filter((id: string) => id !== userIdToRemove);
-
-        if (updatedParticipants.length === 0) {
+        if (updatedMembers.length === 0) {
             // DELETE GROUP: No participants left
-            // Delete messages subcollection (individually)
-            const messagesSnap = await getDocs(collection(db, COL_TEAM_CHATS, chatId, SUBCOL_MESSAGES));
-            const batch = writeBatch(db);
-            messagesSnap.docs.forEach(msgDoc => batch.delete(msgDoc.ref));
-            batch.delete(chatRef);
-            batch.delete(doc(db, COL_USER_CHAT_META, userIdToRemove, 'chats', chatId));
-            await batch.commit();
+            // Delete messages first, then channel
+            await supabase
+                .from('team_chat_messages')
+                .delete()
+                .eq('channel_id', chatId);
+
+            await supabase
+                .from('team_chat_channels')
+                .delete()
+                .eq('id', chatId);
         } else {
             // NORMAL REMOVAL
-            const batch = writeBatch(db);
+            const currentAdmins: string[] = chat.admin_ids || [];
+            const updatedAdmins = currentAdmins.filter(id => id !== userIdToRemove);
 
-            // 1. Update main chat
-            batch.update(chatRef, {
-                participants: arrayRemove(userIdToRemove),
-                admins: arrayRemove(userIdToRemove),
-                updatedAt: Timestamp.now(),
-            });
-
-            // 2. Remove user meta for removed user
-            batch.delete(doc(db, COL_USER_CHAT_META, userIdToRemove, 'chats', chatId));
-
-            await batch.commit();
+            await supabase
+                .from('team_chat_channels')
+                .update({
+                    member_ids: updatedMembers,
+                    admin_ids: updatedAdmins,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', chatId);
         }
     },
 
@@ -404,17 +361,27 @@ export const TeamChatService = {
      * Toggle Admin Status
      */
     toggleAdminStatus: async (chatId: string, userId: string, isAdmin: boolean) => {
-        const db = getFirestoreDb();
-        const chatRef = doc(db, COL_TEAM_CHATS, chatId);
+        // 1. Get current admins
+        const { data: chat, error: chatError } = await supabase
+            .from('team_chat_channels')
+            .select('admin_ids')
+            .eq('id', chatId)
+            .single();
 
+        if (chatError || !chat) throw new Error('Chat not found');
+
+        const currentAdmins: string[] = chat.admin_ids || [];
+
+        let updatedAdmins: string[];
         if (isAdmin) {
-            await updateDoc(chatRef, {
-                admins: arrayUnion(userId),
-            });
+            updatedAdmins = currentAdmins.includes(userId) ? currentAdmins : [...currentAdmins, userId];
         } else {
-            await updateDoc(chatRef, {
-                admins: arrayRemove(userId),
-            });
+            updatedAdmins = currentAdmins.filter(id => id !== userId);
         }
+
+        await supabase
+            .from('team_chat_channels')
+            .update({ admin_ids: updatedAdmins })
+            .eq('id', chatId);
     }
 };
