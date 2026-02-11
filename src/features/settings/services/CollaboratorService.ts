@@ -44,41 +44,52 @@ export const CollaboratorService = {
     /**
      * Cria um novo colaborador
      * 
-     * Nota: Para criar user no Supabase Auth sem deslogar o admin,
-     * seria ideal usar uma Edge Function com service_role key.
-     * Por enquanto, cria apenas na tabela users.
+     * Usa a Edge Function `create-user` com service_role key
+     * para criar Auth user + registro na tabela users sem deslogar o admin.
      */
     createCollaborator: async (
         collaborator: Omit<Collaborator, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }
     ): Promise<string> => {
-        // Se tiver senha, tenta criar no Supabase Auth primeiro
-        // NOTA: supabase.auth.signUp() via client SDK loga o novo user.
-        // Para produção, usar Edge Function com admin.createUser().
-        if (collaborator.password) {
-            console.warn(
-                '[CollaboratorService] Criando user via signUp (deslogará admin). ' +
-                'Use Edge Function para criação sem deslogar.'
-            );
-        }
-
         const { password, ...colabData } = collaborator;
 
-        const { data, error } = await supabase
-            .from('users')
-            .insert({
-                name: colabData.name,
-                email: colabData.email,
-                role: colabData.roleId ?? 'sales',
-                department: colabData.sectorId ?? null,
-                avatar_url: colabData.photoUrl ?? null,
-                phone: colabData.phone ?? null,
-                active: colabData.active ?? true,
-            })
-            .select('id')
-            .single();
+        if (!password) {
+            throw new Error('Senha é obrigatória para criar um novo colaborador.');
+        }
 
-        if (error) throw error;
-        return data.id;
+        // Get current session token to authenticate the Edge Function call
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Você precisa estar logado para criar colaboradores.');
+        }
+
+        const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    email: colabData.email,
+                    password,
+                    name: colabData.name,
+                    role: colabData.roleId ?? 'sales',
+                    department: colabData.sectorId ?? null,
+                    phone: colabData.phone ?? null,
+                    avatar_url: colabData.photoUrl ?? null,
+                    active: colabData.active ?? true,
+                }),
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro ao criar colaborador');
+        }
+
+        return result.user.id;
     },
 
     /**
