@@ -1,0 +1,121 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PROGRESS BAR COMPONENT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ─── Wrapper ──────────────────────────────────────────────────────────────── */
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    width: 100%;
+}
+
+/* ─── Label Row ────────────────────────────────────────────────────────────── */
+.labelRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.label {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.values {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+/* ─── Track ────────────────────────────────────────────────────────────────── */
+.track {
+    width: 100%;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-tertiary);
+    overflow: hidden;
+}
+
+/* ─── Sizes ────────────────────────────────────────────────────────────────── */
+.sm {
+    height: 4px;
+}
+
+.md {
+    height: 8px;
+}
+
+.lg {
+    height: 12px;
+}
+
+/* ─── Fill ─────────────────────────────────────────────────────────────────── */
+.fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    min-width: 2px;
+}
+
+.fill.animated {
+    transition: width var(--duration-slow) var(--ease-out);
+}
+
+/* ─── Variants ─────────────────────────────────────────────────────────────── */
+.primary {
+    background: linear-gradient(90deg, var(--color-primary-600), var(--color-primary-500));
+}
+
+.success {
+    background: linear-gradient(90deg, #15803d, #22c55e);
+}
+
+.warning {
+    background: linear-gradient(90deg, #a16207, #eab308);
+}
+
+.danger {
+    background: linear-gradient(90deg, #b91c1c, #ef4444);
+}
+
+/* ─── Striped ──────────────────────────────────────────────────────────────── */
+.striped {
+    background-image: linear-gradient(45deg,
+            rgba(255, 255, 255, 0.1) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.1) 75%,
+            transparent 75%,
+            transparent);
+    background-size: 20px 20px;
+    animation: progressStripe 0.6s linear infinite;
+}
+
+/* Keep the gradient behind the stripes */
+.striped.primary {
+    background-color: var(--color-primary-500);
+}
+
+.striped.success {
+    background-color: #22c55e;
+}
+
+.striped.warning {
+    background-color: #eab308;
+}
+
+.striped.danger {
+    background-color: #ef4444;
+}
+
+@keyframes progressStripe {
+    from {
+        background-position: 20px 0;
+    }
+
+    to {
+        background-position: 0 0;
+    }
+}
