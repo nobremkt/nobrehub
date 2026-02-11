@@ -122,8 +122,8 @@ export const GoalsService = {
         if (!data) return null;
 
         return {
-            dailyTarget: data.daily_target,
-            pointsDelivered: data.points_delivered,
+            dailyTarget: data.daily_target ?? 0,
+            pointsDelivered: data.points_delivered ?? 0,
         };
     },
 

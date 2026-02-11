@@ -96,7 +96,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         set({ user: null, status: 'unauthenticated' });
                     } else {
                         // Usuário autenticado no Firebase, buscar dados completos
-                        getUserData(firebaseUser.uid, firebaseUser.email || undefined)
+                        getUserData((firebaseUser as any).uid, (firebaseUser as any).email || undefined)
                             .then((userData) => {
                                 if (userData) {
                                     set({ user: userData, status: 'authenticated' });
@@ -104,9 +104,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                                     // Fallback apenas se não achar dados (ex: usuário novo sem cadastro)
                                     // Mantém comportamento anterior de user básico
                                     const basicUser: User = {
-                                        id: firebaseUser.uid,
-                                        email: firebaseUser.email || '',
-                                        name: firebaseUser.displayName || 'Usuário',
+                                        id: (firebaseUser as any).uid,
+                                        email: (firebaseUser as any).email || '',
+                                        name: (firebaseUser as any).displayName || 'Usuário',
                                         role: 'viewer',
                                         isActive: true,
                                         createdAt: new Date(),

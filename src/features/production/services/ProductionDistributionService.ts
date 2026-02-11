@@ -105,7 +105,7 @@ export const ProductionDistributionService = {
         // Projetos ativos = NÃO estão em 'entregue' ou 'concluido'
         const { data, error } = await supabase
             .from('projects')
-            .select('producer_name, total_points, base_points')
+            .select('producer_id, total_points, base_points')
             .eq('producer_id', producerId)
             .not('status', 'in', '("entregue","concluido")');
 
@@ -113,11 +113,18 @@ export const ProductionDistributionService = {
 
         const rows = data ?? [];
         let totalPoints = 0;
-        rows.forEach(r => {
+        rows.forEach((r: any) => {
             totalPoints += r.total_points || r.base_points || 1;
         });
 
-        const producerName = rows[0]?.producer_name || '';
+        // Get producer name from users table
+        let producerName = '';
+        const { data: userData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', producerId)
+            .maybeSingle();
+        if (userData) producerName = userData.name;
 
         return {
             producerId,

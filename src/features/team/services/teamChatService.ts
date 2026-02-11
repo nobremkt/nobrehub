@@ -131,7 +131,7 @@ export const TeamChatService = {
     /**
      * Send a message
      */
-    sendMessage: async (chatId: string, senderId: string, content: string, type: 'text' | 'image' | 'file' | 'audio' = 'text', participants: string[]): Promise<void> => {
+    sendMessage: async (chatId: string, senderId: string, content: string, type: 'text' | 'image' | 'file' | 'audio' = 'text', _participants: string[]): Promise<void> => {
         const now = new Date().toISOString();
 
         // 1. Get sender name from users table

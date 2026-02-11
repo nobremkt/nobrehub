@@ -173,7 +173,7 @@ export const ProductionService = {
 
         const { data, error } = await supabase
             .from('projects')
-            .insert(dbData)
+            .insert(dbData as any)
             .select('id')
             .single();
 
