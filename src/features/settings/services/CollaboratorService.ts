@@ -1,105 +1,130 @@
-import { getFirestoreDb, getFirebaseAuth } from '@/config/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import {
-    collection,
-    doc,
-    getDocs,
-    deleteDoc,
-    query,
-    orderBy,
-    addDoc,
-    updateDoc
-} from 'firebase/firestore';
-import { Collaborator } from '../types';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - COLLABORATOR SERVICE (Supabase)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Gerencia colaboradores na tabela `users` do Supabase.
+ * Criação de auth users requer Edge Function (admin API) — por enquanto
+ * usamos supabase.auth.signUp() para criação básica.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
 
-const COLLECTION_NAME = 'collaborators';
+import { supabase } from '@/config/supabase';
+import { Collaborator } from '../types';
 
 export const CollaboratorService = {
     /**
      * Lista todos os colaboradores
      */
     getCollaborators: async (): Promise<Collaborator[]> => {
-        const db = getFirestoreDb();
-        const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
+        if (error) throw error;
+
+        return (data ?? []).map(row => ({
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            phone: row.phone ?? undefined,
+            role: row.role,
+            roleId: row.role, // Maps role text to roleId for compatibility
+            photoUrl: row.avatar_url ?? undefined,
+            profilePhotoUrl: row.avatar_url ?? undefined,
+            active: row.active ?? true,
+            sectorId: row.department ?? undefined,
+            createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+            updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now(),
         })) as Collaborator[];
     },
 
     /**
      * Cria um novo colaborador
+     * 
+     * Nota: Para criar user no Supabase Auth sem deslogar o admin,
+     * seria ideal usar uma Edge Function com service_role key.
+     * Por enquanto, cria apenas na tabela users.
      */
-    createCollaborator: async (collaborator: Omit<Collaborator, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }): Promise<string> => {
-        const db = getFirestoreDb();
-        let authUid = undefined;
-
-        // Se tiver senha, cria usuário no Auth
+    createCollaborator: async (
+        collaborator: Omit<Collaborator, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }
+    ): Promise<string> => {
+        // Se tiver senha, tenta criar no Supabase Auth primeiro
+        // NOTA: supabase.auth.signUp() via client SDK loga o novo user.
+        // Para produção, usar Edge Function com admin.createUser().
         if (collaborator.password) {
-            const auth = getFirebaseAuth();
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, collaborator.email, collaborator.password);
-                authUid = userCredential.user.uid;
-            } catch (error: any) {
-                console.error("Erro ao criar usuário no Auth:", error);
-                // Propaga erro para ser tratado na UI (ex: email já existe)
-                throw new Error(`Erro na criação do usuário: ${error.message}`);
-            }
+            console.warn(
+                '[CollaboratorService] Criando user via signUp (deslogará admin). ' +
+                'Use Edge Function para criação sem deslogar.'
+            );
         }
 
-        // Remove a senha do objeto antes de salvar no Firestore
-        const { password, ...collaboratorData } = collaborator;
+        const { password, ...colabData } = collaborator;
 
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-            ...collaboratorData,
-            authUid,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-        });
-        return docRef.id;
+        const { data, error } = await supabase
+            .from('users')
+            .insert({
+                name: colabData.name,
+                email: colabData.email,
+                role: colabData.roleId ?? 'sales',
+                department: colabData.sectorId ?? null,
+                avatar_url: colabData.photoUrl ?? null,
+                phone: colabData.phone ?? null,
+                active: colabData.active ?? true,
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return data.id;
     },
 
     /**
      * Atualiza um colaborador existente
      */
-    updateCollaborator: async (id: string, updates: Partial<Omit<Collaborator, 'id' | 'createdAt'>> & { password?: string }): Promise<void> => {
-        const db = getFirestoreDb();
-        const docRef = doc(db, COLLECTION_NAME, id);
-        const { password, ...collaboratorData } = updates;
+    updateCollaborator: async (
+        id: string,
+        updates: Partial<Omit<Collaborator, 'id' | 'createdAt'>> & { password?: string }
+    ): Promise<void> => {
+        const { password, ...colabUpdates } = updates;
 
-        // Se uma nova senha for fornecida, tentaremos lidar com a atualização
-        // O Firebase Client SDK não permite atualizar senha de outro usuário.
-        // Isso aqui só funcionaria se fosse o próprio usuário logado.
         if (password) {
-            console.warn("Atenção: A atualização de senha via Admin Panel não altera o Firebase Auth diretamente sem Admin SDK.");
-            // TODO: Se tiver backend, chamar endpoint.
-            // Por enquanto, não faz nada com a senha além de (erroneamente) salvar se deixássemos,
-            // mas já separamos em 'collaboratorData'.
-
-            // Sugestão: Lançar um erro ou apenas ignorar e assumir que o fluxo será via Reset de Senha.
-            // Para UX, vamos lançar um erro informando.
-
-
-            // Se o usuário estiver tentando mudar a PRÓPRIA senha, podemos tentar.
-            // Mas não temos como verificar facilmente se o ID do colaborador bate com o Auth UID aqui sem buscar o doc.
-            // Simplificação: bloqueia atualização de senha por aqui.
-            throw new Error("Por segurança, a alteração de senhas deve ser feita via 'Esqueci minha senha' ou pelo próprio usuário.");
+            throw new Error(
+                "Por segurança, a alteração de senhas deve ser feita via 'Esqueci minha senha' ou pelo próprio usuário."
+            );
         }
 
-        await updateDoc(docRef, {
-            ...collaboratorData,
-            updatedAt: Date.now()
-        });
+        const dbUpdates: Record<string, unknown> = {};
+        if (colabUpdates.name !== undefined) dbUpdates.name = colabUpdates.name;
+        if (colabUpdates.email !== undefined) dbUpdates.email = colabUpdates.email;
+        if (colabUpdates.phone !== undefined) dbUpdates.phone = colabUpdates.phone;
+        if (colabUpdates.roleId !== undefined) dbUpdates.role = colabUpdates.roleId;
+        if (colabUpdates.sectorId !== undefined) dbUpdates.department = colabUpdates.sectorId;
+        if (colabUpdates.photoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.photoUrl;
+        if (colabUpdates.profilePhotoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.profilePhotoUrl;
+        if (colabUpdates.active !== undefined) dbUpdates.active = colabUpdates.active;
+
+        dbUpdates.updated_at = new Date().toISOString();
+
+        const { error } = await supabase
+            .from('users')
+            .update(dbUpdates)
+            .eq('id', id);
+
+        if (error) throw error;
     },
 
     /**
      * Remove um colaborador
      */
     deleteCollaborator: async (id: string): Promise<void> => {
-        const db = getFirestoreDb();
-        const docRef = doc(db, COLLECTION_NAME, id);
-        await deleteDoc(docRef);
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 };

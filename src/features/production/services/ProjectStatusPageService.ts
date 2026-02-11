@@ -1,24 +1,16 @@
-import {
-    collection,
-    doc,
-    getDoc,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    where,
-    getDocs
-} from 'firebase/firestore';
-import { db } from '@/config/firebase';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - PROJECT STATUS PAGE SERVICE (Supabase)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * Manages public-facing project status pages.
+ * Reads from the `projects` table and resolves team info from `users` + `leads`.
+ * No separate `project_status_pages` table — all data comes from `projects`.
+ */
+
+import { supabase } from '@/config/supabase';
 import { ProjectStatus } from '@/types/project.types';
 
-const PROJECTS_COLLECTION = 'production_projects';
-const STATUS_PAGES_COLLECTION = 'project_status_pages';
 const PUBLIC_STATUS_BASE_PATH = '/status/projeto';
-
-type FirestoreDate = Date | Timestamp | string | number | null | undefined;
 
 export interface PublicProjectStatus {
     token: string;
@@ -38,32 +30,7 @@ export interface PublicProjectStatus {
     updatedAt?: Date;
 }
 
-interface ProjectStatusSnapshot {
-    id: string;
-    name: string;
-    leadName: string;
-    leadId?: string;
-    sellerName?: string;
-    sellerPhotoUrl?: string;
-    producerName?: string;
-    producerPhotoUrl?: string;
-    postSalesName?: string;
-    postSalesPhotoUrl?: string;
-    status: ProjectStatus;
-    dueDate?: FirestoreDate;
-    deliveredToClientAt?: FirestoreDate;
-    statusPageToken?: string;
-    statusPageUrl?: string;
-}
-
-const parseDate = (value: FirestoreDate): Date | undefined => {
-    if (!value) return undefined;
-    if (value instanceof Date) return value;
-    if (value instanceof Timestamp) return value.toDate();
-
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-};
+// ─── Helpers ─────────────────────────────────────────────────────────
 
 const normalizeToken = (token: string): string => token.trim();
 
@@ -88,24 +55,6 @@ const buildStatusPageUrl = (token: string): string => {
     return base ? `${base}${path}` : path;
 };
 
-const toPublicStatusPayload = (project: ProjectStatusSnapshot, token: string, statusPageUrl: string) => ({
-    token,
-    projectId: project.id,
-    statusPageUrl,
-    projectName: project.name,
-    leadName: project.leadName,
-    sellerName: project.sellerName || '',
-    sellerPhotoUrl: project.sellerPhotoUrl || '',
-    producerName: project.producerName || '',
-    producerPhotoUrl: project.producerPhotoUrl || '',
-    postSalesName: project.postSalesName || '',
-    postSalesPhotoUrl: project.postSalesPhotoUrl || '',
-    status: project.status,
-    dueDate: parseDate(project.dueDate) || null,
-    deliveredToClientAt: parseDate(project.deliveredToClientAt) || null,
-    updatedAt: serverTimestamp()
-});
-
 const generateToken = (): string => {
     if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
         const bytes = new Uint8Array(18);
@@ -116,198 +65,168 @@ const generateToken = (): string => {
     return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 18)}`;
 };
 
-const ensureStatusPageIdentity = async (projectId: string, currentToken?: string, currentUrl?: string) => {
-    const token = currentToken && currentToken.trim() ? currentToken : generateToken();
-    const statusPageUrl = currentUrl && currentUrl.trim() ? currentUrl : buildStatusPageUrl(token);
-
-    if (!currentToken || !currentUrl) {
-        await updateDoc(doc(db, PROJECTS_COLLECTION, projectId), {
-            statusPageToken: token,
-            statusPageUrl
-        });
-    }
-
-    return { token, statusPageUrl };
-};
-
-const mapStatusDoc = (data: Record<string, unknown>): PublicProjectStatus | null => {
-    if (!data.projectId || !data.token || !data.projectName || !data.leadName || !data.statusPageUrl || !data.status) {
-        return null;
-    }
+/** Map a project row to PublicProjectStatus */
+function rowToPublicStatus(row: any): PublicProjectStatus | null {
+    if (!row) return null;
 
     return {
-        token: String(data.token),
-        projectId: String(data.projectId),
-        statusPageUrl: String(data.statusPageUrl),
-        projectName: String(data.projectName),
-        leadName: String(data.leadName),
-        sellerName: data.sellerName ? String(data.sellerName) : undefined,
-        sellerPhotoUrl: data.sellerPhotoUrl ? String(data.sellerPhotoUrl) : undefined,
-        producerName: data.producerName ? String(data.producerName) : undefined,
-        producerPhotoUrl: data.producerPhotoUrl ? String(data.producerPhotoUrl) : undefined,
-        postSalesName: data.postSalesName ? String(data.postSalesName) : undefined,
-        postSalesPhotoUrl: data.postSalesPhotoUrl ? String(data.postSalesPhotoUrl) : undefined,
-        status: String(data.status) as ProjectStatus,
-        dueDate: parseDate(data.dueDate as FirestoreDate),
-        deliveredToClientAt: parseDate(data.deliveredToClientAt as FirestoreDate),
-        updatedAt: parseDate(data.updatedAt as FirestoreDate)
+        token: row.status_page_token || '',
+        projectId: row.id,
+        statusPageUrl: row.status_page_url || '',
+        projectName: row.name || 'Projeto sem nome',
+        leadName: row.lead_name || 'Cliente',
+        producerName: row.producer_name || undefined,
+        postSalesName: row.post_sales_name || undefined,
+        status: row.status as ProjectStatus,
+        dueDate: row.due_date ? new Date(row.due_date) : undefined,
+        deliveredToClientAt: row.delivered_to_client_at ? new Date(row.delivered_to_client_at) : undefined,
+        updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
     };
-};
+}
+
+// ─── Service ─────────────────────────────────────────────────────────
 
 export const ProjectStatusPageService = {
     generateToken,
     buildStatusPagePath,
     buildStatusPageUrl,
 
-    createForProject: async (project: ProjectStatusSnapshot): Promise<{ token: string; statusPageUrl: string }> => {
-        const token = project.statusPageToken && project.statusPageToken.trim()
-            ? project.statusPageToken
-            : generateToken();
-        const statusPageUrl = project.statusPageUrl && project.statusPageUrl.trim()
-            ? project.statusPageUrl
-            : buildStatusPageUrl(token);
+    /**
+     * Creates/ensures the status page identity for a project.
+     * Writes the token/URL to the project row if missing.
+     */
+    createForProject: async (project: {
+        id: string; name: string; leadName: string; status: ProjectStatus;
+        statusPageToken?: string; statusPageUrl?: string;
+    }): Promise<{ token: string; statusPageUrl: string }> => {
+        const token = project.statusPageToken?.trim() || generateToken();
+        const statusPageUrl = project.statusPageUrl?.trim() || buildStatusPageUrl(token);
 
-        const statusDocRef = doc(db, STATUS_PAGES_COLLECTION, token);
-        await setDoc(statusDocRef, {
-            ...toPublicStatusPayload(project, token, statusPageUrl),
-            createdAt: serverTimestamp()
-        }, { merge: true });
+        // Ensure token is stored on the project
+        const { error } = await supabase
+            .from('projects')
+            .update({ status_page_token: token, status_page_url: statusPageUrl })
+            .eq('id', project.id);
+
+        if (error) throw error;
 
         return { token, statusPageUrl };
     },
 
+    /**
+     * Syncs status page identity (ensures token/URL exist on the project).
+     * In Supabase, the project row IS the source of truth — no separate collection needed.
+     */
     syncFromProjectId: async (projectId: string): Promise<void> => {
-        const projectDocRef = doc(db, PROJECTS_COLLECTION, projectId);
-        const projectDoc = await getDoc(projectDocRef);
+        const { data: project, error } = await supabase
+            .from('projects')
+            .select('id, status_page_token, status_page_url')
+            .eq('id', projectId)
+            .maybeSingle();
 
-        if (!projectDoc.exists()) return;
+        if (error) throw error;
+        if (!project) return;
 
-        const data = projectDoc.data() as Record<string, unknown>;
+        // If token/URL already exist, nothing to do
+        if (project.status_page_token && project.status_page_url) return;
 
-        // Resolve team names + photos from lead → collaborators
-        let sellerName = '';
-        let sellerPhotoUrl = '';
-        let producerPhotoUrl = '';
-        let resolvedPostSalesName = data.postSalesName ? String(data.postSalesName) : '';
-        let postSalesPhotoUrl = '';
-        const leadId = data.leadId ? String(data.leadId) : '';
-        const producerId = data.producerId ? String(data.producerId) : '';
+        // Generate and save
+        const token = project.status_page_token?.trim() || generateToken();
+        const statusPageUrl = project.status_page_url?.trim() || buildStatusPageUrl(token);
 
+        const { error: updateError } = await supabase
+            .from('projects')
+            .update({ status_page_token: token, status_page_url: statusPageUrl })
+            .eq('id', projectId);
+
+        if (updateError) throw updateError;
+    },
+
+    /**
+     * Get public project status by token.
+     * Fetches from projects table and enriches with team info from users/leads.
+     */
+    getByToken: async (token: string): Promise<PublicProjectStatus | null> => {
+        const normalizedToken = normalizeToken(token);
+
+        const { data: project, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('status_page_token', normalizedToken)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!project) return null;
+
+        const result = rowToPublicStatus(project);
+        if (!result) return null;
+
+        // Enrich with team info — seller + postSales from lead → users
         try {
-            // Build parallel fetch list
-            const fetchPromises: Promise<any>[] = [];
+            const leadId = project.lead_id;
+            if (leadId) {
+                const { data: lead } = await supabase
+                    .from('leads')
+                    .select('responsible_id, post_sales_id')
+                    .eq('id', leadId)
+                    .maybeSingle();
 
-            // 1. Lead doc (for seller + post-sales IDs)
-            const leadPromise = (leadId && leadId !== 'manual')
-                ? getDoc(doc(db, 'leads', leadId))
-                : Promise.resolve(null);
-            fetchPromises.push(leadPromise);
+                if (lead) {
+                    const userIds = [project.producer_id, lead.responsible_id, lead.post_sales_id].filter(Boolean);
 
-            // 2. Producer doc (for photo)
-            const producerPromise = producerId
-                ? getDoc(doc(db, 'collaborators', producerId))
-                : Promise.resolve(null);
-            fetchPromises.push(producerPromise);
+                    if (userIds.length > 0) {
+                        const { data: users } = await supabase
+                            .from('users')
+                            .select('id, name, profile_photo_url')
+                            .in('id', userIds);
 
-            const [leadDoc, producerDoc] = await Promise.all(fetchPromises);
+                        const usersMap = new Map((users ?? []).map(u => [u.id, u]));
 
-            // Extract producer photo
-            if (producerDoc?.exists()) {
-                producerPhotoUrl = String(producerDoc.data()?.profilePhotoUrl || '');
-            }
+                        if (lead.responsible_id && usersMap.has(lead.responsible_id)) {
+                            const seller = usersMap.get(lead.responsible_id)!;
+                            result.sellerName = seller.name;
+                            result.sellerPhotoUrl = seller.profile_photo_url || undefined;
+                        }
 
-            // Extract seller + post-sales from lead
-            if (leadDoc?.exists()) {
-                const leadData = leadDoc.data();
-                const responsibleId = leadData?.responsibleId ? String(leadData.responsibleId) : '';
-                const postSalesId = leadData?.postSalesId ? String(leadData.postSalesId) : '';
+                        if (project.producer_id && usersMap.has(project.producer_id)) {
+                            const producer = usersMap.get(project.producer_id)!;
+                            result.producerPhotoUrl = producer.profile_photo_url || undefined;
+                        }
 
-                const [sellerDoc, postSalesDoc] = await Promise.all([
-                    responsibleId ? getDoc(doc(db, 'collaborators', responsibleId)) : Promise.resolve(null),
-                    postSalesId ? getDoc(doc(db, 'collaborators', postSalesId)) : Promise.resolve(null),
-                ]);
-
-                if (sellerDoc?.exists()) {
-                    const d = sellerDoc.data();
-                    sellerName = String(d?.name || '');
-                    sellerPhotoUrl = String(d?.profilePhotoUrl || '');
-                }
-                if (postSalesDoc?.exists()) {
-                    const d = postSalesDoc.data();
-                    resolvedPostSalesName = String(d?.name || '');
-                    postSalesPhotoUrl = String(d?.profilePhotoUrl || '');
+                        if (lead.post_sales_id && usersMap.has(lead.post_sales_id)) {
+                            const postSales = usersMap.get(lead.post_sales_id)!;
+                            result.postSalesName = postSales.name;
+                            result.postSalesPhotoUrl = postSales.profile_photo_url || undefined;
+                        }
+                    }
                 }
             }
         } catch {
-            // Non-critical: team info is optional
+            // Team info is optional — don't fail
         }
 
-        const snapshot: ProjectStatusSnapshot = {
-            id: projectDoc.id,
-            name: String(data.name || 'Projeto sem nome'),
-            leadName: String(data.leadName || 'Cliente'),
-            leadId,
-            sellerName,
-            sellerPhotoUrl,
-            producerName: data.producerName ? String(data.producerName) : '',
-            producerPhotoUrl,
-            postSalesName: resolvedPostSalesName,
-            postSalesPhotoUrl,
-            status: (String(data.status || 'aguardando') as ProjectStatus),
-            dueDate: data.dueDate as FirestoreDate,
-            deliveredToClientAt: data.deliveredToClientAt as FirestoreDate,
-            statusPageToken: data.statusPageToken ? String(data.statusPageToken) : undefined,
-            statusPageUrl: data.statusPageUrl ? String(data.statusPageUrl) : undefined
-        };
-
-        const { token, statusPageUrl } = await ensureStatusPageIdentity(
-            snapshot.id,
-            snapshot.statusPageToken,
-            snapshot.statusPageUrl
-        );
-
-        const statusDocRef = doc(db, STATUS_PAGES_COLLECTION, token);
-        await setDoc(statusDocRef, toPublicStatusPayload(snapshot, token, statusPageUrl), { merge: true });
+        return result;
     },
 
-    getByToken: async (token: string): Promise<PublicProjectStatus | null> => {
-        const normalizedToken = normalizeToken(token);
-        const statusDocRef = doc(db, STATUS_PAGES_COLLECTION, normalizedToken);
-        const statusDoc = await getDoc(statusDocRef);
-
-        if (statusDoc.exists()) {
-            return mapStatusDoc(statusDoc.data() as Record<string, unknown>);
-        }
-
-        // Fallback para legado: procura por token salvo no projeto e sincroniza
-        const projectsRef = collection(db, PROJECTS_COLLECTION);
-        const legacyQuery = query(projectsRef, where('statusPageToken', '==', normalizedToken));
-        const legacySnapshot = await getDocs(legacyQuery);
-        const legacyProject = legacySnapshot.docs[0];
-
-        if (!legacyProject) return null;
-
-        await ProjectStatusPageService.syncFromProjectId(legacyProject.id);
-
-        const syncedDoc = await getDoc(statusDocRef);
-        if (!syncedDoc.exists()) return null;
-
-        return mapStatusDoc(syncedDoc.data() as Record<string, unknown>);
-    },
-
+    /**
+     * Subscribe to project status changes by token (Supabase Realtime)
+     */
     subscribeByToken: (token: string, callback: (status: PublicProjectStatus | null) => void) => {
         const normalizedToken = normalizeToken(token);
-        const statusDocRef = doc(db, STATUS_PAGES_COLLECTION, normalizedToken);
 
-        return onSnapshot(statusDocRef, (snapshot) => {
-            if (!snapshot.exists()) {
-                callback(null);
-                return;
-            }
+        // Initial fetch
+        ProjectStatusPageService.getByToken(normalizedToken).then(callback);
 
-            callback(mapStatusDoc(snapshot.data() as Record<string, unknown>));
-        }, () => {
-            callback(null);
-        });
-    }
+        const channel = supabase
+            .channel(`status-page-${normalizedToken}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'projects', filter: `status_page_token=eq.${normalizedToken}` },
+                () => {
+                    ProjectStatusPageService.getByToken(normalizedToken).then(callback);
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    },
 };

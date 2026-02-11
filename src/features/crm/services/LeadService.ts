@@ -1,150 +1,203 @@
-import { getFirestoreDb } from '@/config/firebase';
-import { COLLECTIONS } from '@/config';
-import {
-    collection,
-    getDocs,
-    getDoc,
-    addDoc,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    query,
-    orderBy,
-    Timestamp
-} from 'firebase/firestore';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB - LEAD SERVICE (Supabase)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * CRUD + bulk ops de leads usando Supabase PostgreSQL.
+ * Converte camelCase (frontend) ↔ snake_case (banco).
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+import { supabase } from '@/config/supabase';
 import { Lead } from '@/types/lead.types';
 
-const COLLECTION_NAME = COLLECTIONS.LEADS;
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+/** Converte row do banco (snake_case) → Lead (camelCase) */
+function rowToLead(row: any): Lead {
+    return {
+        id: row.id,
+        name: row.name,
+        email: row.email ?? undefined,
+        phone: row.phone,
+        company: row.company ?? undefined,
+        pipeline: row.pipeline as Lead['pipeline'],
+        status: row.stage_id ?? '',
+        order: row.order ?? 0,
+        estimatedValue: row.estimated_value ?? undefined,
+        tags: row.tags ?? [],
+        responsibleId: row.responsible_id ?? '',
+        customFields: row.custom_fields ?? undefined,
+        notes: row.notes ?? undefined,
+        temperature: row.temperature as Lead['temperature'],
+        source: row.source ?? undefined,
+
+        // Deal
+        dealStatus: row.deal_status as Lead['dealStatus'],
+        dealValue: row.deal_value ?? undefined,
+        dealClosedAt: row.deal_closed_at ? new Date(row.deal_closed_at) : undefined,
+        dealProductId: row.deal_product_id ?? undefined,
+        dealNotes: row.deal_notes ?? undefined,
+
+        // Loss
+        lostReason: row.lost_reason_id ?? undefined,
+        lostAt: row.lost_at ? new Date(row.lost_at) : undefined,
+
+        // Pós-vendas
+        postSalesId: row.post_sales_id ?? undefined,
+        postSalesAssignedAt: row.post_sales_assigned_at ? new Date(row.post_sales_assigned_at) : undefined,
+        postSalesDistributionStatus: row.post_sales_distribution_status as Lead['postSalesDistributionStatus'],
+        clientStatus: row.client_status as Lead['clientStatus'],
+        currentSector: row.current_sector as Lead['currentSector'],
+        previousPostSalesIds: row.previous_post_sales_ids ?? undefined,
+
+        // Timestamps
+        createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+        updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
+    };
+}
+
+/** Converte campos parciais do Lead (camelCase) → updates do banco (snake_case) */
+function leadToDbUpdates(updates: Partial<Lead>): Record<string, unknown> {
+    const db: Record<string, unknown> = {};
+
+    if (updates.name !== undefined) db.name = updates.name;
+    if (updates.email !== undefined) db.email = updates.email;
+    if (updates.phone !== undefined) db.phone = updates.phone;
+    if (updates.company !== undefined) db.company = updates.company;
+    if (updates.pipeline !== undefined) db.pipeline = updates.pipeline;
+    if (updates.status !== undefined) db.stage_id = updates.status;
+    if (updates.order !== undefined) db.order = updates.order;
+    if (updates.estimatedValue !== undefined) db.estimated_value = updates.estimatedValue;
+    if (updates.tags !== undefined) db.tags = updates.tags;
+    if (updates.responsibleId !== undefined) db.responsible_id = updates.responsibleId;
+    if (updates.customFields !== undefined) db.custom_fields = updates.customFields;
+    if (updates.notes !== undefined) db.notes = updates.notes;
+    if (updates.temperature !== undefined) db.temperature = updates.temperature;
+    if (updates.source !== undefined) db.source = updates.source;
+
+    // Deal
+    if (updates.dealStatus !== undefined) db.deal_status = updates.dealStatus;
+    if (updates.dealValue !== undefined) db.deal_value = updates.dealValue;
+    if (updates.dealClosedAt !== undefined) db.deal_closed_at = updates.dealClosedAt instanceof Date ? updates.dealClosedAt.toISOString() : updates.dealClosedAt;
+    if (updates.dealProductId !== undefined) db.deal_product_id = updates.dealProductId;
+    if (updates.dealNotes !== undefined) db.deal_notes = updates.dealNotes;
+
+    // Loss
+    if (updates.lostReason !== undefined) db.lost_reason_id = updates.lostReason;
+    if (updates.lostAt !== undefined) db.lost_at = updates.lostAt instanceof Date ? updates.lostAt.toISOString() : updates.lostAt;
+
+    // Pós-vendas
+    if (updates.postSalesId !== undefined) db.post_sales_id = updates.postSalesId;
+    if (updates.postSalesAssignedAt !== undefined) db.post_sales_assigned_at = updates.postSalesAssignedAt instanceof Date ? updates.postSalesAssignedAt.toISOString() : updates.postSalesAssignedAt;
+    if (updates.postSalesDistributionStatus !== undefined) db.post_sales_distribution_status = updates.postSalesDistributionStatus;
+    if (updates.clientStatus !== undefined) db.client_status = updates.clientStatus;
+    if (updates.currentSector !== undefined) db.current_sector = updates.currentSector;
+    if (updates.previousPostSalesIds !== undefined) db.previous_post_sales_ids = updates.previousPostSalesIds;
+
+    return db;
+}
+
+// ─── Service ─────────────────────────────────────────────────────────
 
 export const LeadService = {
     /**
      * Fetch all leads.
      */
     getLeads: async (): Promise<Lead[]> => {
-        try {
-            const db = getFirestoreDb();
-            const q = query(collection(db, COLLECTION_NAME), orderBy('updatedAt', 'desc'));
-            const snapshot = await getDocs(q);
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .order('updated_at', { ascending: false });
 
-            return snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    // Handle Firestore timestamps converting to JS Dates
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-                    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
-                    lostAt: data.lostAt instanceof Timestamp ? data.lostAt.toDate() : data.lostAt ? new Date(data.lostAt) : undefined,
-                } as Lead;
-            });
-        } catch (error) {
-            console.error('Error fetching leads:', error);
-            throw error;
-        }
+        if (error) throw error;
+
+        return (data ?? []).map(rowToLead);
     },
 
     /**
      * Create a new lead.
      */
     createLead: async (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Promise<Lead> => {
-        try {
-            const db = getFirestoreDb();
-            const now = new Date();
+        const dbData = leadToDbUpdates(lead as Partial<Lead>);
 
-            const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                ...lead,
-                createdAt: Timestamp.fromDate(now),
-                updatedAt: Timestamp.fromDate(now),
-            });
+        const { data, error } = await supabase
+            .from('leads')
+            .insert(dbData)
+            .select('*')
+            .single();
 
-            return {
-                id: docRef.id,
-                ...lead,
-                createdAt: now,
-                updatedAt: now,
-            };
-        } catch (error) {
-            console.error('Error creating lead:', error);
-            throw error;
-        }
+        if (error) throw error;
+
+        return rowToLead(data);
     },
 
     /**
      * Update an existing lead.
      */
     updateLead: async (id: string, updates: Partial<Lead>): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const docRef = doc(db, COLLECTION_NAME, id);
+        const dbUpdates = leadToDbUpdates(updates);
 
-            const dataToUpdate: any = { ...updates };
-            // Update timestamp
-            dataToUpdate.updatedAt = Timestamp.fromDate(new Date());
+        // Never update createdAt
+        delete dbUpdates.created_at;
 
-            // Clean up undefined fields
-            if (updates.createdAt) delete dataToUpdate.createdAt; // Should not update creation date
+        const { error } = await supabase
+            .from('leads')
+            .update(dbUpdates)
+            .eq('id', id);
 
-            await updateDoc(docRef, dataToUpdate);
-        } catch (error) {
-            console.error('Error updating lead:', error);
-            throw error;
-        }
+        if (error) throw error;
     },
 
     /**
      * Update or create a lead. If the lead doesn't exist, creates it with the provided data.
-     * Used when transitioning from Inbox conversations (RTDB) to CRM leads (Firestore).
+     * Used when transitioning from Inbox conversations to CRM leads.
      */
     updateOrCreateLead: async (
         id: string,
         updates: Partial<Lead>,
         createData?: { name: string; phone?: string; email?: string }
     ): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const docRef = doc(db, COLLECTION_NAME, id);
-            const docSnap = await getDoc(docRef);
+        // Check if lead exists
+        const { data: existing } = await supabase
+            .from('leads')
+            .select('id, tags')
+            .eq('id', id)
+            .maybeSingle();
 
-            if (docSnap.exists()) {
-                // Lead exists - just update it
-                const dataToUpdate: any = { ...updates };
-                dataToUpdate.updatedAt = Timestamp.fromDate(new Date());
+        if (existing) {
+            // Lead exists — update
+            const dbUpdates = leadToDbUpdates(updates);
+            delete dbUpdates.created_at;
 
-                // Preserve existing linked projects and append new ones (avoid overwrite)
-                if (Array.isArray(updates.projectIds) && updates.projectIds.length > 0) {
-                    const existing = docSnap.data();
-                    const existingProjectIds = Array.isArray(existing.projectIds) ? existing.projectIds : [];
-                    dataToUpdate.projectIds = Array.from(new Set([...existingProjectIds, ...updates.projectIds]));
-                }
+            const { error } = await supabase
+                .from('leads')
+                .update(dbUpdates)
+                .eq('id', id);
 
-                delete dataToUpdate.createdAt;
-                await updateDoc(docRef, dataToUpdate);
-            } else if (createData) {
-                // Lead doesn't exist - create it with ID and initial data
-                const now = new Date();
-                await setDoc(docRef, {
-                    name: createData.name,
-                    phone: createData.phone || null,
-                    email: createData.email || null,
-                    company: null,
-                    pipeline: 'low-ticket',
-                    status: 'lt-entrada',
-                    order: 0,
-                    estimatedValue: 0,
-                    tags: ['Pós-Venda'],
-                    responsibleId: 'admin',
-                    ...updates,
-                    createdAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now),
-                });
-            } else {
-                // No create data provided - skip silently
-                console.warn('[LeadService] Lead not found and no createData provided:', id);
-            }
-        } catch (error) {
-            console.error('Error in updateOrCreateLead:', error);
-            throw error;
+            if (error) throw error;
+        } else if (createData) {
+            // Lead doesn't exist — create with ID
+            const merged = {
+                ...leadToDbUpdates(updates),
+                id,
+                name: createData.name,
+                phone: createData.phone || '',
+                email: createData.email || null,
+                pipeline: 'low-ticket',
+                stage_id: updates.status || null,
+                tags: ['Pós-Venda'],
+                responsible_id: updates.responsibleId || null,
+            };
+
+            const { error } = await supabase
+                .from('leads')
+                .insert(merged);
+
+            if (error) throw error;
+        } else {
+            console.warn('[LeadService] Lead not found and no createData provided:', id);
         }
     },
 
@@ -152,85 +205,56 @@ export const LeadService = {
      * Delete a lead.
      */
     deleteLead: async (id: string): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            await deleteDoc(doc(db, COLLECTION_NAME, id));
-        } catch (error) {
-            console.error('Error deleting lead:', error);
-            throw error;
-        }
+        const { error } = await supabase
+            .from('leads')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     },
 
     /**
      * Remove tags from multiple leads.
      */
     bulkRemoveTags: async (leadIds: string[], tagsToRemove: string[], currentContacts: Lead[]): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const tagsSet = new Set(tagsToRemove);
+        const tagsSet = new Set(tagsToRemove);
 
-            console.log('[bulkRemoveTags] Starting removal:', {
-                leadIds,
-                tagsToRemove,
-                contactsCount: currentContacts.length
-            });
+        const updatePromises = leadIds.map(id => {
+            const contact = currentContacts.find(c => c.id === id);
+            if (!contact) return Promise.resolve();
 
-            const updatePromises = leadIds.map(id => {
-                const contact = currentContacts.find(c => c.id === id);
-                if (!contact) {
-                    console.warn('[bulkRemoveTags] Contact not found:', id);
-                    return Promise.resolve();
-                }
+            const oldTags = contact.tags || [];
+            const newTags = oldTags.filter(t => !tagsSet.has(t));
 
-                const oldTags = contact.tags || [];
-                const newTags = oldTags.filter(t => !tagsSet.has(t));
+            return supabase
+                .from('leads')
+                .update({ tags: newTags })
+                .eq('id', id)
+                .then(({ error }) => { if (error) throw error; });
+        });
 
-                console.log('[bulkRemoveTags] Updating contact:', {
-                    id,
-                    oldTags,
-                    newTags,
-                    tagsRemoved: oldTags.length - newTags.length
-                });
-
-                return updateDoc(doc(db, COLLECTION_NAME, id), {
-                    tags: newTags,
-                    updatedAt: Timestamp.fromDate(new Date())
-                });
-            });
-
-            await Promise.all(updatePromises);
-            console.log('[bulkRemoveTags] Completed successfully');
-        } catch (error) {
-            console.error('Error bulk removing tags:', error);
-            throw error;
-        }
+        await Promise.all(updatePromises);
     },
 
     /**
      * Add a tag to multiple leads.
      */
     bulkAddTag: async (leadIds: string[], tagToAdd: string, currentContacts: Lead[]): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
+        const updatePromises = leadIds.map(id => {
+            const contact = currentContacts.find(c => c.id === id);
+            if (!contact) return Promise.resolve();
 
-            const updatePromises = leadIds.map(id => {
-                const contact = currentContacts.find(c => c.id === id);
-                if (!contact) return Promise.resolve();
+            const currentTags = contact.tags || [];
+            if (currentTags.includes(tagToAdd)) return Promise.resolve();
 
-                const currentTags = contact.tags || [];
-                if (currentTags.includes(tagToAdd)) return Promise.resolve(); // Already has tag
+            return supabase
+                .from('leads')
+                .update({ tags: [...currentTags, tagToAdd] })
+                .eq('id', id)
+                .then(({ error }) => { if (error) throw error; });
+        });
 
-                return updateDoc(doc(db, COLLECTION_NAME, id), {
-                    tags: [...currentTags, tagToAdd],
-                    updatedAt: Timestamp.fromDate(new Date())
-                });
-            });
-
-            await Promise.all(updatePromises);
-        } catch (error) {
-            console.error('Error bulk adding tag:', error);
-            throw error;
-        }
+        await Promise.all(updatePromises);
     },
 
     /**
@@ -239,131 +263,111 @@ export const LeadService = {
      * Updates existing leads instead of creating duplicates.
      */
     syncFromInbox: async (): Promise<number> => {
-        try {
-            const firestoreDb = getFirestoreDb();
+        // 1. Get all conversations from Supabase
+        const { data: conversations, error: convError } = await supabase
+            .from('conversations')
+            .select('*');
 
-            // 1. Get all conversations from Firestore
-            const conversationsSnapshot = await getDocs(collection(firestoreDb, 'conversations'));
+        if (convError) throw convError;
+        if (!conversations || conversations.length === 0) return 0;
 
-            if (conversationsSnapshot.empty) return 0;
+        // 2. Get all existing leads — build lookup maps
+        const { data: allLeads, error: leadsError } = await supabase
+            .from('leads')
+            .select('id, phone, name, email, company, pipeline, stage_id');
 
-            // 2. Get all existing leads - build lookup maps
-            const leadsQuery = await getDocs(collection(firestoreDb, COLLECTION_NAME));
+        if (leadsError) throw leadsError;
 
-            const existingById = new Map<string, { id: string, data: any }>();
-            const existingByPhone = new Map<string, { id: string, data: any }>();
+        const existingById = new Map<string, (typeof allLeads)[number]>();
+        const existingByPhone = new Map<string, (typeof allLeads)[number]>();
 
-            leadsQuery.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                existingById.set(docSnap.id, { id: docSnap.id, data });
-                if (data.phone) {
-                    existingByPhone.set(data.phone.replace(/\D/g, ''), { id: docSnap.id, data });
-                }
-            });
+        (allLeads ?? []).forEach(lead => {
+            existingById.set(lead.id, lead);
+            if (lead.phone) {
+                existingByPhone.set(lead.phone.replace(/\D/g, ''), lead);
+            }
+        });
 
-            const processedPhones = new Set<string>();
-            const dataPromises: Promise<any>[] = [];
-            const now = new Date();
-            let count = 0;
+        const processedPhones = new Set<string>();
+        const promises: Promise<any>[] = [];
+        let count = 0;
 
-            // 3. Process each conversation
-            for (const convDoc of conversationsSnapshot.docs) {
-                const conv = convDoc.data();
-                const convId = convDoc.id;
+        // 3. Process each conversation
+        for (const conv of conversations) {
+            if (!conv.phone) continue;
 
-                if (!conv.leadPhone) continue;
+            const normalizedPhone = conv.phone.replace(/\D/g, '');
+            const isWhatsApp = conv.channel === 'whatsapp';
+            const correctPipeline = isWhatsApp ? 'low-ticket' : 'high-ticket';
 
-                const normalizedPhone = conv.leadPhone.replace(/\D/g, '');
-                const isWhatsApp = conv.channel === 'whatsapp' || conv.source === 'whatsapp';
-                const correctPipeline = isWhatsApp ? 'low-ticket' : 'high-ticket';
-                const correctStatus = isWhatsApp ? 'lt-entrada' : 'ht-novo';
+            let existing: (typeof allLeads)[number] | undefined;
 
-                let existingLead: { id: string, data: any } | undefined;
-
-                // Priority 1: Match by leadId
-                if (conv.leadId && existingById.has(conv.leadId)) {
-                    existingLead = existingById.get(conv.leadId);
-                }
-                // Priority 2: Match by phone
-                else if (existingByPhone.has(normalizedPhone)) {
-                    existingLead = existingByPhone.get(normalizedPhone);
-                }
-
-                if (existingLead) {
-                    const updates: any = {
-                        updatedAt: Timestamp.fromDate(now)
-                    };
-
-                    if (conv.leadName && conv.leadName !== existingLead.data.name) {
-                        updates.name = conv.leadName;
-                    }
-                    if (conv.leadEmail && conv.leadEmail !== existingLead.data.email) {
-                        updates.email = conv.leadEmail;
-                    }
-                    if (conv.leadCompany && conv.leadCompany !== existingLead.data.company) {
-                        updates.company = conv.leadCompany;
-                    }
-                    if (conv.leadPhone && conv.leadPhone !== existingLead.data.phone) {
-                        updates.phone = conv.leadPhone;
-                    }
-
-                    if (isWhatsApp && existingLead.data.pipeline === 'high-ticket' && existingLead.data.status === 'ht-novo') {
-                        updates.pipeline = correctPipeline;
-                        updates.status = correctStatus;
-                    }
-
-                    if (Object.keys(updates).length > 1) {
-                        dataPromises.push(updateDoc(doc(firestoreDb, COLLECTION_NAME, existingLead.id), updates));
-                        count++;
-                    }
-
-                    // If conversation doesn't have leadId, link it
-                    if (!conv.leadId && existingLead) {
-                        dataPromises.push(updateDoc(doc(firestoreDb, 'conversations', convId), {
-                            leadId: existingLead.id
-                        }));
-                    }
-                } else {
-                    if (processedPhones.has(normalizedPhone)) continue;
-                    processedPhones.add(normalizedPhone);
-
-                    count++;
-
-                    const createAndLink = async () => {
-                        const newDocRef = await addDoc(collection(firestoreDb, COLLECTION_NAME), {
-                            name: conv.leadName || normalizedPhone,
-                            phone: conv.leadPhone,
-                            email: conv.leadEmail || null,
-                            company: conv.leadCompany || null,
-                            pipeline: correctPipeline,
-                            status: correctStatus,
-                            order: 0,
-                            estimatedValue: 0,
-                            tags: ['Importado Inbox'],
-                            responsibleId: 'admin',
-                            createdAt: Timestamp.fromDate(now),
-                            updatedAt: Timestamp.fromDate(now),
-                        });
-
-                        // Update conversation with new leadId in Firestore
-                        await updateDoc(doc(firestoreDb, 'conversations', convId), {
-                            leadId: newDocRef.id
-                        });
-
-                        existingById.set(newDocRef.id, { id: newDocRef.id, data: { phone: conv.leadPhone } });
-                        existingByPhone.set(normalizedPhone, { id: newDocRef.id, data: { phone: conv.leadPhone } });
-                    };
-
-                    dataPromises.push(createAndLink());
-                }
+            // Priority 1: Match by lead_id
+            if (conv.lead_id && existingById.has(conv.lead_id)) {
+                existing = existingById.get(conv.lead_id);
+            }
+            // Priority 2: Match by phone
+            else if (existingByPhone.has(normalizedPhone)) {
+                existing = existingByPhone.get(normalizedPhone);
             }
 
-            await Promise.all(dataPromises);
-            return count;
-        } catch (error) {
-            console.error('Error syncing from inbox:', error);
-            throw error;
+            if (existing) {
+                const updates: Record<string, unknown> = {};
+
+                if (conv.name && conv.name !== existing.name) updates.name = conv.name;
+                if (conv.phone && conv.phone !== existing.phone) updates.phone = conv.phone;
+
+                if (Object.keys(updates).length > 0) {
+                    promises.push(
+                        supabase.from('leads').update(updates).eq('id', existing.id)
+                            .then(({ error }) => { if (error) throw error; })
+                    );
+                    count++;
+                }
+
+                // Link conversation to lead if not already linked
+                if (!conv.lead_id && existing) {
+                    promises.push(
+                        supabase.from('conversations').update({ lead_id: existing.id }).eq('id', conv.id)
+                            .then(({ error }) => { if (error) throw error; })
+                    );
+                }
+            } else {
+                // Create new lead
+                if (processedPhones.has(normalizedPhone)) continue;
+                processedPhones.add(normalizedPhone);
+                count++;
+
+                promises.push(
+                    (async () => {
+                        const { data: newLead, error } = await supabase
+                            .from('leads')
+                            .insert({
+                                name: conv.name || normalizedPhone,
+                                phone: conv.phone,
+                                pipeline: correctPipeline,
+                                tags: ['Importado Inbox'],
+                            })
+                            .select('id')
+                            .single();
+
+                        if (error) throw error;
+
+                        // Link conversation
+                        await supabase
+                            .from('conversations')
+                            .update({ lead_id: newLead.id })
+                            .eq('id', conv.id);
+
+                        existingById.set(newLead.id, { ...newLead, phone: conv.phone, name: conv.name, email: null, company: null, pipeline: correctPipeline, stage_id: null });
+                        existingByPhone.set(normalizedPhone, existingById.get(newLead.id)!);
+                    })()
+                );
+            }
         }
+
+        await Promise.all(promises);
+        return count;
     },
 
     /**
@@ -374,22 +378,14 @@ export const LeadService = {
         responsibleId: string,
         field: 'responsibleId' | 'postSalesId'
     ): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const now = new Date();
+        const dbField = field === 'responsibleId' ? 'responsible_id' : 'post_sales_id';
 
-            const updatePromises = leadIds.map(id =>
-                updateDoc(doc(db, COLLECTION_NAME, id), {
-                    [field]: responsibleId,
-                    updatedAt: Timestamp.fromDate(now)
-                })
-            );
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({ [dbField]: responsibleId }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
 
-            await Promise.all(updatePromises);
-        } catch (error) {
-            console.error('Error bulk assigning responsible:', error);
-            throw error;
-        }
+        await Promise.all(updatePromises);
     },
 
     /**
@@ -400,64 +396,41 @@ export const LeadService = {
         pipeline: 'high-ticket' | 'low-ticket',
         status: string
     ): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const now = new Date();
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({ pipeline, stage_id: status }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
 
-            const updatePromises = leadIds.map(id =>
-                updateDoc(doc(db, COLLECTION_NAME, id), {
-                    pipeline,
-                    status,
-                    updatedAt: Timestamp.fromDate(now)
-                })
-            );
-
-            await Promise.all(updatePromises);
-        } catch (error) {
-            console.error('Error bulk moving stage:', error);
-            throw error;
-        }
+        await Promise.all(updatePromises);
     },
 
     /**
      * Mark multiple leads as lost.
      */
     bulkMarkAsLost: async (leadIds: string[], lossReasonId: string): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
-            const now = new Date();
+        const now = new Date().toISOString();
 
-            const updatePromises = leadIds.map(id =>
-                updateDoc(doc(db, COLLECTION_NAME, id), {
-                    lostReason: lossReasonId,
-                    lostAt: Timestamp.fromDate(now),
-                    updatedAt: Timestamp.fromDate(now)
-                })
-            );
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({
+                lost_reason_id: lossReasonId,
+                lost_at: now,
+                deal_status: 'lost',
+            }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
 
-            await Promise.all(updatePromises);
-        } catch (error) {
-            console.error('Error bulk marking as lost:', error);
-            throw error;
-        }
+        await Promise.all(updatePromises);
     },
 
     /**
      * Delete multiple leads.
      */
     bulkDelete: async (leadIds: string[]): Promise<void> => {
-        try {
-            const db = getFirestoreDb();
+        const { error } = await supabase
+            .from('leads')
+            .delete()
+            .in('id', leadIds);
 
-            const deletePromises = leadIds.map(id =>
-                deleteDoc(doc(db, COLLECTION_NAME, id))
-            );
-
-            await Promise.all(deletePromises);
-        } catch (error) {
-            console.error('Error bulk deleting leads:', error);
-            throw error;
-        }
-    }
+        if (error) throw error;
+    },
 };
-
