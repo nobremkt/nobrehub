@@ -208,7 +208,7 @@ export const useFilteredContacts = () => {
 
         // Filtro por dono
         if (filters.comDono && contact.responsibleId !== filters.comDono) return false;
-        if (filters.semDono && contact.responsibleId && contact.responsibleId !== 'admin') return false;
+        if (filters.semDono && contact.responsibleId) return false;
 
         // Filtro por data
         if (filters.dataInicio && contact.createdAt < filters.dataInicio) return false;

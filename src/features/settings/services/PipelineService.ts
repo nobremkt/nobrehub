@@ -89,14 +89,19 @@ export const PipelineService = {
      */
     seedDefaultStages: async (): Promise<PipelineStage[]> => {
         const defaults = [
-            { name: 'Novo Lead', color: '#3B82F6', order: 0, pipeline: 'high-ticket', is_system_stage: true, active: true },
+            // High-ticket (order 0-5)
+            { name: 'Novo Lead', color: '#6366F1', order: 0, pipeline: 'high-ticket', is_system_stage: false, active: true },
             { name: 'Qualificação', color: '#F59E0B', order: 1, pipeline: 'high-ticket', is_system_stage: false, active: true },
-            { name: 'Proposta', color: '#8B5CF6', order: 2, pipeline: 'high-ticket', is_system_stage: false, active: true },
-            { name: 'Negociação', color: '#EF4444', order: 3, pipeline: 'high-ticket', is_system_stage: false, active: true },
-            { name: 'Fechamento', color: '#10B981', order: 4, pipeline: 'high-ticket', is_system_stage: true, active: true },
-            { name: 'Novo Lead', color: '#3B82F6', order: 0, pipeline: 'low-ticket', is_system_stage: true, active: true },
-            { name: 'Interesse', color: '#F59E0B', order: 1, pipeline: 'low-ticket', is_system_stage: false, active: true },
-            { name: 'Fechamento', color: '#10B981', order: 2, pipeline: 'low-ticket', is_system_stage: true, active: true },
+            { name: 'Proposta Enviada', color: '#8B5CF6', order: 2, pipeline: 'high-ticket', is_system_stage: false, active: true },
+            { name: 'Em Negociação', color: '#EC4899', order: 3, pipeline: 'high-ticket', is_system_stage: false, active: true },
+            { name: 'Ganho', color: '#22C55E', order: 4, pipeline: 'high-ticket', is_system_stage: true, active: true },
+            { name: 'Perdido', color: '#EF4444', order: 5, pipeline: 'high-ticket', is_system_stage: true, active: true },
+            // Low-ticket (order 0-4)
+            { name: 'Entrada', color: '#3B82F6', order: 0, pipeline: 'low-ticket', is_system_stage: false, active: true },
+            { name: 'Demonstrou Interesse', color: '#F59E0B', order: 1, pipeline: 'low-ticket', is_system_stage: false, active: true },
+            { name: 'Carrinho', color: '#8B5CF6', order: 2, pipeline: 'low-ticket', is_system_stage: false, active: true },
+            { name: 'Ganho', color: '#22C55E', order: 3, pipeline: 'low-ticket', is_system_stage: true, active: true },
+            { name: 'Perdido', color: '#EF4444', order: 4, pipeline: 'low-ticket', is_system_stage: true, active: true },
         ];
 
         const { error } = await supabase
