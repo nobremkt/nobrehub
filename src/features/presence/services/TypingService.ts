@@ -1,33 +1,46 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - TYPING SERVICE (RTDB)
+ * NOBRE HUB - TYPING SERVICE (Supabase Realtime Broadcast)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Serviço de indicador de digitação em tempo real usando Firebase RTDB.
- *
- * Estrutura RTDB:
- *   /typing/{chatId}/{userId} = { name: "Beatriz", timestamp: 1707500000 }
- *
- * - Entradas são auto-removidas via onDisconnect
- * - Entradas com timestamp > STALE_THRESHOLD são ignoradas (fallback)
+ * Serviço de indicador de digitação em tempo real usando Supabase Broadcast.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import {
-    ref,
-    set,
-    remove,
-    onValue,
-    onDisconnect,
-    off,
-} from 'firebase/database';
-import { getRealtimeDb } from '@/config/firebase';
-
-const TYPING_PATH = 'typing';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/config/supabase';
 
 /** Entries older than this (ms) are considered stale and filtered out */
 const STALE_THRESHOLD = 5000;
+
+const typingChannels = new Map<string, RealtimeChannel>();
+const typingChannelReady = new Map<string, Promise<void>>();
+
+function getTypingChannel(chatId: string): { channel: RealtimeChannel; ready: Promise<void> } {
+    const channelName = `typing:${chatId}`;
+
+    const cachedChannel = typingChannels.get(channelName);
+    const cachedReady = typingChannelReady.get(channelName);
+    if (cachedChannel && cachedReady) {
+        return { channel: cachedChannel, ready: cachedReady };
+    }
+
+    const channel = supabase.channel(channelName);
+    const ready = new Promise<void>((resolve, reject) => {
+        channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') resolve();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                reject(new Error(`Typing channel failed: ${status}`));
+            }
+        });
+    });
+
+    typingChannels.set(channelName, channel);
+    typingChannelReady.set(channelName, ready);
+
+    return { channel, ready };
+}
 
 export interface TypingUser {
     userId: string;
@@ -38,28 +51,36 @@ export interface TypingUser {
 export const TypingService = {
     /**
      * Mark current user as typing in a chat.
-     * Registers onDisconnect to auto-cleanup if browser closes.
      */
     async startTyping(chatId: string, userId: string, displayName: string): Promise<void> {
-        const rtdb = getRealtimeDb();
-        const typingRef = ref(rtdb, `${TYPING_PATH}/${chatId}/${userId}`);
+        const { channel, ready } = getTypingChannel(chatId);
+        await ready;
 
-        await set(typingRef, {
-            name: displayName,
-            timestamp: Date.now(),
+        const status = await channel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: {
+                userId,
+                name: displayName,
+                timestamp: Date.now(),
+            },
         });
-
-        // Auto-remove on disconnect (tab close, network drop)
-        onDisconnect(typingRef).remove();
+        if (status !== 'ok') throw new Error(`Failed to broadcast typing: ${status}`);
     },
 
     /**
      * Remove current user's typing indicator.
      */
     async stopTyping(chatId: string, userId: string): Promise<void> {
-        const rtdb = getRealtimeDb();
-        const typingRef = ref(rtdb, `${TYPING_PATH}/${chatId}/${userId}`);
-        await remove(typingRef);
+        const { channel, ready } = getTypingChannel(chatId);
+        await ready;
+
+        const status = await channel.send({
+            type: 'broadcast',
+            event: 'stop_typing',
+            payload: { userId },
+        });
+        if (status !== 'ok') throw new Error(`Failed to broadcast stop_typing: ${status}`);
     },
 
     /**
@@ -72,40 +93,62 @@ export const TypingService = {
         currentUserId: string,
         callback: (typingUsers: TypingUser[]) => void
     ): () => void {
-        const rtdb = getRealtimeDb();
-        const chatTypingRef = ref(rtdb, `${TYPING_PATH}/${chatId}`);
+        const usersById = new Map<string, TypingUser>();
+        callback([]);
 
-        const handleValue = (snapshot: any) => {
-            if (!snapshot.exists()) {
-                callback([]);
-                return;
-            }
-
-            const data = snapshot.val();
+        const emit = () => {
             const now = Date.now();
-            const users: TypingUser[] = [];
-
-            for (const [uid, entry] of Object.entries(data)) {
-                const typingEntry = entry as { name: string; timestamp: number };
-
-                // Skip current user and stale entries
-                if (uid === currentUserId) continue;
-                if (now - typingEntry.timestamp > STALE_THRESHOLD) continue;
-
-                users.push({
-                    userId: uid,
-                    name: typingEntry.name,
-                    timestamp: typingEntry.timestamp,
-                });
-            }
-
-            callback(users);
+            const activeUsers = Array.from(usersById.values()).filter((user) => {
+                if (user.userId === currentUserId) return false;
+                return now - user.timestamp <= STALE_THRESHOLD;
+            });
+            callback(activeUsers);
         };
 
-        onValue(chatTypingRef, handleValue);
+        const channel = supabase
+            .channel(`typing-listener:${chatId}:${currentUserId}:${Date.now()}`)
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                const entry = payload as Partial<TypingUser>;
+                if (!entry.userId || !entry.name || typeof entry.timestamp !== 'number') {
+                    return;
+                }
+
+                usersById.set(entry.userId, {
+                    userId: entry.userId,
+                    name: entry.name,
+                    timestamp: entry.timestamp,
+                });
+                emit();
+            })
+            .on('broadcast', { event: 'stop_typing' }, ({ payload }) => {
+                const data = payload as { userId?: string };
+                if (!data.userId) return;
+
+                usersById.delete(data.userId);
+                emit();
+            });
+
+        channel.subscribe();
+
+        const staleSweepTimer = setInterval(() => {
+            const now = Date.now();
+            let changed = false;
+
+            for (const [userId, user] of usersById.entries()) {
+                if (now - user.timestamp > STALE_THRESHOLD) {
+                    usersById.delete(userId);
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                emit();
+            }
+        }, 1000);
 
         return () => {
-            off(chatTypingRef, 'value', handleValue);
+            clearInterval(staleSweepTimer);
+            supabase.removeChannel(channel);
         };
     },
 };

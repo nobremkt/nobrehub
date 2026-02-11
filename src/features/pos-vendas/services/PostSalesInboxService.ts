@@ -1,105 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * NOBRE HUB - POST SALES INBOX SERVICE (Supabase)
+ * NOBRE HUB - POST SALES INBOX SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
  * Serviço para buscar conversas do contexto pós-venda
+ * Now reads from Supabase (conversations table)
  */
 
 import { supabase } from '@/config/supabase';
 import { Conversation } from '@/features/inbox/types';
-
-type ConversationRow = {
-    id: string;
-    lead_id: string | null;
-    name: string | null;
-    phone: string;
-    email: string | null;
-    tags: string[] | null;
-    notes: string | null;
-    unread_count: number | null;
-    assigned_to: string | null;
-    channel: string | null;
-    status: string | null;
-    context: string | null;
-    post_sales_id: string | null;
-    last_message_preview: string | null;
-    last_message_at: string | null;
-    created_at: string | null;
-    updated_at: string | null;
-};
-
-const rowToConversation = (row: any): Conversation => {
-    const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-    const createdAt = row.created_at ? new Date(row.created_at).getTime() : 0;
-
-    return {
-        id: row.id,
-        leadId: row.lead_id ?? '',
-        leadName: row.name || '',
-        leadPhone: row.phone || '',
-        leadEmail: row.email ?? undefined,
-        tags: row.tags ?? [],
-        notes: row.notes ?? undefined,
-        unreadCount: row.unread_count ?? 0,
-        assignedTo: row.assigned_to ?? undefined,
-        channel: row.channel || 'whatsapp',
-        status: row.status || 'open',
-        context: row.context || 'post_sales',
-        postSalesId: row.post_sales_id ?? undefined,
-        lastMessage: row.last_message_preview
-            ? {
-                id: `preview-${row.id}`,
-                conversationId: row.id,
-                content: row.last_message_preview,
-                type: 'text',
-                direction: 'in',
-                status: 'read',
-                createdAt: row.last_message_at ? new Date(row.last_message_at) : new Date(),
-            }
-            : undefined,
-        createdAt: createdAt as unknown as Date,
-        updatedAt: updatedAt as unknown as Date,
-    } as Conversation;
-};
-
-const fetchConversations = async (postSalesId: string | null): Promise<Conversation[]> => {
-    let query = supabase
-        .from('conversations')
-        .select('*')
-        .eq('context', 'post_sales')
-        .eq('status', 'open')
-        .order('updated_at', { ascending: false });
-
-    if (postSalesId) {
-        query = query.eq('assigned_to', postSalesId);
-    } else {
-        query = query.is('assigned_to', null);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    return ((data as ConversationRow[] | null) || []).map(rowToConversation);
-};
-
-const fetchConversationCounts = async (): Promise<Record<string, number>> => {
-    const { data, error } = await supabase
-        .from('conversations')
-        .select('assigned_to')
-        .eq('context', 'post_sales')
-        .eq('status', 'open');
-
-    if (error) throw error;
-
-    const counts: Record<string, number> = {};
-    (data || []).forEach((row: { assigned_to: string | null }) => {
-        const assignedTo = row.assigned_to;
-        if (!assignedTo) return;
-        counts[assignedTo] = (counts[assignedTo] || 0) + 1;
-    });
-
-    return counts;
-};
 
 export const PostSalesInboxService = {
     /**
@@ -110,29 +18,68 @@ export const PostSalesInboxService = {
         postSalesId: string | null,
         callback: (conversations: Conversation[]) => void
     ) => {
-        const load = async () => {
-            const conversations = await fetchConversations(postSalesId);
-            callback(conversations);
+        const fetchConversations = async () => {
+            try {
+                let query = supabase
+                    .from('conversations')
+                    .select('*')
+                    .eq('context', 'post_sales')
+                    .eq('status', 'open')
+                    .order('updated_at', { ascending: false });
+
+                if (postSalesId) {
+                    query = query.eq('assigned_to', postSalesId);
+                }
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let conversations: Conversation[] = (data || []).map(row => ({
+                    ...row,
+                    id: row.id,
+                    updatedAt: new Date(row.updated_at || Date.now()).getTime(),
+                    createdAt: new Date(row.created_at || Date.now()).getTime(),
+                    assignedTo: row.assigned_to,
+                    leadId: row.lead_id,
+                    leadName: row.name || '',
+                    leadPhone: row.phone || '',
+                    phoneNumber: row.phone,
+                    context: row.context,
+                    status: row.status,
+                    postSalesId: row.post_sales_id,
+                    unreadCount: row.unread_count || 0,
+                })) as unknown as Conversation[];
+
+                // If postSalesId is null, filter to unassigned only (distribution queue)
+                if (!postSalesId) {
+                    conversations = conversations.filter(conv => !conv.assignedTo);
+                }
+
+                callback(conversations);
+            } catch (error) {
+                console.error('Error fetching post-sales conversations:', error);
+                callback([]);
+            }
         };
 
-        load().catch((error) => {
-            console.error('Error loading post-sales conversations:', error);
-        });
+        // Initial fetch
+        fetchConversations();
 
-        const channelName = postSalesId
-            ? `postsales-inbox-${postSalesId}`
-            : 'postsales-inbox-unassigned';
-
+        // Realtime subscription
         const channel = supabase
-            .channel(channelName)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
-                load().catch((error) => {
-                    console.error('Error refreshing post-sales conversations:', error);
-                });
+            .channel('post_sales_conversations')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'conversations',
+            }, () => {
+                fetchConversations();
             })
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 
     /**
@@ -166,25 +113,46 @@ export const PostSalesInboxService = {
     getConversationCounts: (
         callback: (counts: Record<string, number>) => void
     ) => {
-        const loadCounts = async () => {
-            const counts = await fetchConversationCounts();
+        const fetchCounts = async () => {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('assigned_to')
+                .eq('context', 'post_sales')
+                .eq('status', 'open');
+
+            if (error) {
+                console.error('Error fetching conversation counts:', error);
+                callback({});
+                return;
+            }
+
+            const counts: Record<string, number> = {};
+            (data || []).forEach(row => {
+                if (row.assigned_to) {
+                    counts[row.assigned_to] = (counts[row.assigned_to] || 0) + 1;
+                }
+            });
+
             callback(counts);
         };
 
-        loadCounts().catch((error) => {
-            console.error('Error loading post-sales conversation counts:', error);
-        });
+        // Initial fetch
+        fetchCounts();
 
+        // Realtime
         const channel = supabase
-            .channel('postsales-conversation-counts')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
-                loadCounts().catch((error) => {
-                    console.error('Error refreshing post-sales conversation counts:', error);
-                });
-            });
+            .channel('post_sales_conversation_counts')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'conversations',
+            }, () => {
+                fetchCounts();
+            })
+            .subscribe();
 
-        channel.subscribe();
-
-        return () => { supabase.removeChannel(channel); };
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }
 };

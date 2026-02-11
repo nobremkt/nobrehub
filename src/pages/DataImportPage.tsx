@@ -3,16 +3,14 @@
  * NOBRE HUB - PAGE: DATA IMPORT
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * Página de importação de dados históricos (JSON) para Firebase.
- * Usa batch write para escrever múltiplos documentos de uma vez.
+ * Página de importação de dados históricos (JSON) para Supabase.
+ * Usa upsert em lotes para escrever múltiplos registros de uma vez.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import { useState, useRef } from 'react';
-import { writeBatch, collection, doc, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import { COLLECTIONS } from '@/config';
+import { supabase } from '@/config/supabase';
 import {
     Button,
     Card,
@@ -22,6 +20,8 @@ import {
 } from '@/design-system';
 import { Upload, Trash2, FileJson, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
+
+const PROJECTS_TABLE = 'projects';
 
 interface ImportProject {
     title: string;
@@ -61,6 +61,26 @@ interface ImportData {
     };
 }
 
+/** Convert camelCase import item to snake_case Supabase row */
+function toSupabaseRow(item: Record<string, unknown>): Record<string, unknown> {
+    return {
+        name: item.title || item.name || '',
+        lead_id: (item.leadId as string) || `import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        producer_name: '',
+        lead_name: 'Importado',
+        producer_id: item.producerId || '',
+        product_type: item.category || 'Outro',
+        base_points: Number(item.points) || 1,
+        extra_points: 0,
+        total_points: Number(item.points) || 1,
+        status: item.status || 'entregue',
+        delivered_at: item.deliveredAt ? new Date(item.deliveredAt as string).toISOString() : null,
+        created_at: item.createdAt ? new Date(item.createdAt as string).toISOString() : new Date().toISOString(),
+        source: 'historical',
+        notes: item.sourceSheet ? `Importado de ${String(item.sourceSheet)}` : undefined,
+    };
+}
+
 export function DataImportPage() {
     const [jsonData, setJsonData] = useState<ImportData | null>(null);
     const [isImporting, setIsImporting] = useState(false);
@@ -96,37 +116,30 @@ export function DataImportPage() {
         let failedCount = 0;
 
         try {
-            const projectsCollection = collection(db, COLLECTIONS.PRODUCTION_PROJECTS);
-
-            // Firestore batch can only handle 500 operations at a time
-            const BATCH_SIZE = 450;
-            const allItems = [
+            // Combine projects and alteracoes into a single batch
+            const allItems: Record<string, unknown>[] = [
                 ...jsonData.projects.map(p => ({ ...p, type: 'project' })),
                 ...jsonData.alteracoes.map(a => ({ ...a }))
             ];
 
+            // Supabase insert in chunks of 500
+            const BATCH_SIZE = 500;
+
             for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-                const batch = writeBatch(db);
                 const chunk = allItems.slice(i, i + BATCH_SIZE);
+                const rows = chunk.map(item => toSupabaseRow(item));
 
-                for (const item of chunk) {
-                    try {
-                        const docRef = doc(projectsCollection);
-                        batch.set(docRef, {
-                            ...item,
-                            createdAt: new Date(item.createdAt),
-                            deliveredAt: item.deliveredAt ? new Date(item.deliveredAt) : null,
-                            importedAt: new Date(),
-                        });
-                        successCount++;
-                    } catch (error) {
-                        console.error('Error adding item to batch:', error);
-                        failedCount++;
-                    }
+                const { error } = await supabase
+                    .from(PROJECTS_TABLE)
+                    .insert(rows as any);
+
+                if (error) {
+                    console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, error);
+                    failedCount += chunk.length;
+                } else {
+                    successCount += chunk.length;
+                    console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} committed (${chunk.length} items)`);
                 }
-
-                await batch.commit();
-                console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} committed (${chunk.length} items)`);
             }
 
             setImportResult({ success: successCount, failed: failedCount });
@@ -141,36 +154,21 @@ export function DataImportPage() {
     };
 
     const handleDeleteHistorical = async () => {
-        if (!confirm('⚠️ ATENÇÃO: Isso vai APAGAR todos os dados históricos (isHistorical=true) do banco de dados. Esta ação é irreversível!\n\nTem certeza que deseja continuar?')) {
+        if (!confirm('⚠️ ATENÇÃO: Isso vai APAGAR todos os dados históricos (is_historical=true) do banco de dados. Esta ação é irreversível!\n\nTem certeza que deseja continuar?')) {
             return;
         }
 
         setIsDeleting(true);
-        let deletedCount = 0;
 
         try {
-            const projectsCollection = collection(db, COLLECTIONS.PRODUCTION_PROJECTS);
-            const q = query(projectsCollection, where('isHistorical', '==', true));
-            const snapshot = await getDocs(q);
+            const { error, count } = await supabase
+                .from(PROJECTS_TABLE)
+                .delete({ count: 'exact' })
+                .eq('is_historical', true);
 
-            // Delete in batches
-            const BATCH_SIZE = 450;
-            const docs = snapshot.docs;
+            if (error) throw error;
 
-            for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-                const batch = writeBatch(db);
-                const chunk = docs.slice(i, i + BATCH_SIZE);
-
-                for (const docSnapshot of chunk) {
-                    batch.delete(docSnapshot.ref);
-                    deletedCount++;
-                }
-
-                await batch.commit();
-                console.log(`Deleted batch ${Math.floor(i / BATCH_SIZE) + 1} (${chunk.length} items)`);
-            }
-
-            toast.success(`${deletedCount} registros históricos deletados!`);
+            toast.success(`${count || 0} registros históricos deletados!`);
         } catch (error) {
             console.error('Delete error:', error);
             toast.error('Erro ao deletar dados históricos');
@@ -298,7 +296,7 @@ export function DataImportPage() {
                 {/* Import Section */}
                 {jsonData && (
                     <Card>
-                        <CardHeader title="3. Importar para Firebase" />
+                        <CardHeader title="3. Importar para Supabase" />
                         <CardBody>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <Button
@@ -342,7 +340,7 @@ export function DataImportPage() {
                         }}>
                             <AlertTriangle size={24} style={{ color: 'var(--color-danger-500)' }} />
                             <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                Use esta opção para remover TODOS os dados históricos (registros com isHistorical=true).
+                                Use esta opção para remover TODOS os dados históricos (is_historical=true).
                                 Esta ação é <strong>irreversível</strong>.
                             </p>
                         </div>

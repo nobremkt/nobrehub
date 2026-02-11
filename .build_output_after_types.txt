@@ -1,0 +1,115 @@
+
+> nobre-hub@2.0.0 build
+> tsc -b && vite build
+
+src/features/pos-vendas/services/PostSalesDistributionService.ts(302,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(370,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(393,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(449,20): error TS2352: Conversion of type '{ id: string; createdAt: Date; updatedAt: Date; dealClosedAt: Date | undefined; client_status: string | null; company: string | null; completed_at: string | null; ... 26 more ...; updated_at: string | null; }[]' to type 'Lead[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; createdAt: Date; updatedAt: Date; dealClosedAt: Date | undefined; client_status: string | null; company: string | null; completed_at: string | null; ... 26 more ...; updated_at: string | null; }' is missing the following properties from type 'Lead': status, responsibleId
+src/features/pos-vendas/services/PostSalesDistributionService.ts(452,37): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(453,37): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(474,33): error TS2352: Conversion of type '{ id: string; createdAt: Date; updatedAt: Date; dealClosedAt: Date | undefined; client_status: string | null; company: string | null; completed_at: string | null; ... 26 more ...; updated_at: string | null; }[]' to type 'Lead[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; createdAt: Date; updatedAt: Date; dealClosedAt: Date | undefined; client_status: string | null; company: string | null; completed_at: string | null; ... 26 more ...; updated_at: string | null; }' is missing the following properties from type 'Lead': status, responsibleId
+src/features/pos-vendas/services/PostSalesDistributionService.ts(477,41): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(478,41): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(526,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(533,64): error TS2339: Property 'client_revision_count' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'."> | SelectQueryError<"column 'client_revision_count' does not exist on 'leads'."> | ... 23 more ... | SelectQueryError<...>'.
+  Property 'client_revision_count' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'.">'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(534,58): error TS2339: Property 'revision_count' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'."> | SelectQueryError<"column 'client_revision_count' does not exist on 'leads'."> | ... 23 more ... | SelectQueryError<...>'.
+  Property 'revision_count' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'.">'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(535,46): error TS2339: Property 'revision_history' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'."> | SelectQueryError<"column 'client_revision_count' does not exist on 'leads'."> | ... 23 more ... | SelectQueryError<...>'.
+  Property 'revision_history' does not exist on type 'SelectQueryError<"column 'client_revision_count' does not exist on 'users'.">'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(538,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesDistributionService.ts(585,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type '"users" | "leads" | "products" | "loss_reasons" | "pipeline_stages" | "conversations" | "messages" | "projects" | "social_media_clients" | "strategic_tasks" | "strategic_projects" | ... 14 more ... | "user_presence"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { conversations: { Row: { assigned_to: string | null; channel: string | null; company: string | null; context: string | null; ... 17 more ...; updated_at: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 24 more ...; users: { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"production_projects"' is not assignable to parameter of type 'never'.
+src/features/pos-vendas/services/PostSalesInboxService.ts(37,53): error TS2352: Conversion of type '{ id: string; updatedAt: number; createdAt: number; assignedTo: string | null; leadId: string | null; leadName: any; phoneNumber: any; context: string | null; status: string | null; postSalesId: string | null; ... 18 more ...; updated_at: string | null; }[]' to type 'Conversation[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; updatedAt: number; createdAt: number; assignedTo: string | null; leadId: string | null; leadName: any; phoneNumber: any; context: string | null; status: string | null; postSalesId: string | null; ... 18 more ...; updated_at: string | null; }' is missing the following properties from type 'Conversation': leadPhone, unreadCount
+src/features/pos-vendas/services/PostSalesInboxService.ts(40,41): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesInboxService.ts(41,41): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number | Date'.
+      Type 'null' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | null' is not assignable to parameter of type 'string | number'.
+      Type 'null' is not assignable to type 'string | number'.
+src/features/pos-vendas/services/PostSalesInboxService.ts(44,35): error TS2339: Property 'lead_name' does not exist on type '{ assigned_to: string | null; channel: string | null; company: string | null; context: string | null; created_at: string | null; email: string | null; id: string; is_blocked: boolean | null; ... 13 more ...; updated_at: string | null; }'.
+src/features/pos-vendas/services/PostSalesInboxService.ts(45,38): error TS2339: Property 'phone_number' does not exist on type '{ assigned_to: string | null; channel: string | null; company: string | null; context: string | null; created_at: string | null; email: string | null; id: string; is_blocked: boolean | null; ... 13 more ...; updated_at: string | null; }'.
+src/features/settings/services/holidaysService.ts(70,17): error TS2352: Conversion of type 'string | number | boolean | { [key: string]: Json | undefined; } | Json[] | null' to type 'DayOff[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Json[]' is not comparable to type 'DayOff[]'.
+    Type 'Json' is not comparable to type 'DayOff'.
+      Type 'Json[]' is missing the following properties from type 'DayOff': id, date, name, createdAt
+src/features/settings/services/holidaysService.ts(97,25): error TS2345: Argument of type '{ custom_days_off: DayOff[]; updated_at: string; }' is not assignable to parameter of type '{ custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }'.
+  Types of property 'custom_days_off' are incompatible.
+    Type 'DayOff[]' is not assignable to type 'Json | undefined'.
+      Type 'DayOff[]' is not assignable to type 'Json[]'.
+        Type 'DayOff' is not assignable to type 'Json'.
+          Type 'DayOff' is not assignable to type '{ [key: string]: Json | undefined; }'.
+            Index signature for type 'string' is missing in type 'DayOff'.
+src/features/settings/services/holidaysService.ts(103,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ custom_days_off: DayOff[]; updated_at: string; }' is not assignable to parameter of type '{ custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }'.
+      Types of property 'custom_days_off' are incompatible.
+        Type 'DayOff[]' is not assignable to type 'Json | undefined'.
+          Type 'DayOff[]' is not assignable to type 'Json[]'.
+            Type 'DayOff' is not assignable to type 'Json'.
+              Type 'DayOff' is not assignable to type '{ [key: string]: Json | undefined; }'.
+                Index signature for type 'string' is missing in type 'DayOff'.
+  Overload 2 of 2, '(values: { custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ custom_days_off: DayOff[]; updated_at: string; }' is not assignable to parameter of type '{ custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }[]'.
+      Type '{ custom_days_off: DayOff[]; updated_at: string; }' is missing the following properties from type '{ custom_days_off?: Json | undefined; id?: string | undefined; updated_at?: string | undefined; }[]': length, pop, push, concat, and 28 more.
+src/features/strategic/components/NoteEditor/NoteEditor.tsx(214,49): error TS2339: Property 'oderId' does not exist on type 'EditorPresence'.
+src/features/strategic/stores/useNotesStore.ts(226,56): error TS2339: Property 'oderId' does not exist on type 'EditorPresence'.

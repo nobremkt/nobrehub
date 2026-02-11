@@ -5,143 +5,149 @@
  * 
  * Service para gerenciamento de notas.
  * 
- * Arquitetura Híbrida:
- * - Firestore: metadados (lista, título, timestamps, permissões)
- * - RTDB: conteúdo em tempo real (multiplayer)
+ * Arquitetura Supabase:
+ * - Tabela `notes`: metadados + conteúdo
+ * - Supabase Realtime Broadcast: edição multiplayer
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import {
-    collection,
-    query,
-    orderBy,
-    onSnapshot,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    Timestamp,
-} from 'firebase/firestore';
-import { getFirestoreDb } from '@/config/firebase';
+import { supabase } from '@/config/supabase';
 import { useAuthStore } from '@/stores';
 import { Note } from '../types';
-import { NotesRealtimeService } from './NotesRealtimeService';
 
-const COLLECTION_NAME = 'notes';
+// ─── Row mapper ──────────────────────────────────────────────────────────────
 
-/**
- * Converte documento Firestore para Note (sem content - vem do RTDB)
- */
-function mapDocToNote(docSnap: any): Note {
-    const data = docSnap.data();
+function mapRowToNote(row: Record<string, unknown>): Note {
     return {
-        id: docSnap.id,
-        title: data.title || 'Sem título',
-        content: '', // Content agora vem do RTDB
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        createdBy: data.createdBy || '',
+        id: row.id as string,
+        title: (row.title as string) || 'Sem título',
+        content: (row.content as string) || '',
+        createdAt: new Date((row.created_at as string) || Date.now()),
+        updatedAt: new Date((row.updated_at as string) || Date.now()),
+        createdBy: (row.created_by as string) || '',
     };
 }
 
 export const NotesService = {
     /**
-     * Subscribe to real-time notes list updates (metadata only)
+     * Subscribe to real-time notes list updates
      */
     subscribeToNotes(callback: (notes: Note[]) => void): () => void {
-        const db = getFirestoreDb();
+        const fetchNotes = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('notes')
+                    .select('*')
+                    .order('updated_at', { ascending: false });
 
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            orderBy('updatedAt', 'desc')
-        );
+                if (error) throw error;
+                callback((data || []).map(mapRowToNote));
+            } catch (error) {
+                console.error('Error fetching notes:', error);
+                callback([]);
+            }
+        };
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const notes = snapshot.docs.map(mapDocToNote);
-            callback(notes);
-        }, (error) => {
-            console.error('Error subscribing to notes:', error);
-            callback([]);
-        });
+        // Initial fetch
+        fetchNotes();
 
-        return unsubscribe;
+        // Realtime
+        const channel = supabase
+            .channel('notes_list_changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'notes'
+            }, () => {
+                fetchNotes();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     },
 
     /**
      * Create a new note
-     * - Cria metadados no Firestore
-     * - Inicializa conteúdo no RTDB
      */
     async createNote(title: string = 'Nova Anotação'): Promise<string> {
-        const db = getFirestoreDb();
         const user = useAuthStore.getState().user;
+        const now = new Date().toISOString();
 
-        const now = Timestamp.now();
+        const { data, error } = await supabase
+            .from('notes')
+            .insert({
+                title,
+                content: '',
+                created_by: user?.id || 'anonymous',
+                created_at: now,
+                updated_at: now,
+            })
+            .select('id')
+            .single();
 
-        // 1. Criar metadados no Firestore
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-            title,
-            createdAt: now,
-            updatedAt: now,
-            createdBy: user?.id || 'anonymous',
-        });
-
-        // 2. Inicializar conteúdo no RTDB
-        await NotesRealtimeService.initNoteContent(docRef.id, '');
-
-        return docRef.id;
+        if (error) throw error;
+        return data.id;
     },
 
     /**
-     * Update note title (Firestore only)
+     * Update note title
      */
     async updateNoteTitle(noteId: string, title: string): Promise<void> {
-        const db = getFirestoreDb();
+        const { error } = await supabase
+            .from('notes')
+            .update({
+                title,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', noteId);
 
-        await updateDoc(doc(db, COLLECTION_NAME, noteId), {
-            title,
-            updatedAt: Timestamp.now(),
-        });
+        if (error) throw error;
     },
 
     /**
-     * Update note content (RTDB) - delegates to RealtimeService
+     * Update note content
      */
     async updateNoteContent(noteId: string, content: string): Promise<void> {
-        // Atualizar conteúdo no RTDB
-        await NotesRealtimeService.updateContent(noteId, content);
+        const { error } = await supabase
+            .from('notes')
+            .update({
+                content,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', noteId);
 
-        // Atualizar timestamp no Firestore para manter ordering
-        const db = getFirestoreDb();
-        await updateDoc(doc(db, COLLECTION_NAME, noteId), {
-            updatedAt: Timestamp.now(),
-        });
+        if (error) throw error;
     },
 
     /**
      * Delete note
-     * - Remove do Firestore
-     * - Remove do RTDB
      */
     async deleteNote(noteId: string): Promise<void> {
-        const db = getFirestoreDb();
+        const { error } = await supabase
+            .from('notes')
+            .delete()
+            .eq('id', noteId);
 
-        // 1. Deletar do RTDB
-        await NotesRealtimeService.deleteNoteContent(noteId);
-
-        // 2. Deletar do Firestore
-        await deleteDoc(doc(db, COLLECTION_NAME, noteId));
+        if (error) throw error;
     },
 
     /**
-     * Migrate existing note content to RTDB
-     * Chamado quando abre uma nota que ainda não tem content no RTDB
+     * Get a single note's content (one-time read)
      */
-    async ensureNoteInRTDB(noteId: string, fallbackContent: string = ''): Promise<void> {
-        const exists = await NotesRealtimeService.noteExistsInRTDB(noteId);
-        if (!exists) {
-            await NotesRealtimeService.migrateContentToRTDB(noteId, fallbackContent);
+    async getNoteContent(noteId: string): Promise<string | null> {
+        const { data, error } = await supabase
+            .from('notes')
+            .select('content')
+            .eq('id', noteId)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null;
+            throw error;
         }
+        return data.content || '';
     },
 };

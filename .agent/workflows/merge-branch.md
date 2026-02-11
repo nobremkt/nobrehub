@@ -28,14 +28,27 @@ git status
 ```
 > Se houver alterações não commitadas, commite e faça push antes de prosseguir.
 
-### 2. Checkout na main e atualizar
+### 2. ⚠️ Validar o build ANTES de mergear
+// turbo
+```powershell
+npx tsc --noEmit
+```
+> Se houver erros, **corrija-os na branch do agente ANTES** de prosseguir. Nunca merge código com erros de tipo.
+
+### 3. Push da branch do agente
+// turbo
+```powershell
+git push origin <NOME_DA_BRANCH>
+```
+
+### 4. Checkout na main e atualizar
 // turbo
 ```powershell
 git checkout main
 git pull origin main
 ```
 
-### 3. Merge da branch do agente
+### 5. Merge da branch do agente
 ```powershell
 git merge <NOME_DA_BRANCH>
 ```
@@ -45,19 +58,13 @@ git add .
 git commit -m "Merge branch '<NOME_DA_BRANCH>' into main"
 ```
 
-### 4. Push da main para o GitHub
+### 6. Push da main para o GitHub
 ```powershell
 git push origin main
 ```
 > O Vercel detecta automaticamente e faz deploy.
 
-### 5. Validar o build
-// turbo
-```powershell
-npx tsc --noEmit
-```
-
-### 6. Voltar para a branch do agente
+### 7. Voltar para a branch do agente
 // turbo
 ```powershell
 git checkout <NOME_DA_BRANCH>

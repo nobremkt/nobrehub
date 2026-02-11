@@ -4,14 +4,12 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * Centralized service that computes real goal progress for all sectors.
  * Fetches configured goals from settings/goals and actual performance data
- * from Firestore, returning usable progress objects for any component.
+ * from Supabase, returning usable progress objects for any component.
  */
 
-import { collection, getDocs, getFirestore, query, where } from 'firebase/firestore';
+import { supabase } from '@/config/supabase';
 import { GoalsService, type GoalsConfig, type SalesGoals, type PostSalesGoals, type StrategicGoals } from './goalsService';
 import { HolidaysService } from './holidaysService';
-
-const getDb = () => getFirestore();
 
 // ─── Exported types ──────────────────────────────────────────────────────────
 
@@ -105,7 +103,6 @@ export const GoalTrackingService = {
         sectorId: string,
     ): Promise<CollaboratorGoalSummary> {
         const config = await GoalsService.getConfig();
-        const db = getDb();
 
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -124,16 +121,16 @@ export const GoalTrackingService = {
 
         switch (sectorId) {
             case SECTOR_IDS.PRODUCAO:
-                progress = await this._computeProductionProgress(db, collaboratorId, config, weekStart, weekEnd);
+                progress = await this._computeProductionProgress(collaboratorId, config, weekStart, weekEnd);
                 break;
             case SECTOR_IDS.VENDAS:
-                progress = await this._computeSalesProgress(db, collaboratorId, config.salesGoals, monthStart, monthEnd);
+                progress = await this._computeSalesProgress(collaboratorId, config.salesGoals, monthStart, monthEnd);
                 break;
             case SECTOR_IDS.POS_VENDAS:
-                progress = await this._computePostSalesProgress(db, collaboratorId, config.postSalesGoals);
+                progress = await this._computePostSalesProgress(collaboratorId, config.postSalesGoals);
                 break;
             case SECTOR_IDS.ESTRATEGICO:
-                progress = await this._computeStrategicProgress(db, collaboratorId, config.strategicGoals);
+                progress = await this._computeStrategicProgress(collaboratorId, config.strategicGoals);
                 break;
             default:
                 progress = {
@@ -155,32 +152,36 @@ export const GoalTrackingService = {
     // ── Production ──────────────────────────────────────────────────────────
 
     async _computeProductionProgress(
-        db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         config: GoalsConfig,
         weekStart: Date,
         weekEnd: Date,
     ): Promise<SectorGoalProgress> {
-        // Query only this producer's projects (not the entire collection)
-        const snapshot = await getDocs(query(
-            collection(db, 'production_projects'),
-            where('producerId', '==', collaboratorId)
-        ));
-        let points = 0, delivered = 0;
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('producer_id', collaboratorId)
+            .gte('created_at', weekStart.toISOString())
+            .lte('created_at', weekEnd.toISOString());
 
-        snapshot.docs.forEach(doc => {
-            const d = doc.data();
-            const deliveredAt = d.deliveredAt?.toDate?.() || (d.deliveredAt ? new Date(d.deliveredAt) : null);
-            const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+        if (error) throw error;
+
+        let points = 0;
+        let delivered = 0;
+
+        (data ?? []).forEach((d: any) => {
+            const deliveredAt = d.delivered_at ? new Date(d.delivered_at) : null;
+            const createdAt = d.created_at ? new Date(d.created_at) : null;
             const status = d.status || '';
             const isFinished = status === 'entregue' || status === 'revisado' || status === 'concluido';
-            // Use deliveredAt for date filtering when available, otherwise use createdAt for finished projects
             const relevantDate = deliveredAt || (isFinished ? createdAt : null);
             if (!relevantDate || relevantDate < weekStart || relevantDate > weekEnd) return;
-            const isAlt = d.type === 'alteracao' || d.status === 'alteracao' || d.status === 'alteracao_interna' || d.status === 'alteracao_cliente';
+
+            const isAlt = status === 'alteracao' || status === 'alteracao_interna' || status === 'alteracao_cliente';
             if (isAlt) return;
+
             delivered++;
-            points += Number(d.points) || 1;
+            points += Number(d.total_points ?? d.base_points ?? 1) || 1;
         });
 
         // Weekly goal = daily × real workdays in this week (using HolidaysService)
@@ -214,31 +215,40 @@ export const GoalTrackingService = {
     // ── Sales ────────────────────────────────────────────────────────────────
 
     async _computeSalesProgress(
-        db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         salesGoals: SalesGoals | undefined,
         monthStart: Date,
         monthEnd: Date,
     ): Promise<SectorGoalProgress> {
-        // Query only this seller's leads (not the entire collection)
-        const snapshot = await getDocs(query(
-            collection(db, 'leads'),
-            where('responsibleId', '==', collaboratorId)
-        ));
-        let totalSold = 0, closed = 0, total = 0;
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .eq('responsible_id', collaboratorId)
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+
+        if (error) throw error;
+
+        let totalSold = 0;
+        let closed = 0;
+        let total = 0;
+
         const closedStatuses = ['won', 'closed', 'contracted'];
         const lostStatuses = ['lost', 'churned'];
 
-        snapshot.docs.forEach(doc => {
-            const d = doc.data();
-            const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+        (data ?? []).forEach((d: any) => {
+            const createdAt = d.created_at ? new Date(d.created_at) : null;
             if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
+
+            const status = d.deal_status || d.status || 'open';
             total++;
-            if (closedStatuses.includes(d.status)) {
+
+            if (closedStatuses.includes(status)) {
                 closed++;
-                totalSold += d.estimatedValue || 0;
+                totalSold += Number(d.deal_value ?? d.estimated_value ?? 0);
             }
-            if (lostStatuses.includes(d.status)) total = total; // just count
+
+            if (lostStatuses.includes(status)) total = total; // just count
         });
 
         const targets = salesGoals || { monthlyRevenue: 0, leadsConverted: 0, conversionRate: 0 };
@@ -278,7 +288,6 @@ export const GoalTrackingService = {
     // ── Post-Sales ──────────────────────────────────────────────────────────
 
     async _computePostSalesProgress(
-        db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         postSalesGoals: PostSalesGoals | undefined,
     ): Promise<SectorGoalProgress> {
@@ -286,20 +295,24 @@ export const GoalTrackingService = {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-        // Query only this post-sales rep's leads
-        const snapshot = await getDocs(query(
-            collection(db, 'leads'),
-            where('postSalesId', '==', collaboratorId)
-        ));
-        let clientsAttended = 0, completed = 0;
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .eq('post_sales_id', collaboratorId)
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
 
-        snapshot.docs.forEach(doc => {
-            const d = doc.data();
-            // Filter by current month
-            const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
+        if (error) throw error;
+
+        let clientsAttended = 0;
+        let completed = 0;
+
+        (data ?? []).forEach((d: any) => {
+            const createdAt = d.created_at ? new Date(d.created_at) : null;
             if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
+
             clientsAttended++;
-            if (d.clientStatus === 'concluido') completed++;
+            if (d.client_status === 'concluido') completed++;
         });
 
         const targets = postSalesGoals || { monthlyClients: 0, satisfactionRate: 0, responseTime: 0 };
@@ -331,29 +344,32 @@ export const GoalTrackingService = {
     // ── Strategic ───────────────────────────────────────────────────────────
 
     async _computeStrategicProgress(
-        db: ReturnType<typeof getFirestore>,
         collaboratorId: string,
         strategicGoals: StrategicGoals | undefined,
     ): Promise<SectorGoalProgress> {
-        // Count notes created this month by this collaborator
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        let notesThisMonth = 0;
+        let strategicTasksCount = 0;
 
         try {
-            const snapshot = await getDocs(query(
-                collection(db, 'notes'),
-                where('createdBy', '==', collaboratorId)
-            ));
-            snapshot.docs.forEach(doc => {
-                const d = doc.data();
-                const createdAt = d.createdAt?.toDate?.() || (d.createdAt ? new Date(d.createdAt) : null);
-                if (createdAt && createdAt >= monthStart) {
-                    notesThisMonth++;
-                }
-            });
+            const { data: projects, error: projectsError } = await (supabase as any)
+                .from('strategic_projects')
+                .select('id')
+                .eq('owner_id', collaboratorId);
+
+            if (projectsError) throw projectsError;
+
+            const projectIds = (projects || []).map((p: any) => p.id).filter(Boolean);
+
+            if (projectIds.length > 0) {
+                const { data: tasks, error: tasksError } = await (supabase as any)
+                    .from('strategic_tasks')
+                    .select('*')
+                    .in('project_id', projectIds);
+
+                if (tasksError) throw tasksError;
+                strategicTasksCount = (tasks || []).length;
+            }
         } catch {
-            // collection may not exist
+            // strategic tables may not exist in local typegen or environment
         }
 
         const targets = strategicGoals || { monthlyNotes: 0, weeklyReviews: 0 };
@@ -362,8 +378,8 @@ export const GoalTrackingService = {
             {
                 label: 'Notas Estratégicas',
                 target: targets.monthlyNotes,
-                actual: notesThisMonth,
-                percentage: pct(notesThisMonth, targets.monthlyNotes),
+                actual: strategicTasksCount,
+                percentage: pct(strategicTasksCount, targets.monthlyNotes),
                 unit: 'un',
             },
         ];

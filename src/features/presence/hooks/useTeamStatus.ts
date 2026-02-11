@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ref, onValue, off } from 'firebase/database';
-import { getRealtimeDb } from '@/config/firebase';
+import { RealtimePresenceState } from '@supabase/supabase-js';
+import { supabase } from '@/config/supabase';
 
 export interface UserStatus {
     state: 'online' | 'idle' | 'offline';
@@ -9,21 +9,41 @@ export interface UserStatus {
 
 export function useTeamStatus() {
     const [teamStatus, setTeamStatus] = useState<Record<string, UserStatus>>({});
-    const rtdb = getRealtimeDb();
 
     useEffect(() => {
-        const allStatusRef = ref(rtdb, '/status');
+        const channel = supabase.channel('presence');
 
-        const handleUpdate = (snapshot: any) => {
-            const data = snapshot.val() || {};
-            setTeamStatus(data);
+        const normalizePresence = (state: RealtimePresenceState<Record<string, unknown>>): Record<string, UserStatus> => {
+            const normalized: Record<string, UserStatus> = {};
+
+            Object.entries(state).forEach(([key, presences]) => {
+                const latest = presences[presences.length - 1] as { state?: string; last_changed?: number } | undefined;
+                const rawState = latest?.state;
+                const rawLastChanged = latest?.last_changed;
+
+                const safeState: UserStatus['state'] =
+                    rawState === 'online' || rawState === 'idle' || rawState === 'offline'
+                        ? rawState
+                        : 'offline';
+
+                normalized[key] = {
+                    state: safeState,
+                    last_changed: typeof rawLastChanged === 'number' ? rawLastChanged : Date.now(),
+                };
+            });
+
+            return normalized;
         };
 
-        // Escuta TUDO de /status (Cuidado se tiver MILHARES de users, mas pra CRM é de boa)
-        onValue(allStatusRef, handleUpdate);
+        channel
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState<Record<string, unknown>>();
+                setTeamStatus(normalizePresence(state));
+            })
+            .subscribe();
 
         return () => {
-            off(allStatusRef, 'value', handleUpdate);
+            supabase.removeChannel(channel);
         };
     }, []);
 

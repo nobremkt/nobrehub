@@ -211,7 +211,7 @@ export function NoteEditor() {
                             <div className={styles.editorAvatars}>
                                 {activeEditors.slice(0, 3).map((ed) => (
                                     <Avatar
-                                        key={ed.oderId}
+                                        key={ed.userId}
                                         fallback={ed.displayName}
                                         alt={ed.displayName}
                                         src={ed.photoURL}
