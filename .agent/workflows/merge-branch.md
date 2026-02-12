@@ -21,6 +21,13 @@ Workflow para integrar o trabalho de uma branch de agente na branch `main`.
 
 ## Passos
 
+### 0. 🚨 OBRIGATÓRIO: Sincronizar branch com a main
+// turbo
+```powershell
+git pull origin main
+```
+> **NUNCA PULE ESTE PASSO.** Outro agente pode ter mergeado na main desde a última sessão. Se não sincronizar, o merge pode quebrar o build com conflitos silenciosos (tipos desatualizados, interfaces incompatíveis). Resolve conflitos se necessário antes de prosseguir.
+
 ### 1. Garantir que a branch está limpa
 // turbo
 ```powershell
@@ -58,29 +65,25 @@ git add .
 git commit -m "Merge branch '<NOME_DA_BRANCH>' into main"
 ```
 
-### 6. Push da main para o GitHub
+### 6. ⚠️ Validar o build DEPOIS do merge
+// turbo
+```powershell
+npx tsc --noEmit
+```
+> Se houver erros no build pós-merge, **corrija-os na main ANTES de fazer push**. Isso garante que o Vercel nunca receba código quebrado.
+
+### 7. Push da main para o GitHub
 ```powershell
 git push origin main
 ```
 > O Vercel detecta automaticamente e faz deploy.
 
-### 7. Voltar para a branch do agente
+### 8. Voltar para a branch do agente e sincronizar
 // turbo
-```powershell
-git checkout <NOME_DA_BRANCH>
-```
-
----
-
-## Atualizar Branch do Agente com a Main
-
-Quando outro agente mergeou na main e sua branch está desatualizada:
-
 ```powershell
 git checkout <NOME_DA_BRANCH>
 git pull origin main
 ```
-> Resolve conflitos se necessário, commita e continua trabalhando.
 
 ---
 
@@ -88,5 +91,7 @@ git pull origin main
 
 - **Nunca delete branches de agente** — são permanentes
 - **Merge UMA branch por vez** — valide entre cada merge
-- **Sempre faça `git pull origin main`** antes de mergear, para evitar conflitos desnecessários
+- **SEMPRE sincronize com a main (Step 0)** antes de começar qualquer merge
+- **SEMPRE valide o build pós-merge (Step 6)** antes de fazer push na main
+- **No início de cada sessão de trabalho**, faça `git pull origin main` na branch do agente
 - **Se algo der errado após o merge**, reverta com `git revert HEAD` na main
