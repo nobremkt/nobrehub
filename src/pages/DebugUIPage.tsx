@@ -30,6 +30,7 @@ import {
     AudioPlayer,
     ChatBubble,
     ChatInput,
+    ChatDateDivider,
 } from '@/design-system';
 import { useUIStore } from '@/stores';
 import { Sun, Moon, User, Settings, Mail, ImageIcon, FileText, Inbox, Search, AlertTriangle } from 'lucide-react';
@@ -645,6 +646,17 @@ export function DebugUIPage() {
                                     border: '1px solid var(--color-border)',
                                     maxWidth: '600px'
                                 }}>
+                                    {/* System message */}
+                                    <ChatBubble
+                                        content="Maria entrou no chat"
+                                        type="system"
+                                        isMine={false}
+                                        time="10:30"
+                                    />
+
+                                    {/* Date divider */}
+                                    <ChatDateDivider label="Hoje" />
+
                                     {/* Incoming text */}
                                     <ChatBubble
                                         content="Olá! Tudo bem? 👋"
@@ -693,14 +705,6 @@ export function DebugUIPage() {
                                         fileName="Relatório Q4.pdf"
                                         fileSize="2.3 MB"
                                     />
-
-                                    {/* System message */}
-                                    <ChatBubble
-                                        content="Maria entrou no chat"
-                                        type="system"
-                                        isMine={false}
-                                        time="10:30"
-                                    />
                                 </div>
                             </div>
 
@@ -734,6 +738,7 @@ export function DebugUIPage() {
                                         onStopRecording={() => setChatIsRecording(false)}
                                         onCancelRecording={() => setChatIsRecording(false)}
                                         placeholder="Digite aqui para testar..."
+                                        theme={theme === 'light' ? 'light' : 'dark'}
                                         attachmentOptions={[
                                             { id: 'image', label: 'Imagem', icon: <ImageIcon size={18} />, onClick: () => alert('Anexar imagem') },
                                             { id: 'file', label: 'Arquivo', icon: <FileText size={18} />, onClick: () => alert('Anexar arquivo') },

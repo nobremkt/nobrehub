@@ -643,11 +643,12 @@ export const InboxService = {
     /**
      * Assign conversation to a team member.
      */
-    assignConversation: async (conversationId: string, userId: string | null) => {
+    assignConversation: async (conversationId: string, userId: string | null, updatedBy?: string) => {
         await supabase
             .from('conversations')
             .update({
                 assigned_to: userId,
+                updated_by: updatedBy || null,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', conversationId);
@@ -656,7 +657,7 @@ export const InboxService = {
     /**
      * Close or reopen a conversation.
      */
-    toggleConversationStatus: async (conversationId: string) => {
+    toggleConversationStatus: async (conversationId: string, updatedBy?: string) => {
         const { data, error } = await supabase
             .from('conversations')
             .select('status')
@@ -671,6 +672,7 @@ export const InboxService = {
             .from('conversations')
             .update({
                 status: newStatus,
+                updated_by: updatedBy || null,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', conversationId);
@@ -681,13 +683,35 @@ export const InboxService = {
     /**
      * Transfer conversation to post-sales sector.
      */
-    transferToPostSales: async (conversationId: string) => {
+    transferToPostSales: async (conversationId: string, updatedBy?: string) => {
         await supabase
             .from('conversations')
             .update({
                 context: 'post_sales',
                 status: 'open',
                 assigned_to: null,
+                updated_by: updatedBy || null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', conversationId);
+    },
+
+    /**
+     * Update deal status (won/lost/open).
+     * Triggers system message via Postgres trigger.
+     */
+    updateDealStatus: async (
+        conversationId: string,
+        dealStatus: 'open' | 'won' | 'lost',
+        updatedBy?: string,
+        lossReason?: string
+    ) => {
+        await supabase
+            .from('conversations')
+            .update({
+                deal_status: dealStatus,
+                loss_reason: dealStatus === 'lost' ? (lossReason || null) : null,
+                updated_by: updatedBy || null,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', conversationId);

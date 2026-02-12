@@ -12,11 +12,11 @@ export interface User {
     avatar?: string;
     photoUrl?: string; // Foto 9:16 (banner/cover)
     profilePhotoUrl?: string; // Foto de perfil 1:1 (avatar)
-    role: string; // ID do role ou nome
-    permissions?: string[];
-    roleId?: string; // ID do documento de role
-    sector?: string;
-    sectorId?: string;
+    roleId: string; // UUID FK → roles table
+    roleName?: string; // Nome do cargo (ex: "Diretor", "Vendedor(a)")
+    sectorId?: string; // UUID FK → sectors table
+    sectorName?: string; // Nome do setor (ex: "Vendas", "Produção")
+    permissions?: string[]; // Array de permissões do role_permissions
     phone?: string;
     isActive?: boolean;
     active?: boolean;

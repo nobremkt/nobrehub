@@ -343,8 +343,8 @@ async function getCollaboratorsData(preloaded?: SharedData): Promise<Collaborato
         nameMap[id] = name;
         photoMap[id] = profilePhotoUrl;
 
-        const sectorId = (row.department as string) || '';
-        const roleId = (row.role as string) || '';
+        const sectorId = (row.sector_id as string) || '';
+        const roleId = (row.role_id as string) || '';
 
         if (sectorId === PRODUCAO_SECTOR_ID && roleId !== LIDER_ROLE_ID) {
             producerCount++;
@@ -901,8 +901,8 @@ export const DashboardAnalyticsService = {
             members.push({
                 id,
                 name: (row.name as string) || 'Desconhecido',
-                role: rolesMap[(row.role as string)] || (row.role as string) || 'Sem Cargo',
-                sector: sectorsMap[(row.department as string)] || (row.department as string) || 'Sem Setor',
+                role: rolesMap[(row.role_id as string)] || (row.role_id as string) || 'Sem Cargo',
+                sector: sectorsMap[(row.sector_id as string)] || (row.sector_id as string) || 'Sem Setor',
                 profilePhotoUrl: row.avatar_url as string | undefined,
                 projectsDelivered: projectStats.count,
                 pointsEarned: projectStats.points
@@ -1082,7 +1082,7 @@ export const DashboardAnalyticsService = {
         // Filter post-sales team members (excluding DEBUG account)
         const postSalesTeam = collabRows.filter(row =>
             (row.email as string) !== 'debug@debug.com' &&
-            ((row.department as string) === POS_VENDAS_SECTOR_ID || (row.department as string) === 'Pós-vendas')
+            ((row.sector_id as string) === POS_VENDAS_SECTOR_ID || (row.sector_id as string) === 'Pós-vendas')
         );
 
         // TODO: Fetch from payments collection when available

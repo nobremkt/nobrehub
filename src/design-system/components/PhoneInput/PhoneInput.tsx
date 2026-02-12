@@ -66,7 +66,12 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         const rawInput = e.target.value;
 
         // Remove tudo que não é número
-        const digits = rawInput.replace(/\D/g, '');
+        let digits = rawInput.replace(/\D/g, '');
+
+        // Limite de 15 dígitos (padrão ITU-T E.164 sem DDI)
+        if (digits.length > 15) {
+            digits = digits.slice(0, 15);
+        }
 
         // Valor completo com DDI para salvar
         const callingCode = getCountryCallingCode(country);
@@ -141,6 +146,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                     onChange={handleInputChange}
                     placeholder={dynamicPlaceholder}
                     disabled={disabled}
+                    maxLength={20}
                 />
             </div>
 

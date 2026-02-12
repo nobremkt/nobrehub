@@ -5,6 +5,7 @@
  * 
  * Autenticação via Supabase Auth (email/password).
  * Dados do usuário na tabela `users` do Supabase.
+ * Permissões carregadas via JOIN com `roles` + `role_permissions`.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -43,28 +44,40 @@ export async function logoutUser(): Promise<void> {
 
 /**
  * Buscar dados do usuário na tabela `users` do Supabase
+ * Faz JOIN com `roles` e `sectors` para nomes e `role_permissions` para permissões
  */
 export async function getUserData(uid: string, email?: string): Promise<User | null> {
     // -----------------------------------------------------------
     // BACKDOOR TEMPORÁRIO PARA DESENVOLVIMENTO
     // -----------------------------------------------------------
     if (email === 'debug@debug.com') {
+        // Buscar permissões reais do Diretor
+        const { data: perms } = await supabase
+            .from('role_permissions')
+            .select('permission')
+            .eq('role_id', 'cfb47a1c-8f0c-47c9-b4b1-7dbb82a11313');
+
         return {
             id: uid,
             email: 'debug@debug.com',
             name: 'Debug Admin',
-            role: 'admin',
+            roleId: 'cfb47a1c-8f0c-47c9-b4b1-7dbb82a11313',
+            roleName: 'Diretor',
+            permissions: perms?.map(p => p.permission) ?? [],
             active: true,
-            permissions: ['view_crm', 'view_production', 'view_post_sales', 'view_admin'],
             createdAt: Date.now(),
             updatedAt: Date.now(),
-        } as unknown as User;
+        } as User;
     }
 
-    // Buscar por email na tabela users
+    // Buscar usuário com JOIN em roles e sectors
     const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select(`
+            *,
+            roles:role_id ( id, name ),
+            sectors:sector_id ( id, name )
+        `)
         .eq('email', email ?? '')
         .limit(1)
         .maybeSingle();
@@ -76,8 +89,21 @@ export async function getUserData(uid: string, email?: string): Promise<User | n
 
     if (!data) return null;
 
-    // Mapear permissões baseado no role
-    const permissions = getPermissionsForRole(data.role);
+    // Buscar permissões do role
+    const permissions: string[] = [];
+    if (data.role_id) {
+        const { data: perms } = await supabase
+            .from('role_permissions')
+            .select('permission')
+            .eq('role_id', data.role_id);
+
+        if (perms) {
+            permissions.push(...perms.map(p => p.permission));
+        }
+    }
+
+    const roleData = data.roles as { id: string; name: string } | null;
+    const sectorData = data.sectors as { id: string; name: string } | null;
 
     return {
         id: data.id,
@@ -85,36 +111,17 @@ export async function getUserData(uid: string, email?: string): Promise<User | n
         email: data.email,
         name: data.name,
         photoUrl: data.avatar_url ?? undefined,
-        role: data.role,
-        roleId: data.role,
+        roleId: data.role_id ?? '',
+        roleName: roleData?.name ?? undefined,
         permissions,
-        sectorId: data.department ?? undefined,
+        sectorId: data.sector_id ?? undefined,
+        sectorName: sectorData?.name ?? undefined,
         phone: data.phone ?? undefined,
         active: data.active ?? true,
         isActive: data.active ?? true,
         createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
         updatedAt: data.updated_at ? new Date(data.updated_at).getTime() : Date.now(),
     } as User;
-}
-
-/**
- * Retorna permissões baseadas no role do usuário
- */
-function getPermissionsForRole(role: string): string[] {
-    switch (role) {
-        case 'admin':
-            return ['view_crm', 'view_production', 'view_post_sales', 'view_admin', 'manage_users', 'manage_settings'];
-        case 'leader':
-            return ['view_crm', 'view_production', 'view_post_sales', 'manage_users'];
-        case 'sales':
-            return ['view_crm'];
-        case 'producer':
-            return ['view_production'];
-        case 'post_sales':
-            return ['view_post_sales'];
-        default:
-            return [];
-    }
 }
 
 /**

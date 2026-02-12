@@ -21,6 +21,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     const isOut = message.direction === 'out';
 
     const getType = (msgType: string): 'text' | 'image' | 'video' | 'file' | 'audio' | 'system' => {
+        if (msgType === 'system') return 'system';
         if (msgType === 'document') return 'file';
         if (msgType === 'image') return 'image';
         if (msgType === 'video') return 'video';

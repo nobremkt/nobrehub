@@ -21,6 +21,7 @@ export type Database = {
           company: string | null
           context: string | null
           created_at: string | null
+          deal_status: string | null
           email: string | null
           id: string
           is_blocked: boolean | null
@@ -29,6 +30,7 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           lead_id: string | null
+          loss_reason: string | null
           name: string | null
           notes: string | null
           phone: string
@@ -38,6 +40,7 @@ export type Database = {
           tags: string[] | null
           unread_count: number | null
           updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -45,6 +48,7 @@ export type Database = {
           company?: string | null
           context?: string | null
           created_at?: string | null
+          deal_status?: string | null
           email?: string | null
           id?: string
           is_blocked?: boolean | null
@@ -53,6 +57,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          loss_reason?: string | null
           name?: string | null
           notes?: string | null
           phone: string
@@ -62,6 +67,7 @@ export type Database = {
           tags?: string[] | null
           unread_count?: number | null
           updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -69,6 +75,7 @@ export type Database = {
           company?: string | null
           context?: string | null
           created_at?: string | null
+          deal_status?: string | null
           email?: string | null
           id?: string
           is_blocked?: boolean | null
@@ -77,6 +84,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           lead_id?: string | null
+          loss_reason?: string | null
           name?: string | null
           notes?: string | null
           phone?: string
@@ -86,6 +94,7 @@ export type Database = {
           tags?: string[] | null
           unread_count?: number | null
           updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -552,6 +561,7 @@ export type Database = {
         Row: {
           active: boolean | null
           base_points: number | null
+          category: string | null
           created_at: string | null
           id: string
           name: string
@@ -559,6 +569,7 @@ export type Database = {
         Insert: {
           active?: boolean | null
           base_points?: number | null
+          category?: string | null
           created_at?: string | null
           id?: string
           name: string
@@ -566,6 +577,7 @@ export type Database = {
         Update: {
           active?: boolean | null
           base_points?: number | null
+          category?: string | null
           created_at?: string | null
           id?: string
           name?: string
@@ -824,6 +836,29 @@ export type Database = {
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          permission: string
+          role_id: string
+        }
+        Insert: {
+          permission: string
+          role_id: string
+        }
+        Update: {
+          permission?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1251,39 +1286,57 @@ export type Database = {
           active: boolean | null
           avatar_url: string | null
           created_at: string | null
-          department: string | null
           email: string
+          firebase_uid: string | null
           id: string
           name: string
           phone: string | null
-          role: string
+          role_id: string | null
+          sector_id: string | null
           updated_at: string | null
         }
         Insert: {
           active?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
-          department?: string | null
           email: string
+          firebase_uid?: string | null
           id?: string
           name: string
           phone?: string | null
-          role: string
+          role_id?: string | null
+          sector_id?: string | null
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
-          department?: string | null
           email?: string
+          firebase_uid?: string | null
           id?: string
           name?: string
           phone?: string | null
-          role?: string
+          role_id?: string | null
+          sector_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

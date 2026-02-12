@@ -24,6 +24,7 @@ interface ChatInputProps {
 
     disabled?: boolean;
     placeholder?: string;
+    theme?: 'light' | 'dark';
 
     // Attachments
     onAttachClick?: () => void; // Fallback normal click if no options provided
@@ -41,6 +42,7 @@ export const ChatInput = ({
     onCancelRecording,
     disabled = false,
     placeholder = "Digite sua mensagem...",
+    theme = 'dark',
     onAttachClick,
     attachmentOptions
 }: ChatInputProps) => {
@@ -180,7 +182,7 @@ export const ChatInput = ({
                                             onChange(value + emojiData.emoji);
                                             setIsEmojiOpen(false);
                                         }}
-                                        theme={Theme.DARK}
+                                        theme={theme === 'light' ? Theme.LIGHT : Theme.DARK}
                                         width={350}
                                         height={400}
                                         searchPlaceHolder="Buscar emoji..."
