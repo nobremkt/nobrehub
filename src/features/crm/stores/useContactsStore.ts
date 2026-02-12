@@ -14,9 +14,24 @@ export interface ContactFilters {
     campos: ('contato' | 'empresa')[];
     tags: string[];
     motivoPerda: string[];
-    // Filtros Avançados
+    // Filtros de CRM (FilterBar estendida)
+    pipelines: ('high-ticket' | 'low-ticket')[];
+    stages: string[];
+    dealStatus: ('open' | 'won' | 'lost')[];
+    responsibleIds: string[];
+    postSalesIds: string[];
+    temperatures: ('cold' | 'warm' | 'hot')[];
+    // Filtros de data
     dataInicio?: Date;
     dataFim?: Date;
+    dataCriacaoInicio?: Date;
+    dataCriacaoFim?: Date;
+    dataAtualizacaoInicio?: Date;
+    dataAtualizacaoFim?: Date;
+    // Filtros de valor
+    valorMin?: number;
+    valorMax?: number;
+    // Filtros de negócio
     comNegocioOrigem?: string;
     comNegocioEtapa?: string;
     comNegocioStatus?: 'won' | 'lost' | 'open';
@@ -51,7 +66,7 @@ export interface ContactsState {
     setContacts: (contacts: Lead[]) => void;
     setLoading: (loading: boolean) => void;
     toggleSelect: (id: string) => void;
-    selectAll: () => void;
+    selectAll: (ids?: string[]) => void;
     clearSelection: () => void;
     setFilter: <K extends keyof ContactFilters>(key: K, value: ContactFilters[K]) => void;
     clearFilters: () => void;
@@ -65,6 +80,12 @@ const defaultFilters: ContactFilters = {
     campos: [],
     tags: [],
     motivoPerda: [],
+    pipelines: [],
+    stages: [],
+    dealStatus: [],
+    responsibleIds: [],
+    postSalesIds: [],
+    temperatures: [],
 };
 
 export const useContactsStore = create<ContactsState>((set, get) => ({
@@ -136,8 +157,8 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
         return { selectedIds: newSet };
     }),
 
-    selectAll: () => set((state) => ({
-        selectedIds: new Set(state.contacts.map(c => c.id))
+    selectAll: (ids) => set((state) => ({
+        selectedIds: new Set(ids ?? state.contacts.map(c => c.id))
     })),
 
     clearSelection: () => set({ selectedIds: new Set() }),

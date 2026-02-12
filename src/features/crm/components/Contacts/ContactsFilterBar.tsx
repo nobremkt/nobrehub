@@ -498,7 +498,7 @@ export const ContactsFilterBar: React.FC = () => {
                     ))}
 
                     {filters.comDono && (
-                        <Tag variant="default" size="sm" onRemove={() => setFilter('comDono', false)}>
+                        <Tag variant="default" size="sm" onRemove={() => setFilter('comDono', undefined)}>
                             Com responsável
                         </Tag>
                     )}

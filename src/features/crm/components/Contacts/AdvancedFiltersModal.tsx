@@ -38,7 +38,7 @@ export const AdvancedFiltersModal: React.FC<AdvancedFiltersModalProps> = ({
 
     const handleResponsavelChange = (value: ResponsavelFilter) => {
         setResponsavelFilter(value);
-        setFilter('comDono', value === 'com');
+        setFilter('comDono', value === 'com' ? 'true' : undefined);
         setFilter('semDono', value === 'sem');
     };
 
