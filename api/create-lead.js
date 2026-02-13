@@ -34,27 +34,21 @@ const VALID_SOURCES = ['whatsapp', 'landing-page', 'instagram', 'indicacao', 'si
 const FORM_ORIGIN_TAGS = {
     'lp-social-media': 'LP-Social-Media',
     'captacao-social-media': 'LP-Captação',
-    'lp-proposta': 'LP-Proposta',
     'site-contato': 'Site',
-    'site-institucional': 'Site',
 };
 
 /** Map formOrigin → source (fallback when source is not explicitly sent) */
 const FORM_ORIGIN_SOURCE = {
     'lp-social-media': 'landing-page',
     'captacao-social-media': 'landing-page',
-    'lp-proposta': 'landing-page',
     'site-contato': 'site',
-    'site-institucional': 'site',
 };
 
 /** Map formOrigin → pipeline (high-ticket for social media products, low-ticket for general site) */
 const FORM_ORIGIN_PIPELINE = {
     'lp-social-media': 'high-ticket',
     'captacao-social-media': 'high-ticket',
-    'lp-proposta': 'high-ticket',
     'site-contato': 'low-ticket',
-    'site-institucional': 'low-ticket',
 };
 const DEFAULT_PIPELINE = 'low-ticket';
 
