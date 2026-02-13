@@ -7,7 +7,7 @@ export interface Scene {
     mood: string;
 }
 
-const GEMINI_MODEL = 'gemini-3.0-flash-preview';
+const GEMINI_MODEL = 'gemini-3-flash-preview';
 
 async function loadSystemPrompt(): Promise<string> {
     try {
