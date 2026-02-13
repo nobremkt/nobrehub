@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Modal, Input, Button, Checkbox } from '@/design-system';
+import { Modal, Input, Button, Switch, Dropdown } from '@/design-system';
 import { Sector } from '../types';
 import { useSectorStore } from '../stores/useSectorStore';
+import { useCollaboratorStore } from '../stores/useCollaboratorStore';
 
 interface SectorModalProps {
     isOpen: boolean;
@@ -11,12 +12,20 @@ interface SectorModalProps {
 
 export const SectorModal = ({ isOpen, onClose, sectorToEdit }: SectorModalProps) => {
     const { addSector, updateSector, isLoading } = useSectorStore();
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
 
     // Form States
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [manager, setManager] = useState('');
     const [active, setActive] = useState(true);
+    const [nameError, setNameError] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchCollaborators();
+        }
+    }, [isOpen, fetchCollaborators]);
 
     useEffect(() => {
         if (sectorToEdit) {
@@ -31,29 +40,45 @@ export const SectorModal = ({ isOpen, onClose, sectorToEdit }: SectorModalProps)
             setManager('');
             setActive(true);
         }
+        setNameError('');
     }, [sectorToEdit, isOpen]);
+
+    const managerOptions = [
+        { label: 'Nenhum', value: '' },
+        ...collaborators
+            .filter(c => c.active)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(c => ({
+                label: c.name,
+                value: c.name,
+            })),
+    ];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!name.trim()) {
-            return; // Validação básica
+            setNameError('O nome do setor é obrigatório.');
+            return;
         }
+
+        setNameError('');
 
         try {
             if (sectorToEdit) {
                 await updateSector(sectorToEdit.id, {
-                    name,
-                    description,
-                    manager,
+                    name: name.trim(),
+                    description: description.trim() || null,
+                    manager: manager || null,
                     active
                 });
             } else {
                 await addSector({
-                    name,
-                    description,
-                    manager,
-                    active
+                    name: name.trim(),
+                    description: description.trim() || null,
+                    manager: manager || null,
+                    active,
+                    leaderPermissions: []
                 });
             }
             onClose();
@@ -74,9 +99,14 @@ export const SectorModal = ({ isOpen, onClose, sectorToEdit }: SectorModalProps)
                     label="Nome do Setor"
                     placeholder="Ex: Comercial, Financeiro..."
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                        setName(e.target.value);
+                        if (nameError) setNameError('');
+                    }}
                     fullWidth
                     autoFocus
+                    required
+                    error={nameError}
                 />
 
                 <Input
@@ -89,20 +119,20 @@ export const SectorModal = ({ isOpen, onClose, sectorToEdit }: SectorModalProps)
                     fullWidth
                 />
 
-                <Input
+                <Dropdown
                     label="Responsável / Gerente"
-                    placeholder="Nome do responsável"
+                    placeholder="Selecione um responsável..."
+                    options={managerOptions}
                     value={manager}
-                    onChange={(e) => setManager(e.target.value)}
-                    fullWidth
+                    onChange={(val) => setManager(String(val))}
                 />
 
-                <div className="pt-2">
-                    <Checkbox
+                <div className="pt-2 flex items-center justify-between">
+                    <Switch
                         id="active-sector"
                         label="Setor Ativo"
                         checked={active}
-                        onChange={(e) => setActive(e.target.checked)}
+                        onChange={setActive}
                     />
                 </div>
 

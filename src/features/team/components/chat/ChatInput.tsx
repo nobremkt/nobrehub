@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
 import { Image as ImageIcon, FileText } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export const ChatInput = ({ onSend, disabled = false, placeholder = "Digite sua 
 
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+            toast.error('Não foi possível acessar o microfone. Verifique as permissões.');
         }
     };
 

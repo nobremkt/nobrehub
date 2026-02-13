@@ -14,7 +14,7 @@
  *   - Sem sidebar, vai direto para seus clientes
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePostSalesStore } from '../stores/usePostSalesStore';
 import { PostSalesSidebar } from '../components/PostSalesSidebar';
@@ -22,7 +22,8 @@ import { ClientDistributionList } from '../components/ClientDistributionList';
 import { ClientInbox } from '../components/ClientInbox';
 import { PERMISSIONS } from '@/config/permissions';
 import { Inbox, Users } from 'lucide-react';
-import { useState } from 'react';
+import { SidebarWithTabs } from '@/design-system';
+import type { SidebarTab } from '@/design-system';
 
 type PostSalesTab = 'distribution' | 'team';
 
@@ -41,44 +42,30 @@ export const PostSalesPage = () => {
         }
     }, [isLeader, user?.id, setSelectedPostSalesId]);
 
+    const tabs: SidebarTab[] = [
+        {
+            key: 'distribution',
+            label: 'Distribuir',
+            icon: <Inbox size={16} />,
+            content: <ClientDistributionList />,
+        },
+        {
+            key: 'team',
+            label: 'Equipe',
+            icon: <Users size={16} />,
+            content: <PostSalesSidebar />,
+        },
+    ];
+
     return (
         <div className="flex h-full min-h-0 overflow-hidden">
             {/* Sidebar só aparece para líderes */}
             {isLeader && (
-                <div className="flex flex-col w-64 border-r border-border bg-surface-primary">
-                    {/* Tabs de navegação */}
-                    <div className="flex border-b border-border">
-                        <button
-                            onClick={() => setActiveTab('distribution')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'distribution'
-                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
-                                }`}
-                        >
-                            <Inbox size={16} />
-                            Distribuir
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('team')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'team'
-                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
-                                }`}
-                        >
-                            <Users size={16} />
-                            Equipe
-                        </button>
-                    </div>
-
-                    {/* Conteúdo da sidebar baseado na tab */}
-                    <div className="flex-1 overflow-hidden">
-                        {activeTab === 'distribution' ? (
-                            <ClientDistributionList />
-                        ) : (
-                            <PostSalesSidebar />
-                        )}
-                    </div>
-                </div>
+                <SidebarWithTabs
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onTabChange={(key) => setActiveTab(key as PostSalesTab)}
+                />
             )}
 
             {/* Main Content - Inbox do atendente selecionado */}

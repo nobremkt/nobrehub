@@ -1,5 +1,17 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOBRE HUB — Integration Settings Store (Supabase-backed + Local AI Config)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * WhatsApp settings: loaded/saved from the `integration_settings` Supabase table.
+ * AI Models & Image Styles: persisted locally via zustand persist (localStorage).
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/config/supabase';
 
 /**
  * Definição de um modelo de IA disponível para geração de imagens
@@ -57,21 +69,30 @@ const DEFAULT_IMAGE_STYLES: ImageStyle[] = [
     },
 ];
 
+interface IntegrationConfig {
+    id: string | null;
+    provider: '360dialog' | 'meta_cloud';
+    baseUrl: string;
+    enabled: boolean;
+    /** True while loading/saving */
+    isLoading: boolean;
+    /** True after first successful load */
+    isLoaded: boolean;
+}
+
 interface IntegrationsState {
-    whatsapp: {
-        provider: 'evolution' | '360dialog' | null;
-        baseUrl: string;
-        apiKey: string;
-    };
-    gemini: {
-        apiKey: string;
-    };
-    openai: {
-        apiKey: string;
-    };
+    // --- WhatsApp (Supabase-backed) ---
+    whatsapp: IntegrationConfig;
+    loadSettings: () => Promise<void>;
+    saveSettings: (config: Partial<Pick<IntegrationConfig, 'provider' | 'baseUrl' | 'enabled'>>) => Promise<void>;
+    /** Check if WhatsApp sending is enabled and configured */
+    isWhatsAppEnabled: () => boolean;
+
+    // --- AI Config (localStorage-persisted) ---
+    gemini: { apiKey: string };
+    openai: { apiKey: string };
     aiModels: AIModel[];
     imageStyles: ImageStyle[];
-    setWhatsappConfig: (config: Partial<IntegrationsState['whatsapp']>) => void;
     setGeminiApiKey: (apiKey: string) => void;
     setOpenaiApiKey: (apiKey: string) => void;
     toggleModel: (modelId: string) => void;
@@ -82,12 +103,96 @@ interface IntegrationsState {
 
 export const useSettingsStore = create<IntegrationsState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
+            // ─── WhatsApp (Supabase-backed) ──────────────────────────
             whatsapp: {
-                provider: 'evolution',
+                id: null,
+                provider: '360dialog',
                 baseUrl: '',
-                apiKey: ''
+                enabled: false,
+                isLoading: false,
+                isLoaded: false,
             },
+
+            loadSettings: async () => {
+                set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: true } }));
+
+                try {
+                    const { data, error } = await supabase
+                        .from('integration_settings')
+                        .select('id, provider, base_url, enabled')
+                        .limit(1)
+                        .single();
+
+                    if (error) {
+                        console.error('[SettingsStore] Failed to load settings:', error);
+                        set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: false, isLoaded: true } }));
+                        return;
+                    }
+
+                    set({
+                        whatsapp: {
+                            id: data.id,
+                            provider: data.provider as '360dialog' | 'meta_cloud',
+                            baseUrl: data.base_url,
+                            enabled: data.enabled,
+                            isLoading: false,
+                            isLoaded: true,
+                        },
+                    });
+                } catch (err) {
+                    console.error('[SettingsStore] Error loading settings:', err);
+                    set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: false, isLoaded: true } }));
+                }
+            },
+
+            saveSettings: async (config) => {
+                const currentState = get().whatsapp;
+
+                if (!currentState.id) {
+                    console.error('[SettingsStore] No settings record to update');
+                    return;
+                }
+
+                set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: true } }));
+
+                const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+                if (config.provider !== undefined) updatePayload.provider = config.provider;
+                if (config.baseUrl !== undefined) updatePayload.base_url = config.baseUrl;
+                if (config.enabled !== undefined) updatePayload.enabled = config.enabled;
+
+                try {
+                    const { error } = await supabase
+                        .from('integration_settings')
+                        .update(updatePayload)
+                        .eq('id', currentState.id);
+
+                    if (error) {
+                        console.error('[SettingsStore] Failed to save settings:', error);
+                        set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: false } }));
+                        return;
+                    }
+
+                    // Update local state
+                    set((state) => ({
+                        whatsapp: {
+                            ...state.whatsapp,
+                            ...config,
+                            isLoading: false,
+                        },
+                    }));
+                } catch (err) {
+                    console.error('[SettingsStore] Error saving settings:', err);
+                    set((state) => ({ whatsapp: { ...state.whatsapp, isLoading: false } }));
+                }
+            },
+
+            isWhatsAppEnabled: () => {
+                const { whatsapp } = get();
+                return whatsapp.enabled && Boolean(whatsapp.baseUrl) && whatsapp.provider === '360dialog';
+            },
+
+            // ─── AI Config (localStorage-persisted) ──────────────────
             gemini: {
                 apiKey: '',
             },
@@ -96,9 +201,6 @@ export const useSettingsStore = create<IntegrationsState>()(
             },
             aiModels: DEFAULT_AI_MODELS,
             imageStyles: DEFAULT_IMAGE_STYLES,
-            setWhatsappConfig: (config) => set((state) => ({
-                whatsapp: { ...state.whatsapp, ...config }
-            })),
             setGeminiApiKey: (apiKey) => set((state) => ({
                 gemini: { ...state.gemini, apiKey }
             })),
@@ -124,9 +226,17 @@ export const useSettingsStore = create<IntegrationsState>()(
         }),
         {
             name: 'nobrehub-settings-storage',
+            // Only persist AI-related fields to localStorage; WhatsApp is Supabase-backed
+            partialize: (state) => ({
+                gemini: state.gemini,
+                openai: state.openai,
+                aiModels: state.aiModels,
+                imageStyles: state.imageStyles,
+            }),
             merge: (persisted: unknown, current: IntegrationsState): IntegrationsState => {
                 const p = persisted as Partial<IntegrationsState> | undefined;
                 const merged = { ...current, ...p } as IntegrationsState;
+                // Ensure new default models are always available
                 if (p?.aiModels) {
                     const persistedIds = new Set(p.aiModels.map((m: AIModel) => m.id));
                     const newModels = DEFAULT_AI_MODELS.filter((m) => !persistedIds.has(m.id));
@@ -136,8 +246,10 @@ export const useSettingsStore = create<IntegrationsState>()(
                 if (!p?.imageStyles) {
                     merged.imageStyles = DEFAULT_IMAGE_STYLES;
                 }
+                // Restore WhatsApp to its default (non-persisted) state
+                merged.whatsapp = current.whatsapp;
                 return merged;
-            }
+            },
         }
     )
 );

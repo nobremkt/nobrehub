@@ -46,7 +46,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
                 stages = await PipelineService.seedDefaultStages();
             }
             set({ stages });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to fetch pipeline stages:', error);
         }
     },
@@ -60,9 +60,9 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
             }
             const leads = await LeadService.getLeads();
             set({ leads, isLoading: false });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to fetch leads:', error);
-            set({ error: error.message, isLoading: false });
+            set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
         }
     },
 
@@ -70,7 +70,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
         try {
             const newLead = await LeadService.createLead(leadData);
             set(state => ({ leads: [newLead, ...state.leads] }));
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to create lead:', error);
             throw error;
         }
@@ -86,7 +86,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
         try {
             await LeadService.updateLead(leadId, updates);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to update lead:', error);
             // Revert needed? Ideally yes, but skipping complex revert logic for now
             // Just fetching fresh data might be safer
@@ -105,14 +105,14 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
         set((state) => {
             const leadsInTarget = state.leads.filter(l => l.status === newStatus);
-            const maxOrder = leadsInTarget.length > 0
-                ? Math.max(...leadsInTarget.map(l => l.order)) + 1
+            const minOrder = leadsInTarget.length > 0
+                ? Math.min(...leadsInTarget.map(l => l.order)) - 1
                 : 0;
 
             return {
                 leads: state.leads.map((lead) =>
                     lead.id === leadId
-                        ? { ...lead, status: newStatus, order: maxOrder, updatedAt: new Date() }
+                        ? { ...lead, status: newStatus, order: minOrder, updatedAt: new Date() }
                         : lead
                 ),
             };

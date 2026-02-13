@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/design-system';
-import { InboxService } from '../services/InboxService';
+import { seedInboxDatabase } from '../services/InboxSeeder';
 
 export const DevToolbar: React.FC = () => {
     const [seeding, setSeeding] = useState(false);
@@ -8,7 +8,7 @@ export const DevToolbar: React.FC = () => {
     const handleSeed = async () => {
         setSeeding(true);
         try {
-            await InboxService.seedDatabase();
+            await seedInboxDatabase();
             // Force reload might not be needed if store is reactive, 
             // but refreshing the page ensures clean slate if stuck.
             // window.location.reload(); 

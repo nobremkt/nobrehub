@@ -8,6 +8,35 @@
 
 import { supabase } from '@/config/supabase';
 import { Conversation } from '@/features/inbox/types';
+import type { Database } from '@/types/supabase';
+
+type ConversationRow = Database['public']['Tables']['conversations']['Row'];
+
+/** Converte row do banco → Conversation */
+function rowToConversation(row: ConversationRow): Conversation {
+    return {
+        id: row.id,
+        updatedAt: new Date(row.updated_at || Date.now()),
+        createdAt: new Date(row.created_at || Date.now()),
+        assignedTo: row.assigned_to ?? undefined,
+        leadId: row.lead_id ?? '',
+        leadName: row.name || '',
+        leadPhone: row.phone || '',
+        context: (row.context as Conversation['context']) ?? undefined,
+        status: (row.status as Conversation['status']) ?? 'open',
+        channel: (row.channel as Conversation['channel']) ?? 'whatsapp',
+        postSalesId: row.post_sales_id ?? undefined,
+        unreadCount: row.unread_count || 0,
+        profilePicUrl: row.profile_pic_url ?? undefined,
+        tags: row.tags ?? undefined,
+        notes: row.notes ?? undefined,
+        isFavorite: row.is_favorite ?? undefined,
+        isPinned: row.is_pinned ?? undefined,
+        isBlocked: row.is_blocked ?? undefined,
+        dealStatus: (row.deal_status as Conversation['dealStatus']) ?? undefined,
+        lossReason: row.loss_reason ?? undefined,
+    };
+}
 
 export const PostSalesInboxService = {
     /**
@@ -34,21 +63,7 @@ export const PostSalesInboxService = {
                 const { data, error } = await query;
                 if (error) throw error;
 
-                let conversations: Conversation[] = (data || []).map(row => ({
-                    ...row,
-                    id: row.id,
-                    updatedAt: new Date(row.updated_at || Date.now()).getTime(),
-                    createdAt: new Date(row.created_at || Date.now()).getTime(),
-                    assignedTo: row.assigned_to,
-                    leadId: row.lead_id,
-                    leadName: row.name || '',
-                    leadPhone: row.phone || '',
-                    phoneNumber: row.phone,
-                    context: row.context,
-                    status: row.status,
-                    postSalesId: row.post_sales_id,
-                    unreadCount: row.unread_count || 0,
-                })) as unknown as Conversation[];
+                let conversations = (data || []).map(rowToConversation);
 
                 // If postSalesId is null, filter to unassigned only (distribution queue)
                 if (!postSalesId) {
@@ -72,6 +87,7 @@ export const PostSalesInboxService = {
                 event: '*',
                 schema: 'public',
                 table: 'conversations',
+                filter: 'context=eq.post_sales',
             }, () => {
                 fetchConversations();
             })
@@ -146,6 +162,7 @@ export const PostSalesInboxService = {
                 event: '*',
                 schema: 'public',
                 table: 'conversations',
+                filter: 'context=eq.post_sales',
             }, () => {
                 fetchCounts();
             })

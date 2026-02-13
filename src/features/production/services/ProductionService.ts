@@ -7,11 +7,21 @@
 import { supabase } from '@/config/supabase';
 import { Project } from '@/types/project.types';
 import { ProjectStatusPageService } from './ProjectStatusPageService';
+import type { Database } from '@/types/supabase';
+
+// ─── Supabase Row Types ──────────────────────────────────────────────
+type ProjectRow = Database['public']['Tables']['projects']['Row'] & {
+    // Columns exist in DB but may not be in auto-generated types
+    lead_name?: string | null;
+    producer_name?: string | null;
+    post_sales_name?: string | null;
+    suggested_producer_name?: string | null;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /** Converte row do Supabase (snake_case) → Project (camelCase) */
-function rowToProject(row: any): Project {
+function rowToProject(row: ProjectRow): Project {
     return {
         id: row.id,
         name: row.name,

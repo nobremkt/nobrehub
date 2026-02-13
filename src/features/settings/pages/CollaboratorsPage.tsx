@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
-import { Card, Button, Badge, Spinner, Input, ConfirmModal } from '@/design-system';
+import { Card, Button, Badge, Spinner, Input, ConfirmModal, Checkbox } from '@/design-system';
 import { useCollaboratorStore } from '../stores/useCollaboratorStore';
 import { useRoleStore } from '../stores/useRoleStore';
 import { useSectorStore } from '../stores/useSectorStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { CollaboratorModal } from '../components/CollaboratorModal';
-import { Plus, Pencil, Trash2, Search, Mail, Phone, User } from 'lucide-react';
+import { BulkPasswordModal } from '../components/BulkPasswordModal';
+import { Plus, Pencil, Trash2, Search, Mail, Phone, User, Eye, EyeOff, Lock, ArrowDownAZ, Clock, KeyRound } from 'lucide-react';
 import { Collaborator } from '../types';
 import { formatPhone } from '@/utils';
+import { toast } from 'react-toastify';
+
+type SortMode = 'sector-name' | 'recent';
 
 export const CollaboratorsPage = () => {
     const { collaborators, fetchCollaborators, isLoading, deleteCollaborator } = useCollaboratorStore();
@@ -18,11 +22,21 @@ export const CollaboratorsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [sortMode, setSortMode] = useState<SortMode>('sector-name');
 
     // Delete Confirmation State
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [collaboratorToDelete, setCollaboratorToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Bulk selection
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+    // Password visibility (per card)
+    const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         fetchCollaborators();
@@ -60,20 +74,80 @@ export const CollaboratorsPage = () => {
         }
     };
 
+    const handleBulkDelete = async () => {
+        setIsBulkDeleting(true);
+        let successCount = 0;
+        for (const id of selectedIds) {
+            try {
+                await deleteCollaborator(id);
+                successCount++;
+            } catch {
+                // skip
+            }
+        }
+        setIsBulkDeleting(false);
+        setIsBulkDeleteOpen(false);
+        setSelectedIds(new Set());
+        toast.success(`${successCount} colaborador(es) excluído(s)`);
+    };
+
     const getRoleName = (id?: string) => roles.find(r => r.id === id)?.name || 'Sem cargo';
     const getSectorName = (id?: string) => sectors.find(s => s.id === id)?.name || 'Sem setor';
 
     const { user } = useAuthStore();
 
-    const filteredCollaborators = collaborators.filter(c => {
-        // Hide debug user unless logged in as debug
-        if (c.email === 'debug@debug.com' && user?.email !== 'debug@debug.com') {
-            return false;
+    const filteredCollaborators = useMemo(() => {
+        let list = collaborators.filter(c => {
+            if (c.email === 'debug@debug.com' && user?.email !== 'debug@debug.com') {
+                return false;
+            }
+            return c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.email.toLowerCase().includes(searchTerm.toLowerCase());
+        });
+
+        if (sortMode === 'sector-name') {
+            list = [...list].sort((a, b) => {
+                const sectorA = getSectorName(a.sectorId);
+                const sectorB = getSectorName(b.sectorId);
+                const sectorCompare = sectorA.localeCompare(sectorB, 'pt-BR');
+                if (sectorCompare !== 0) return sectorCompare;
+                return a.name.localeCompare(b.name, 'pt-BR');
+            });
+        } else {
+            list = [...list].sort((a, b) => b.createdAt - a.createdAt);
         }
 
-        return c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.email.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+        return list;
+    }, [collaborators, searchTerm, sortMode, user?.email, sectors]);
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredCollaborators.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredCollaborators.map(c => c.id)));
+        }
+    };
+
+    const togglePasswordVisibility = (id: string) => {
+        setVisiblePasswords(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const hasSelection = selectedIds.size > 0;
+    const allSelected = selectedIds.size === filteredCollaborators.length && filteredCollaborators.length > 0;
 
     return (
         <div className="w-full px-6 space-y-6">
@@ -87,27 +161,83 @@ export const CollaboratorsPage = () => {
                 </Button>
             </div>
 
-            <div className="w-full md:w-96">
-                <Input
-                    placeholder="Buscar colaboradores..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    leftIcon={<Search size={18} />}
-                    fullWidth
-                />
+            <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+                <div className="w-full md:w-96">
+                    <Input
+                        placeholder="Buscar colaboradores..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        leftIcon={<Search size={18} />}
+                        fullWidth
+                    />
+                </div>
+
+                <div className="flex gap-2">
+                    <Button
+                        variant={sortMode === 'sector-name' ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setSortMode('sector-name')}
+                        leftIcon={<ArrowDownAZ size={16} />}
+                    >
+                        Setor
+                    </Button>
+                    <Button
+                        variant={sortMode === 'recent' ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setSortMode('recent')}
+                        leftIcon={<Clock size={16} />}
+                    >
+                        Recentes
+                    </Button>
+                </div>
             </div>
+
+            {/* Bulk action bar */}
+            {hasSelection && (
+                <div className="flex items-center gap-4 px-4 py-3 rounded-lg bg-primary-500/10 border border-primary-500/20">
+                    <Checkbox
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        label={`${selectedIds.size} selecionado(s)`}
+                    />
+                    <div className="flex-1" />
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        leftIcon={<KeyRound size={16} />}
+                        onClick={() => setIsBulkPasswordOpen(true)}
+                    >
+                        Alterar Senha
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-danger-500 hover:text-danger-600"
+                        leftIcon={<Trash2 size={16} />}
+                        onClick={() => setIsBulkDeleteOpen(true)}
+                    >
+                        Excluir
+                    </Button>
+                </div>
+            )}
 
             {isLoading && collaborators.length === 0 ? (
                 <div className="flex justify-center p-12">
                     <Spinner size="lg" />
                 </div>
             ) : (
-                /* 
-                   GRID LAYOUT 
-                */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredCollaborators.map(collaborator => (
                         <Card key={collaborator.id} variant="elevated" className="relative flex flex-col items-center pt-8 pb-4 px-4 overflow-visible">
+                            {/* Selection checkbox */}
+                            <div className="absolute top-3 left-3">
+                                <Checkbox
+                                    checked={selectedIds.has(collaborator.id)}
+                                    onChange={() => toggleSelect(collaborator.id)}
+                                    noSound
+                                />
+                            </div>
+
                             <div className="absolute top-3 right-3">
                                 <Badge variant={collaborator.active ? 'success' : 'default'} dot />
                             </div>
@@ -150,6 +280,27 @@ export const CollaboratorsPage = () => {
                                         <span className="text-xs text-text-primary">{formatPhone(collaborator.phone)}</span>
                                     </div>
                                 )}
+                                {/* Password row */}
+                                <div className="flex items-center gap-2 text-sm text-text-muted">
+                                    <Lock size={14} className="shrink-0" />
+                                    <span className="text-xs text-text-primary font-mono flex-1 truncate">
+                                        {collaborator.plainPassword
+                                            ? (visiblePasswords.has(collaborator.id)
+                                                ? collaborator.plainPassword
+                                                : '••••••')
+                                            : '—'
+                                        }
+                                    </span>
+                                    {collaborator.plainPassword && (
+                                        <button
+                                            onClick={() => togglePasswordVisibility(collaborator.id)}
+                                            className="text-text-muted hover:text-text-primary transition-colors p-0.5"
+                                            title={visiblePasswords.has(collaborator.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                                        >
+                                            {visiblePasswords.has(collaborator.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex gap-2 justify-center w-full mt-auto">
@@ -186,6 +337,26 @@ export const CollaboratorsPage = () => {
                 confirmLabel="Excluir"
                 variant="danger"
                 isLoading={isDeleting}
+            />
+
+            <ConfirmModal
+                isOpen={isBulkDeleteOpen}
+                onClose={() => setIsBulkDeleteOpen(false)}
+                onConfirm={handleBulkDelete}
+                title="Excluir Selecionados"
+                description={`Tem certeza que deseja excluir ${selectedIds.size} colaborador(es)? Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir Todos"
+                variant="danger"
+                isLoading={isBulkDeleting}
+            />
+
+            <BulkPasswordModal
+                isOpen={isBulkPasswordOpen}
+                onClose={() => {
+                    setIsBulkPasswordOpen(false);
+                    setSelectedIds(new Set());
+                }}
+                selectedIds={Array.from(selectedIds)}
             />
         </div>
     );

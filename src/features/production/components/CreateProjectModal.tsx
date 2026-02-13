@@ -233,7 +233,7 @@ export const CreateProjectModal = ({
                     );
                 } catch (error) {
                     console.error('Erro ao atualizar lead para pós-venda:', error);
-                    // Não bloqueia o fluxo, projeto foi criado
+                    toast.warning('⚠️ Projeto criado, mas lead não foi movido para pós-venda. Mova manualmente.');
                 }
             }
 
@@ -243,7 +243,7 @@ export const CreateProjectModal = ({
                     await InboxService.transferToPostSales(conversationId);
                 } catch (error) {
                     console.error('Erro ao transferir conversa para pós-venda:', error);
-                    // Não bloqueia o fluxo
+                    toast.warning('⚠️ Conversa não foi transferida automaticamente para pós-venda.');
                 }
             }
 

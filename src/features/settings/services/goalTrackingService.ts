@@ -11,6 +11,18 @@ import { supabase } from '@/config/supabase';
 import { GoalsService, type GoalsConfig, type SalesGoals, type PostSalesGoals, type StrategicGoals } from './goalsService';
 import { HolidaysService } from './holidaysService';
 
+// ─── Lightweight types for tables not in generated schema ────────────────────
+
+interface StrategicProjectRow {
+    id: string;
+    owner_id: string;
+}
+
+interface StrategicTaskRow {
+    id: string;
+    project_id: string;
+}
+
 // ─── Exported types ──────────────────────────────────────────────────────────
 
 export interface GoalProgress {
@@ -35,14 +47,9 @@ export interface CollaboratorGoalSummary {
     progress: SectorGoalProgress;
 }
 
-// ─── SECTOR IDS (mirrors CollaboratorProfileModal) ───────────────────────────
+// ─── SECTOR IDS (from centralized constants) ────────────────────────────────
 
-const SECTOR_IDS = {
-    PRODUCAO: '7OhlXcRc8Vih9n7p4PdZ',
-    POS_VENDAS: '2OByfKttFYPi5Cxbcs2t',
-    VENDAS: 'vQIAMfIXt1xKWXHG2Scq',
-    ESTRATEGICO: 'zeekJ4iY9voX3AURpar5',
-};
+import { SECTOR_IDS } from '@/config/constants';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -159,7 +166,7 @@ export const GoalTrackingService = {
     ): Promise<SectorGoalProgress> {
         const { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select('status, created_at, delivered_at, total_points, base_points')
             .eq('producer_id', collaboratorId)
             .gte('created_at', weekStart.toISOString())
             .lte('created_at', weekEnd.toISOString());
@@ -169,7 +176,7 @@ export const GoalTrackingService = {
         let points = 0;
         let delivered = 0;
 
-        (data ?? []).forEach((d: any) => {
+        (data ?? []).forEach((d) => {
             const deliveredAt = d.delivered_at ? new Date(d.delivered_at) : null;
             const createdAt = d.created_at ? new Date(d.created_at) : null;
             const status = d.status || '';
@@ -222,7 +229,7 @@ export const GoalTrackingService = {
     ): Promise<SectorGoalProgress> {
         const { data, error } = await supabase
             .from('leads')
-            .select('*')
+            .select('created_at, deal_status, deal_value, estimated_value')
             .eq('responsible_id', collaboratorId)
             .gte('created_at', monthStart.toISOString())
             .lte('created_at', monthEnd.toISOString());
@@ -236,11 +243,11 @@ export const GoalTrackingService = {
         const closedStatuses = ['won', 'closed', 'contracted'];
         const lostStatuses = ['lost', 'churned'];
 
-        (data ?? []).forEach((d: any) => {
+        (data ?? []).forEach((d) => {
             const createdAt = d.created_at ? new Date(d.created_at) : null;
             if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
 
-            const status = d.deal_status || d.status || 'open';
+            const status = d.deal_status || 'open';
             total++;
 
             if (closedStatuses.includes(status)) {
@@ -297,7 +304,7 @@ export const GoalTrackingService = {
 
         const { data, error } = await supabase
             .from('leads')
-            .select('*')
+            .select('created_at, client_status')
             .eq('post_sales_id', collaboratorId)
             .gte('created_at', monthStart.toISOString())
             .lte('created_at', monthEnd.toISOString());
@@ -307,7 +314,7 @@ export const GoalTrackingService = {
         let clientsAttended = 0;
         let completed = 0;
 
-        (data ?? []).forEach((d: any) => {
+        (data ?? []).forEach((d) => {
             const createdAt = d.created_at ? new Date(d.created_at) : null;
             if (!createdAt || createdAt < monthStart || createdAt > monthEnd) return;
 
@@ -350,26 +357,26 @@ export const GoalTrackingService = {
         let strategicTasksCount = 0;
 
         try {
-            const { data: projects, error: projectsError } = await (supabase as any)
-                .from('strategic_projects')
-                .select('id')
-                .eq('owner_id', collaboratorId);
+            const { data: projects, error: projectsError } = await supabase
+                .from('strategic_projects' as 'conversations') // table not in generated types
+                .select('id, owner_id')
+                .eq('owner_id', collaboratorId) as unknown as { data: StrategicProjectRow[] | null; error: Error | null };
 
             if (projectsError) throw projectsError;
 
-            const projectIds = (projects || []).map((p: any) => p.id).filter(Boolean);
+            const projectIds = (projects || []).map((p) => p.id).filter(Boolean);
 
             if (projectIds.length > 0) {
-                const { data: tasks, error: tasksError } = await (supabase as any)
-                    .from('strategic_tasks')
-                    .select('*')
-                    .in('project_id', projectIds);
+                const { data: tasks, error: tasksError } = await supabase
+                    .from('strategic_tasks' as 'conversations') // table not in generated types
+                    .select('id, project_id')
+                    .in('project_id', projectIds) as unknown as { data: StrategicTaskRow[] | null; error: Error | null };
 
                 if (tasksError) throw tasksError;
                 strategicTasksCount = (tasks || []).length;
             }
         } catch {
-            // strategic tables may not exist in local typegen or environment
+            // strategic tables may not exist in generated types or environment
         }
 
         const targets = strategicGoals || { monthlyNotes: 0, weeklyReviews: 0 };

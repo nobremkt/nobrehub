@@ -7,6 +7,8 @@ import { ProjectBoard } from '../components/ProjectBoard';
 import { DistributionList } from '../components/DistributionList';
 import { PERMISSIONS } from '@/config/permissions';
 import { Inbox, LayoutGrid } from 'lucide-react';
+import { SidebarWithTabs } from '@/design-system';
+import type { SidebarTab } from '@/design-system';
 
 type ProductionTab = 'distribution' | 'board';
 
@@ -24,44 +26,30 @@ export const ProductionPage = () => {
         }
     }, [hasViewAllPermission, user?.id, setSelectedProducerId]);
 
+    const tabs: SidebarTab[] = [
+        {
+            key: 'distribution',
+            label: 'Distribuir',
+            icon: <Inbox size={16} />,
+            content: <DistributionList />,
+        },
+        {
+            key: 'board',
+            label: 'Equipe',
+            icon: <LayoutGrid size={16} />,
+            content: <ProducersSidebar />,
+        },
+    ];
+
     return (
         <div className="flex h-full overflow-hidden">
             {/* Sidebar só aparece se tiver permissão */}
             {hasViewAllPermission && (
-                <div className="flex flex-col w-64 border-r border-border bg-surface-primary">
-                    {/* Tabs de navegação */}
-                    <div className="flex border-b border-border">
-                        <button
-                            onClick={() => setActiveTab('distribution')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'distribution'
-                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
-                                }`}
-                        >
-                            <Inbox size={16} />
-                            Distribuir
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('board')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === 'board'
-                                ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5'
-                                : 'text-text-muted hover:text-text-primary hover:bg-surface-secondary'
-                                }`}
-                        >
-                            <LayoutGrid size={16} />
-                            Equipe
-                        </button>
-                    </div>
-
-                    {/* Conteúdo da sidebar baseado na tab */}
-                    <div className="flex-1 overflow-hidden">
-                        {activeTab === 'distribution' ? (
-                            <DistributionList />
-                        ) : (
-                            <ProducersSidebar />
-                        )}
-                    </div>
-                </div>
+                <SidebarWithTabs
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onTabChange={(key) => setActiveTab(key as ProductionTab)}
+                />
             )}
 
             <div className="flex-1 bg-surface-secondary overflow-hidden">

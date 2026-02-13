@@ -10,6 +10,10 @@ interface InboxState {
     isLoading: boolean;
     draftMessage: string; // Mensagem pré-preenchida (ex: vindo do Playbook)
 
+    // Pagination
+    hasMoreMessages: Record<string, boolean>; // conversationId -> hasMore
+    isLoadingMore: boolean;
+
     // Subscriptions handling
     unsubConversations: () => void;
     unsubMessages: () => void;
@@ -22,6 +26,7 @@ interface InboxState {
     markAsRead: (conversationId: string) => void;
     updateConversationDetails: (conversationId: string, data: Partial<Conversation>) => Promise<void>;
     setDraftMessage: (message: string) => void;
+    loadMoreMessages: (conversationId: string) => Promise<void>;
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
@@ -34,6 +39,8 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     },
     isLoading: false,
     draftMessage: '',
+    hasMoreMessages: {},
+    isLoadingMore: false,
     unsubConversations: () => { },
     unsubMessages: () => { },
 
@@ -64,14 +71,24 @@ export const useInboxStore = create<InboxState>((set, get) => ({
             return;
         }
 
-        // Check if we already have messages for this conversation (optional optimization, but we want realtime)
+        // Initial fetch limit is 50 (set in subscribeToMessages)
+        // hasMore defaults to true, will be corrected after first load
+        set((state) => ({
+            hasMoreMessages: { ...state.hasMoreMessages, [id]: true },
+        }));
+
         // Subscribing to new conversation
         const unsubscribe = InboxService.subscribeToMessages(id, (newMessages) => {
             set((state) => ({
                 messages: {
                     ...state.messages,
                     [id]: newMessages
-                }
+                },
+                // If initial fetch returned less than 50, no more messages
+                hasMoreMessages: {
+                    ...state.hasMoreMessages,
+                    [id]: newMessages.length >= 50,
+                },
             }));
         });
 
@@ -91,14 +108,43 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     })),
 
     sendMessage: async (content) => {
-        const { selectedConversationId } = get();
+        const { selectedConversationId, messages } = get();
         if (!selectedConversationId) return;
 
+        // Optimistic: insert a temporary message immediately
+        const optimisticId = `optimistic_${Date.now()}`;
+        const optimisticMessage: Message = {
+            id: optimisticId,
+            conversationId: selectedConversationId,
+            content,
+            type: 'text',
+            direction: 'out',
+            status: 'pending',
+            createdAt: new Date(),
+        };
+
+        const prevMessages = messages[selectedConversationId] || [];
+        set((state) => ({
+            messages: {
+                ...state.messages,
+                [selectedConversationId]: [...prevMessages, optimisticMessage],
+            },
+        }));
+
         try {
-            await InboxService.sendMessage(selectedConversationId, content, 'agent');
-            // No need to update state manually, subscription will catch it
+            // Let InboxService resolve the real senderId via getCurrentUserId()
+            await InboxService.sendMessage(selectedConversationId, content);
+            // Realtime subscription will replace the optimistic message with the real one
         } catch (error) {
             console.error('Failed to send message:', error);
+            // Rollback: remove the optimistic message
+            set((state) => ({
+                messages: {
+                    ...state.messages,
+                    [selectedConversationId]: (state.messages[selectedConversationId] || [])
+                        .filter(m => m.id !== optimisticId),
+                },
+            }));
         }
     },
 
@@ -116,5 +162,46 @@ export const useInboxStore = create<InboxState>((set, get) => ({
         } catch (error) {
             console.error('Failed to update conversation details:', error);
         }
-    }
+    },
+
+    loadMoreMessages: async (conversationId) => {
+        const { messages, hasMoreMessages, isLoadingMore } = get();
+
+        // Guard: already loading or no more messages
+        if (isLoadingMore || !hasMoreMessages[conversationId]) return;
+
+        const currentMsgs = messages[conversationId] || [];
+        if (currentMsgs.length === 0) return;
+
+        // Get oldest message timestamp as cursor
+        const oldestMessage = currentMsgs[0];
+        const cursor = oldestMessage.createdAt instanceof Date
+            ? oldestMessage.createdAt.toISOString()
+            : String(oldestMessage.createdAt);
+
+        set({ isLoadingMore: true });
+
+        try {
+            const { messages: olderMessages, hasMore } = await InboxService.fetchOlderMessages(
+                conversationId,
+                cursor,
+                30
+            );
+
+            set((state) => ({
+                messages: {
+                    ...state.messages,
+                    [conversationId]: [...olderMessages, ...(state.messages[conversationId] || [])],
+                },
+                hasMoreMessages: {
+                    ...state.hasMoreMessages,
+                    [conversationId]: hasMore,
+                },
+                isLoadingMore: false,
+            }));
+        } catch (error) {
+            console.error('Failed to load more messages:', error);
+            set({ isLoadingMore: false });
+        }
+    },
 }));

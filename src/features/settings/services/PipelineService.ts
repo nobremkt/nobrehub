@@ -14,7 +14,7 @@ export const PipelineService = {
     getStages: async (): Promise<PipelineStage[]> => {
         const { data, error } = await supabase
             .from('pipeline_stages')
-            .select('*')
+            .select('id, name, color, order, pipeline, is_system_stage, active, created_at')
             .order('order', { ascending: true });
 
         if (error) throw error;

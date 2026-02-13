@@ -19,6 +19,9 @@ import {
     PostSalesMetrics
 } from '../services/DashboardAnalyticsService';
 import { toast } from 'react-toastify';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { GoalTrackingService } from '@/features/settings/services/goalTrackingService';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 
 // Cache TTL: 5 minutes (dashboard shows aggregated stats, not realtime operational data)
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -34,6 +37,9 @@ interface DashboardState {
     error: string | null;
     dateFilter: DateFilter;
 
+    // Internal: previous individual goal percentage for change detection
+    _prevIndividualGoalPct: number;
+
     // Actions
     fetchMetrics: (forceRefresh?: boolean) => Promise<void>;
     setDateFilter: (filter: DateFilter) => void;
@@ -47,12 +53,40 @@ interface DashboardState {
     getPostSalesMetrics: () => PostSalesMetrics | null;
 }
 
+/**
+ * Check if the current user has just reached their individual goal.
+ * Separated from the main fetch flow for clarity.
+ */
+async function checkGoalProgress(
+    getPrevPct: () => number,
+    setPrevPct: (pct: number) => void
+): Promise<void> {
+    const user = useAuthStore.getState().user;
+    if (!user?.id || !user?.sectorId) return;
+
+    const summary = await GoalTrackingService.getCollaboratorProgress(user.id, user.sectorId);
+    const individualPct = summary.progress.overallPercentage;
+    const prevPct = getPrevPct();
+
+    if (individualPct >= 100 && prevPct < 100) {
+        useNotificationStore.getState().addNotification({
+            type: 'goal_reached',
+            title: '🏆 Meta atingida!',
+            body: `Você atingiu ${individualPct}% da sua meta de ${summary.progress.sectorLabel}!`,
+            link: '/dashboard',
+        });
+    }
+
+    setPrevPct(individualPct);
+}
+
 export const useDashboardStore = create<DashboardState>((set, get) => ({
     unifiedMetrics: null,
     metrics: null,
     isLoading: false,
     error: null,
     dateFilter: 'month',
+    _prevIndividualGoalPct: 0,
 
     fetchMetrics: async (forceRefresh = false) => {
         const { dateFilter, unifiedMetrics, isLoading } = get();
@@ -74,46 +108,22 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         try {
             const result = await DashboardAnalyticsService.getAllMetrics(dateFilter);
 
-            // Detect goal_reached for the INDIVIDUAL logged-in user (not the team)
-            // Only check if we have production metrics
-            if (result.production) {
-                (async () => {
-                    try {
-                        const { useAuthStore } = await import('@/stores/useAuthStore');
-                        const user = useAuthStore.getState().user;
-                        if (!user?.id || !user?.sectorId) return;
-
-                        const { GoalTrackingService } = await import('@/features/settings/services/goalTrackingService');
-                        const summary = await GoalTrackingService.getCollaboratorProgress(user.id, user.sectorId);
-                        const individualPct = summary.progress.overallPercentage;
-
-                        // Compare with previous individual percentage
-                        const store = get();
-                        const prevIndividualPct = (store as DashboardState & { _prevIndividualGoalPct?: number })._prevIndividualGoalPct ?? 0;
-
-                        if (individualPct >= 100 && prevIndividualPct < 100) {
-                            const { useNotificationStore } = await import('@/stores/useNotificationStore');
-                            useNotificationStore.getState().addNotification({
-                                type: 'goal_reached',
-                                title: '🏆 Meta atingida!',
-                                body: `Você atingiu ${individualPct}% da sua meta de ${summary.progress.sectorLabel}!`,
-                                link: '/dashboard',
-                            });
-                        }
-
-                        // Store current individual percentage for next comparison
-                        set({ _prevIndividualGoalPct: individualPct } as Partial<DashboardState>);
-                    } catch (err) {
-                        console.warn('Could not check individual goal progress:', err);
-                    }
-                })();
-            }
-
             set({
                 unifiedMetrics: result,
-                // Keep legacy metrics for backward compatibility
-                metrics: result.production
+                metrics: result.production,
             });
+
+            // Goal check: properly awaited, non-blocking but with error handling
+            if (result.production) {
+                try {
+                    await checkGoalProgress(
+                        () => get()._prevIndividualGoalPct,
+                        (pct) => set({ _prevIndividualGoalPct: pct })
+                    );
+                } catch (err) {
+                    console.warn('Could not check individual goal progress:', err);
+                }
+            }
         } catch (error) {
             console.error('Error fetching dashboard metrics:', error);
             set({ error: 'Erro ao carregar métricas do dashboard.' });
@@ -137,4 +147,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     getFinancialMetrics: () => get().unifiedMetrics?.financial ?? null,
     getPostSalesMetrics: () => get().unifiedMetrics?.postSales ?? null,
 }));
+
+
 

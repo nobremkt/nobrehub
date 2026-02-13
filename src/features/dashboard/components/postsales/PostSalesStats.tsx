@@ -152,8 +152,38 @@ export function PostSalesStats() {
                     </Card>
                 </div>
 
-                {/* Right Column: Summary Cards */}
-                <div className={styles.rightColumn}>
+                {/* Right Column: Summary Cards — Em breve (placeholder data) */}
+                <div className={styles.rightColumn} style={{ position: 'relative' }}>
+                    {/* Coming Soon overlay */}
+                    <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 10,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(15, 15, 15, 0.7)',
+                        backdropFilter: 'blur(4px)',
+                        borderRadius: 'var(--radius-lg)',
+                        gap: 'var(--spacing-2)',
+                    }}>
+                        <span style={{ fontSize: '2rem' }}>🚧</span>
+                        <span style={{
+                            fontSize: 'var(--font-size-lg)',
+                            fontWeight: 600,
+                            color: 'var(--color-text-primary)',
+                        }}>Em breve</span>
+                        <span style={{
+                            fontSize: 'var(--font-size-sm)',
+                            color: 'var(--color-text-muted)',
+                            textAlign: 'center',
+                            maxWidth: '200px',
+                        }}>
+                            Métricas de tickets e satisfação serão habilitadas em breve
+                        </span>
+                    </div>
+
                     {/* Open Tickets */}
                     <Card className={styles.card}>
                         <CardBody className={styles.summaryCard}>

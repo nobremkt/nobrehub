@@ -102,21 +102,6 @@
     color: var(--color-text-muted);
 }
 
-/* Favorite Toggle - positioned at end */
-.favoriteToggle {
-    margin-left: auto;
-    flex-shrink: 0;
-}
-
-.favoriteActive {
-    background: #fbbf24 !important;
-    color: #1a1a1a !important;
-}
-
-.favoriteActive:hover {
-    background: #f59e0b !important;
-}
-
 /* Section Headers & Dividers */
 .sectionHeader {
     padding: var(--spacing-2) var(--spacing-4);

@@ -116,7 +116,7 @@ export const useStrategicProjectsStore = create<StrategicProjectsState>((set, ge
         if (taskUnsubscribers[projectId]) return;
 
         const unsub = StrategicProjectsService.subscribeToTasks(projectId, (tasks) => {
-            console.log('Store received tasks update:', tasks.length, 'tasks');
+            // Tasks updated silently
             set((state) => ({
                 tasks: { ...state.tasks, [projectId]: tasks }
             }));

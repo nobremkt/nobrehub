@@ -14,18 +14,55 @@ export const PERMISSIONS = {
     VIEW_DASHBOARD_POST_SALES: 'view_dashboard_post_sales',
 } as const;
 
-export const PERMISSION_LABELS = {
-    [PERMISSIONS.VIEW_CRM]: 'Visualizar CRM',
-    [PERMISSIONS.VIEW_PRODUCTION]: 'Visualizar Produção',
-    [PERMISSIONS.MANAGE_PROJECTS]: 'Gerenciar Projetos',
-    [PERMISSIONS.VIEW_POST_SALES]: 'Visualizar Pós-Vendas',
-    [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Gerenciar Distribuição Pós-Vendas',
-    [PERMISSIONS.VIEW_ADMIN]: 'Administração',
-    [PERMISSIONS.VIEW_STRATEGIC]: 'Visualizar Estratégico',
-    // Dashboard section labels
-    [PERMISSIONS.VIEW_DASHBOARD_SALES]: 'Ver métricas de Vendas',
-    [PERMISSIONS.VIEW_DASHBOARD_PRODUCTION]: 'Ver métricas de Produção',
-    [PERMISSIONS.VIEW_DASHBOARD_FINANCIAL]: 'Ver métricas Financeiras',
-    [PERMISSIONS.VIEW_DASHBOARD_ADMIN]: 'Ver métricas de Administração',
-    [PERMISSIONS.VIEW_DASHBOARD_POST_SALES]: 'Ver métricas de Pós-Venda',
+export const PERMISSION_LABELS: Record<string, string> = {
+    [PERMISSIONS.VIEW_CRM]: 'CRM',
+    [PERMISSIONS.VIEW_PRODUCTION]: 'Produção',
+    [PERMISSIONS.MANAGE_PROJECTS]: 'Distribuição Projetos',
+    [PERMISSIONS.VIEW_POST_SALES]: 'Pós-Vendas',
+    [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Distribuição\nPós-Vendas',
+    [PERMISSIONS.VIEW_ADMIN]: 'Configurações',
+    [PERMISSIONS.VIEW_STRATEGIC]: 'Estratégico',
+    // Dashboard
+    [PERMISSIONS.VIEW_DASHBOARD_SALES]: '📊 Vendas',
+    [PERMISSIONS.VIEW_DASHBOARD_POST_SALES]: '📊 Pós-Vendas',
+    [PERMISSIONS.VIEW_DASHBOARD_PRODUCTION]: '📊 Produção',
+    [PERMISSIONS.VIEW_DASHBOARD_FINANCIAL]: '📊 Financeiro',
+    [PERMISSIONS.VIEW_DASHBOARD_ADMIN]: '📊 Admin',
 };
+
+export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+    [PERMISSIONS.VIEW_CRM]: 'Acesso ao Kanban de vendas, leads e base de contatos',
+    [PERMISSIONS.VIEW_PRODUCTION]: 'Visualizar projetos em produção e atualizar status',
+    [PERMISSIONS.MANAGE_PROJECTS]: 'Criar, editar e atribuir projetos aos produtores',
+    [PERMISSIONS.VIEW_POST_SALES]: 'Acesso ao módulo de pós-vendas e carteira de clientes',
+    [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Distribuir clientes entre pós-vendedores',
+    [PERMISSIONS.VIEW_ADMIN]: 'Acesso a configurações: cargos, setores, equipe e permissões',
+    [PERMISSIONS.VIEW_STRATEGIC]: 'Acesso ao módulo estratégico e planejamento',
+    // Dashboard
+    [PERMISSIONS.VIEW_DASHBOARD_SALES]: 'Ver métricas e indicadores de vendas no dashboard',
+    [PERMISSIONS.VIEW_DASHBOARD_POST_SALES]: 'Ver métricas de pós-vendas no dashboard',
+    [PERMISSIONS.VIEW_DASHBOARD_PRODUCTION]: 'Ver métricas de produção no dashboard',
+    [PERMISSIONS.VIEW_DASHBOARD_FINANCIAL]: 'Ver métricas financeiras no dashboard',
+    [PERMISSIONS.VIEW_DASHBOARD_ADMIN]: 'Ver métricas administrativas no dashboard',
+};
+
+/**
+ * Ordem lógica das permissões na matriz.
+ * Módulos primeiro (fluxo operacional), depois Dashboard (agrupado por setor).
+ */
+export const PERMISSION_ORDER: string[] = [
+    // Módulos
+    PERMISSIONS.VIEW_CRM,
+    PERMISSIONS.VIEW_PRODUCTION,
+    PERMISSIONS.MANAGE_PROJECTS,
+    PERMISSIONS.VIEW_POST_SALES,
+    PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION,
+    PERMISSIONS.VIEW_STRATEGIC,
+    PERMISSIONS.VIEW_ADMIN,
+    // Dashboard
+    PERMISSIONS.VIEW_DASHBOARD_SALES,
+    PERMISSIONS.VIEW_DASHBOARD_POST_SALES,
+    PERMISSIONS.VIEW_DASHBOARD_PRODUCTION,
+    PERMISSIONS.VIEW_DASHBOARD_FINANCIAL,
+    PERMISSIONS.VIEW_DASHBOARD_ADMIN,
+];

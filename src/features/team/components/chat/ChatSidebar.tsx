@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTeamChatStore } from '../../stores/useTeamChatStore';
+import type { TeamChat } from '../../types/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { Plus, Search, Users, MessageSquare, MoreVertical, Pin, PinOff } from 'lucide-react';
@@ -39,7 +40,7 @@ export const ChatSidebar = () => {
         return otherUser?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
-    const getChatName = (chat: any) => {
+    const getChatName = (chat: TeamChat) => {
         if (chat.type === 'group') return chat.name;
 
         const otherId = chat.participants?.find((uid: string) => uid !== currentAuthUid);
@@ -47,7 +48,7 @@ export const ChatSidebar = () => {
         return otherUser?.name || 'Usuário Desconhecido';
     };
 
-    const getChatImage = (chat: any) => {
+    const getChatImage = (chat: TeamChat) => {
         if (chat.type === 'group') return null;
         const otherId = chat.participants?.find((uid: string) => uid !== currentAuthUid);
         const otherUser = collaborators.find(c => c.authUid === otherId);

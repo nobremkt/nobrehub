@@ -11,11 +11,17 @@
 
 import { supabase } from '@/config/supabase';
 import { Lead } from '@/types/lead.types';
+import type { Database } from '@/types/supabase';
+
+// ─── Supabase Row Types ──────────────────────────────────────────────
+type LeadRow = Database['public']['Tables']['leads']['Row'];
+type LeadInsert = Database['public']['Tables']['leads']['Insert'];
+type LeadUpdate = Database['public']['Tables']['leads']['Update'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /** Converte row do banco (snake_case) → Lead (camelCase) */
-function rowToLead(row: any): Lead {
+export function rowToLead(row: LeadRow): Lead {
     return {
         id: row.id,
         name: row.name,
@@ -28,7 +34,7 @@ function rowToLead(row: any): Lead {
         estimatedValue: row.estimated_value ?? undefined,
         tags: row.tags ?? [],
         responsibleId: row.responsible_id ?? '',
-        customFields: row.custom_fields ?? undefined,
+        customFields: (row.custom_fields as Record<string, unknown>) ?? undefined,
         notes: row.notes ?? undefined,
         temperature: row.temperature as Lead['temperature'],
         source: row.source ?? undefined,
@@ -59,8 +65,8 @@ function rowToLead(row: any): Lead {
 }
 
 /** Converte campos parciais do Lead (camelCase) → updates do banco (snake_case) */
-function leadToDbUpdates(updates: Partial<Lead>): Record<string, unknown> {
-    const db: Record<string, unknown> = {};
+function leadToDbUpdates(updates: Partial<Lead>): LeadUpdate {
+    const db: Record<string, unknown> = {} as Record<string, unknown>;
 
     if (updates.name !== undefined) db.name = updates.name;
     if (updates.email !== undefined) db.email = updates.email;
@@ -96,12 +102,15 @@ function leadToDbUpdates(updates: Partial<Lead>): Record<string, unknown> {
     if (updates.currentSector !== undefined) db.current_sector = updates.currentSector;
     if (updates.previousPostSalesIds !== undefined) db.previous_post_sales_ids = updates.previousPostSalesIds;
 
-    return db;
+    return db as LeadUpdate;
 }
 
 // ─── Service ─────────────────────────────────────────────────────────
 
 export const LeadService = {
+    // ═══════════════════════════════════════════════════════════════════
+    // CRUD
+    // ═══════════════════════════════════════════════════════════════════
     /**
      * Fetch all leads.
      */
@@ -117,6 +126,46 @@ export const LeadService = {
     },
 
     /**
+     * Fetch leads with pagination (for infinite scroll).
+     */
+    getLeadsPaginated: async (
+        page: number = 0,
+        pageSize: number = 20
+    ): Promise<{ leads: Lead[]; total: number }> => {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error, count } = await supabase
+            .from('leads')
+            .select('*', { count: 'exact' })
+            .order('updated_at', { ascending: false })
+            .range(from, to);
+
+        if (error) throw error;
+
+        return {
+            leads: (data ?? []).map(rowToLead),
+            total: count ?? 0,
+        };
+    },
+
+    /**
+     * Search leads server-side (ILIKE across name, email, phone, company).
+     */
+    searchLeads: async (term: string, limit: number = 50): Promise<Lead[]> => {
+        const pattern = `%${term}%`;
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .or(`name.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},company.ilike.${pattern}`)
+            .order('updated_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return (data ?? []).map(rowToLead);
+    },
+
+    /**
      * Create a new lead.
      */
     createLead: async (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Promise<Lead> => {
@@ -124,7 +173,7 @@ export const LeadService = {
 
         const { data, error } = await supabase
             .from('leads')
-            .insert(dbData as any)
+            .insert(dbData as LeadInsert)
             .select('*')
             .single();
 
@@ -213,6 +262,99 @@ export const LeadService = {
         if (error) throw error;
     },
 
+    // ═══════════════════════════════════════════════════════════════════
+    // Bulk Operations
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Assign responsible (vendedora or pós-venda) to multiple leads.
+     */
+    bulkAssignResponsible: async (
+        leadIds: string[],
+        responsibleId: string,
+        field: 'responsibleId' | 'postSalesId'
+    ): Promise<void> => {
+        const dbField = field === 'responsibleId' ? 'responsible_id' : 'post_sales_id';
+
+        // M7: Quando atribui pós-venda, seta campos complementares
+        const extraFields = field === 'postSalesId' ? {
+            current_sector: 'pos_vendas',
+            client_status: 'aguardando_projeto',
+            post_sales_distribution_status: 'assigned',
+            post_sales_assigned_at: new Date().toISOString(),
+        } : {};
+
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({ [dbField]: responsibleId, ...extraFields }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
+
+        await Promise.all(updatePromises);
+    },
+
+    /**
+     * Move multiple leads to a new pipeline/stage.
+     */
+    bulkMoveStage: async (
+        leadIds: string[],
+        pipeline: 'high-ticket' | 'low-ticket',
+        status: string
+    ): Promise<void> => {
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({ pipeline, stage_id: status }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
+
+        await Promise.all(updatePromises);
+    },
+
+    /**
+     * Mark multiple leads as lost.
+     * C2: Aceita lostStageId para mover lead à coluna correta do Kanban.
+     */
+    bulkMarkAsLost: async (leadIds: string[], lossReasonId: string, lostStageId?: string): Promise<void> => {
+        const now = new Date().toISOString();
+
+        const updatePromises = leadIds.map(id =>
+            supabase.from('leads').update({
+                lost_reason_id: lossReasonId,
+                lost_at: now,
+                deal_status: 'lost',
+                ...(lostStageId ? { stage_id: lostStageId } : {}),
+            }).eq('id', id)
+                .then(({ error }) => { if (error) throw error; })
+        );
+
+        await Promise.all(updatePromises);
+    },
+
+    /**
+     * Delete multiple leads.
+     * C3: Verifica vínculos — leads em pós-vendas ou distribuição são bloqueados.
+     */
+    bulkDelete: async (leadIds: string[]): Promise<{ deleted: string[]; blocked: string[] }> => {
+        // Verificar leads protegidos (em pós-vendas ou distribuição)
+        const { data: protectedLeads } = await supabase
+            .from('leads')
+            .select('id, current_sector')
+            .in('id', leadIds)
+            .or('current_sector.eq.pos_vendas,current_sector.eq.distribution');
+
+        const blockedIds = new Set((protectedLeads || []).map((l: { id: string }) => l.id));
+        const safeIds = leadIds.filter(id => !blockedIds.has(id));
+
+        if (safeIds.length > 0) {
+            const { error } = await supabase
+                .from('leads')
+                .delete()
+                .in('id', safeIds);
+
+            if (error) throw error;
+        }
+
+        return { deleted: safeIds, blocked: Array.from(blockedIds) };
+    },
+
     /**
      * Remove tags from multiple leads.
      */
@@ -257,19 +399,38 @@ export const LeadService = {
         await Promise.all(updatePromises);
     },
 
+    // ═══════════════════════════════════════════════════════════════════
+    // Sync
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
      * Sync leads from Inbox conversations.
      * Uses leadId as primary identifier, falls back to phone matching.
      * Updates existing leads instead of creating duplicates.
      */
     syncFromInbox: async (): Promise<number> => {
-        // 1. Get all conversations from Supabase
-        const { data: conversations, error: convError } = await supabase
-            .from('conversations')
-            .select('*');
+        const PAGE_SIZE = 500;
 
-        if (convError) throw convError;
-        if (!conversations || conversations.length === 0) return 0;
+        // 1. Paginated fetch of all conversations
+        const conversations: Record<string, unknown>[] = [];
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .range(from, from + PAGE_SIZE - 1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+
+            conversations.push(...data);
+            hasMore = data.length === PAGE_SIZE;
+            from += PAGE_SIZE;
+        }
+
+        if (conversations.length === 0) return 0;
 
         // 2. Get all existing leads — build lookup maps
         const { data: allLeads, error: leadsError } = await supabase
@@ -294,17 +455,23 @@ export const LeadService = {
 
         // 3. Process each conversation
         for (const conv of conversations) {
-            if (!conv.phone) continue;
+            const convPhone = conv.phone as string | undefined;
+            const convName = conv.name as string | undefined;
+            const convLeadId = conv.lead_id as string | undefined;
+            const convChannel = conv.channel as string | undefined;
+            const convId = conv.id as string;
 
-            const normalizedPhone = conv.phone.replace(/\D/g, '');
-            const isWhatsApp = conv.channel === 'whatsapp';
+            if (!convPhone) continue;
+
+            const normalizedPhone = convPhone.replace(/\D/g, '');
+            const isWhatsApp = convChannel === 'whatsapp';
             const correctPipeline = isWhatsApp ? 'low-ticket' : 'high-ticket';
 
             let existing: (typeof allLeads)[number] | undefined;
 
             // Priority 1: Match by lead_id
-            if (conv.lead_id && existingById.has(conv.lead_id)) {
-                existing = existingById.get(conv.lead_id);
+            if (convLeadId && existingById.has(convLeadId)) {
+                existing = existingById.get(convLeadId);
             }
             // Priority 2: Match by phone
             else if (existingByPhone.has(normalizedPhone)) {
@@ -314,21 +481,21 @@ export const LeadService = {
             if (existing) {
                 const updates: Record<string, unknown> = {};
 
-                if (conv.name && conv.name !== existing.name) updates.name = conv.name;
-                if (conv.phone && conv.phone !== existing.phone) updates.phone = conv.phone;
+                if (convName && convName !== existing.name) updates.name = convName;
+                if (convPhone && convPhone !== existing.phone) updates.phone = convPhone;
 
                 if (Object.keys(updates).length > 0) {
                     promises.push(
-                        supabase.from('leads').update(updates as any).eq('id', existing.id)
+                        supabase.from('leads').update(updates as LeadUpdate).eq('id', existing.id)
                             .then(({ error }) => { if (error) throw error; }) as Promise<void>
                     );
                     count++;
                 }
 
                 // Link conversation to lead if not already linked
-                if (!conv.lead_id && existing) {
+                if (!convLeadId && existing) {
                     promises.push(
-                        supabase.from('conversations').update({ lead_id: existing.id }).eq('id', conv.id)
+                        supabase.from('conversations').update({ lead_id: existing.id }).eq('id', convId)
                             .then(({ error }) => { if (error) throw error; }) as Promise<void>
                     );
                 }
@@ -343,8 +510,8 @@ export const LeadService = {
                         const { data: newLead, error } = await supabase
                             .from('leads')
                             .insert({
-                                name: conv.name || normalizedPhone,
-                                phone: conv.phone,
+                                name: convName || normalizedPhone,
+                                phone: convPhone,
                                 pipeline: correctPipeline,
                                 tags: ['Importado Inbox'],
                             })
@@ -357,9 +524,9 @@ export const LeadService = {
                         await supabase
                             .from('conversations')
                             .update({ lead_id: newLead.id })
-                            .eq('id', conv.id);
+                            .eq('id', convId);
 
-                        existingById.set(newLead.id, { ...newLead, phone: conv.phone, name: conv.name || '', email: null, company: null, pipeline: correctPipeline || '', stage_id: null });
+                        existingById.set(newLead.id, { ...newLead, phone: convPhone, name: convName || '', email: null, company: null, pipeline: correctPipeline, stage_id: null });
                         existingByPhone.set(normalizedPhone, existingById.get(newLead.id)!);
                     })()
                 );
@@ -368,69 +535,5 @@ export const LeadService = {
 
         await Promise.all(promises);
         return count;
-    },
-
-    /**
-     * Assign responsible (vendedora or pós-venda) to multiple leads.
-     */
-    bulkAssignResponsible: async (
-        leadIds: string[],
-        responsibleId: string,
-        field: 'responsibleId' | 'postSalesId'
-    ): Promise<void> => {
-        const dbField = field === 'responsibleId' ? 'responsible_id' : 'post_sales_id';
-
-        const updatePromises = leadIds.map(id =>
-            supabase.from('leads').update({ [dbField]: responsibleId }).eq('id', id)
-                .then(({ error }) => { if (error) throw error; })
-        );
-
-        await Promise.all(updatePromises);
-    },
-
-    /**
-     * Move multiple leads to a new pipeline/stage.
-     */
-    bulkMoveStage: async (
-        leadIds: string[],
-        pipeline: 'high-ticket' | 'low-ticket',
-        status: string
-    ): Promise<void> => {
-        const updatePromises = leadIds.map(id =>
-            supabase.from('leads').update({ pipeline, stage_id: status }).eq('id', id)
-                .then(({ error }) => { if (error) throw error; })
-        );
-
-        await Promise.all(updatePromises);
-    },
-
-    /**
-     * Mark multiple leads as lost.
-     */
-    bulkMarkAsLost: async (leadIds: string[], lossReasonId: string): Promise<void> => {
-        const now = new Date().toISOString();
-
-        const updatePromises = leadIds.map(id =>
-            supabase.from('leads').update({
-                lost_reason_id: lossReasonId,
-                lost_at: now,
-                deal_status: 'lost',
-            }).eq('id', id)
-                .then(({ error }) => { if (error) throw error; })
-        );
-
-        await Promise.all(updatePromises);
-    },
-
-    /**
-     * Delete multiple leads.
-     */
-    bulkDelete: async (leadIds: string[]): Promise<void> => {
-        const { error } = await supabase
-            .from('leads')
-            .delete()
-            .in('id', leadIds);
-
-        if (error) throw error;
     },
 };

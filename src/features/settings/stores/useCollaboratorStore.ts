@@ -49,11 +49,8 @@ export const useCollaboratorStore = create<CollaboratorState>((set, get) => ({
         set({ isLoading: true, error: null });
         try {
             await CollaboratorService.updateCollaborator(id, updates);
-            set(state => ({
-                collaborators: state.collaborators.map(c =>
-                    c.id === id ? { ...c, ...updates } : c
-                )
-            }));
+            // Re-fetch from DB to get accurate server-derived fields (e.g. plainPassword)
+            await get().fetchCollaborators();
         } catch (error) {
             console.error('Error updating collaborator:', error);
             set({ error: 'Erro ao atualizar colaborador.' });

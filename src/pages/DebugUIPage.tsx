@@ -50,7 +50,9 @@ export function DebugUIPage() {
 
     // NumberInput state
     const [numberValue, setNumberValue] = useState('5');
+    const [numberErrorValue, setNumberErrorValue] = useState('3');
     const [numberValueDisabled] = useState('10');
+    const [numberStepValue, setNumberStepValue] = useState('2.5');
 
     // PhoneInput state
     const [phoneValue, setPhoneValue] = useState('');
@@ -267,7 +269,9 @@ export function DebugUIPage() {
                                 <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Inputs</h3>
                                 <Input placeholder="Default Input" />
                                 <Input label="Com Label" placeholder="Digite algo..." />
-                                <Input label="Com Erro" error="Este campo é obrigatório" />
+                                <Input label="Campo Obrigatório" required error="Este campo é obrigatório" />
+                                <Input label="Email Inválido" type="email" value="email@" error="Formato de email inválido" />
+                                <Input label="Com Helper Text" placeholder="Opcional" helperText="Este campo é opcional" />
                                 <Input label="Desabilitado" disabled placeholder="Não editável" />
                             </div>
 
@@ -333,8 +337,8 @@ export function DebugUIPage() {
                             />
                             <NumberInput
                                 label="Com Erro"
-                                value="3"
-                                onChange={() => { }}
+                                value={numberErrorValue}
+                                onChange={setNumberErrorValue}
                                 error="Valor inválido"
                             />
                             <NumberInput
@@ -345,8 +349,8 @@ export function DebugUIPage() {
                             />
                             <NumberInput
                                 label="Step de 0.5"
-                                value="2.5"
-                                onChange={() => { }}
+                                value={numberStepValue}
+                                onChange={setNumberStepValue}
                                 step={0.5}
                                 min={0}
                                 helperText="Step: 0.5"

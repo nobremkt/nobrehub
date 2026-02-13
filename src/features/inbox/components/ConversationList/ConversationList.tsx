@@ -5,7 +5,8 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useInboxStore } from '../../stores/useInboxStore';
 import { ConversationItem } from './ConversationItem';
 import { Input } from '@/design-system';
@@ -13,8 +14,9 @@ import { Search, MessageSquare, User, Users, Star } from 'lucide-react';
 import styles from './ConversationList.module.css';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { ROUTES } from '@/config';
 
-type AssignmentFilter = 'all' | 'mine' | 'unassigned';
+type AssignmentFilter = 'all' | 'mine' | 'unassigned' | 'favorites';
 
 export const ConversationList: React.FC = () => {
     const {
@@ -24,13 +26,18 @@ export const ConversationList: React.FC = () => {
         selectConversation,
         setFilter
     } = useInboxStore();
+    const navigate = useNavigate();
 
     const { user } = useAuthStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
 
     const [tempSearch, setTempSearch] = useState(filters.query);
     const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
-    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+    const handleSelectConversation = useCallback((id: string) => {
+        selectConversation(id);
+        navigate(ROUTES.inbox.conversation(id), { replace: true });
+    }, [selectConversation, navigate]);
 
     // Load collaborators on mount (needed to find current user's collaborator ID)
     useEffect(() => {
@@ -68,15 +75,14 @@ export const ConversationList: React.FC = () => {
 
     const filteredConversations = useMemo(() => {
         return sortedConversations.filter(c => {
-            // Filter by assignment
+            // Filter by assignment tab
             if (assignmentFilter === 'mine') {
                 if (!currentCollaboratorId || c.assignedTo !== currentCollaboratorId) return false;
             } else if (assignmentFilter === 'unassigned') {
                 if (c.assignedTo) return false;
+            } else if (assignmentFilter === 'favorites') {
+                if (!c.isFavorite) return false;
             }
-
-            // Filter by favorites (overlay - applies on top of assignment filter)
-            if (showFavoritesOnly && !c.isFavorite) return false;
 
             // Filter by Query
             if (filters.query) {
@@ -89,7 +95,7 @@ export const ConversationList: React.FC = () => {
 
             return true;
         });
-    }, [sortedConversations, assignmentFilter, currentCollaboratorId, showFavoritesOnly, filters.query]);
+    }, [sortedConversations, assignmentFilter, currentCollaboratorId, filters.query]);
 
     // Separate pinned from unpinned for visual division
     const pinnedConversations = useMemo(() => {
@@ -166,13 +172,14 @@ export const ConversationList: React.FC = () => {
                     {unassignedCount > 0 && <span className={styles.filterCount}>{unassignedCount}</span>}
                 </button>
 
-                {/* Favorites Toggle - overlay filter, doesn't change assignment tab */}
+                {/* Favorites Tab */}
                 <button
-                    className={`${styles.filterTab} ${styles.favoriteToggle} ${showFavoritesOnly ? styles.favoriteActive : ''}`}
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    title={showFavoritesOnly ? 'Mostrar todos' : 'Filtrar favoritos'}
+                    className={`${styles.filterTab} ${assignmentFilter === 'favorites' ? styles.active : ''}`}
+                    onClick={() => setAssignmentFilter(assignmentFilter === 'favorites' ? 'all' : 'favorites')}
+                    title="Favoritos"
                 >
-                    <Star size={14} fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+                    <Star size={14} fill={assignmentFilter === 'favorites' ? 'currentColor' : 'none'} />
+                    Favoritos
                     {totalFavoritesCount > 0 && <span className={styles.filterCount}>{totalFavoritesCount}</span>}
                 </button>
             </div>
@@ -192,7 +199,7 @@ export const ConversationList: React.FC = () => {
                                         key={conv.id}
                                         conversation={conv}
                                         isActive={selectedConversationId === conv.id}
-                                        onClick={() => selectConversation(conv.id)}
+                                        onClick={() => handleSelectConversation(conv.id)}
                                     />
                                 ))}
                                 {unpinnedConversations.length > 0 && (
@@ -207,7 +214,7 @@ export const ConversationList: React.FC = () => {
                                 key={conv.id}
                                 conversation={conv}
                                 isActive={selectedConversationId === conv.id}
-                                onClick={() => selectConversation(conv.id)}
+                                onClick={() => handleSelectConversation(conv.id)}
                             />
                         ))}
                     </>
@@ -215,7 +222,7 @@ export const ConversationList: React.FC = () => {
                     <div className={styles.emptyState}>
                         <MessageSquare size={32} strokeWidth={1.5} />
                         <span>
-                            {showFavoritesOnly
+                            {assignmentFilter === 'favorites'
                                 ? 'Nenhum favorito encontrado'
                                 : assignmentFilter === 'mine'
                                     ? 'Nenhuma conversa atribuída a você'

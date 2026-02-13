@@ -35,7 +35,7 @@ export interface TeamChat {
         content: string;
         senderId: string;
         createdAt: number;
-        type: 'text' | 'image' | 'file' | 'audio' | 'system';
+        type: 'text' | 'image' | 'video' | 'file' | 'audio' | 'system';
     };
     unreadCount?: number; // Calculated client-side usually
     updatedAt: number;

@@ -47,6 +47,9 @@ export interface ContactsState {
     selectedIds: Set<string>;
     totalContacts: number;
     isLoading: boolean;
+    isLoadingMore: boolean;
+    isSearching: boolean;
+    hasMore: boolean;
     error: string | null;
 
     // Filters
@@ -62,6 +65,8 @@ export interface ContactsState {
 
     // Actions
     fetchContacts: () => Promise<void>;
+    loadMore: () => Promise<void>;
+    searchContacts: (term: string) => Promise<void>;
     syncContacts: () => Promise<number>;
     setContacts: (contacts: Lead[]) => void;
     setLoading: (loading: boolean) => void;
@@ -94,32 +99,88 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
     selectedIds: new Set(),
     totalContacts: 0,
     isLoading: false,
+    isLoadingMore: false,
+    isSearching: false,
+    hasMore: true,
     error: null,
     filters: defaultFilters,
     availableTags: [],
     availableLossReasons: [],
-    page: 1,
+    page: 0,
     pageSize: 50,
 
     // Actions
     fetchContacts: async () => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, page: 0 });
         try {
-            const contacts = await LeadService.getLeads();
+            const { pageSize } = get();
+            const { leads, total } = await LeadService.getLeadsPaginated(0, pageSize);
 
             // Extract tags for filter
             const allTags = new Set<string>();
-            contacts.forEach(c => c.tags?.forEach(t => allTags.add(t)));
+            leads.forEach(c => c.tags?.forEach(t => allTags.add(t)));
 
             set({
-                contacts,
-                totalContacts: contacts.length,
+                contacts: leads,
+                totalContacts: total,
+                hasMore: leads.length < total,
                 availableTags: Array.from(allTags),
-                isLoading: false
+                isLoading: false,
+                page: 0,
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to fetch contacts:', error);
-            set({ error: error.message, isLoading: false });
+            set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
+        }
+    },
+
+    loadMore: async () => {
+        const { isLoadingMore, hasMore, page, pageSize, contacts } = get();
+        if (isLoadingMore || !hasMore) return;
+
+        set({ isLoadingMore: true });
+        try {
+            const nextPage = page + 1;
+            const { leads, total } = await LeadService.getLeadsPaginated(nextPage, pageSize);
+
+            // Merge tags
+            const allTags = new Set<string>(get().availableTags);
+            leads.forEach(c => c.tags?.forEach(t => allTags.add(t)));
+
+            const merged = [...contacts, ...leads];
+            set({
+                contacts: merged,
+                totalContacts: total,
+                hasMore: merged.length < total,
+                page: nextPage,
+                availableTags: Array.from(allTags),
+                isLoadingMore: false,
+            });
+        } catch (error: unknown) {
+            console.error('Failed to load more contacts:', error);
+            set({ isLoadingMore: false });
+        }
+    },
+
+    searchContacts: async (term: string) => {
+        if (!term.trim()) {
+            // Reset to paginated view
+            await get().fetchContacts();
+            return;
+        }
+
+        set({ isSearching: true, error: null });
+        try {
+            const leads = await LeadService.searchLeads(term);
+            set({
+                contacts: leads,
+                totalContacts: leads.length,
+                hasMore: false, // Search results are not paginated
+                isSearching: false,
+            });
+        } catch (error: unknown) {
+            console.error('Failed to search contacts:', error);
+            set({ error: error instanceof Error ? error.message : String(error), isSearching: false });
         }
     },
 
@@ -133,9 +194,9 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
             }
             set({ isLoading: false });
             return count;
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to sync contacts:', error);
-            set({ error: error.message, isLoading: false });
+            set({ error: error instanceof Error ? error.message : String(error), isLoading: false });
             return 0;
         }
     },

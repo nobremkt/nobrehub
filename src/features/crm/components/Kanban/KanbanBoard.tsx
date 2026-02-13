@@ -5,49 +5,38 @@
  * 
  * Implementação premium do Kanban usando @dnd-kit.
  * Suporta animações suaves, acessibilidade e drag-and-drop avançado.
+ * State & DnD handlers delegated to useKanbanBoard hook.
  * 
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 import { Lead } from '@/types/lead.types';
 import { Calendar, AlertCircle, TrendingUp, Crown, Zap, MessageCircle, Edit2, Trash2, Search } from 'lucide-react';
 import { Modal, Button } from '@/design-system';
 import styles from './Kanban.module.css';
 import { Lead360Modal } from '../Lead360Modal/Lead360Modal';
-import { LeadService } from '@/features/crm/services/LeadService';
+import { CreateLeadModal } from '../CreateLeadModal/CreateLeadModal';
+import { useKanbanBoard } from './useKanbanBoard';
+import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 
 // DND-KIT Imports
 import {
     DndContext,
     DragOverlay,
     closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragStartEvent,
-    DragEndEvent,
-    DragOverEvent,
-    defaultDropAnimationSideEffects,
-    DropAnimation,
     useDroppable,
 } from '@dnd-kit/core';
 import {
     SortableContext,
-    sortableKeyboardCoordinates,
     verticalListSortingStrategy,
     useSortable,
-    arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTS
+// PIPELINE TABS
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineTabs() {
@@ -332,275 +321,11 @@ function KanbanColumn({ id, name, color, leads, onLeadClick, onLeadChat, onLeadE
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KANBAN BOARD (Main Component)
-// ─────────────────────────────────────────────────────────────────────────────import { Lead360Modal } from '../Lead360Modal/Lead360Modal';
-import { CreateLeadModal } from '../CreateLeadModal/CreateLeadModal';
+// KANBAN BOARD (Main Component) — uses useKanbanBoard hook for all logic
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function KanbanBoard() {
-    const navigate = useNavigate();
-    const { activePipeline, getStagesByPipeline, leads: storeLeads, setLeads, fetchLeads, updateLead } = useKanbanStore();
-    const [localLeads, setLocalLeads] = useState<Lead[]>(storeLeads);
-    const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
-    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const stages = getStagesByPipeline(activePipeline);
-
-    // Calculate total opportunities for current pipeline
-    const totalOpportunities = useMemo(() => {
-        return localLeads.filter(lead => {
-            const stageIds = stages.map(s => s.id);
-            return stageIds.includes(lead.status);
-        }).length;
-    }, [localLeads, stages]);
-
-    // Initial Fetch
-    useEffect(() => {
-        fetchLeads();
-    }, [fetchLeads]);
-
-    // Sincroniza estado local com store quando não está arrastando
-    useEffect(() => {
-        if (!activeDragLead) {
-            setLocalLeads(storeLeads);
-        }
-    }, [storeLeads, activeDragLead]);
-
-    // ... (unchanged helpers)
-
-    // Função para pegar leads de uma coluna do estado local (com filtro de busca)
-    const getLocalLeadsByStage = useCallback((stageId: string) => {
-        return localLeads
-            .filter(lead => lead.status === stageId)
-            .filter(lead => {
-                if (!searchTerm) return true;
-                const search = searchTerm.toLowerCase();
-                return (
-                    lead.name.toLowerCase().includes(search) ||
-                    lead.company?.toLowerCase().includes(search) ||
-                    lead.email?.toLowerCase().includes(search) ||
-                    lead.phone?.includes(search)
-                );
-            })
-            .sort((a, b) => a.order - b.order);
-    }, [localLeads, searchTerm]);
-
-    // ... (unchanged sensors and lead click)
-
-    // Configuração dos sensores (Mouse, Touch, Teclado)
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    const handleLeadClick = (lead: Lead) => {
-        setSelectedLead(lead);
-        setIsModalOpen(true);
-    };
-
-    // Action Handlers
-    const handleLeadChat = (lead: Lead) => {
-        // Navigate to inbox with lead data for finding or creating conversation
-        const params = new URLSearchParams({
-            phone: lead.phone,
-            name: lead.name,
-            ...(lead.email && { email: lead.email }),
-            ...(lead.company && { company: lead.company }),
-            ...(lead.id && { leadId: lead.id }),
-        });
-        navigate(`/inbox?${params.toString()}`);
-    };
-
-    const handleLeadEdit = (lead: Lead) => {
-        // Edit action now opens Lead360Modal (same as click)
-        setSelectedLead(lead);
-        setIsModalOpen(true);
-    };
-
-    const handleLeadDelete = (lead: Lead) => {
-        setLeadToDelete(lead);
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!leadToDelete) return;
-
-        setIsDeleting(true);
-        try {
-            await LeadService.deleteLead(leadToDelete.id);
-            // Remove from local state immediately
-            setLocalLeads(prev => prev.filter(l => l.id !== leadToDelete.id));
-            toast.success('Lead excluído com sucesso!');
-            setIsDeleteModalOpen(false);
-            setLeadToDelete(null);
-            // Refresh from server
-            fetchLeads();
-        } catch (error) {
-            console.error('Error deleting lead:', error);
-            toast.error('Erro ao excluir lead');
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    // DND Handlers
-    const handleDragStart = (event: DragStartEvent) => {
-        const { active } = event;
-        if (active.data.current?.type === 'Lead') {
-            setActiveDragLead(active.data.current.lead);
-        }
-    };
-
-    // ... (unchanged handleDragOver)
-
-    const handleDragOver = (event: DragOverEvent) => {
-        const { active, over } = event;
-        if (!over) return;
-
-        const activeId = active.id as string;
-        const overId = over.id as string;
-
-        if (activeId === overId) return;
-
-        const isActiveLead = active.data.current?.type === 'Lead';
-        const isOverLead = over.data.current?.type === 'Lead';
-        const isOverColumn = over.data.current?.type === 'Column';
-
-        if (!isActiveLead) return;
-
-        const activeLead = localLeads.find(l => l.id === activeId);
-        if (!activeLead) return;
-
-        // Cenário 1: Arrastando sobre outro Lead
-        if (isOverLead) {
-            const overLead = localLeads.find(l => l.id === overId);
-            if (!overLead) return;
-
-            const activeStatus = activeLead.status;
-            const overStatus = overLead.status;
-
-            if (activeStatus === overStatus) {
-                // Mesma coluna - reordena
-                const columnLeads = getLocalLeadsByStage(activeStatus);
-                const activeIndex = columnLeads.findIndex(l => l.id === activeId);
-                const overIndex = columnLeads.findIndex(l => l.id === overId);
-
-                if (activeIndex !== overIndex) {
-                    const newColumnLeads = arrayMove(columnLeads, activeIndex, overIndex);
-                    // Atualiza orders
-                    const updatedColumnLeads = newColumnLeads.map((lead, idx) => ({
-                        ...lead,
-                        order: idx,
-                    }));
-                    // Atualiza estado local
-                    setLocalLeads(prev => [
-                        ...prev.filter(l => l.status !== activeStatus),
-                        ...updatedColumnLeads,
-                    ]);
-                }
-            } else {
-                // Coluna diferente - move para a coluna do overLead
-                const overColumnLeads = getLocalLeadsByStage(overStatus);
-                const overIndex = overColumnLeads.findIndex(l => l.id === overId);
-
-                // Remove da coluna origem
-                const sourceColumnLeads = getLocalLeadsByStage(activeStatus)
-                    .filter(l => l.id !== activeId)
-                    .map((lead, idx) => ({ ...lead, order: idx }));
-
-                // Insere na coluna destino
-                const movedLead = { ...activeLead, status: overStatus };
-                const newTargetLeads = [...overColumnLeads];
-                newTargetLeads.splice(overIndex, 0, movedLead);
-                const updatedTargetLeads = newTargetLeads.map((lead, idx) => ({
-                    ...lead,
-                    order: idx,
-                }));
-
-                setLocalLeads(prev => [
-                    ...prev.filter(l => l.status !== activeStatus && l.status !== overStatus),
-                    ...sourceColumnLeads,
-                    ...updatedTargetLeads,
-                ]);
-            }
-        }
-
-        // Cenário 2: Arrastando sobre uma coluna vazia
-        if (isOverColumn) {
-            const targetStageId = over.data.current?.stageId || overId;
-            const activeStatus = activeLead.status;
-
-            if (activeStatus !== targetStageId) {
-                // Remove da coluna origem
-                const sourceColumnLeads = getLocalLeadsByStage(activeStatus)
-                    .filter(l => l.id !== activeId)
-                    .map((lead, idx) => ({ ...lead, order: idx }));
-
-                // Adiciona no final da coluna destino
-                const targetColumnLeads = getLocalLeadsByStage(targetStageId);
-                const movedLead = { ...activeLead, status: targetStageId, order: targetColumnLeads.length };
-
-                setLocalLeads(prev => [
-                    ...prev.filter(l => l.status !== activeStatus && l.status !== targetStageId),
-                    ...sourceColumnLeads,
-                    ...targetColumnLeads,
-                    movedLead,
-                ]);
-            }
-        }
-    };
-
-    const handleDragEnd = async (_event: DragEndEvent) => {
-        const { active } = _event;
-        setActiveDragLead(null);
-
-        // Find the moved lead in the local state specifically to get its new details
-        const movedLead = localLeads.find(l => l.id === active.id);
-
-        // Update Global Store (Calls API if I update logic)
-        setLeads(localLeads);
-
-        // Simple Persistence Trigger
-        if (movedLead) {
-            try {
-                // We should technically update ALL leads that changed (order or status)
-                // For now, we update at least the active one so status changes persist
-                // Ideal implementation requires batch update or "Sync Order" endpoint
-                await updateLead(movedLead.id, {
-                    status: movedLead.status,
-                    order: movedLead.order
-                });
-            } catch (err) {
-                console.error("Persist failed", err);
-            }
-        }
-    };
-
-    const handleDragCancel = () => {
-        setActiveDragLead(null);
-        setLocalLeads(storeLeads);
-    };
-
-    const dropAnimation: DropAnimation = {
-        sideEffects: defaultDropAnimationSideEffects({
-            styles: {
-                active: {
-                    opacity: '0.5',
-                },
-            },
-        }),
-    };
+    const kb = useKanbanBoard();
 
     return (
         <div className={styles.kanban}>
@@ -609,7 +334,7 @@ export function KanbanBoard() {
                 <div className={styles.headerLeft}>
                     <PipelineTabs />
                     <span className={styles.opportunityCounter}>
-                        {totalOpportunities} oportunidades
+                        {kb.totalOpportunities} oportunidades
                     </span>
                 </div>
                 <div className={styles.headerRight}>
@@ -618,14 +343,14 @@ export function KanbanBoard() {
                         <input
                             type="text"
                             placeholder="Buscar lead..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={kb.searchTerm}
+                            onChange={(e) => kb.setSearchTerm(e.target.value)}
                             className={styles.searchInput}
                         />
                     </div>
                     <button
                         className={styles.addBtn}
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={() => kb.setIsCreateModalOpen(true)}
                     >
                         + Novo Lead
                     </button>
@@ -635,31 +360,31 @@ export function KanbanBoard() {
             {/* Board */}
             <div className={styles.board}>
                 <DndContext
-                    sensors={sensors}
+                    sensors={kb.sensors}
                     collisionDetection={closestCenter}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragEnd={handleDragEnd}
-                    onDragCancel={handleDragCancel}
+                    onDragStart={kb.handleDragStart}
+                    onDragOver={kb.handleDragOver}
+                    onDragEnd={kb.handleDragEnd}
+                    onDragCancel={kb.handleDragCancel}
                 >
-                    {stages.map((stage) => (
+                    {kb.stages.map((stage) => (
                         <KanbanColumn
                             key={stage.id}
                             id={stage.id}
                             name={stage.name}
                             color={stage.color}
-                            leads={getLocalLeadsByStage(stage.id)}
-                            onLeadClick={handleLeadClick}
-                            onLeadChat={handleLeadChat}
-                            onLeadEdit={handleLeadEdit}
-                            onLeadDelete={handleLeadDelete}
+                            leads={kb.getLocalLeadsByStage(stage.id)}
+                            onLeadClick={kb.handleLeadClick}
+                            onLeadChat={kb.handleLeadChat}
+                            onLeadEdit={kb.handleLeadEdit}
+                            onLeadDelete={kb.handleLeadDelete}
                         />
                     ))}
 
                     {createPortal(
-                        <DragOverlay dropAnimation={dropAnimation}>
-                            {activeDragLead && (
-                                <LeadCard lead={activeDragLead} isOverlay />
+                        <DragOverlay dropAnimation={kb.dropAnimation}>
+                            {kb.activeDragLead && (
+                                <LeadCard lead={kb.activeDragLead} isOverlay />
                             )}
                         </DragOverlay>,
                         document.body
@@ -668,29 +393,29 @@ export function KanbanBoard() {
             </div>
 
             <Lead360Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                lead={selectedLead}
+                isOpen={kb.isModalOpen}
+                onClose={() => kb.setIsModalOpen(false)}
+                lead={kb.selectedLead}
             />
 
             <CreateLeadModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSuccess={() => fetchLeads()}
+                isOpen={kb.isCreateModalOpen}
+                onClose={() => kb.setIsCreateModalOpen(false)}
+                onSuccess={() => kb.fetchLeads()}
             />
 
             {/* Delete Confirmation Modal */}
             <Modal
-                isOpen={isDeleteModalOpen}
+                isOpen={kb.isDeleteModalOpen}
                 onClose={() => {
-                    setIsDeleteModalOpen(false);
-                    setLeadToDelete(null);
+                    kb.setIsDeleteModalOpen(false);
+                    kb.setLeadToDelete(null);
                 }}
                 title="Confirmar Exclusão"
             >
                 <div className={styles.deleteModal}>
                     <p>
-                        Tem certeza que deseja excluir o lead <strong>{leadToDelete?.name}</strong>?
+                        Tem certeza que deseja excluir o lead <strong>{kb.leadToDelete?.name}</strong>?
                     </p>
                     <p className={styles.deleteWarning}>
                         Esta ação não pode ser desfeita.
@@ -699,16 +424,16 @@ export function KanbanBoard() {
                         <Button
                             variant="ghost"
                             onClick={() => {
-                                setIsDeleteModalOpen(false);
-                                setLeadToDelete(null);
+                                kb.setIsDeleteModalOpen(false);
+                                kb.setLeadToDelete(null);
                             }}
                         >
                             Cancelar
                         </Button>
                         <Button
                             variant="danger"
-                            onClick={confirmDelete}
-                            isLoading={isDeleting}
+                            onClick={kb.confirmDelete}
+                            isLoading={kb.isDeleting}
                         >
                             Excluir
                         </Button>

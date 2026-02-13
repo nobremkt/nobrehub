@@ -1,0 +1,50 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 16rem;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface-primary);
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) 0;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+    color: var(--color-text-primary);
+    background: var(--color-surface-secondary);
+}
+
+.tabActive {
+    color: var(--color-primary-500);
+    border-bottom-color: var(--color-primary-500);
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.tabActive:hover {
+    color: var(--color-primary-500);
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.content {
+    flex: 1;
+    overflow: hidden;
+}

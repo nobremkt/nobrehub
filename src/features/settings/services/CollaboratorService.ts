@@ -24,6 +24,7 @@ export const CollaboratorService = {
                 roles:role_id ( id, name ),
                 sectors:sector_id ( id, name )
             `)
+            .neq('email', 'debug@debug.com')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -41,6 +42,7 @@ export const CollaboratorService = {
                 roleId: row.role_id ?? '',
                 photoUrl: row.avatar_url ?? undefined,
                 profilePhotoUrl: row.avatar_url ?? undefined,
+                plainPassword: (row as Record<string, unknown>).plain_password as string ?? undefined,
                 active: row.active ?? true,
                 sectorId: row.sector_id ?? undefined,
                 sectorName: sectorData?.name ?? undefined,
@@ -78,6 +80,7 @@ export const CollaboratorService = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
                 },
                 body: JSON.stringify({
                     email: colabData.email,
@@ -110,30 +113,54 @@ export const CollaboratorService = {
     ): Promise<void> => {
         const { password, ...colabUpdates } = updates;
 
-        if (password) {
-            throw new Error(
-                "Por segurança, a alteração de senhas deve ser feita via 'Esqueci minha senha' ou pelo próprio usuário."
-            );
-        }
-
+        // Build DB updates (non-password fields only — RLS allows these for admins)
         const dbUpdates: Record<string, unknown> = {};
         if (colabUpdates.name !== undefined) dbUpdates.name = colabUpdates.name;
         if (colabUpdates.email !== undefined) dbUpdates.email = colabUpdates.email;
         if (colabUpdates.phone !== undefined) dbUpdates.phone = colabUpdates.phone;
-        if (colabUpdates.roleId !== undefined) dbUpdates.role_id = colabUpdates.roleId;
-        if (colabUpdates.sectorId !== undefined) dbUpdates.sector_id = colabUpdates.sectorId;
+        if (colabUpdates.roleId !== undefined) dbUpdates.role_id = colabUpdates.roleId || null;
+        if (colabUpdates.sectorId !== undefined) dbUpdates.sector_id = colabUpdates.sectorId || null;
         if (colabUpdates.photoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.photoUrl;
         if (colabUpdates.profilePhotoUrl !== undefined) dbUpdates.avatar_url = colabUpdates.profilePhotoUrl;
         if (colabUpdates.active !== undefined) dbUpdates.active = colabUpdates.active;
 
         dbUpdates.updated_at = new Date().toISOString();
 
-        const { error } = await supabase
-            .from('users')
-            .update(dbUpdates)
-            .eq('id', id);
+        // Update non-password DB fields via client (RLS-protected)
+        if (Object.keys(dbUpdates).length > 1) {
+            const { error } = await supabase
+                .from('users')
+                .update(dbUpdates)
+                .eq('id', id);
 
-        if (error) throw error;
+            if (error) throw error;
+        }
+
+        // Save password via edge function (uses service_role, bypasses RLS)
+        if (password) {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                    },
+                    body: JSON.stringify({
+                        action: 'update_password',
+                        user_id: id,
+                        password,
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.error || 'Erro ao salvar senha');
+            }
+        }
     },
 
     /**

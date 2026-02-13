@@ -11,13 +11,14 @@ import { Button, Input, Spinner } from '@/design-system';
 import { TemplateService } from '@/features/settings/services/TemplateService';
 import { MessageTemplate } from '@/features/settings/types';
 import { Conversation } from '../../types';
+import type { TemplateComponent } from '../../types';
 import { useSettingsStore } from '@/features/settings/stores/useSettingsStore';
 import styles from './SendTemplateModal.module.css';
 
 interface SendTemplateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSend: (templateName: string, language: string, components: any[], previewText: string) => Promise<void>;
+    onSend: (templateName: string, language: string, components: TemplateComponent[], previewText: string) => Promise<void>;
     conversation: Conversation | null;
 }
 
@@ -35,7 +36,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
     const [error, setError] = useState<string | null>(null);
 
     const { whatsapp } = useSettingsStore();
-    const isConfigured = whatsapp.provider === '360dialog' && whatsapp.apiKey && whatsapp.baseUrl;
+    const isConfigured = whatsapp.provider === '360dialog' && whatsapp.enabled && whatsapp.baseUrl;
 
     // Fetch templates on mount
     useEffect(() => {
@@ -65,7 +66,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
         try {
             const fetchedTemplates = await TemplateService.getTemplates();
             setTemplates(fetchedTemplates);
-            console.log('[SendTemplateModal] Loaded templates:', fetchedTemplates.length);
+            // Templates loaded
         } catch (err) {
             console.error('Error loading templates:', err);
             setError('Erro ao carregar templates. Verifique a configuração.');
@@ -140,7 +141,7 @@ export const SendTemplateModal: React.FC<SendTemplateModalProps> = ({
         setIsSending(true);
         try {
             // Build components array for WhatsApp API
-            const components: any[] = [];
+            const components: TemplateComponent[] = [];
 
             if (variables.length > 0) {
                 const bodyParameters = variables.map(varIndex => ({

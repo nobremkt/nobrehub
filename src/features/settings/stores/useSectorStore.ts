@@ -8,9 +8,10 @@ interface SectorState {
     error: string | null;
 
     fetchSectors: () => Promise<void>;
-    addSector: (sector: Omit<Sector, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    addSector: (sector: Omit<Sector, 'id' | 'createdAt' | 'updatedAt' | 'displayOrder'>) => Promise<void>;
     updateSector: (id: string, updates: Partial<Sector>) => Promise<void>;
     deleteSector: (id: string) => Promise<void>;
+    reorderSectors: (reorderedSectors: Sector[]) => void;
 }
 
 export const useSectorStore = create<SectorState>((set, get) => ({
@@ -77,5 +78,23 @@ export const useSectorStore = create<SectorState>((set, get) => ({
         } finally {
             set({ isLoading: false });
         }
+    },
+
+    reorderSectors: (reorderedSectors: Sector[]) => {
+        // Optimistic update
+        set({ sectors: reorderedSectors });
+
+        // Persist in background
+        const updates = reorderedSectors.map(s => ({
+            id: s.id,
+            displayOrder: s.displayOrder,
+        }));
+
+        SectorService.reorderSectors(updates).catch((error) => {
+            console.error('Error reordering sectors:', error);
+            // Rollback: re-fetch from DB
+            get().fetchSectors();
+        });
     }
 }));
+

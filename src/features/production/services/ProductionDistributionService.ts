@@ -9,6 +9,14 @@
 import { supabase } from '@/config/supabase';
 import { Project, DistributionStatus } from '@/types/project.types';
 import { ProjectStatusPageService } from './ProjectStatusPageService';
+import type { Database } from '@/types/supabase';
+
+// ─── Supabase Row Types ──────────────────────────────────────────────
+type ProjectRow = Database['public']['Tables']['projects']['Row'] & {
+    lead_name?: string | null;
+    producer_name?: string | null;
+    suggested_producer_name?: string | null;
+};
 
 // Tipo para informações de carga de trabalho do produtor
 interface ProducerWorkload {
@@ -24,7 +32,7 @@ interface DistributionProject extends Project {
 }
 
 /** Converte row do Supabase → DistributionProject */
-function rowToDistributionProject(row: any): DistributionProject {
+function rowToDistributionProject(row: ProjectRow): DistributionProject {
     return {
         id: row.id,
         name: row.name,
@@ -113,7 +121,7 @@ export const ProductionDistributionService = {
 
         const rows = data ?? [];
         let totalPoints = 0;
-        rows.forEach((r: any) => {
+        rows.forEach((r) => {
             totalPoints += r.total_points || r.base_points || 1;
         });
 

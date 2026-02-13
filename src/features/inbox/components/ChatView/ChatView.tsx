@@ -8,6 +8,7 @@ import { ChatInput } from './ChatInput';
 import { DateSeparator } from './DateSeparator';
 import { SessionWarning } from './SessionWarning';
 import { SendTemplateModal } from '../SendTemplateModal';
+import type { TemplateComponent } from '../../types';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 import styles from './ChatView.module.css';
 
@@ -24,7 +25,10 @@ export const ChatView: React.FC = () => {
         conversations,
         selectedConversationId,
         messages,
-        sendMessage
+        sendMessage,
+        loadMoreMessages,
+        isLoadingMore,
+        hasMoreMessages,
     } = useInboxStore();
 
     const [isUploading, setIsUploading] = useState(false);
@@ -127,6 +131,34 @@ export const ChatView: React.FC = () => {
         return () => container.removeEventListener('load', handleMediaLoad, true);
     }, [selectedConversationId]);
 
+    // Infinite scroll: load older messages when scrolling to top
+    const handleScroll = useCallback(() => {
+        const container = messagesAreaRef.current;
+        if (!container || !selectedConversationId) return;
+        if (isLoadingMore || !hasMoreMessages[selectedConversationId]) return;
+
+        // Trigger when within 100px of the top
+        if (container.scrollTop < 100) {
+            const prevScrollHeight = container.scrollHeight;
+            loadMoreMessages(selectedConversationId).then(() => {
+                // Preserve scroll position after prepending older messages
+                requestAnimationFrame(() => {
+                    if (messagesAreaRef.current) {
+                        const newScrollHeight = messagesAreaRef.current.scrollHeight;
+                        messagesAreaRef.current.scrollTop = newScrollHeight - prevScrollHeight;
+                    }
+                });
+            });
+        }
+    }, [selectedConversationId, isLoadingMore, hasMoreMessages, loadMoreMessages]);
+
+    useEffect(() => {
+        const container = messagesAreaRef.current;
+        if (!container) return;
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
     const handleSendMessage = async (text: string) => {
         if (!selectedConversationId) return;
         await sendMessage(text);
@@ -170,7 +202,7 @@ export const ChatView: React.FC = () => {
     const handleSendTemplate = async (
         templateName: string,
         language: string,
-        components: any[],
+        components: TemplateComponent[],
         previewText: string
     ) => {
         if (!selectedConversationId) return;
@@ -232,6 +264,18 @@ export const ChatView: React.FC = () => {
             )}
 
             <div className={styles.messagesArea} ref={messagesAreaRef}>
+                {/* Pagination loading indicator */}
+                {isLoadingMore && (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        padding: '12px',
+                        color: 'var(--color-text-muted)',
+                        fontSize: '13px',
+                    }}>
+                        Carregando mensagens anteriores...
+                    </div>
+                )}
                 {messagesWithSeparators.map((item, index) =>
                     item.type === 'separator' ? (
                         <DateSeparator key={`sep-${index}`} date={item.date!} />
@@ -304,13 +348,13 @@ export const ChatView: React.FC = () => {
                 isOpen={showLead360Modal}
                 onClose={() => setShowLead360Modal(false)}
                 lead={{
-                    id: conversation.id,
+                    id: conversation.leadId || conversation.id,
                     name: conversation.leadName,
                     phone: conversation.leadPhone,
                     email: conversation.leadEmail || '',
                     company: conversation.leadCompany || '',
                     status: conversation.dealStatus || 'open',
-                    pipeline: 'high-ticket',
+                    pipeline: (conversation.pipeline || 'high-ticket') as 'high-ticket' | 'low-ticket',
                     order: 0,
                     responsibleId: conversation.assignedTo || '',
                     createdAt: conversation.createdAt,
