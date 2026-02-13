@@ -81,17 +81,33 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
         const body = req.body;
 
+        // Debug: log raw payload structure (top-level keys only)
+        console.log('[Webhook] POST received. Top-level keys:', JSON.stringify(Object.keys(body)));
+        console.log('[Webhook] Raw payload:', JSON.stringify(body).substring(0, 500));
+
         try {
+            // ── Normalize payload: support both Meta Cloud API and 360Dialog formats
+            // Meta format:  body.entry[0].changes[0].value.{messages, statuses, contacts}
+            // 360Dialog may also send: body.messages, body.contacts, body.statuses directly
+            let value;
+
             const entry = body.entry?.[0];
             const changes = entry?.changes?.[0];
-            const value = changes?.value;
-
-            if (!value) {
+            if (changes?.value) {
+                value = changes.value;
+                console.log('[Webhook] Using Meta Cloud API format (entry.changes.value)');
+            } else if (body.messages || body.statuses || body.contacts) {
+                // 360Dialog direct format
+                value = body;
+                console.log('[Webhook] Using 360Dialog direct format (top-level)');
+            } else {
+                console.log('[Webhook] No actionable data in payload');
                 return res.status(200).json({ success: true, note: 'No actionable data' });
             }
 
             // Process incoming messages
             if (value.messages?.length) {
+                console.log(`[Webhook] Processing ${value.messages.length} message(s)`);
                 for (const message of value.messages) {
                     await processIncomingMessage(message, value.contacts?.[0]);
                 }
@@ -99,6 +115,7 @@ export default async function handler(req, res) {
 
             // Process delivery status updates (sent, delivered, read, failed)
             if (value.statuses?.length) {
+                console.log(`[Webhook] Processing ${value.statuses.length} status update(s)`);
                 for (const status of value.statuses) {
                     await processStatusUpdate(status);
                 }
@@ -106,7 +123,7 @@ export default async function handler(req, res) {
 
             return res.status(200).json({ success: true });
         } catch (error) {
-            console.error('[Webhook] Processing error:', error.message);
+            console.error('[Webhook] Processing error:', error.message, error.stack);
             // Always return 200 to avoid 360Dialog retrying endlessly
             return res.status(200).json({ success: false, error: error.message });
         }
@@ -141,12 +158,45 @@ async function processIncomingMessage(message, contact) {
         conversationId = existingConv.id;
     } else {
         // ── Try to link to existing lead by phone ───────────────────────────
-        const { data: linkedLead } = await supabase
+        let { data: linkedLead } = await supabase
             .from('leads')
             .select('id, name, email, company')
             .eq('phone', phone)
             .limit(1)
             .maybeSingle();
+
+        // ── Auto-create lead if not found ────────────────────────────────────
+        if (!linkedLead) {
+            // Get the first stage of the default pipeline (high-ticket → Novo Lead)
+            const { data: firstStage } = await supabase
+                .from('pipeline_stages')
+                .select('id')
+                .eq('pipeline', 'high-ticket')
+                .eq('order', 0)
+                .limit(1)
+                .maybeSingle();
+
+            const { data: newLead, error: leadError } = await supabase
+                .from('leads')
+                .insert({
+                    name: contactName,
+                    phone,
+                    pipeline: 'high-ticket',
+                    stage_id: firstStage?.id || null,
+                    source: 'whatsapp',
+                    tags: ['whatsapp'],
+                    deal_status: 'open',
+                })
+                .select('id, name, email, company')
+                .single();
+
+            if (leadError) {
+                console.error('[Webhook] Failed to auto-create lead:', leadError.message);
+            } else {
+                linkedLead = newLead;
+                console.log(`[Webhook] Auto-created lead ${newLead.id} for ${contactName}`);
+            }
+        }
 
         // ── Create new conversation ─────────────────────────────────────────
         const { data: newConv, error: createError } = await supabase
