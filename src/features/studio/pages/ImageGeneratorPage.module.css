@@ -83,11 +83,22 @@
 }
 
 .sectionLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
     font-size: var(--font-size-xs);
     font-weight: 600;
     color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+}
+
+/* Compact Chip Row */
+.chipRow {
+    display: flex;
+    gap: var(--spacing-2);
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 /* Prompt */
@@ -453,6 +464,173 @@
     font-size: var(--font-size-xs);
     white-space: nowrap;
     animation: fadeIn 0.3s ease;
+}
+
+/* ─── Background Color ─── */
+.colorName {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+/* ─── Reference Images ─── */
+.refGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-2);
+}
+
+.refSlot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-1);
+}
+
+.refFileInput {
+    display: none;
+}
+
+.refUploadBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--color-border);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.refUploadBtn:hover {
+    border-color: var(--color-primary-500);
+    color: var(--color-primary-500);
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.refUploadBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.refPreview {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.refPreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.refRemoveBtn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.refPreview:hover .refRemoveBtn {
+    opacity: 1;
+}
+
+.refRemoveBtn:hover {
+    background: var(--color-primary-500);
+}
+
+.refLabel {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    text-align: center;
+    font-weight: 500;
+}
+
+/* ─── Session History Strip ─── */
+.historyStrip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--spacing-3) var(--spacing-4);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7) 30%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.historyHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.historyScroll {
+    display: flex;
+    gap: var(--spacing-2);
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+}
+
+.historyScroll::-webkit-scrollbar {
+    display: none;
+}
+
+.historyThumb {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    opacity: 0.7;
+}
+
+.historyThumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.historyThumb:hover {
+    opacity: 1;
+    transform: scale(1.08);
+    border-color: var(--color-border-hover);
+}
+
+.historyThumbActive {
+    opacity: 1;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
 }
 
 @keyframes fadeIn {

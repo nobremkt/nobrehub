@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════════════════════════
+   MiniSelect – compact inline selector
+   ═══════════════════════════════════════════════════════════════ */
+
+.wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+/* ─── Trigger Button ─── */
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    user-select: none;
+    line-height: 1;
+}
+
+.trigger:hover:not(:disabled) {
+    border-color: var(--color-border-hover);
+}
+
+.triggerOpen {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
+}
+
+.trigger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.triggerIcon {
+    display: flex;
+    align-items: center;
+    color: var(--color-text-muted);
+}
+
+.triggerValue {
+    color: var(--color-text-primary);
+}
+
+.chevron {
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.triggerOpen .chevron {
+    transform: rotate(180deg);
+}
+
+/* ─── Dropdown Menu ─── */
+.menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    min-width: 100%;
+    padding: 4px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.45),
+        0 2px 6px rgba(0, 0, 0, 0.25);
+    animation: miniSelectFadeIn 0.12s ease;
+}
+
+.menuItem {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: calc(var(--radius-md) - 2px);
+    white-space: nowrap;
+    transition: background 0.1s, color 0.1s;
+}
+
+.menuItem:hover {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.menuItemActive {
+    color: var(--color-primary-500);
+    background: rgba(220, 38, 38, 0.08);
+    font-weight: 600;
+}
+
+.menuItemActive:hover {
+    background: rgba(220, 38, 38, 0.12);
+}
+
+@keyframes miniSelectFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

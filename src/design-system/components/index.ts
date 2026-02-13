@@ -29,6 +29,7 @@ export type { NumberInputProps } from './NumberInput';
 
 export { PhoneInput } from './PhoneInput/PhoneInput';
 
+export { ColorPicker } from './ColorPicker';
 
 // Containers
 export { Card, CardHeader, CardBody, CardFooter } from './Card';
