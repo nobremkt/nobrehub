@@ -23,6 +23,9 @@ export interface GalleryImage {
     model: string;
     quality: string;
     aspectRatio: string;
+    batchId?: string;
+    sceneNumber?: number;
+    narration?: string;
     createdAt: number;
     createdBy: {
         id: string;
@@ -58,6 +61,9 @@ export async function uploadGeneratedImage(params: {
     model: string;
     quality: string;
     aspectRatio: string;
+    batchId?: string;
+    sceneNumber?: number;
+    narration?: string;
     user: { id: string; name: string; profilePhotoUrl?: string };
 }): Promise<GalleryImage> {
     const id = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -98,6 +104,9 @@ export async function uploadGeneratedImage(params: {
             model: params.model,
             quality: params.quality,
             aspect_ratio: params.aspectRatio,
+            batch_id: params.batchId || null,
+            scene_number: params.sceneNumber || null,
+            narration: params.narration || null,
             user_id: params.user.id,
             user_name: params.user.name,
             user_photo_url: params.user.profilePhotoUrl || null,
@@ -117,6 +126,9 @@ export async function uploadGeneratedImage(params: {
         model: params.model,
         quality: params.quality,
         aspectRatio: params.aspectRatio,
+        batchId: params.batchId,
+        sceneNumber: params.sceneNumber,
+        narration: params.narration,
         createdAt: now,
         createdBy: {
             id: params.user.id,
@@ -142,7 +154,7 @@ export async function getGalleryImages(): Promise<GalleryImage[]> {
             return [];
         }
 
-        return (data || []).map((row) => ({
+        return (data || []).map((row: any) => ({
             id: row.id,
             url: row.url,
             prompt: row.prompt || '',
@@ -150,6 +162,9 @@ export async function getGalleryImages(): Promise<GalleryImage[]> {
             model: row.model || '',
             quality: row.quality || '',
             aspectRatio: row.aspect_ratio || '',
+            batchId: row.batch_id || undefined,
+            sceneNumber: row.scene_number || undefined,
+            narration: row.narration || undefined,
             createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
             createdBy: {
                 id: row.user_id || '',

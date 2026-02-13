@@ -3,11 +3,12 @@ import { Button, Spinner, Dropdown, ColorPicker } from '@/design-system';
 import { useSettingsStore } from '@/features/settings/stores/useSettingsStore';
 import { useAuthStore } from '@/stores';
 import { uploadGeneratedImage } from '../services/galleryService';
-import { Wand2, Download, AlertCircle, KeyRound, ImageIcon, User, Mountain, Tag, X, Palette, Ratio, Sparkles, Clock } from 'lucide-react';
+import { Wand2, Download, AlertCircle, KeyRound, ImageIcon, User, Mountain, Tag, X, Palette, Ratio, Sparkles, Clock, LayoutList, Film, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/config';
 import styles from './ImageGeneratorPage.module.css';
 import { MiniSelect } from '../components/MiniSelect';
+import { separateScenes, type Scene } from '../services/sceneService';
 
 const ASPECT_RATIO_OPTIONS = [
     { value: '1:1', label: '1:1' },
@@ -94,6 +95,11 @@ export function ImageGeneratorPage() {
     // Session history
     const [sessionHistory, setSessionHistory] = useState<HistoryItem[]>([]);
 
+    // Roteiro Pipeline State
+    const [scenes, setScenes] = useState<Scene[]>([]);
+    const [isSeparating, setIsSeparating] = useState(false);
+    const [currentSceneIndex, setCurrentSceneIndex] = useState<number>(-1); // -1 = not generating batch
+
     // Reference images
     const [refs, setRefs] = useState<Record<RefSlot, ReferenceImage | null>>({
         character: null,
@@ -169,13 +175,15 @@ export function ImageGeneratorPage() {
             let result: GeneratedImage | null = null;
 
             if (selectedModel.provider === 'gemini') {
-                await generateWithGemini(selectedModel.modelId, finalPrompt);
+                result = await generateWithGemini(selectedModel.modelId, finalPrompt);
             } else {
-                await generateWithOpenai(selectedModel.modelId, finalPrompt);
+                result = await generateWithOpenai(selectedModel.modelId, finalPrompt);
             }
 
+            setGeneratedImage(result);
+            generatedImageRef.current = result;
+
             // After successful generation, save to gallery
-            result = generatedImageRef.current;
             const userId = user?.id || user?.authUid;
             if (result && user && userId) {
                 setIsSaving(true);
@@ -200,23 +208,96 @@ export function ImageGeneratorPage() {
                     setIsSaving(false);
                 }
             }
+
+            // Push to session history
+            if (result) {
+                const dataUrl = `data:${result.mimeType};base64,${result.base64}`;
+                setSessionHistory((prev) => [
+                    { dataUrl, timestamp: Date.now(), image: result! },
+                    ...prev,
+                ].slice(0, 20));
+            }
         } catch (err: any) {
             setError(err.message || 'Erro ao gerar imagem.');
         } finally {
             setIsGenerating(false);
-            // Push to session history
-            const result = generatedImageRef.current;
-            if (result) {
+        }
+    };
+
+    const handleSeparateScenes = async () => {
+        if (!roteiro.trim()) return;
+        setIsSeparating(true);
+        setError(null);
+        try {
+            const result = await separateScenes(roteiro, selectedStyle?.name);
+            setScenes(result);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsSeparating(false);
+        }
+    };
+
+    const handleGenerateBatch = async () => {
+        if (scenes.length === 0 || !hasApiKey || !selectedModel) return;
+
+        setIsGenerating(true);
+        const newBatchId = `batch_${Date.now()}`;
+
+        // Loop scenes
+        for (let i = 0; i < scenes.length; i++) {
+            setCurrentSceneIndex(i);
+            const scene = scenes[i];
+
+            // Generate prompt with style (if any)
+            // Note: Scene prompt is already optimized, but we might want to append style if not present?
+            // The agent 1 should have handled it. We'll use scene.imagePrompt directly.
+
+            try {
+                let result: GeneratedImage;
+                if (selectedModel.provider === 'gemini') {
+                    result = await generateWithGemini(selectedModel.modelId, scene.imagePrompt);
+                } else {
+                    result = await generateWithOpenai(selectedModel.modelId, scene.imagePrompt);
+                }
+
+                // Push to gallery with batchId
+                const userId = user?.id || user?.authUid;
+                if (result && user && userId) {
+                    await uploadGeneratedImage({
+                        base64: result.base64,
+                        mimeType: result.mimeType,
+                        prompt: scene.imagePrompt,
+                        styleName: selectedStyle?.name ?? null,
+                        model: selectedModel.name,
+                        quality,
+                        aspectRatio,
+                        user: { id: userId, name: user.name, profilePhotoUrl: user.profilePhotoUrl },
+                        batchId: newBatchId, // we need to update uploadGeneratedImage type locally first? No, we'll pass it and update service later
+                    } as any);
+                }
+
+                // Push to history
                 const dataUrl = `data:${result.mimeType};base64,${result.base64}`;
                 setSessionHistory((prev) => [
                     { dataUrl, timestamp: Date.now(), image: result },
                     ...prev,
                 ].slice(0, 20));
+
+                // Set as current image to visualize progress
+                setGeneratedImage(result);
+
+            } catch (err) {
+                console.error(`Error processing scene ${i + 1}:`, err);
+                // Continue to next scene? Yes.
             }
         }
+
+        setIsGenerating(false);
+        setCurrentSceneIndex(-1);
     };
 
-    const generateWithGemini = async (modelId: string, promptText: string) => {
+    const generateWithGemini = async (modelId: string, promptText: string): Promise<GeneratedImage> => {
         const isImagen = modelId.startsWith('imagen');
 
         // Build multimodal parts with labeled reference images
@@ -280,28 +361,24 @@ export function ImageGeneratorPage() {
         if (isImagen) {
             const predictions = data.predictions;
             if (!predictions || predictions.length === 0) throw new Error('Nenhum resultado retornado.');
-            const imgResult = {
+            return {
                 base64: predictions[0].bytesBase64Encoded,
                 mimeType: predictions[0].mimeType || 'image/png',
             };
-            generatedImageRef.current = imgResult;
-            setGeneratedImage(imgResult);
         } else {
             const candidates = data.candidates;
             if (!candidates || candidates.length === 0) throw new Error('Nenhum resultado retornado.');
             const parts = candidates[0].content?.parts || [];
             const imagePart = parts.find((p: any) => p.inlineData);
             if (!imagePart) throw new Error('A API não retornou uma imagem. Tente reformular seu prompt.');
-            const imgResult = {
+            return {
                 base64: imagePart.inlineData.data,
                 mimeType: imagePart.inlineData.mimeType,
             };
-            generatedImageRef.current = imgResult;
-            setGeneratedImage(imgResult);
         }
     };
 
-    const generateWithOpenai = async (modelId: string, promptText: string) => {
+    const generateWithOpenai = async (modelId: string, promptText: string): Promise<GeneratedImage> => {
         const response = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
             headers: {
@@ -324,12 +401,10 @@ export function ImageGeneratorPage() {
         const data = await response.json();
         if (!data.data || data.data.length === 0) throw new Error('Nenhum resultado retornado pela OpenAI.');
 
-        const imgResult = {
+        return {
             base64: data.data[0].b64_json,
             mimeType: 'image/png',
         };
-        generatedImageRef.current = imgResult;
-        setGeneratedImage(imgResult);
     };
 
     const handleDownload = () => {
@@ -351,7 +426,6 @@ export function ImageGeneratorPage() {
     ];
 
     const noModelsEnabled = enabledModels.length === 0;
-    const currentText = activeTab === 'prompt' ? prompt : roteiro;
 
     return (
         <div className={styles.page}>
@@ -496,14 +570,52 @@ export function ImageGeneratorPage() {
                             rows={3}
                             disabled={noModelsEnabled || !hasApiKey || isGenerating}
                         />
+                    ) : scenes.length > 0 ? (
+                        <div className={styles.sceneList}>
+                            <div className={styles.batchHeader}>
+                                <span className={styles.sceneHeader}>
+                                    {scenes.length} Cenas Encontradas
+                                </span>
+                                <button className={styles.clearScenesBtn} onClick={() => setScenes([])}>
+                                    <ArrowLeft size={14} /> Voltar ao Roteiro
+                                </button>
+                            </div>
+                            {scenes.map((scene, index) => (
+                                <div
+                                    key={index}
+                                    className={`${styles.sceneCard} 
+                                        ${currentSceneIndex === index ? styles.sceneCardGenerating : ''} 
+                                        ${currentSceneIndex > index ? styles.sceneCardDone : ''}`}
+                                >
+                                    <div className={styles.sceneHeader}>
+                                        <span>Cena {scene.sceneNumber}</span>
+                                        {currentSceneIndex === index && <Spinner size="sm" />}
+                                        {currentSceneIndex > index && <div style={{ color: 'var(--color-primary-500)' }}>✓</div>}
+                                    </div>
+                                    <div className={styles.sceneNarration}>
+                                        "{scene.narration}"
+                                    </div>
+                                    <textarea
+                                        className={styles.scenePrompt}
+                                        value={scene.imagePrompt}
+                                        onChange={(e) => {
+                                            const newScenes = [...scenes];
+                                            newScenes[index].imagePrompt = e.target.value;
+                                            setScenes(newScenes);
+                                        }}
+                                        disabled={currentSceneIndex >= 0}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     ) : (
                         <textarea
                             className={`${styles.promptTextarea} ${styles.roteiroTextarea}`}
-                            placeholder="Cole ou escreva o roteiro completo aqui. A lógica de processamento será implementada futuramente..."
+                            placeholder="Cole ou escreva o roteiro completo aqui..."
                             value={roteiro}
                             onChange={(e) => setRoteiro(e.target.value)}
                             rows={8}
-                            disabled={noModelsEnabled || !hasApiKey || isGenerating}
+                            disabled={noModelsEnabled || !hasApiKey || isGenerating || isSeparating}
                         />
                     )}
                 </div>
@@ -531,16 +643,72 @@ export function ImageGeneratorPage() {
                 )}
 
                 <div className={styles.actions}>
-                    <Button
-                        onClick={handleGenerate}
-                        isLoading={isGenerating}
-                        disabled={!currentText.trim() || !hasApiKey || noModelsEnabled}
-                        leftIcon={<Wand2 size={16} />}
-                        className={styles.generateBtn}
-                    >
-                        Gerar Imagem
-                    </Button>
-
+                    {activeTab === 'roteiro' && scenes.length === 0 ? (
+                        <Button
+                            onClick={handleSeparateScenes}
+                            disabled={isSeparating || !roteiro.trim() || !hasApiKey}
+                            className={styles.generateBtn}
+                        >
+                            {isSeparating ? (
+                                <>
+                                    <Spinner size="sm" />
+                                    Analisando Roteiro...
+                                </>
+                            ) : (
+                                <>
+                                    <LayoutList size={16} />
+                                    Separar Cenas
+                                </>
+                            )}
+                        </Button>
+                    ) : activeTab === 'roteiro' && scenes.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 8 }}>
+                            {currentSceneIndex >= 0 && (
+                                <div className={styles.batchProgress}>
+                                    <div className={styles.batchStatus}>
+                                        <Spinner size="sm" />
+                                        <span>Gerando cena {currentSceneIndex + 1} de {scenes.length}...</span>
+                                    </div>
+                                    <span>{Math.round(((currentSceneIndex) / scenes.length) * 100)}%</span>
+                                </div>
+                            )}
+                            <Button
+                                onClick={handleGenerateBatch}
+                                disabled={isGenerating || !hasApiKey || !selectedModel}
+                                className={styles.generateBtn}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <Spinner size="sm" />
+                                        Gerando em Batch...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Film size={16} />
+                                        Gerar {scenes.length} Cenas
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !hasApiKey || !selectedModel || !prompt.trim()}
+                            className={styles.generateBtn}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Spinner size="sm" />
+                                    Gerando...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 size={16} />
+                                    Gerar Imagem
+                                </>
+                            )}
+                        </Button>
+                    )}
                 </div>
             </aside>
 
