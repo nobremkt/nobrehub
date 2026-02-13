@@ -144,7 +144,6 @@ export const useUIStore = create<UIState & UIActions>()(
             name: APP_CONFIG.storage.theme,
             partialize: (state) => ({
                 theme: state.theme,
-                sidebarExpandedCategories: state.sidebarExpandedCategories,
                 soundEnabled: state.soundEnabled,
                 soundVolume: state.soundVolume,
             }),
