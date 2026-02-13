@@ -42,9 +42,15 @@ export async function getIntegrationConfig() {
         throw new Error('Missing D360_API_KEY environment variable');
     }
 
+    // Normalize URL: ensure it ends with /v1 for 360Dialog v2 API
+    let baseUrl = (data.base_url || '').replace(/\/+$/, '');
+    if (!baseUrl.includes('/v1')) {
+        baseUrl = `${baseUrl}/v1`;
+    }
+
     return {
         provider: data.provider,
-        baseUrl: data.base_url,
+        baseUrl,
         apiKey,
         enabled: data.enabled,
     };
