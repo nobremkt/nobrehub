@@ -168,13 +168,21 @@ async function processIncomingMessage(message, contact) {
         // ── Auto-create lead if not found ────────────────────────────────────
         if (!linkedLead) {
             // Get the first stage of the default pipeline (high-ticket → Novo Lead)
-            const { data: firstStage } = await supabase
-                .from('pipeline_stages')
-                .select('id')
-                .eq('pipeline', 'high-ticket')
-                .eq('order', 0)
-                .limit(1)
-                .maybeSingle();
+            // Note: 'order' is a reserved word — use hardcoded fallback
+            const DEFAULT_NOVO_LEAD_STAGE_ID = '3c8af14b-2b12-4454-9dea-de4ea31c809c';
+            let stageId = DEFAULT_NOVO_LEAD_STAGE_ID;
+            try {
+                const { data: firstStage } = await supabase
+                    .from('pipeline_stages')
+                    .select('id')
+                    .eq('pipeline', 'high-ticket')
+                    .order('order', { ascending: true })
+                    .limit(1)
+                    .maybeSingle();
+                if (firstStage?.id) stageId = firstStage.id;
+            } catch (e) {
+                console.warn('[Webhook] Could not query pipeline_stages, using fallback stage_id');
+            }
 
             const { data: newLead, error: leadError } = await supabase
                 .from('leads')
@@ -182,7 +190,7 @@ async function processIncomingMessage(message, contact) {
                     name: contactName,
                     phone,
                     pipeline: 'high-ticket',
-                    stage_id: firstStage?.id || null,
+                    stage_id: stageId,
                     source: 'whatsapp',
                     tags: ['whatsapp'],
                     deal_status: 'open',
@@ -235,19 +243,20 @@ async function processIncomingMessage(message, contact) {
             conversation_id: conversationId,
             content,
             type: message.type || 'text',
-            sender_type: 'lead',
+            sender_type: 'customer',
             sender_id: null,
             sender_name: contactName,
-            status: 'received',
+            status: 'delivered',
             whatsapp_message_id: message.id,
             media_url: message.image?.id || message.audio?.id || message.video?.id || message.document?.id || null,
             created_at: now,
         });
 
     if (msgError) {
-        console.error('[Webhook] Failed to insert message:', msgError.message);
+        console.error('[Webhook] Failed to insert message:', msgError.message, msgError.details, msgError.hint);
         throw msgError;
     }
+    console.log(`[Webhook] Message stored for conversation ${conversationId}`);
 
     // ── Update conversation metadata ────────────────────────────────────────
     const currentUnread = existingConv?.unread_count || 0;
