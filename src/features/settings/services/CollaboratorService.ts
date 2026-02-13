@@ -35,6 +35,7 @@ export const CollaboratorService = {
 
             return {
                 id: row.id,
+                authUid: row.id, // In Supabase, users.id IS the auth UID
                 name: row.name,
                 email: row.email,
                 phone: row.phone ?? undefined,

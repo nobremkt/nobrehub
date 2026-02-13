@@ -51,6 +51,72 @@ function getMessageContent(message) {
     }
 }
 
+// ─── Auto-Distribution ───────────────────────────────────────────────────────
+
+/**
+ * Get the next user to assign based on "Least Loaded" strategy.
+ * Queries distribution settings and picks the sales user with fewest open conversations.
+ */
+async function getNextAssignee(supabase) {
+    try {
+        // Check distribution settings
+        const { data: settingsRow } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'leadDistribution')
+            .maybeSingle();
+
+        const settings = settingsRow?.value;
+        if (!settings?.enabled) {
+            console.log('[Webhook] Distribution disabled, skipping auto-assign');
+            return null;
+        }
+
+        // Get all sales users (Vendedor(a)) as participants
+        const { data: salesUsers, error: usersError } = await supabase
+            .from('users')
+            .select('id, name, role_id')
+            .in('role_id', (
+                await supabase
+                    .from('roles')
+                    .select('id')
+                    .eq('name', 'Vendedor(a)')
+            ).data?.map(r => r.id) || []);
+
+        if (usersError || !salesUsers?.length) {
+            console.log('[Webhook] No sales users found for distribution');
+            return null;
+        }
+
+        // Count open conversations per user
+        const { data: openConvs } = await supabase
+            .from('conversations')
+            .select('assigned_to')
+            .neq('status', 'closed')
+            .not('assigned_to', 'is', null);
+
+        const counts = {};
+        (openConvs || []).forEach(row => {
+            if (row.assigned_to) {
+                counts[row.assigned_to] = (counts[row.assigned_to] || 0) + 1;
+            }
+        });
+
+        // Find the least loaded sales user
+        const ranked = salesUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            count: counts[u.id] || 0
+        })).sort((a, b) => a.count - b.count);
+
+        console.log(`[Webhook] Distribution: assigning to ${ranked[0].name} (${ranked[0].count} open)`);
+        return ranked[0].id;
+    } catch (err) {
+        console.error('[Webhook] Distribution error:', err.message);
+        return null;
+    }
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -181,6 +247,9 @@ async function processIncomingMessage(message, contact) {
             }
             const stageId = firstStage?.id || null;
 
+            // Get assignee for auto-distribution
+            const assigneeId = await getNextAssignee(supabase);
+
             const { data: newLead, error: leadError } = await supabase
                 .from('leads')
                 .insert({
@@ -191,6 +260,7 @@ async function processIncomingMessage(message, contact) {
                     source: 'whatsapp',
                     tags: ['whatsapp'],
                     deal_status: 'open',
+                    responsible_id: assigneeId,
                 })
                 .select('id, name, email, company')
                 .single();
@@ -199,11 +269,15 @@ async function processIncomingMessage(message, contact) {
                 console.error('[Webhook] Failed to auto-create lead:', leadError.message);
             } else {
                 linkedLead = newLead;
-                console.log(`[Webhook] Auto-created lead ${newLead.id} for ${contactName}`);
+                linkedLead._assigneeId = assigneeId;
+                console.log(`[Webhook] Auto-created lead ${newLead.id} for ${contactName} (assigned to ${assigneeId || 'none'})`);
             }
         }
 
         // ── Create new conversation ─────────────────────────────────────────
+        // Use assignee from lead creation, or get one if lead already existed
+        const assignee = linkedLead?._assigneeId || await getNextAssignee(supabase);
+
         const { data: newConv, error: createError } = await supabase
             .from('conversations')
             .insert({
@@ -218,6 +292,7 @@ async function processIncomingMessage(message, contact) {
                 tags: [],
                 notes: '',
                 unread_count: 0,
+                assigned_to: assignee,
                 created_at: now,
                 updated_at: now,
             })
@@ -230,7 +305,7 @@ async function processIncomingMessage(message, contact) {
         }
 
         conversationId = newConv.id;
-        console.log(`[Webhook] Created conversation ${conversationId} for ${phone}`);
+        console.log(`[Webhook] Created conversation ${conversationId} for ${phone} (assigned to ${assignee || 'unassigned'})`);
     }
 
     // ── Insert message ──────────────────────────────────────────────────────
