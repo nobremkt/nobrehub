@@ -17,17 +17,6 @@ import { ROUTES } from '@/config';
 import { LoginPage } from '@/features/auth';
 import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
-<<<<<<< HEAD
-import { InboxPage } from '@/features/inbox/pages/InboxPage';
-import { ProductionPage } from '@/features/production/pages/ProductionPage';
-import { PublicProjectStatusPage } from '@/features/production/pages/PublicProjectStatusPage';
-import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
-import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage, PipelinePage } from '@/features/settings/pages';
-import { MembersPage, TeamChatPage } from '@/features/team/pages';
-import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
-import { ImageGeneratorPage, WipPage, ImageStylesPage, GalleryPage } from '@/features/studio/pages';
-=======
->>>>>>> 6ab7dd34807533577e42678367cd742ade2bc325
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
 import { Agentation } from 'agentation';
@@ -60,6 +49,12 @@ const GoalsPage = lazy(() => import('@/features/settings/pages').then(m => ({ de
 const HolidaysPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.HolidaysPage })));
 const LeadDistributionPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.LeadDistributionPage })));
 const PipelinePage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.PipelinePage })));
+
+// Studio pages
+const ImageGeneratorPage = lazy(() => import('@/features/studio/pages').then(m => ({ default: m.ImageGeneratorPage })));
+const WipPage = lazy(() => import('@/features/studio/pages').then(m => ({ default: m.WipPage })));
+const ImageStylesPage = lazy(() => import('@/features/studio/pages').then(m => ({ default: m.ImageStylesPage })));
+const GalleryPage = lazy(() => import('@/features/studio/pages').then(m => ({ default: m.GalleryPage })));
 
 // Debug pages (not lazy — lightweight and rarely used)
 import { DebugUIPage, DataImportPage, DatabasePage } from '@/pages';
