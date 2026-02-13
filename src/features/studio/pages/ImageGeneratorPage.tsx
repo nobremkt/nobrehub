@@ -143,8 +143,8 @@ export function ImageGeneratorPage() {
     }, []);
 
     // Build final prompt: replace {user_prompt} and {background_color} in style template
-    const buildFinalPrompt = (): string => {
-        const userText = activeTab === 'prompt' ? prompt : roteiro;
+    const buildFinalPrompt = (overrideUserText?: string): string => {
+        const userText = overrideUserText || (activeTab === 'prompt' ? prompt : roteiro);
         const colorValue = hexToColorName(bgColor);
         let result: string;
         if (selectedStyle) {
@@ -250,15 +250,14 @@ export function ImageGeneratorPage() {
             const scene = scenes[i];
 
             // Generate prompt with style (if any)
-            // Note: Scene prompt is already optimized, but we might want to append style if not present?
-            // The agent 1 should have handled it. We'll use scene.imagePrompt directly.
+            const finalPrompt = buildFinalPrompt(scene.imagePrompt);
 
             try {
                 let result: GeneratedImage;
                 if (selectedModel.provider === 'gemini') {
-                    result = await generateWithGemini(selectedModel.modelId, scene.imagePrompt);
+                    result = await generateWithGemini(selectedModel.modelId, finalPrompt);
                 } else {
-                    result = await generateWithOpenai(selectedModel.modelId, scene.imagePrompt);
+                    result = await generateWithOpenai(selectedModel.modelId, finalPrompt);
                 }
 
                 // Push to gallery with batchId
