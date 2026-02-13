@@ -9,29 +9,49 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useEffect } from 'react';
+import { useEffect, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useUIStore, useAuthStore } from '@/stores';
 import { initFirebase } from '@/config/firebase';
 import { ROUTES } from '@/config';
 import { LoginPage } from '@/features/auth';
-import { DashboardPage } from '@/features/dashboard';
-import { AppearancePage } from '@/features/settings/pages';
-import { IntegrationsPage } from '@/features/settings/pages/IntegrationsPage';
-import { CRMPage } from '@/features/crm/pages/CRMPage';
-import { DebugUIPage, DataImportPage, DatabasePage } from '@/pages';
 import { MainLayout } from '@/design-system/layouts';
 import { Spinner } from '@/design-system';
-import { InboxPage } from '@/features/inbox/pages/InboxPage';
-import { ProductionPage } from '@/features/production/pages/ProductionPage';
-import { PublicProjectStatusPage } from '@/features/production/pages/PublicProjectStatusPage';
-import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
-import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage, PipelinePage } from '@/features/settings/pages';
-import { MembersPage, TeamChatPage } from '@/features/team/pages';
-import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
 import { Agentation } from 'agentation';
+
+// ─── Lazy-loaded route-level pages ───────────────────────────────────────────
+
+const DashboardPage = lazy(() => import('@/features/dashboard').then(m => ({ default: m.DashboardPage })));
+const CRMPage = lazy(() => import('@/features/crm/pages/CRMPage').then(m => ({ default: m.CRMPage })));
+const InboxPage = lazy(() => import('@/features/inbox/pages/InboxPage').then(m => ({ default: m.InboxPage })));
+const ProductionPage = lazy(() => import('@/features/production/pages/ProductionPage').then(m => ({ default: m.ProductionPage })));
+const PostSalesPage = lazy(() => import('@/features/pos-vendas/pages/PostSalesPage').then(m => ({ default: m.PostSalesPage })));
+const PublicProjectStatusPage = lazy(() => import('@/features/production/pages/PublicProjectStatusPage').then(m => ({ default: m.PublicProjectStatusPage })));
+const MembersPage = lazy(() => import('@/features/team/pages').then(m => ({ default: m.MembersPage })));
+const TeamChatPage = lazy(() => import('@/features/team/pages').then(m => ({ default: m.TeamChatPage })));
+const NotesPage = lazy(() => import('@/features/strategic/pages').then(m => ({ default: m.NotesPage })));
+const StrategicProjectsPage = lazy(() => import('@/features/strategic/pages').then(m => ({ default: m.StrategicProjectsPage })));
+const SocialMediaPage = lazy(() => import('@/features/strategic/pages').then(m => ({ default: m.SocialMediaPage })));
+
+// Settings pages
+const AppearancePage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.AppearancePage })));
+const IntegrationsPage = lazy(() => import('@/features/settings/pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
+const OrganizationPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.OrganizationPage })));
+const ProductsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.ProductsPage })));
+const LossReasonsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.LossReasonsPage })));
+const SectorsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.SectorsPage })));
+const RolesPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.RolesPage })));
+const CollaboratorsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.CollaboratorsPage })));
+const PermissionsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.PermissionsPage })));
+const GoalsPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.GoalsPage })));
+const HolidaysPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.HolidaysPage })));
+const LeadDistributionPage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.LeadDistributionPage })));
+const PipelinePage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.PipelinePage })));
+
+// Debug pages (not lazy — lightweight and rarely used)
+import { DebugUIPage, DataImportPage, DatabasePage } from '@/pages';
 
 // Inicializa Firebase no boot
 initFirebase();

@@ -23,14 +23,19 @@ import {
     getDownloadURL
 } from 'firebase/storage';
 import { TeamChat, TeamMessage, ChatParticipant } from '../types/chat';
+import type { Database } from '@/types/supabase';
+
+// ─── Supabase Row Types ──────────────────────────────────────────────
+type TeamChatRow = Database['public']['Tables']['team_chat_channels']['Row'];
+type TeamMessageRow = Database['public']['Tables']['team_chat_messages']['Row'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS — row ↔ frontend type mapping
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const rowToTeamChat = (row: any, userMeta?: { pinned?: boolean; hidden?: boolean }): TeamChat => ({
+const rowToTeamChat = (row: TeamChatRow, userMeta?: { pinned?: boolean; hidden?: boolean }): TeamChat => ({
     id: row.id,
-    type: row.type || 'private',
+    type: (row.type || 'private') as TeamChat['type'],
     participants: row.member_ids || [],
     name: row.name || undefined,
     photoUrl: row.photo_url || undefined,
@@ -38,7 +43,7 @@ const rowToTeamChat = (row: any, userMeta?: { pinned?: boolean; hidden?: boolean
         content: row.last_message_content,
         senderId: row.last_message_sender_id || '',
         createdAt: row.last_message_at ? new Date(row.last_message_at).getTime() : 0,
-        type: row.last_message_type || 'text',
+        type: (row.last_message_type || 'text') as TeamMessage['type'],
     } : undefined,
     updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : 0,
     createdBy: row.created_by || undefined,
@@ -47,14 +52,14 @@ const rowToTeamChat = (row: any, userMeta?: { pinned?: boolean; hidden?: boolean
     hidden: userMeta?.hidden || false,
 });
 
-const rowToTeamMessage = (row: any): TeamMessage => ({
+const rowToTeamMessage = (row: TeamMessageRow): TeamMessage => ({
     id: row.id,
     chatId: row.channel_id,
     senderId: row.sender_id,
     content: row.content || '',
-    type: row.type || 'text',
+    type: (row.type || 'text') as TeamMessage['type'],
     createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
-    attachments: row.media_url ? [{ url: row.media_url, name: '', type: row.type || 'file' }] : undefined,
+    attachments: row.media_url ? [{ url: row.media_url, name: '', type: (row.type || 'file') as TeamMessage['type'] }] : undefined,
 });
 
 export const TeamChatService = {
@@ -206,7 +211,16 @@ export const TeamChatService = {
             .channel(`team-chats-${userId}`)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'team_chat_channels' },
-                () => { fetchChats(); }
+                (payload) => {
+                    // Only refetch if this channel involves the current user
+                    const row = payload.new && typeof payload.new === 'object' ? payload.new as Record<string, unknown> : null;
+                    const oldRow = payload.old && typeof payload.old === 'object' ? payload.old as Record<string, unknown> : null;
+                    const memberIds = (row?.member_ids ?? oldRow?.member_ids) as string[] | undefined;
+
+                    if (!memberIds || memberIds.includes(userId)) {
+                        fetchChats();
+                    }
+                }
             )
             .subscribe();
 
@@ -222,7 +236,7 @@ export const TeamChatService = {
     togglePinChat: async (_userId: string, _chatId: string, _pinned: boolean) => {
         // TODO: Implement with a user_chat_preferences table or JSONB metadata
         // For now, pin state is managed client-side in the store
-        console.log('[TeamChatService] togglePinChat: client-side only for now');
+        // Pin toggle: client-side only for now
     },
 
     /**

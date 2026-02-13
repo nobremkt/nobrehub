@@ -1,8 +1,10 @@
 
+import { Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { ROUTES } from '@/config';
 import { TeamChatListener } from '@/features/team/components/TeamChatListener';
+import { Spinner } from '@/design-system';
 
 export function MainLayout() {
     const location = useLocation();
@@ -19,7 +21,13 @@ export function MainLayout() {
         <>
             <TeamChatListener />
             <AppLayout fullWidth={isFullWidth}>
-                <Outlet />
+                <Suspense fallback={
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px' }}>
+                        <Spinner size="lg" />
+                    </div>
+                }>
+                    <Outlet />
+                </Suspense>
             </AppLayout>
         </>
     );
