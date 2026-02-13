@@ -24,9 +24,14 @@ export const InboxPage: React.FC = () => {
     const { init, selectedConversationId, selectConversation } = useInboxStore();
     const { '*': conversationId } = useParams();
 
-    // Inicializa conversas
+    // Inicializa conversas (with proper HMR/unmount cleanup)
     useEffect(() => {
         init();
+        return () => {
+            const { unsubConversations, unsubMessages } = useInboxStore.getState();
+            unsubConversations();
+            unsubMessages();
+        };
     }, [init]);
 
     // Sync URL → State: quando a URL muda, seleciona a conversa

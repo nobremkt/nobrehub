@@ -33,3 +33,5 @@ coverage/
 # Firebase Service Account
 serviceAccountKey.json
 scripts/serviceAccountKey.json
+.vercel
+.env*.local

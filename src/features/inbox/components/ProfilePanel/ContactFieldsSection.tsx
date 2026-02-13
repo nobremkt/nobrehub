@@ -115,7 +115,9 @@ export const ContactFieldsSection: React.FC<ContactFieldsSectionProps> = ({
             </div>
             <div className={styles.field}>
                 <span className={styles.fieldLabel}>Origem (UTM)</span>
-                <span className={styles.fieldValue}>{conversation.utmSource || 'Desconhecida'}</span>
+                <span className={styles.fieldValue}>
+                    {conversation.utmSource || (conversation.channel ? conversation.channel.charAt(0).toUpperCase() + conversation.channel.slice(1) : 'Desconhecida')}
+                </span>
             </div>
             <div className={styles.field}>
                 <span className={styles.fieldLabel}>Tags</span>

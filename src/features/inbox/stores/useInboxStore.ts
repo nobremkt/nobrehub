@@ -90,6 +90,12 @@ export const useInboxStore = create<InboxState>((set, get) => ({
                     [id]: newMessages.length >= 50,
                 },
             }));
+
+            // Auto-mark as read when new messages arrive for the currently open conversation
+            const currentConv = get().conversations.find(c => c.id === id);
+            if (currentConv && currentConv.unreadCount > 0) {
+                InboxService.markAsRead(id);
+            }
         });
 
         const conversation = get().conversations.find(c => c.id === id);
