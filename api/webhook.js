@@ -167,11 +167,11 @@ async function processIncomingMessage(message, contact) {
 
         // ── Auto-create lead if not found ────────────────────────────────────
         if (!linkedLead) {
-            // Get the first stage of the default pipeline (high-ticket)
+            // Get the first stage of the default pipeline (low-ticket)
             const { data: firstStage, error: stageError } = await supabase
                 .from('pipeline_stages')
                 .select('id')
-                .eq('pipeline', 'high-ticket')
+                .eq('pipeline', 'low-ticket')
                 .order('order', { ascending: true })
                 .limit(1)
                 .maybeSingle();
@@ -186,7 +186,7 @@ async function processIncomingMessage(message, contact) {
                 .insert({
                     name: contactName,
                     phone,
-                    pipeline: 'high-ticket',
+                    pipeline: 'low-ticket',
                     stage_id: stageId,
                     source: 'whatsapp',
                     tags: ['whatsapp'],
