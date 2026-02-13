@@ -16,13 +16,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Integration not configured', message: error.message });
     }
 
-    // Normalize URL
-    let cleanBaseUrl = config.baseUrl.replace(/\/+$/, '');
-    if (!cleanBaseUrl.includes('/v1')) {
-        cleanBaseUrl = `${cleanBaseUrl}/v1`;
-    }
-
-    const url = `${cleanBaseUrl}/configs/templates`;
+    const url = `${config.baseUrl}/configs/templates`;
 
     try {
         const response = await fetch(url, {
