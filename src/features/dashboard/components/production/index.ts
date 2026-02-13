@@ -1,5 +1,4 @@
 export * from './ProductionGoalCard';
-export * from './TopPerformersCard';
 export * from './ProjectsSummaryCard';
 export * from './RevisionsCard';
 export * from './DailyRankingCard';

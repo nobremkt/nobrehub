@@ -2,6 +2,49 @@ import { create } from 'zustand';
 import { TeamChat, TeamMessage, ChatParticipant } from '../types/chat';
 import { TeamChatService } from '../services/teamChatService';
 import { playMessageSound } from '@/utils/notificationUtils';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
+
+// ─── Notification Helper ───────────────────────────────────────────────────────
+
+function getMessagePreview(msg: { type: string; content: string }): string {
+    switch (msg.type) {
+        case 'text': return msg.content;
+        case 'image': return '📷 Imagem';
+        case 'audio': return '🎤 Áudio';
+        default: return '📎 Arquivo';
+    }
+}
+
+function handleNewChatNotification(chat: TeamChat, _userId: string): void {
+    const lastMsg = chat.lastMessage;
+    if (!lastMsg) return;
+
+    const senderDetail = chat.participantDetails?.[lastMsg.senderId];
+    const senderName = senderDetail?.name || 'Alguém';
+
+    // Resolve sender photo from collaborator store
+    const collaborators = useCollaboratorStore.getState().collaborators;
+    const senderCollab = collaborators.find(
+        c => c.authUid === lastMsg.senderId || c.id === lastMsg.senderId
+    );
+    const senderPhoto = senderCollab?.profilePhotoUrl || senderDetail?.photoUrl;
+    const chatName = chat.type === 'group' && chat.name ? chat.name : senderName;
+
+    useNotificationStore.getState().addNotification({
+        type: 'teamchat',
+        title: chat.type === 'group'
+            ? `${senderName} em ${chatName}`
+            : `Nova mensagem de ${senderName}`,
+        body: getMessagePreview(lastMsg),
+        link: `/equipe/chat/${chat.id}`,
+        senderName,
+        senderPhotoUrl: senderPhoto,
+        chatId: chat.id,
+    }, { playSound: false });
+}
+
+// ─── Store ─────────────────────────────────────────────────────────────────────
 
 interface TeamChatState {
     currentUserId: string | null;
@@ -65,46 +108,8 @@ export const useTeamChatStore = create<TeamChatState>((set, get) => ({
                         const isChatActive = prevState.activeChatId === chat.id;
 
                         if (!isChatActive) {
-                            // Play message-specific sound
                             playMessageSound();
-
-                            // Push notification (async IIFE because forEach callback is sync)
-                            (async () => {
-                                const senderDetail = chat.participantDetails?.[chat.lastMessage!.senderId];
-                                const senderName = senderDetail?.name || 'Alguém';
-
-                                // Use profilePhotoUrl from collaborator store (1:1, optimized)
-                                const { useCollaboratorStore } = await import('@/features/settings/stores/useCollaboratorStore');
-                                const collaborators = useCollaboratorStore.getState().collaborators;
-                                const senderCollab = collaborators.find(
-                                    c => c.authUid === chat.lastMessage!.senderId || c.id === chat.lastMessage!.senderId
-                                );
-                                const senderPhoto = senderCollab?.profilePhotoUrl || senderDetail?.photoUrl;
-                                const chatName = chat.type === 'group' && chat.name
-                                    ? chat.name
-                                    : senderName;
-
-                                const msgPreview = chat.lastMessage!.type === 'text'
-                                    ? chat.lastMessage!.content
-                                    : chat.lastMessage!.type === 'image'
-                                        ? '📷 Imagem'
-                                        : chat.lastMessage!.type === 'audio'
-                                            ? '🎤 Áudio'
-                                            : '📎 Arquivo';
-
-                                const { useNotificationStore } = await import('@/stores/useNotificationStore');
-                                useNotificationStore.getState().addNotification({
-                                    type: 'teamchat',
-                                    title: chat.type === 'group'
-                                        ? `${senderName} em ${chatName}`
-                                        : `Nova mensagem de ${senderName}`,
-                                    body: msgPreview,
-                                    link: `/equipe/chat/${chat.id}`,
-                                    senderName,
-                                    senderPhotoUrl: senderPhoto,
-                                    chatId: chat.id,
-                                }, { playSound: false });
-                            })();
+                            handleNewChatNotification(chat, userId);
                         }
                     }
                 });

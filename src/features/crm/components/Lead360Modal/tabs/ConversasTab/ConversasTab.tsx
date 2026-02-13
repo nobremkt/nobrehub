@@ -4,6 +4,8 @@ import { Lead } from '@/types/lead.types';
 import { MessageSquare, ExternalLink, Clock, CheckCircle, Plus } from 'lucide-react';
 import styles from './ConversasTab.module.css';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
+import { InboxService } from '@/features/inbox/services/InboxService';
+import { ROUTES } from '@/config';
 import { Button } from '@/design-system';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,13 +41,24 @@ export function ConversasTab({ lead }: ConversasTabProps) {
 
     const handleGoToConversation = (conversationId: string) => {
         selectConversation(conversationId);
-        navigate('/inbox');
+        navigate(ROUTES.inbox.conversation(conversationId));
     };
 
     // Navega para o Inbox para iniciar nova conversa com o lead
-    const handleStartConversation = () => {
-        // Navega para inbox com o phone como query param para buscar/criar conversa
-        navigate(`/inbox?phone=${encodeURIComponent(lead.phone || '')}`);
+    const handleStartConversation = async () => {
+        try {
+            const conversationId = await InboxService.findOrCreateConversation({
+                leadId: lead.id,
+                leadName: lead.name,
+                leadPhone: lead.phone || '',
+                leadEmail: lead.email,
+                leadCompany: lead.company,
+            });
+            selectConversation(conversationId);
+            navigate(ROUTES.inbox.conversation(conversationId));
+        } catch (error) {
+            console.error('Error starting conversation:', error);
+        }
     };
 
     const formatDate = (date: Date | undefined) => {

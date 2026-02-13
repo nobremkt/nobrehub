@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { createPortal } from 'react-dom';
 import { Modal, Button, Input } from '@/design-system';
 import { useTeamChatStore } from '../../stores/useTeamChatStore';
@@ -208,7 +209,7 @@ export const GroupDetailsModal = ({ isOpen, onClose, chat }: GroupDetailsModalPr
 
             } catch (error) {
                 console.error("Failed to upload group photo:", error);
-                alert("Erro ao atualizar foto do grupo.");
+                toast.error('Erro ao atualizar foto do grupo.');
                 // Revert preview if needed or just leave it
             } finally {
                 setIsLoading(false);
@@ -264,7 +265,7 @@ export const GroupDetailsModal = ({ isOpen, onClose, chat }: GroupDetailsModalPr
         const hasOtherParticipants = (chat.participants || []).length > 1;
 
         if (isSoleAdmin && hasOtherParticipants) {
-            alert("Você é o único administrador deste grupo. Por favor, promova outro membro a administrador antes de sair.");
+            toast.warn('Você é o único administrador. Promova outro membro a administrador antes de sair.');
             return;
         }
 

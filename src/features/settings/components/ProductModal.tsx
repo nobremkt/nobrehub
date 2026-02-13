@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { Modal, Input, Button, Checkbox, Dropdown, NumberInput } from '@/design-system';
 import { Product } from '../types';
 import { useProductStore } from '../stores/useProductStore';
@@ -49,7 +50,7 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }: ProductModalPro
 
         const priceNum = price ? parseFloat(price.replace(',', '.')) : undefined;
         if (!name) {
-            alert('Preencha o nome do produto');
+            toast.warn('Preencha o nome do produto');
             return;
         }
 

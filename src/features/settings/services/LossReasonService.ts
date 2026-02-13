@@ -14,7 +14,7 @@ export const LossReasonService = {
     getLossReasons: async (): Promise<LossReason[]> => {
         const { data, error } = await supabase
             .from('loss_reasons')
-            .select('*')
+            .select('id, name, is_active, created_at')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

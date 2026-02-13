@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
+import { toast } from 'react-toastify';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -104,7 +105,7 @@ export const DistributionList = () => {
                 producerIds,
                 user.id
             );
-            console.log(`${count} projetos distribuídos automaticamente`);
+            toast.success(`${count} projetos distribuídos automaticamente`);
         } catch (error) {
             console.error('Error auto-assigning all projects:', error);
         } finally {

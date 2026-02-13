@@ -83,6 +83,8 @@ export type { ProgressBarProps } from './ProgressBar';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 
+export { ErrorBoundary } from './ErrorBoundary';
+
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 
@@ -92,3 +94,7 @@ export type { TooltipProps } from './Tooltip';
 // Form Elements
 export { Textarea } from './Textarea';
 export type { TextareaProps } from './Textarea';
+
+// Layout
+export { SidebarWithTabs } from './SidebarWithTabs/SidebarWithTabs';
+export type { SidebarTab } from './SidebarWithTabs/SidebarWithTabs';

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { toast } from 'react-toastify';
 import { Modal, Button, Input, Checkbox } from '@/design-system';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
+import type { Collaborator } from '@/features/settings/types';
 import { useTeamChatStore } from '../../stores/useTeamChatStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Search, User, Users, MessageCircle, UsersRound } from 'lucide-react';
@@ -80,9 +82,9 @@ export const NewChatModal = ({ isOpen, onClose }: NewChatModalProps) => {
     };
 
     // For DM, direct click action
-    const handleStartDM = async (collaborator: any) => {
+    const handleStartDM = async (collaborator: Collaborator) => {
         if (!collaborator.authUid) {
-            alert("Este usuário não possui conta vinculada.");
+            toast.warn('Este usuário não possui conta vinculada.');
             return;
         }
 

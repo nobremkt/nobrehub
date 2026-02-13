@@ -14,7 +14,7 @@ export const OrganizationService = {
         try {
             const { data, error } = await supabase
                 .from('organization_settings')
-                .select('*')
+                .select('company_name, logo_url, primary_color')
                 .limit(1)
                 .single();
 

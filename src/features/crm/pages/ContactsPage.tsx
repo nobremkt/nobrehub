@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { ContactsTable } from '../components/Contacts/ContactsTable';
 import { ContactsFilterBar } from '../components/Contacts/ContactsFilterBar';
 import { ContactsQuickActions } from '../components/Contacts/ContactsQuickActions';
@@ -24,6 +25,9 @@ export const ContactsPage: React.FC = () => {
         syncContacts,
         setAvailableLossReasons,
         isLoading,
+        isLoadingMore,
+        hasMore,
+        loadMore,
         selectedIds,
         clearSelection,
     } = useContactsStore();
@@ -63,9 +67,9 @@ export const ContactsPage: React.FC = () => {
     const handleSync = async () => {
         const count = await syncContacts();
         if (count > 0) {
-            alert(`${count} contatos importados do Inbox!`);
+            toast.success(`${count} contatos importados do Inbox!`);
         } else {
-            alert('Nenhum novo contato encontrado no Inbox.');
+            toast.info('Nenhum novo contato encontrado no Inbox.');
         }
     };
 
@@ -124,6 +128,9 @@ export const ContactsPage: React.FC = () => {
             <ContactsTable
                 contacts={filteredContacts}
                 isLoading={isLoading}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
                 onContactClick={handleContactClick}
             />
 

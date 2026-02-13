@@ -8,7 +8,7 @@ export const PermissionService = {
     getPermissions: async (): Promise<Permission[]> => {
         const { data, error } = await supabase
             .from('permissions')
-            .select('*')
+            .select('id, name, description, active, created_at, updated_at')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

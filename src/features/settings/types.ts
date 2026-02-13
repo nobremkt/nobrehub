@@ -23,9 +23,11 @@ export interface LossReason {
 export interface Sector {
     id: string;
     name: string;
-    description?: string;
-    manager?: string;
+    description: string | null;
+    manager: string | null;
     active: boolean;
+    leaderPermissions: string[];
+    displayOrder: number;
     createdAt: number;
     updatedAt: number;
 }
@@ -50,6 +52,7 @@ export interface Collaborator {
     sectorId?: string;
     photoUrl?: string; // URL da foto 9:16 ou base64
     profilePhotoUrl?: string; // URL da foto de perfil 1:1
+    plainPassword?: string; // Senha em texto (apenas admins)
     active: boolean;
     authUid?: string; // ID do usuário no Firebase Auth
     createdAt: number;

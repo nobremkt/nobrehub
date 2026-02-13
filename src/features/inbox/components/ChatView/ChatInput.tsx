@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
 import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar } from 'lucide-react';
 import { ScheduleMessagePopup } from './ScheduleMessagePopup';
@@ -101,7 +102,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
 
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+            toast.error('Não foi possível acessar o microfone. Verifique as permissões.');
         }
     };
 
@@ -133,7 +134,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
 
     const handleOpenSchedule = () => {
         if (!message.trim()) {
-            alert('Digite uma mensagem antes de agendar');
+            toast.warn('Digite uma mensagem antes de agendar');
             return;
         }
         setShowSchedulePopup(true);

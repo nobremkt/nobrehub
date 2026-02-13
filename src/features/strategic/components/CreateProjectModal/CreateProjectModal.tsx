@@ -9,7 +9,7 @@ import { Modal, Input, Button, Switch, Checkbox } from '@/design-system';
 import { useStrategicProjectsStore } from '../../stores/useStrategicProjectsStore';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useAuthStore } from '@/stores';
-import { STRATEGIC_SECTOR_ID } from '../../services/StrategicProjectsService';
+import { STRATEGIC_SECTOR_ID } from '@/config/constants';
 import styles from './CreateProjectModal.module.css';
 
 interface CreateProjectModalProps {

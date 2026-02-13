@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import { Calendar, Clock, X, Smile, Paperclip, Mic, Camera, Folder, FileText, Plus } from 'lucide-react';
 import { Button } from '@/design-system';
 import styles from './ScheduleMessagePopup.module.css';
@@ -32,7 +33,7 @@ export const ScheduleMessagePopup: React.FC<ScheduleMessagePopupProps> = ({
         const scheduledDate = new Date(year, month - 1, day, hours, minutes);
 
         if (scheduledDate <= new Date()) {
-            alert('Selecione uma data/hora futura');
+            toast.warn('Selecione uma data/hora futura');
             return;
         }
 

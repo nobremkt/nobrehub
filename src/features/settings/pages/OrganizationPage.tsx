@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 
 import { Card, CardHeader, CardBody, Input, Button, Badge } from '@/design-system';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
@@ -35,7 +36,7 @@ export const OrganizationPage: React.FC = () => {
         const file = e.target.files?.[0];
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                alert("A imagem deve ter no máximo 2MB.");
+                toast.warn('A imagem deve ter no máximo 2MB.');
                 return;
             }
 

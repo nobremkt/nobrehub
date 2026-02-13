@@ -102,6 +102,23 @@ export async function getUserData(uid: string, email?: string): Promise<User | n
         }
     }
 
+    // Buscar permissões de líder (se for manager de algum setor)
+    if (data.name) {
+        const { data: sectorRows } = await supabase
+            .from('sectors')
+            .select('leader_permissions')
+            .eq('manager', data.name)
+            .eq('active', true);
+
+        if (sectorRows) {
+            for (const s of sectorRows) {
+                for (const p of (s.leader_permissions || [])) {
+                    if (!permissions.includes(p)) permissions.push(p);
+                }
+            }
+        }
+    }
+
     const roleData = data.roles as { id: string; name: string } | null;
     const sectorData = data.sectors as { id: string; name: string } | null;
 

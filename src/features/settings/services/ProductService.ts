@@ -14,7 +14,7 @@ export const ProductService = {
     getProducts: async (): Promise<Product[]> => {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select('id, name, base_points, active, created_at')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

@@ -9,6 +9,14 @@
 
 import { supabase } from '@/config/supabase';
 import { ProjectStatus } from '@/types/project.types';
+import type { Database } from '@/types/supabase';
+
+// ─── Supabase Row Types ──────────────────────────────────────────────
+type ProjectRow = Database['public']['Tables']['projects']['Row'] & {
+    lead_name?: string | null;
+    producer_name?: string | null;
+    post_sales_name?: string | null;
+};
 
 const PUBLIC_STATUS_BASE_PATH = '/status/projeto';
 
@@ -66,7 +74,7 @@ const generateToken = (): string => {
 };
 
 /** Map a project row to PublicProjectStatus */
-function rowToPublicStatus(row: any): PublicProjectStatus | null {
+function rowToPublicStatus(row: ProjectRow): PublicProjectStatus | null {
     if (!row) return null;
 
     return {

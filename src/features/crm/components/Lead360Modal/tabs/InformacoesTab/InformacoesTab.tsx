@@ -18,7 +18,7 @@ export function InformacoesTab({ lead }: InformacoesTabProps) {
         setFormData(lead);
     }, [lead]);
 
-    const handleInputChange = (field: keyof Lead, value: any) => {
+    const handleInputChange = (field: keyof Lead, value: Lead[keyof Lead]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -26,7 +26,7 @@ export function InformacoesTab({ lead }: InformacoesTabProps) {
         // Aqui chamaria a função de update (props.onUpdate ou similar)
         // Como não temos isso na interface ainda, vou apenas sair do modo edição
         // fingindo que salvou localmente para feedback visual (mas não persiste sem backend)
-        console.log('Dados salvos:', formData);
+        // Form data saved
         setIsEditing(false);
         // Idealmente: await onUpdate(formData);
     };

@@ -15,7 +15,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     width: 100%;
-    max-width: 500px;
+    max-width: 640px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -76,6 +76,26 @@
     margin-top: var(--spacing-4);
     padding-top: var(--spacing-4);
     border-top: 1px solid var(--color-border);
+}
+
+/* Two-column row for Pipeline + Origem */
+.row {
+    display: flex;
+    gap: var(--spacing-4);
+    align-items: flex-end;
+}
+
+.row>* {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Tag pills list */
+.tagsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    margin-top: calc(var(--spacing-2) * -1);
 }
 
 @keyframes fadeIn {

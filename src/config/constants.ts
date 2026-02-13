@@ -84,3 +84,17 @@ export const STATUS_LABELS = {
         inactive: 'Inativo',
     },
 } as const;
+
+// ─── Hardcoded Supabase/Firestore IDs (single source of truth) ───────────────
+
+export const SECTOR_IDS = {
+    PRODUCAO: '7OhlXcRc8Vih9n7p4PdZ',
+    POS_VENDAS: '2OByfKttFYPi5Cxbcs2t',
+    VENDAS: 'vQIAMfIXt1xKWXHG2Scq',
+    ESTRATEGICO: 'zeekJ4iY9voX3AURpar5',
+    GERENCIA: 'YIK77HEH6qESkWzVYvXK',
+} as const;
+
+export const LIDER_ROLE_ID = '2Qb0NHjub0kaYFYDITqQ';
+
+export const STRATEGIC_SECTOR_ID = SECTOR_IDS.ESTRATEGICO;

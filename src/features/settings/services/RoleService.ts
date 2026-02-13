@@ -8,7 +8,7 @@ export const RoleService = {
     getRoles: async (): Promise<Role[]> => {
         const { data, error } = await supabase
             .from('roles')
-            .select('*')
+            .select('id, name, description, permissions, active, created_at, updated_at')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

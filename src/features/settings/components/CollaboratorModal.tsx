@@ -125,9 +125,9 @@ export const CollaboratorModal = ({ isOpen, onClose, collaboratorToEdit }: Colla
                 });
             }
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            setSubmitError(error.message || 'Erro ao salvar colaborador');
+            setSubmitError(error instanceof Error ? error.message : 'Erro ao salvar colaborador');
         }
     };
 

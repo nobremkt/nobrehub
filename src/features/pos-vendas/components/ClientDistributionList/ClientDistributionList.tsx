@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
+import { toast } from 'react-toastify';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { PostSalesDistributionService } from '../../services/PostSalesDistributionService';
@@ -99,7 +100,7 @@ export const ClientDistributionList = () => {
         try {
             const postSalesIds = postSalesTeam.map(p => p.id);
             const count = await PostSalesDistributionService.autoAssignAllPending(postSalesIds);
-            console.log(`${count} clientes distribuídos automaticamente`);
+            toast.success(`${count} clientes distribuídos automaticamente`);
         } catch (error) {
             console.error('Error auto-assigning all clients:', error);
         } finally {

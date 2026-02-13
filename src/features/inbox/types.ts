@@ -1,6 +1,14 @@
 export type DealStatus = 'open' | 'won' | 'lost';
 export type ConversationContext = 'sales' | 'post_sales';
 
+/** WhatsApp API template component (body, header, button) with parameters */
+export interface TemplateComponent {
+    type: 'body' | 'header' | 'button';
+    parameters: { type: string; text?: string; image?: { link: string } }[];
+    sub_type?: string;
+    index?: number;
+}
+
 export interface Conversation {
     id: string;
     leadId: string;
@@ -8,7 +16,6 @@ export interface Conversation {
     leadPhone: string;
     leadEmail?: string;
     leadCompany?: string;
-    instagram?: string;
     leadAvatar?: string;
     tags?: string[];
     notes?: string;
@@ -20,7 +27,6 @@ export interface Conversation {
     // Context (sales or post_sales)
     context?: ConversationContext;
     postSalesId?: string; // userId do pós-vendedor atribuído
-    transferredToPostSalesAt?: Date;
     // Deal/Negócio fields
     pipeline?: string;
     stage?: string;
@@ -31,11 +37,14 @@ export interface Conversation {
     isPinned?: boolean;
     isBlocked?: boolean;
     isArchived?: boolean;
-    // Campos de Contato (sincronizados com Modal360)
+    // Campos de Contato — synced via updateConversationDetails → leads table
+    // NOTE: These fields are NOT stored in the `conversations` table.
+    // They come from the `leads` table via JOIN or are used only in the ProfilePanel UI.
     birthday?: string;
     position?: string;
+    instagram?: string;
     utmSource?: string;
-    // Campos de Empresa (sincronizados com Modal360)
+    // Campos de Empresa — synced via updateConversationDetails → leads table
     segment?: string;
     employees?: string;
     revenue?: string;
@@ -69,6 +78,6 @@ export interface MessageTemplate {
 }
 
 export interface SearchFilters {
-    status: 'all' | 'unread' | 'mine';
+    status: 'all' | 'mine' | 'unassigned';
     query: string;
 }

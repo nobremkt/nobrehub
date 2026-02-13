@@ -19,6 +19,26 @@ Workflow para integrar o trabalho de uma branch de agente na branch `main`.
 
 ---
 
+## ⚠️ POR QUE SINCRONIZAR É CRÍTICO
+
+O Git faz merge comparando **3 versões** de cada arquivo:
+1. **Ancestral comum** — o ponto onde a branch saiu da main
+2. **Main atual** — com merges de outras branches (ex: `codex-alemanha`)
+3. **Sua branch** — com as suas mudanças
+
+**O risco**: Se sua branch foi criada (ou sincronizada pela última vez) **antes** de um merge de outra branch na main, o Git considera que a versão "antiga" do arquivo é a sua versão intencionada. Quando ele compara:
+- Se a outra branch mudou o arquivo, mas a sua não → Git mantém a mudança da outra ✅
+- Se ambas mudaram **linhas diferentes** → Git faz merge automático ✅  
+- Se ambas mudaram **as mesmas linhas** → Git gera CONFLITO (você resolve manualmente) ✅
+- **PERIGO**: Se a sua branch editou um arquivo que a outra branch **também editou**, e sua versão é baseada no arquivo antigo (pré-merge da outra), a sua versão pode **sobrescrever silenciosamente** as mudanças da outra branch ❌
+
+**A proteção**: Fazer `git pull origin main` **na sua branch ANTES** do merge traz todas as mudanças da main para dentro da sua branch. Isso:
+1. Mostra conflitos **agora**, quando você pode resolvê-los com calma
+2. Garante que seu código é baseado na versão mais recente da main
+3. Quando você mergear na main depois, não vai sobrescrever nada
+
+---
+
 ## Passos
 
 ### 0. 🚨 OBRIGATÓRIO: Sincronizar branch com a main
@@ -26,7 +46,7 @@ Workflow para integrar o trabalho de uma branch de agente na branch `main`.
 ```powershell
 git pull origin main
 ```
-> **NUNCA PULE ESTE PASSO.** Outro agente pode ter mergeado na main desde a última sessão. Se não sincronizar, o merge pode quebrar o build com conflitos silenciosos (tipos desatualizados, interfaces incompatíveis). Resolve conflitos se necessário antes de prosseguir.
+> **NUNCA PULE ESTE PASSO.** Outro agente pode ter mergeado na main desde a última sessão. Se não sincronizar, o merge pode sobrescrever mudanças de outras branches silenciosamente. Resolva conflitos se necessário antes de prosseguir.
 
 ### 1. Garantir que a branch está limpa
 // turbo

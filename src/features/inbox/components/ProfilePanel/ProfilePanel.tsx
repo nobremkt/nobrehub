@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useInboxStore } from '../../stores/useInboxStore';
-import { Tag, PhoneInput, Dropdown, Modal, Button } from '@/design-system';
-import { formatPhone } from '@/utils';
-import { DealStatus, Conversation } from '../../types';
+import { Tag } from '@/design-system';
 import {
     Phone,
     Mail,
@@ -15,13 +13,8 @@ import {
     FileText,
     History,
     Plus,
-    Rocket,
-    Edit2,
-    Check,
-    X,
     Bell,
     ArrowRightLeft,
-    MessagesSquare,
     ExternalLink
 } from 'lucide-react';
 import { getInitials } from '@/utils';
@@ -30,10 +23,19 @@ import { useCollaboratorStore } from '@/features/settings/stores/useCollaborator
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { useLossReasonStore } from '@/features/settings/stores/useLossReasonStore';
 import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
-import { UserStatusIndicator } from '@/features/presence/components/UserStatusIndicator';
 import { toast } from 'react-toastify';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 import { CreateProjectModal } from '@/features/production/components/CreateProjectModal';
+
+// Sub-components
+import { DealSection } from './DealSection';
+import { ContactFieldsSection } from './ContactFieldsSection';
+import { CompanySection } from './CompanySection';
+import { NotesSection } from './NotesSection';
+import { LossReasonModal } from './LossReasonModal';
+import { TransferModal } from './TransferModal';
+
+// ─── Accordion ───────────────────────────────────────────────────────────────
 
 interface AccordionSectionProps {
     title: string;
@@ -76,6 +78,8 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
     );
 };
 
+// ─── ProfilePanel ────────────────────────────────────────────────────────────
+
 export const ProfilePanel: React.FC = () => {
     const { selectedConversationId, conversations, updateConversationDetails } = useInboxStore();
     const { collaborators, fetchCollaborators } = useCollaboratorStore();
@@ -83,28 +87,13 @@ export const ProfilePanel: React.FC = () => {
     const { lossReasons, fetchLossReasons } = useLossReasonStore();
     const teamStatus = useTeamStatus();
 
-    // Inline Editing State
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState('');
-
-    // Loss Reason Modal State
+    // Modal state
     const [showLossModal, setShowLossModal] = useState(false);
-    const [selectedLossReason, setSelectedLossReason] = useState<string>('');
-
-    // Transfer Modal State
     const [showTransferModal, setShowTransferModal] = useState(false);
-
-    // Notes Editing State
-    const [isEditingNote, setIsEditingNote] = useState(false);
-    const [noteValue, setNoteValue] = useState('');
-
-    // Lead360 Modal State
     const [showLead360Modal, setShowLead360Modal] = useState(false);
-
-    // Create Project Modal State
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
-    // Motivos de perda dinâmicos (vem das configurações, ordenados por order)
+    // Dynamic loss reasons from settings
     const LOSS_REASONS = [...lossReasons]
         .filter(r => r.active)
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
@@ -140,7 +129,6 @@ export const ProfilePanel: React.FC = () => {
     }, [fetchCollaborators, collaborators.length, fetchSectors, sectors.length, fetchLossReasons, lossReasons.length]);
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
-
     const assignedMember = conversation ? collaborators.find(c => c.id === conversation.assignedTo) : null;
 
     const handleTransfer = (userId: string) => {
@@ -164,6 +152,7 @@ export const ProfilePanel: React.FC = () => {
         toast.success(`Transferido para ${member?.name || 'membro da equipe'}`);
     };
 
+    // ─── Empty state ─────────────────────────────────────────────────────────
     if (!selectedConversationId || !conversation) {
         return (
             <div className={styles.panel}>
@@ -179,97 +168,7 @@ export const ProfilePanel: React.FC = () => {
         toast.success('Copiado!');
     };
 
-    const startEditing = (field: string, currentValue: string | undefined) => {
-        setEditingField(field);
-        setEditValue(currentValue || '');
-    };
-
-    const cancelEditing = () => {
-        setEditingField(null);
-        setEditValue('');
-    };
-
-    const saveEditing = async () => {
-        if (!selectedConversationId || !editingField) return;
-
-        const updates: Partial<Conversation> = {};
-        // Campos de contato
-        if (editingField === 'name') updates.leadName = editValue;
-        if (editingField === 'phone') updates.leadPhone = editValue;
-        if (editingField === 'email') updates.leadEmail = editValue;
-        if (editingField === 'instagram') updates.instagram = editValue;
-        if (editingField === 'birthday') updates.birthday = editValue;
-        if (editingField === 'position') updates.position = editValue;
-        // Campos de empresa
-        if (editingField === 'company') updates.leadCompany = editValue;
-        if (editingField === 'segment') updates.segment = editValue;
-        if (editingField === 'employees') updates.employees = editValue;
-        if (editingField === 'revenue') updates.revenue = editValue;
-        if (editingField === 'website') updates.website = editValue;
-
-        await updateConversationDetails(selectedConversationId, updates);
-        setEditingField(null);
-        setEditValue('');
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') saveEditing();
-        if (e.key === 'Escape') cancelEditing();
-    };
-
-    const renderEditableField = (field: string, label: string, value: string | undefined, placeholder?: string) => {
-        const isEditing = editingField === field;
-
-        return (
-            <div className={styles.field}>
-                <span className={styles.fieldLabel}>{label}</span>
-                {isEditing ? (
-                    <div className={styles.editContainer}>
-                        {field === 'phone' ? (
-                            <div style={{ flex: 1 }}>
-                                <PhoneInput
-                                    value={editValue}
-                                    onChange={(val) => setEditValue(val)}
-                                    placeholder={placeholder}
-                                    className={styles.phoneInputOverride}
-                                />
-                            </div>
-                        ) : (
-                            <input
-                                className={styles.editInput}
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={placeholder}
-                                autoFocus
-                            />
-                        )}
-                        <div className={styles.editActions}>
-                            <button className={`${styles.editActionBtn} ${styles.save}`} onClick={saveEditing}>
-                                <Check size={14} />
-                            </button>
-                            <button className={`${styles.editActionBtn} ${styles.cancel}`} onClick={cancelEditing}>
-                                <X size={14} />
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <span className={styles.fieldValue}>
-                            {field === 'phone' && value ? formatPhone(value) : (value || '-')}
-                        </span>
-                        <button
-                            className={styles.fieldEdit}
-                            onClick={() => startEditing(field, value)}
-                        >
-                            <Edit2 size={14} />
-                        </button>
-                    </>
-                )}
-            </div>
-        );
-    };
-
+    // ─── Render ──────────────────────────────────────────────────────────────
     return (
         <div className={styles.panel}>
             {/* Header com Avatar e Nome */}
@@ -368,7 +267,6 @@ export const ProfilePanel: React.FC = () => {
                 >
                     <ArrowRightLeft size={18} />
                 </button>
-
             </div>
 
             {/* Accordion Sections */}
@@ -379,97 +277,25 @@ export const ProfilePanel: React.FC = () => {
                     icon={<Briefcase size={16} />}
                     defaultOpen={true}
                 >
-                    <div className={styles.dealSection}>
-                        <div className={styles.dealPipeline}>
-                            <span className={styles.dealLabel}>Pipeline</span>
-                            <span className={styles.dealValue}>{conversation.pipeline === 'low-ticket' ? 'Vendas LT' : 'Vendas HT'}</span>
-                        </div>
-                        <div className={styles.dealStage}>
-                            <span className={styles.dealLabel}>Etapa</span>
-                            <Dropdown
-                                options={[
-                                    { label: 'Prospecção', value: 'prospeccao' },
-                                    { label: 'Qualificação', value: 'qualificacao' },
-                                    { label: 'Apresentação', value: 'apresentacao' },
-                                    { label: 'Negociação', value: 'negociacao' },
-                                    { label: 'Fechamento', value: 'fechamento' },
-                                ]}
-                                value={conversation.stage || 'prospeccao'}
-                                onChange={(val) => updateConversationDetails(conversation.id, { stage: val as string })}
-                                placeholder="Selecione a etapa"
-                                noSound
-                            />
-                        </div>
-                        <div className={styles.dealStatus}>
-                            <button
-                                className={`${styles.statusButton} ${styles.won} ${conversation.dealStatus === 'won' ? styles.active : ''}`}
-                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'won' as DealStatus, status: 'closed' })}
-                            >
-                                Ganho
-                            </button>
-                            <button
-                                className={`${styles.statusButton} ${styles.lost} ${conversation.dealStatus === 'lost' ? styles.active : ''}`}
-                                onClick={() => setShowLossModal(true)}
-                            >
-                                Perdido
-                            </button>
-                            <button
-                                className={`${styles.statusButton} ${styles.open} ${(!conversation.dealStatus || conversation.dealStatus === 'open') ? styles.active : ''}`}
-                                onClick={() => updateConversationDetails(conversation.id, { dealStatus: 'open' as DealStatus, status: 'open' })}
-                            >
-                                Aberto
-                            </button>
-                        </div>
-
-                        {/* CTA Criar Projeto - só aparece quando deal é ganho */}
-                        {conversation.dealStatus === 'won' && (
-                            <div className={styles.createProjectBanner}>
-                                <div className={styles.bannerHeader}>
-                                    <span className={styles.bannerEmoji}>🎉</span>
-                                    <span className={styles.bannerText}>Venda ganha!</span>
-                                </div>
-                                <button
-                                    className={styles.createProjectBtn}
-                                    onClick={() => setShowCreateProjectModal(true)}
-                                >
-                                    <Rocket size={16} />
-                                    Criar Projeto
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <DealSection
+                        conversation={conversation}
+                        assignedMemberName={assignedMember?.name || null}
+                        onUpdateConversation={updateConversationDetails}
+                        onShowLossModal={() => setShowLossModal(true)}
+                        onShowCreateProject={() => setShowCreateProjectModal(true)}
+                    />
                 </AccordionSection>
 
-                {/* Contato */}
+                {/* Dados do Contato */}
                 <AccordionSection
-                    title="Contato"
+                    title="Dados do Contato"
                     icon={<User size={16} />}
                     defaultOpen={true}
                 >
-                    <div className={styles.fieldList}>
-                        {renderEditableField('name', 'Nome', conversation.leadName)}
-                        {renderEditableField('birthday', 'Aniversário', conversation.birthday, 'DD/MM/AAAA')}
-                        {renderEditableField('email', 'Email', conversation.leadEmail)}
-                        {renderEditableField('phone', 'Telefone', conversation.leadPhone)}
-                        {renderEditableField('instagram', 'Instagram', conversation.instagram, '@username')}
-                        {renderEditableField('position', 'Cargo', conversation.position, 'Ex: Gerente')}
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Notas</span>
-                            <span className={styles.fieldValue}>{conversation.notes || '-'}</span>
-                        </div>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Origem (UTM)</span>
-                            <span className={styles.fieldValue}>{conversation.utmSource || 'Desconhecida'}</span>
-                        </div>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Tags</span>
-                            <div className={styles.tagsInline}>
-                                {conversation.tags?.map(tag => (
-                                    <Tag key={tag} variant="default" size="sm">{tag}</Tag>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                    <ContactFieldsSection
+                        conversation={conversation}
+                        onUpdateConversation={updateConversationDetails}
+                    />
                 </AccordionSection>
 
                 {/* Empresa */}
@@ -477,103 +303,22 @@ export const ProfilePanel: React.FC = () => {
                     title="Empresa"
                     icon={<Briefcase size={16} />}
                 >
-                    <div className={styles.fieldList}>
-                        {renderEditableField('company', 'Nome', conversation.leadCompany)}
-                        {renderEditableField('segment', 'Segmento', conversation.segment, 'Ex: Tecnologia')}
-                        {renderEditableField('employees', 'Funcionários', conversation.employees, 'Ex: 11-50')}
-                        {renderEditableField('revenue', 'Faturamento', conversation.revenue, 'Ex: R$ 500k - 1M')}
-                        {renderEditableField('website', 'Site', conversation.website, 'www.empresa.com.br')}
-                    </div>
+                    <CompanySection
+                        conversation={conversation}
+                        onUpdateConversation={updateConversationDetails}
+                    />
                 </AccordionSection>
 
-                {/* Negócio (Detalhes) */}
-                <AccordionSection
-                    title="Negócio"
-                    icon={<Briefcase size={16} />}
-                >
-                    <div className={styles.fieldList}>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Origem</span>
-                            <span className={styles.fieldValue}>WhatsApp</span>
-                        </div>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Valor</span>
-                            <span className={styles.fieldValue}>R$ 0,00</span>
-                            <button className={styles.fieldEdit}><Edit2 size={14} /></button>
-                        </div>
-                        <div className={styles.field}>
-                            <span className={styles.fieldLabel}>Dono</span>
-                            <span className={styles.fieldValue}>
-                                {assignedMember ? assignedMember.name : 'Não atribuído'}
-                            </span>
-                            <button className={styles.fieldEdit}>
-                                <Edit2 size={14} />
-                            </button>
-                        </div>
-                    </div>
-                </AccordionSection>
-
+                {/* Notas */}
                 <AccordionSection
                     title="Notas"
                     icon={<FileText size={16} />}
                 >
-                    <div className={styles.notesSection}>
-                        {isEditingNote ? (
-                            <>
-                                <textarea
-                                    className={styles.noteTextarea}
-                                    value={noteValue}
-                                    onChange={(e) => setNoteValue(e.target.value)}
-                                    placeholder="Digite sua nota aqui..."
-                                    autoFocus
-                                    rows={4}
-                                />
-                                <div className={styles.noteActions}>
-                                    <button
-                                        className={styles.noteCancelBtn}
-                                        onClick={() => {
-                                            setIsEditingNote(false);
-                                            setNoteValue(conversation?.notes || '');
-                                        }}
-                                    >
-                                        <X size={14} />
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        className={styles.noteSaveBtn}
-                                        onClick={() => {
-                                            if (selectedConversationId) {
-                                                updateConversationDetails(selectedConversationId, { notes: noteValue });
-                                                toast.success('Nota salva!');
-                                            }
-                                            setIsEditingNote(false);
-                                        }}
-                                    >
-                                        <Check size={14} />
-                                        Salvar
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {conversation.notes ? (
-                                    <p className={styles.notesText}>{conversation.notes}</p>
-                                ) : (
-                                    <p className={styles.notesEmpty}>Nenhuma nota adicionada</p>
-                                )}
-                                <button
-                                    className={styles.addNoteButton}
-                                    onClick={() => {
-                                        setNoteValue(conversation.notes || '');
-                                        setIsEditingNote(true);
-                                    }}
-                                >
-                                    <Plus size={14} />
-                                    {conversation.notes ? 'Editar nota' : 'Adicionar nota'}
-                                </button>
-                            </>
-                        )}
-                    </div>
+                    <NotesSection
+                        conversation={conversation}
+                        conversationId={selectedConversationId}
+                        onUpdateConversation={updateConversationDetails}
+                    />
                 </AccordionSection>
 
                 {/* Histórico */}
@@ -581,217 +326,38 @@ export const ProfilePanel: React.FC = () => {
                     title="Histórico"
                     icon={<History size={16} />}
                 >
-                    <div className={styles.historySection}>
-                        <div className={styles.historyItem}>
-                            <div className={styles.historyDot} />
-                            <div className={styles.historyContent}>
-                                <span className={styles.historyText}>Conversa iniciada</span>
-                                <span className={styles.historyTime}>Hoje, 14:30</span>
-                            </div>
-                        </div>
-                        <div className={styles.historyItem}>
-                            <div className={styles.historyDot} />
-                            <div className={styles.historyContent}>
-                                <span className={styles.historyText}>Lead criado via WhatsApp</span>
-                                <span className={styles.historyTime}>Hoje, 14:28</span>
-                            </div>
-                        </div>
-                    </div>
-                </AccordionSection>
-
-                {/* Conversas */}
-                <AccordionSection
-                    title="Conversas"
-                    icon={<MessagesSquare size={16} />}
-                    badge={1}
-                >
-                    <div className={styles.conversationsSection}>
-                        <div className={styles.conversationItem}>
-                            <div className={styles.conversationIcon}>
-                                <MessageSquare size={14} />
-                            </div>
-                            <div className={styles.conversationInfo}>
-                                <span className={styles.conversationChannel}>
-                                    {conversation.channel === 'whatsapp' ? 'WhatsApp' : conversation.channel}
-                                </span>
-                                <span className={styles.conversationDate}>
-                                    {new Date(conversation.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                            </div>
-                            <span className={styles.conversationStatus}>
-                                {conversation.status === 'open' ? 'Aberta' : 'Fechada'}
-                            </span>
-                        </div>
-                    </div>
+                    <p className={styles.comingSoon}>Em breve</p>
                 </AccordionSection>
             </div>
 
-            {/* Modal de Motivo de Perda */}
-            <Modal
+            {/* ═══ Modals ═══ */}
+            <LossReasonModal
                 isOpen={showLossModal}
-                onClose={() => {
-                    setShowLossModal(false);
-                    setSelectedLossReason('');
-                }}
-                title="Motivo da Perda"
-                size="auto"
-                footer={
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                        <Button
-                            variant="ghost"
-                            onClick={() => {
-                                setShowLossModal(false);
-                                setSelectedLossReason('');
-                            }}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            variant="primary"
-                            disabled={!selectedLossReason}
-                            onClick={() => {
-                                updateConversationDetails(conversation.id, {
-                                    dealStatus: 'lost' as DealStatus,
-                                    lossReason: selectedLossReason,
-                                    status: 'closed'
-                                });
-                                setShowLossModal(false);
-                                setSelectedLossReason('');
-                                toast.success('Lead marcado como perdido');
-                            }}
-                        >
-                            Confirmar
-                        </Button>
-                    </div>
-                }
-            >
-                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
-                    Selecione o motivo pelo qual este lead foi perdido:
-                </p>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '12px'
-                }}>
-                    {LOSS_REASONS.map((reason) => (
-                        <Button
-                            key={reason.value}
-                            variant={selectedLossReason === reason.value ? 'primary' : 'ghost'}
-                            onClick={() => setSelectedLossReason(reason.value)}
-                            fullWidth
-                            style={{
-                                height: '60px',
-                                justifyContent: 'flex-start',
-                                textAlign: 'left',
-                                opacity: selectedLossReason && selectedLossReason !== reason.value ? 0.5 : 1,
-                                border: selectedLossReason === reason.value
-                                    ? 'none'
-                                    : '1px solid var(--color-border)',
-                                boxShadow: selectedLossReason === reason.value
-                                    ? '0 4px 12px rgba(220, 38, 38, 0.4)'
-                                    : 'none',
-                            }}
-                        >
-                            {reason.label}
-                        </Button>
-                    ))}
-                </div>
-            </Modal>
+                onClose={() => setShowLossModal(false)}
+                conversation={conversation}
+                lossReasons={LOSS_REASONS}
+                onUpdateConversation={updateConversationDetails}
+            />
 
-            {/* Modal de Transferência */}
-            <Modal
+            <TransferModal
                 isOpen={showTransferModal}
                 onClose={() => setShowTransferModal(false)}
-                title="Transferir Conversa"
-                size="auto"
-            >
-                <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
-                    Selecione um membro de Vendas ou Pós-Vendas:
-                </p>
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    maxHeight: '300px',
-                    overflowY: 'auto'
-                }}>
-                    {transferableCollaborators.length === 0 ? (
-                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '20px' }}>
-                            Nenhum membro disponível no momento
-                        </p>
-                    ) : (
-                        transferableCollaborators.map(member => {
-                            const userStatus = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
-                            const isCurrentAssigned = member.id === conversation.assignedTo;
-
-                            return (
-                                <button
-                                    key={member.id}
-                                    onClick={() => handleTransfer(member.id)}
-                                    disabled={isCurrentAssigned}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        padding: '12px',
-                                        background: isCurrentAssigned ? 'var(--color-primary-500)' : 'var(--color-surface)',
-                                        border: '1px solid var(--color-border)',
-                                        borderRadius: 'var(--radius-md)',
-                                        cursor: isCurrentAssigned ? 'not-allowed' : 'pointer',
-                                        opacity: isCurrentAssigned ? 0.7 : 1,
-                                        transition: 'all 0.15s ease',
-                                        width: '100%',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '36px',
-                                        height: '36px',
-                                        borderRadius: '50%',
-                                        background: 'var(--color-primary-500)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'white',
-                                        fontWeight: 600,
-                                        fontSize: '14px',
-                                        position: 'relative',
-                                        overflow: 'hidden'
-                                    }}>
-                                        {member.photoUrl ? (
-                                            <img src={member.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            getInitials(member.name)
-                                        )}
-                                        <div style={{ position: 'absolute', bottom: -2, right: -2 }}>
-                                            <UserStatusIndicator status={userStatus} size="sm" />
-                                        </div>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                                            {member.name}
-                                        </div>
-                                        {isCurrentAssigned && (
-                                            <div style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
-                                                Atribuído atualmente
-                                            </div>
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })
-                    )}
-                </div>
-            </Modal>
+                conversation={conversation}
+                transferableCollaborators={transferableCollaborators}
+                teamStatus={teamStatus}
+                onTransfer={handleTransfer}
+            />
 
             {/* Create Project Modal */}
-            <CreateProjectModal
-                isOpen={showCreateProjectModal}
-                onClose={() => setShowCreateProjectModal(false)}
-                leadId={conversation.leadId || conversation.id}
-                leadName={conversation.leadName}
-                conversationId={conversation.id}
-            />
+            {showCreateProjectModal && (
+                <CreateProjectModal
+                    isOpen={showCreateProjectModal}
+                    onClose={() => setShowCreateProjectModal(false)}
+                    leadId={conversation.leadId || ''}
+                    leadName={conversation.leadName}
+                    conversationId={conversation.id}
+                />
+            )}
 
             {/* Lead 360° Modal */}
             <Lead360Modal

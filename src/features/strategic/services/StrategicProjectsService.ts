@@ -13,8 +13,6 @@ import { supabase } from '@/config/supabase';
 import { useAuthStore } from '@/stores';
 import { StrategicProject, ProjectTask, TaskPriority, TaskComment } from '../types';
 
-// Strategic Sector ID
-export const STRATEGIC_SECTOR_ID = 'zeekJ4iY9voX3AURpar5';
 
 // ─── Row → Frontend type mappers ─────────────────────────────────────────────
 
