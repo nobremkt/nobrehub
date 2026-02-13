@@ -48,6 +48,16 @@ const FORM_ORIGIN_SOURCE = {
     'site-institucional': 'site',
 };
 
+/** Map formOrigin → pipeline (high-ticket for social media products, low-ticket for general site) */
+const FORM_ORIGIN_PIPELINE = {
+    'lp-social-media': 'high-ticket',
+    'captacao-social-media': 'high-ticket',
+    'lp-proposta': 'high-ticket',
+    'site-contato': 'low-ticket',
+    'site-institucional': 'low-ticket',
+};
+const DEFAULT_PIPELINE = 'low-ticket';
+
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -136,8 +146,10 @@ export default async function handler(req, res) {
 
         // ── CREATE new lead ─────────────────────────────────────────────────
 
-        // Get the first stage of the high-ticket pipeline for new leads
-        const firstStageId = await getFirstStageId(supabase, 'high-ticket');
+        // Resolve pipeline from formOrigin (social media → high-ticket, site → low-ticket)
+        const formOrigin = (leadData.formOrigin || '').toLowerCase();
+        const pipeline = FORM_ORIGIN_PIPELINE[formOrigin] || DEFAULT_PIPELINE;
+        const firstStageId = await getFirstStageId(supabase, pipeline);
 
         // Auto-distribute: find the salesperson with fewest active leads
         const responsibleId = await getNextSalesperson(supabase);
@@ -149,7 +161,7 @@ export default async function handler(req, res) {
                 phone: cleanPhone,
                 email: leadData.email || null,
                 company: leadData.company || null,
-                pipeline: 'high-ticket',
+                pipeline,
                 stage_id: firstStageId,
                 responsible_id: responsibleId,
                 deal_status: 'open',
