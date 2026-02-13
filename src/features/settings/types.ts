@@ -50,6 +50,7 @@ export interface Collaborator {
     phone?: string;
     roleId?: string;
     sectorId?: string;
+    sectorName?: string; // Nome do setor (opcional, para display)
     photoUrl?: string; // URL da foto 9:16 ou base64
     profilePhotoUrl?: string; // URL da foto de perfil 1:1
     plainPassword?: string; // Senha em texto (apenas admins)

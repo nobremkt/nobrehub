@@ -58,7 +58,7 @@ export interface Message {
     id: string;
     conversationId: string;
     content: string;
-    type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'system';
+    type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'system' | 'template';
     direction: 'in' | 'out';
     status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
     senderId?: string; // userId if direction is out

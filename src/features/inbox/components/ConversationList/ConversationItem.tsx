@@ -9,12 +9,14 @@ interface ConversationItemProps {
     conversation: Conversation;
     isActive: boolean;
     onClick: () => void;
+    assignedToName?: string;
 }
 
 export const ConversationItem: React.FC<ConversationItemProps> = ({
     conversation,
     isActive,
-    onClick
+    onClick,
+    assignedToName
 }) => {
     const lastMessageTime = useMemo(() => {
         if (!conversation.lastMessage) return '';
@@ -26,6 +28,8 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
         return formatRelativeTime(new Date(dateVal));
     }, [conversation.lastMessage]);
 
+    const assignedInitials = assignedToName ? getInitials(assignedToName).substring(0, 2) : null;
+
     return (
         <div
             className={clsx(styles.item, { [styles.itemActive]: isActive })}
@@ -36,6 +40,13 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
                     <img src={conversation.leadAvatar} alt={conversation.leadName} className={styles.avatarImg} />
                 ) : (
                     <span className={styles.initials}>{getInitials(conversation.leadName || '')}</span>
+                )}
+
+                {/* Vendor Indicator Badge */}
+                {assignedInitials && (
+                    <div className={styles.vendorBadge} title={`Atribuído a: ${assignedToName}`}>
+                        {assignedInitials}
+                    </div>
                 )}
             </div>
 

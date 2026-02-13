@@ -10,6 +10,7 @@ import { SessionWarning } from './SessionWarning';
 import { SendTemplateModal } from '../SendTemplateModal';
 import type { TemplateComponent } from '../../types';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
+import { useAuthStore } from '@/stores/useAuthStore';
 import styles from './ChatView.module.css';
 
 /**
@@ -30,6 +31,8 @@ export const ChatView: React.FC = () => {
         isLoadingMore,
         hasMoreMessages,
     } = useInboxStore();
+
+    const { user } = useAuthStore();
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
@@ -72,6 +75,16 @@ export const ChatView: React.FC = () => {
         return lastInbound.createdAt ? new Date(lastInbound.createdAt) : undefined;
     }, [currentMessages]);
 
+    // Check if vendor has sent a template in the current session (after last inbound)
+    const hasSentTemplateInSession = useMemo(() => {
+        if (!lastInboundAt) return false;
+        const outboundTemplates = currentMessages.filter(
+            m => m.direction === 'out' && m.type === 'template' &&
+                new Date(m.createdAt).getTime() >= lastInboundAt.getTime()
+        );
+        return outboundTemplates.length > 0;
+    }, [currentMessages, lastInboundAt]);
+
     // Check if WhatsApp 24h session has expired (only for WhatsApp conversations)
     const isSessionExpired = useMemo(() => {
         if (!conversation || conversation.channel !== 'whatsapp') return false;
@@ -81,6 +94,10 @@ export const ChatView: React.FC = () => {
         const hoursSinceLastInbound = (now.getTime() - lastInboundAt.getTime()) / (1000 * 60 * 60);
         return hoursSinceLastInbound >= 24;
     }, [conversation, lastInboundAt]);
+
+    // Free text is blocked ONLY when: session expired (window closed)
+    // We removed the requirement for a template if the window is open (User Correction 13/02)
+    const isInputBlocked = isSessionExpired;
 
     const scrollToBottom = useCallback((instant = true) => {
         const container = messagesAreaRef.current;
@@ -217,7 +234,8 @@ export const ChatView: React.FC = () => {
 
     const handleAssign = async (userId: string | null) => {
         if (!selectedConversationId) return;
-        await InboxService.assignConversation(selectedConversationId, userId);
+        const currentUserName = user?.name || 'Sistema';
+        await InboxService.assignConversation(selectedConversationId, userId, currentUserName);
     };
 
     const handleToggleFavorite = async () => {
@@ -259,6 +277,7 @@ export const ChatView: React.FC = () => {
             {conversation.channel === 'whatsapp' && (
                 <SessionWarning
                     lastInboundAt={lastInboundAt}
+                    needsTemplateFirst={!hasSentTemplateInSession && !isSessionExpired}
                     onSendTemplate={() => setIsTemplateModalOpen(true)}
                 />
             )}
@@ -331,8 +350,8 @@ export const ChatView: React.FC = () => {
                 onSendMedia={handleSendMedia}
                 onOpenTemplate={() => setIsTemplateModalOpen(true)}
                 onScheduleMessage={handleScheduleMessage}
-                disabled={isUploading || isSessionExpired}
-                sessionExpired={isSessionExpired}
+                disabled={isUploading || isInputBlocked}
+                sessionExpired={isInputBlocked}
             />
 
             {/* Send Template Modal */}

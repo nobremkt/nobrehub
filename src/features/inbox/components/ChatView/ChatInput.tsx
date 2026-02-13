@@ -223,7 +223,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
                 onStopRecording={() => stopRecording(true)}
                 onCancelRecording={() => stopRecording(false)}
                 disabled={disabled}
-                placeholder={sessionExpired ? "Sessão expirada. Envie um template para continuar." : "Digite sua mensagem..."}
+                placeholder={sessionExpired ? "Envie um template para iniciar ou reabrir a conversa" : "Digite sua mensagem..."}
                 attachmentOptions={attachmentOptions}
             />
 

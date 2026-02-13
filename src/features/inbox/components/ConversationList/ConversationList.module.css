@@ -320,3 +320,23 @@
         opacity: 1;
     }
 }
+
+/* Vendor Badge */
+.vendorBadge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    background-color: var(--color-primary-500);
+    color: white;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-bg-primary);
+    box-shadow: var(--shadow-sm);
+    z-index: 2;
+}

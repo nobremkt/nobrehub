@@ -4,6 +4,7 @@ import styles from './SessionWarning.module.css';
 
 interface SessionWarningProps {
     lastInboundAt?: Date;
+    needsTemplateFirst?: boolean;
     onDismiss?: () => void;
     onSendTemplate?: () => void;
 }
@@ -44,10 +45,33 @@ const getSessionStatus = (lastInboundAt?: Date): {
 
 export const SessionWarning: React.FC<SessionWarningProps> = ({
     lastInboundAt,
+    needsTemplateFirst,
     onDismiss,
     onSendTemplate
 }) => {
     const sessionStatus = useMemo(() => getSessionStatus(lastInboundAt), [lastInboundAt]);
+
+    // Show template-first warning if vendor hasn't sent a template yet
+    if (needsTemplateFirst) {
+        return (
+            <div className={`${styles.container} ${styles.expiring}`}>
+                <div className={styles.iconWrapper}>
+                    <AlertTriangle size={18} />
+                </div>
+                <div className={styles.content}>
+                    <span className={styles.message}>Envie um template para iniciar a conversa</span>
+                    <span className={styles.hint}>A primeira mensagem deve ser um template aprovado</span>
+                </div>
+                <div className={styles.actions}>
+                    {onSendTemplate && (
+                        <button className={styles.templateBtn} onClick={onSendTemplate}>
+                            Enviar Template
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     // Don't render if session is active (more than 4h remaining)
     if (sessionStatus.status === 'active') {

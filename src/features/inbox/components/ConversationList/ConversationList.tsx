@@ -121,6 +121,15 @@ export const ConversationList: React.FC = () => {
         return conversations.filter(c => c.isFavorite).length;
     }, [conversations]);
 
+    // Map collaborator IDs to names for quick lookup
+    const collaboratorMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        collaborators.forEach(c => {
+            map[c.id] = c.name;
+        });
+        return map;
+    }, [collaborators]);
+
     return (
         <div className={styles.container}>
             {/* Header */}
@@ -200,6 +209,7 @@ export const ConversationList: React.FC = () => {
                                         conversation={conv}
                                         isActive={selectedConversationId === conv.id}
                                         onClick={() => handleSelectConversation(conv.id)}
+                                        assignedToName={conv.assignedTo ? collaboratorMap[conv.assignedTo] : undefined}
                                     />
                                 ))}
                                 {unpinnedConversations.length > 0 && (
@@ -215,6 +225,7 @@ export const ConversationList: React.FC = () => {
                                 conversation={conv}
                                 isActive={selectedConversationId === conv.id}
                                 onClick={() => handleSelectConversation(conv.id)}
+                                assignedToName={conv.assignedTo ? collaboratorMap[conv.assignedTo] : undefined}
                             />
                         ))}
                     </>

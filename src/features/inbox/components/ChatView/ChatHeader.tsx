@@ -95,22 +95,26 @@ export function ChatHeader({
 
     const assignedMember = collaborators.find(m => m.id === conversation.assignedTo);
 
-    // Filter: only sales sector (Vendas) + online or away
+    // Filter: only sales sector (Vendas) - show all active members regardless of status
     const salesCollaborators = useMemo(() => {
+        // Find sales sector IDs (case insensitive)
         const salesSectorIds = sectors
             .filter(s => s.name.toLowerCase().includes('vendas'))
             .map(s => s.id);
 
         return collaborators.filter(member => {
-            // Must be active and in sales sector
-            if (!member.active || !salesSectorIds.includes(member.sectorId || '')) {
-                return false;
+            // Must be active and in a sales sector
+            if (!member.active) return false;
+
+            // Check by ID first (more reliable)
+            if (member.sectorId && salesSectorIds.includes(member.sectorId)) {
+                return true;
             }
-            // Must be online or away (not offline)
-            const status = member.authUid ? teamStatus[member.authUid]?.state : 'offline';
-            return status === 'online' || status === 'idle';
+
+            // Fallback to name check if populated
+            return member.sectorName?.toLowerCase().includes('vendas');
         });
-    }, [collaborators, sectors, teamStatus]);
+    }, [collaborators, sectors]);
 
     const handleAssign = (userId: string | null) => {
         if (onAssign) {
