@@ -167,22 +167,19 @@ async function processIncomingMessage(message, contact) {
 
         // ── Auto-create lead if not found ────────────────────────────────────
         if (!linkedLead) {
-            // Get the first stage of the default pipeline (high-ticket → Novo Lead)
-            // Note: 'order' is a reserved word — use hardcoded fallback
-            const DEFAULT_NOVO_LEAD_STAGE_ID = '3c8af14b-2b12-4454-9dea-de4ea31c809c';
-            let stageId = DEFAULT_NOVO_LEAD_STAGE_ID;
-            try {
-                const { data: firstStage } = await supabase
-                    .from('pipeline_stages')
-                    .select('id')
-                    .eq('pipeline', 'high-ticket')
-                    .order('order', { ascending: true })
-                    .limit(1)
-                    .maybeSingle();
-                if (firstStage?.id) stageId = firstStage.id;
-            } catch (e) {
-                console.warn('[Webhook] Could not query pipeline_stages, using fallback stage_id');
+            // Get the first stage of the default pipeline (high-ticket)
+            const { data: firstStage, error: stageError } = await supabase
+                .from('pipeline_stages')
+                .select('id')
+                .eq('pipeline', 'high-ticket')
+                .order('order', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+            if (stageError) {
+                console.error('[Webhook] Failed to query pipeline_stages:', stageError.message);
             }
+            const stageId = firstStage?.id || null;
 
             const { data: newLead, error: leadError } = await supabase
                 .from('leads')
