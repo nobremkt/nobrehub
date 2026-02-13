@@ -1,23 +1,31 @@
-import admin from 'firebase-admin';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * CREATE-LEAD API — Receive form submissions and create leads in Supabase
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * This Vercel serverless function handles form submissions from:
+ *   - Landing pages (LP)
+ *   - Website contact forms
+ *   - Any external source
+ *
+ * Flow:
+ *   1. Parse and normalize form data
+ *   2. Check for duplicate (by phone)
+ *   3. Create or update lead in Supabase `leads` table
+ *   4. Auto-distribute to a salesperson (Least Loaded)
+ *   5. Lead appears in the Kanban — NO conversation is auto-created
+ *   6. Salesperson initiates conversation from the Kanban when ready
+ *
+ * Environment variables required:
+ *   - SUPABASE_URL (or VITE_SUPABASE_URL)
+ *   - SUPABASE_SERVICE_ROLE_KEY
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
 
-// Initialize Firebase Admin (only once)
-if (!admin.apps.length) {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
+import { getServiceClient, setCorsHeaders } from './_lib/integrationHelper.js';
 
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
-}
-
-const firestore = admin.firestore();
-
-// ═══════════════════════════════════════════════════════════════
-// Source & Tag Configuration
-// ═══════════════════════════════════════════════════════════════
+// ─── Source & Tag Configuration ──────────────────────────────────────────────
 
 /** Official lead sources — validated enum */
 const VALID_SOURCES = ['whatsapp', 'landing-page', 'instagram', 'indicacao', 'site', 'manual'];
@@ -40,19 +48,13 @@ const FORM_ORIGIN_SOURCE = {
     'site-institucional': 'site',
 };
 
+// ─── Main Handler ────────────────────────────────────────────────────────────
+
 export default async function handler(req, res) {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-    );
+    setCorsHeaders(res);
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
@@ -60,233 +62,139 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Parse body - handle both JSON and form-urlencoded
+        // Parse body — handle both JSON and form-urlencoded
         let data = req.body;
-
-        // If it's a string (form-urlencoded), parse it
         if (typeof data === 'string') {
             const params = new URLSearchParams(data);
             data = Object.fromEntries(params.entries());
         }
 
-        console.log('=== CREATE-LEAD API DEBUG ===');
-        console.log('RAW Data received:', JSON.stringify(data, null, 2));
+        console.log('[CreateLead] Data received:', JSON.stringify(data, null, 2));
 
-        // Extract and normalize fields from different form formats
+        // Normalize fields from different form formats
         const leadData = normalizeLeadData(data);
-        console.log('NORMALIZED leadData:', JSON.stringify(leadData, null, 2));
+        console.log('[CreateLead] Normalized:', JSON.stringify(leadData, null, 2));
 
         if (!leadData.name && !leadData.phone && !leadData.email) {
             return res.status(400).json({
                 error: 'Missing required fields',
-                message: 'At least name, phone, or email is required'
+                message: 'At least name, phone, or email is required',
             });
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // Check for existing conversation in Firestore
-        // ═══════════════════════════════════════════════════════════════
+        const supabase = getServiceClient();
+        const cleanPhone = (leadData.phone || '').replace(/\D/g, '');
+        const now = new Date().toISOString();
 
-        let existingConversationId = null;
+        // ── Check for existing lead by phone ────────────────────────────────
+        let existingLead = null;
 
-        if (leadData.phone) {
-            const phoneNormalized = leadData.phone.replace(/\D/g, '');
-            const existingQuery = await firestore
-                .collection('conversations')
-                .where('leadPhone', '==', phoneNormalized)
+        if (cleanPhone) {
+            const { data: found } = await supabase
+                .from('leads')
+                .select('id, name, tags')
+                .eq('phone', cleanPhone)
                 .limit(1)
-                .get();
+                .maybeSingle();
 
-            if (!existingQuery.empty) {
-                existingConversationId = existingQuery.docs[0].id;
-            }
+            existingLead = found;
         }
 
-        const now = admin.firestore.Timestamp.now();
-
-        if (existingConversationId) {
-            // ═══════════════════════════════════════════════════════════
-            // UPDATE existing conversation
-            // ═══════════════════════════════════════════════════════════
-
-            const conversationRef = firestore.collection('conversations').doc(existingConversationId);
-
-            // Add a system message about the new form submission
-            const systemMessage = {
-                content: formatFormSubmissionMessage(leadData),
-                senderId: 'system',
-                direction: 'in',
-                timestamp: now,
-                status: 'received',
-                type: 'text',
-                isSystemMessage: true
-            };
-
-            await conversationRef.collection('messages').add(systemMessage);
-
-            // Update conversation
-            const convSnap = await conversationRef.get();
-            const existingTags = convSnap.data()?.tags || [];
-
-            // Merge tags
+        if (existingLead) {
+            // ── UPDATE existing lead ────────────────────────────────────────
+            const existingTags = existingLead.tags || [];
             const mergedTags = [...new Set([...existingTags, ...(leadData.tags || [])])];
 
-            await conversationRef.update({
-                lastMessage: systemMessage,
-                unreadCount: admin.firestore.FieldValue.increment(1),
-                updatedAt: now,
-                tags: mergedTags,
-                ...(leadData.company && { leadCompany: leadData.company }),
-                ...(leadData.email && { leadEmail: leadData.email }),
-            });
+            const { error: updateError } = await supabase
+                .from('leads')
+                .update({
+                    ...(leadData.company && { company: leadData.company }),
+                    ...(leadData.email && { email: leadData.email }),
+                    source: leadData.source,
+                    tags: mergedTags,
+                    custom_fields: buildCustomFields(leadData),
+                    updated_at: now,
+                })
+                .eq('id', existingLead.id);
 
-            console.log(`Updated existing conversation ${existingConversationId}`);
+            if (updateError) {
+                console.error('[CreateLead] Update error:', updateError.message);
+                throw updateError;
+            }
 
+            // Log activity
+            await logActivity(supabase, existingLead.id, 'form_submission', leadData);
+
+            console.log(`[CreateLead] Updated existing lead ${existingLead.id}`);
             return res.status(200).json({
                 success: true,
                 message: 'Lead updated',
-                conversationId: existingConversationId,
-                isNew: false
-            });
-
-        } else {
-            // ═══════════════════════════════════════════════════════════
-            // CREATE new conversation in Firestore
-            // ═══════════════════════════════════════════════════════════
-
-            const leadId = `form_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-            // Create initial system message
-            const initialMessage = {
-                content: formatFormSubmissionMessage(leadData),
-                senderId: 'system',
-                direction: 'in',
-                timestamp: now,
-                status: 'received',
-                type: 'text',
-                isSystemMessage: true
-            };
-
-            // Create conversation
-            const conversationData = {
-                leadId: leadId,
-                leadName: leadData.name || 'Lead sem nome',
-                leadPhone: leadData.phone?.replace(/\D/g, '') || '',
-                leadEmail: leadData.email || '',
-                leadCompany: leadData.company || '',
-                tags: leadData.tags || ['Novo', 'Formulário'],
-                notes: leadData.notes || '',
-                unreadCount: 1,
-                channel: 'form',
-                status: 'open',
-                context: 'sales',
-                source: leadData.source,
-                customFields: {
-                    teamSize: leadData.teamSize || null,
-                    revenue: leadData.revenue || null,
-                    challenge: leadData.challenge || null,
-                    formOrigin: leadData.formOrigin || 'unknown'
-                },
-                lastMessage: initialMessage,
-                createdAt: now,
-                updatedAt: now,
-            };
-
-            const convRef = await firestore.collection('conversations').add(conversationData);
-            const conversationId = convRef.id;
-
-            // Add the initial message to subcollection
-            await convRef.collection('messages').add(initialMessage);
-
-            // ═══════════════════════════════════════════════════════════
-            // Create Lead in Firestore (CRM)
-            // ═══════════════════════════════════════════════════════════
-
-            try {
-                const cleanPhone = conversationData.leadPhone;
-
-                if (conversationData.leadName) {
-                    const leadsRef = firestore.collection('leads');
-
-                    // Check duplicate by phone
-                    let existingLeadId = null;
-                    if (cleanPhone) {
-                        const q = await leadsRef.where('phone', '==', cleanPhone).get();
-                        if (!q.empty) {
-                            existingLeadId = q.docs[0].id;
-                        }
-                    }
-
-                    const crmCustomFields = {
-                        instagram: leadData.instagram || null,
-                        segment: leadData.segment || null,
-                        teamSize: leadData.teamSize || null,
-                        revenue: leadData.revenue || null,
-                        challenge: leadData.challenge || null,
-                        formOrigin: leadData.formOrigin || 'unknown',
-                    };
-
-                    if (existingLeadId) {
-                        // UPDATE existing lead
-                        await leadsRef.doc(existingLeadId).update({
-                            company: conversationData.leadCompany || undefined,
-                            email: conversationData.leadEmail || undefined,
-                            source: leadData.source,
-                            customFields: crmCustomFields,
-                            updatedAt: now,
-                        });
-                        console.log(`Updated existing CRM lead: ${existingLeadId}`);
-                    } else {
-                        // CREATE new lead
-                        await leadsRef.doc(leadId).set({
-                            name: conversationData.leadName,
-                            phone: conversationData.leadPhone,
-                            email: conversationData.leadEmail,
-                            company: conversationData.leadCompany,
-                            pipeline: 'venda',
-                            status: 'ht-novo',
-                            order: 0,
-                            estimatedValue: 0,
-                            tags: conversationData.tags,
-                            responsibleId: 'admin',
-                            source: leadData.source,
-                            customFields: crmCustomFields,
-                            createdAt: now,
-                            updatedAt: now,
-                        });
-                        console.log(`Created new CRM lead with ID: ${leadId}`);
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to auto-create CRM lead:', err);
-            }
-
-            console.log(`Created new conversation ${conversationId}`);
-
-            // Optional: Send welcome message via WhatsApp
-            if (leadData.phone && leadData.sendWelcomeMessage) {
-                await sendWelcomeWhatsApp(leadData.phone, leadData.name);
-            }
-
-            return res.status(201).json({
-                success: true,
-                message: 'Lead created',
-                conversationId: conversationId,
-                isNew: true
+                leadId: existingLead.id,
+                isNew: false,
             });
         }
 
+        // ── CREATE new lead ─────────────────────────────────────────────────
+
+        // Get the first stage of the "venda" pipeline for new leads
+        const firstStageId = await getFirstStageId(supabase, 'venda');
+
+        // Auto-distribute: find the salesperson with fewest active leads
+        const responsibleId = await getNextSalesperson(supabase);
+
+        const { data: newLead, error: insertError } = await supabase
+            .from('leads')
+            .insert({
+                name: leadData.name || 'Lead sem nome',
+                phone: cleanPhone,
+                email: leadData.email || null,
+                company: leadData.company || null,
+                pipeline: 'venda',
+                stage_id: firstStageId,
+                responsible_id: responsibleId,
+                deal_status: 'open',
+                source: leadData.source,
+                temperature: 'warm',
+                tags: leadData.tags || ['Novo', 'Formulário'],
+                custom_fields: buildCustomFields(leadData),
+                order: 0,
+                created_at: now,
+                updated_at: now,
+            })
+            .select('id')
+            .single();
+
+        if (insertError) {
+            console.error('[CreateLead] Insert error:', insertError.message);
+            throw insertError;
+        }
+
+        // Log activity
+        await logActivity(supabase, newLead.id, 'lead_created', leadData);
+
+        console.log(`[CreateLead] Created lead ${newLead.id}, assigned to ${responsibleId || 'nobody'}`);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Lead created',
+            leadId: newLead.id,
+            isNew: true,
+            assignedTo: responsibleId,
+        });
     } catch (error) {
-        console.error('Create lead error:', error);
+        console.error('[CreateLead] Error:', error.message);
         return res.status(500).json({
             error: 'Internal Server Error',
-            message: error.message
+            message: error.message,
         });
     }
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 /**
- * Normalize lead data from different form formats
+ * Normalize lead data from different form formats.
+ * Supports Portuguese and English field names.
  */
 function normalizeLeadData(data) {
     const fieldMappings = {
@@ -300,7 +208,7 @@ function normalizeLeadData(data) {
         revenue: ['revenue', 'faturamento', 'faturamentoEmpresa', 'faturamento_empresa', 'billing', 'budget'],
         challenge: ['challenge', 'desafio', 'maiorDesafio', 'maior_desafio', 'problem', 'mensagem', 'message', 'projeto', 'goal'],
         source: ['source', 'origem', 'utm_source', 'referrer'],
-        formOrigin: ['formOrigin', 'form_origin', 'form', 'formId', 'form_id']
+        formOrigin: ['formOrigin', 'form_origin', 'form', 'formId', 'form_id'],
     };
 
     const normalized = {};
@@ -338,71 +246,106 @@ function normalizeLeadData(data) {
 }
 
 /**
- * Format the form submission as a readable message
+ * Build custom_fields JSONB from form data.
  */
-function formatFormSubmissionMessage(data) {
-    const lines = ['📋 *Novo Lead via Formulário*', ''];
-
-    if (data.name) lines.push(`👤 Nome: ${data.name}`);
-    if (data.email) lines.push(`📧 Email: ${data.email}`);
-    if (data.phone) lines.push(`📱 WhatsApp: ${data.phone}`);
-    if (data.company) lines.push(`🏢 Empresa: ${data.company}`);
-    if (data.teamSize) lines.push(`👥 Equipe: ${data.teamSize}`);
-    if (data.revenue) lines.push(`💰 Faturamento: ${data.revenue}`);
-
-    if (data.challenge) {
-        lines.push('');
-        lines.push(`💬 Mensagem/Desafio:`);
-        lines.push(data.challenge);
-    }
-
-    if (data.tags && data.tags.length > 0) {
-        lines.push('');
-        lines.push(`🏷️ Tags: ${data.tags.join(', ')}`);
-    }
-
-    return lines.join('\n');
+function buildCustomFields(leadData) {
+    return {
+        instagram: leadData.instagram || null,
+        segment: leadData.segment || null,
+        teamSize: leadData.teamSize || null,
+        revenue: leadData.revenue || null,
+        challenge: leadData.challenge || null,
+        formOrigin: leadData.formOrigin || 'unknown',
+    };
 }
 
 /**
- * Send a welcome message via WhatsApp (optional)
+ * Get the first stage (lowest order) of a pipeline.
+ * Returns the UUID of the stage or null.
  */
-async function sendWelcomeWhatsApp(phone, name) {
+async function getFirstStageId(supabase, pipeline) {
+    const { data, error } = await supabase
+        .from('pipeline_stages')
+        .select('id')
+        .eq('pipeline', pipeline)
+        .eq('active', true)
+        .order('order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.warn('[CreateLead] Could not fetch pipeline stages:', error.message);
+        return null;
+    }
+
+    return data?.id || null;
+}
+
+/**
+ * Get the next salesperson to assign using "Least Loaded" strategy.
+ * Reads distribution config from the `settings` table.
+ * Returns user UUID or null if distribution is disabled/unconfigured.
+ */
+async function getNextSalesperson(supabase) {
+    // Read distribution settings
+    const { data: settingsRow } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'leadDistribution')
+        .maybeSingle();
+
+    if (!settingsRow) return null;
+
+    const settings = typeof settingsRow.value === 'string'
+        ? JSON.parse(settingsRow.value)
+        : settingsRow.value;
+
+    if (!settings.enabled || !settings.participants?.length) return null;
+
+    // Count active leads per participant
+    const { data: leads } = await supabase
+        .from('leads')
+        .select('responsible_id')
+        .eq('deal_status', 'open');
+
+    const counts = {};
+    (leads || []).forEach((row) => {
+        if (row.responsible_id) {
+            counts[row.responsible_id] = (counts[row.responsible_id] || 0) + 1;
+        }
+    });
+
+    // Find the participant with fewest active leads
+    const sorted = settings.participants
+        .map((id) => ({ id, count: counts[id] || 0 }))
+        .sort((a, b) => a.count - b.count);
+
+    return sorted[0]?.id || null;
+}
+
+/**
+ * Log a lead activity (for the Lead 360° timeline).
+ */
+async function logActivity(supabase, leadId, type, leadData) {
     try {
-        const apiKey = process.env.WHATSAPP_API_KEY;
-        const baseUrl = process.env.WHATSAPP_API_URL;
+        const description =
+            type === 'lead_created'
+                ? `Lead criado via formulário (${leadData.formOrigin || 'direto'})`
+                : `Formulário preenchido novamente (${leadData.formOrigin || 'direto'})`;
 
-        if (!apiKey || !baseUrl) {
-            console.log('WhatsApp credentials not configured, skipping welcome message');
-            return;
-        }
-
-        const phoneNormalized = phone.replace(/\D/g, '');
-        const greeting = name ? `Olá ${name.split(' ')[0]}!` : 'Olá!';
-
-        const response = await fetch(`${baseUrl}/messages`, {
-            method: 'POST',
-            headers: {
-                'D360-API-KEY': apiKey,
-                'Content-Type': 'application/json'
+        await supabase.from('lead_activities').insert({
+            lead_id: leadId,
+            type,
+            description,
+            metadata: {
+                source: leadData.source,
+                formOrigin: leadData.formOrigin,
+                tags: leadData.tags,
             },
-            body: JSON.stringify({
-                messaging_product: 'whatsapp',
-                recipient_type: 'individual',
-                to: phoneNormalized,
-                type: 'text',
-                text: {
-                    body: `${greeting} Recebemos sua solicitação e em breve um consultor entrará em contato. 🚀\n\n- Equipe Nobre Marketing`
-                }
-            })
+            created_at: new Date().toISOString(),
         });
-
-        if (response.ok) {
-            console.log('Welcome message sent successfully');
-        } else {
-            console.log('Failed to send welcome message:', await response.text());
-        }
-    } catch (error) {
-        console.error('Error sending welcome message:', error);
+    } catch (err) {
+        // Non-critical — don't fail the entire request
+        console.warn('[CreateLead] Activity log failed:', err.message);
     }
 }
