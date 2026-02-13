@@ -14,6 +14,7 @@ export function IntegrationsPage() {
         gemini, setGeminiApiKey,
         openai, setOpenaiApiKey,
         aiModels, toggleModel,
+        loadAISettings,
     } = useSettingsStore();
 
     // Local state for form fields
@@ -44,7 +45,8 @@ export function IntegrationsPage() {
         if (!whatsapp.isLoaded) {
             loadSettings();
         }
-    }, [whatsapp.isLoaded, loadSettings]);
+        loadAISettings();
+    }, [whatsapp.isLoaded, loadSettings, loadAISettings]);
 
     // Sync local state from store when loaded
     useEffect(() => {

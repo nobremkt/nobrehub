@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button, Spinner, Dropdown } from '@/design-system';
 import { useSettingsStore } from '@/features/settings/stores/useSettingsStore';
 import { useAuthStore } from '@/stores';
@@ -30,7 +30,9 @@ interface GeneratedImage {
 }
 
 export function ImageGeneratorPage() {
-    const { gemini, openai, aiModels, imageStyles } = useSettingsStore();
+    const { gemini, openai, aiModels, imageStyles, loadAISettings } = useSettingsStore();
+
+    useEffect(() => { loadAISettings(); }, [loadAISettings]);
     const user = useAuthStore((s) => s.user);
 
     const enabledModels = aiModels.filter((m) => m.enabled);

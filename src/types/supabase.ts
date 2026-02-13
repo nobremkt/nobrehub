@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_api_keys: {
+        Row: {
+          id: string
+          provider: string
+          api_key: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          provider: string
+          api_key?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          provider?: string
+          api_key?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_image_styles: {
+        Row: {
+          id: string
+          name: string
+          prompt: string
+          is_default: boolean
+          sort_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          prompt: string
+          is_default?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          prompt?: string
+          is_default?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_models: {
+        Row: {
+          id: string
+          name: string
+          provider: string
+          model_id: string
+          enabled: boolean
+          sort_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          provider: string
+          model_id: string
+          enabled?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          provider?: string
+          model_id?: string
+          enabled?: boolean
+          sort_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           assigned_to: string | null
@@ -144,6 +231,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_images: {
+        Row: {
+          id: string
+          url: string
+          prompt: string | null
+          style_name: string | null
+          model: string | null
+          quality: string | null
+          aspect_ratio: string | null
+          file_path: string | null
+          user_id: string | null
+          user_name: string | null
+          user_photo_url: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          url: string
+          prompt?: string | null
+          style_name?: string | null
+          model?: string | null
+          quality?: string | null
+          aspect_ratio?: string | null
+          file_path?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_photo_url?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          url?: string
+          prompt?: string | null
+          style_name?: string | null
+          model?: string | null
+          quality?: string | null
+          aspect_ratio?: string | null
+          file_path?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_photo_url?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_images_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

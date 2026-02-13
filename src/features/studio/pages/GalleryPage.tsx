@@ -63,13 +63,15 @@ export function GalleryPage() {
     const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
 
     useEffect(() => {
-        // Simulate a small delay for skeleton effect,
-        // then load from localStorage
-        const timer = setTimeout(() => {
-            setImages(getGalleryImages());
-            setIsLoading(false);
-        }, 400);
-        return () => clearTimeout(timer);
+        let cancelled = false;
+        (async () => {
+            const data = await getGalleryImages();
+            if (!cancelled) {
+                setImages(data);
+                setIsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     const handleDownload = useCallback((image: GalleryImage) => {

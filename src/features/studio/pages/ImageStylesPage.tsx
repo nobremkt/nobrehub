@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardBody, Button, Input, Modal } from '@/design-system';
 import { useSettingsStore, ImageStyle } from '@/features/settings/stores/useSettingsStore';
 import { Plus, Pencil, Trash2, Palette } from 'lucide-react';
 import styles from './ImageStylesPage.module.css';
 
 export function ImageStylesPage() {
-    const { imageStyles, addImageStyle, updateImageStyle, removeImageStyle } = useSettingsStore();
+    const { imageStyles, addImageStyle, updateImageStyle, removeImageStyle, loadAISettings } = useSettingsStore();
+
+    useEffect(() => { loadAISettings(); }, [loadAISettings]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStyle, setEditingStyle] = useState<ImageStyle | null>(null);
