@@ -9,7 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Lead } from '@/types/lead.types';
 import styles from './Lead360Modal.module.css';
 import {
@@ -42,10 +42,16 @@ interface Lead360ModalProps {
 
 type TabType = 'ATIVIDADE' | 'CONTATO' | 'EMPRESA' | 'NEGÓCIOS' | 'CONVERSAS' | 'HISTÓRICO';
 
-export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead360ModalProps) {
+export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
-    const { updateLead, moveLead } = useKanbanStore();
+    const { updateLead, moveLead, stages, leads: storeLeads } = useKanbanStore();
     const { fetchContacts } = useContactsStore();
+
+    // Use the live lead from the store so optimistic updates reflect immediately
+    const lead = useMemo(() => {
+        if (!leadProp) return null;
+        return storeLeads.find(l => l.id === leadProp.id) || leadProp;
+    }, [leadProp, storeLeads]);
 
     const handleLeadUpdated = () => {
         fetchContacts();
@@ -56,16 +62,29 @@ export function Lead360Modal({ isOpen, onClose, lead, onTemplateSelect }: Lead36
         if (!lead) return;
 
         try {
-            const prefix = lead.status?.startsWith('lt-') ? 'lt' : 'ht';
+            // Determine pipeline from lead's current stage
+            const currentStage = stages.find(s => s.id === lead.status);
+            const pipeline = currentStage?.pipeline || lead.pipeline || 'high-ticket';
+
+            // Find the target system stage UUID by name + pipeline
+            const targetStageName = status === 'won' ? 'Ganho' : 'Perdido';
+            const targetStage = stages.find(
+                s => s.name === targetStageName && s.pipeline === pipeline
+            );
+
+            if (!targetStage) {
+                toast.error(`Stage "${targetStageName}" não encontrado para pipeline ${pipeline}`);
+                return;
+            }
 
             if (status === 'won') {
-                await moveLead(lead.id, `${prefix}-ganho`);
+                await moveLead(lead.id, targetStage.id);
                 await updateLead(lead.id, {
                     dealStatus: 'won',
                     dealClosedAt: new Date(),
                 });
             } else if (status === 'lost') {
-                await moveLead(lead.id, `${prefix}-perdido`);
+                await moveLead(lead.id, targetStage.id);
                 await updateLead(lead.id, {
                     dealStatus: 'lost',
                     lostReason: lossReasonId || '',

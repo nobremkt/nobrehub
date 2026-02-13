@@ -8,6 +8,8 @@ import { Input, Dropdown } from '@/design-system';
 import { Save, X, Pencil, Building2, Globe, MapPin, Tag, Users, Database, DollarSign } from 'lucide-react';
 import styles from './EmpresaTab.module.css';
 import { toast } from 'react-toastify';
+import { LeadService } from '@/features/crm/services/LeadService';
+import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 
 interface EmpresaTabProps {
     lead: Lead;
@@ -58,8 +60,10 @@ const REVENUE_OPTIONS = [
 export function EmpresaTab({ lead }: EmpresaTabProps) {
     // Extrair dados de customFields se existirem
     const customFields = lead.customFields || {};
+    const { updateLead: updateLeadStore } = useKanbanStore();
 
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
         companyName: lead.company || '',
         website: (customFields.website as string) || '',
@@ -75,9 +79,33 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSave = () => {
-        toast.success('Informações da empresa salvas!');
-        setIsEditing(false);
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const updatedFields: Partial<Lead> = {
+                company: formData.companyName || undefined,
+                customFields: {
+                    ...lead.customFields,
+                    website: formData.website || undefined,
+                    location: formData.location || undefined,
+                    category: formData.category || undefined,
+                    segment: formData.segment || undefined,
+                    teamSize: formData.employeeCount || undefined,
+                    revenue: formData.revenue || undefined,
+                    crm: formData.crm || undefined,
+                },
+            };
+
+            await LeadService.updateLead(lead.id, updatedFields);
+            updateLeadStore(lead.id, updatedFields);
+            toast.success('Informações da empresa salvas!');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Erro ao salvar empresa:', error);
+            toast.error('Erro ao salvar informações da empresa');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleCancel = () => {
@@ -109,9 +137,9 @@ export function EmpresaTab({ lead }: EmpresaTabProps) {
                             <X size={14} />
                             Cancelar
                         </button>
-                        <button className={styles.saveBtn} onClick={handleSave}>
+                        <button className={styles.saveBtn} onClick={handleSave} disabled={isSaving}>
                             <Save size={14} />
-                            Salvar
+                            {isSaving ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 )}

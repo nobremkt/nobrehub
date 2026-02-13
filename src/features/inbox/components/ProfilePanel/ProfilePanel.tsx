@@ -370,7 +370,7 @@ export const ProfilePanel: React.FC = () => {
                     email: conversation.leadEmail || '',
                     company: conversation.leadCompany || '',
                     status: conversation.dealStatus || 'open',
-                    pipeline: 'high-ticket',
+                    pipeline: (conversation.pipeline || 'high-ticket') as 'high-ticket' | 'low-ticket',
                     order: 0,
                     responsibleId: conversation.assignedTo || '',
                     createdAt: conversation.createdAt,

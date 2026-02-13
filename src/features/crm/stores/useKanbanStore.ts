@@ -105,14 +105,14 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
         set((state) => {
             const leadsInTarget = state.leads.filter(l => l.status === newStatus);
-            const maxOrder = leadsInTarget.length > 0
-                ? Math.max(...leadsInTarget.map(l => l.order)) + 1
+            const minOrder = leadsInTarget.length > 0
+                ? Math.min(...leadsInTarget.map(l => l.order)) - 1
                 : 0;
 
             return {
                 leads: state.leads.map((lead) =>
                     lead.id === leadId
-                        ? { ...lead, status: newStatus, order: maxOrder, updatedAt: new Date() }
+                        ? { ...lead, status: newStatus, order: minOrder, updatedAt: new Date() }
                         : lead
                 ),
             };

@@ -51,11 +51,11 @@ export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderPr
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
         .map(r => ({ value: r.id, label: r.name }));
 
-    // Verifica se o deal está ganho (status no stage ou dealStatus)
-    const isDealWon = lead.dealStatus === 'won' || lead.status?.endsWith('-ganho');
+    // Verifica se o deal está ganho
+    const isDealWon = lead.dealStatus === 'won';
 
     // Verifica se o deal está perdido
-    const isDealLost = lead.dealStatus === 'lost' || lead.status?.endsWith('-perdido');
+    const isDealLost = lead.dealStatus === 'lost';
 
     // Handler para ligar
     const handleCall = () => {
