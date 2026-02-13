@@ -90,23 +90,22 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 // Set initialized immediately to avoid blocking UI
                 set({ initialized: true });
 
-                const unsubscribe = subscribeToAuthState((firebaseUser) => {
-                    if (!firebaseUser) {
+                const unsubscribe = subscribeToAuthState((supabaseUser) => {
+                    if (!supabaseUser) {
                         // Não logado - imediatamente define o estado
                         set({ user: null, status: 'unauthenticated' });
                     } else {
-                        // Usuário autenticado no Firebase, buscar dados completos
-                        getUserData((firebaseUser as any).uid, (firebaseUser as any).email || undefined)
+                        // Usuário autenticado no Supabase, buscar dados completos
+                        getUserData(supabaseUser.id, supabaseUser.email || undefined)
                             .then((userData) => {
                                 if (userData) {
                                     set({ user: userData, status: 'authenticated' });
                                 } else {
                                     // Fallback apenas se não achar dados (ex: usuário novo sem cadastro)
-                                    // Mantém comportamento anterior de user básico
                                     const basicUser: User = {
-                                        id: (firebaseUser as any).uid,
-                                        email: (firebaseUser as any).email || '',
-                                        name: (firebaseUser as any).displayName || 'Usuário',
+                                        id: supabaseUser.id,
+                                        email: supabaseUser.email || '',
+                                        name: supabaseUser.user_metadata?.full_name || supabaseUser.email || 'Usuário',
                                         roleId: '',
                                         permissions: [],
                                         isActive: true,
@@ -118,8 +117,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                             })
                             .catch((err) => {
                                 console.error("Error fetching user data in auth listener:", err);
-                                // Em caso de erro, definir como não autenticado ou manter básico?
-                                // Melhor manter básico para não travar app app
                                 set({ status: 'unauthenticated', error: 'Erro ao carregar perfil do usuário.' });
                             });
                     }

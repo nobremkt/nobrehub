@@ -29,6 +29,7 @@ import { PostSalesPage } from '@/features/pos-vendas/pages/PostSalesPage';
 import { OrganizationPage, ProductsPage, LossReasonsPage, SectorsPage, RolesPage, CollaboratorsPage, PermissionsPage, GoalsPage, HolidaysPage, LeadDistributionPage, PipelinePage } from '@/features/settings/pages';
 import { MembersPage, TeamChatPage } from '@/features/team/pages';
 import { NotesPage, StrategicProjectsPage, SocialMediaPage } from '@/features/strategic/pages';
+import { ImageGeneratorPage, WipPage, ImageStylesPage, GalleryPage } from '@/features/studio/pages';
 import { useThemeApplier } from '@/features/settings/hooks/useThemeApplier';
 import { usePresence } from '@/features/presence/hooks/usePresence';
 import { Agentation } from 'agentation';
@@ -140,6 +141,7 @@ export function App() {
                         <Route path={ROUTES.data_import} element={<DataImportPage />} />
                         <Route path={ROUTES.debug_integrations} element={<IntegrationsPage />} />
                         <Route path={ROUTES.debug_database} element={<DatabasePage />} />
+                        <Route path={ROUTES.debug_imageStyles} element={<ImageStylesPage />} />
 
                         <Route path={ROUTES.crm.root + '/*'} element={<CRMPage />} />
 
@@ -162,6 +164,14 @@ export function App() {
                         <Route path={ROUTES.strategic.notes} element={<NotesPage />} />
                         <Route path={ROUTES.strategic.projects} element={<StrategicProjectsPage />} />
                         <Route path={ROUTES.strategic.socialMedia} element={<SocialMediaPage />} />
+
+                        {/* Estúdio de Criação */}
+                        <Route path={ROUTES.studio.imageGenerator} element={<ImageGeneratorPage />} />
+                        <Route path={ROUTES.studio.videoGenerator} element={<WipPage title="Gerador de Vídeos" />} />
+                        <Route path={ROUTES.studio.scriptGenerator} element={<WipPage title="Gerador de Roteiros" />} />
+                        <Route path={ROUTES.studio.logos} element={<WipPage title="Logotipos" />} />
+                        <Route path={ROUTES.studio.mascot} element={<WipPage title="Mascote" />} />
+                        <Route path={ROUTES.studio.gallery} element={<GalleryPage />} />
 
                         {/* Settings */}
                         <Route path={ROUTES.settings.appearance} element={<AppearancePage />} />

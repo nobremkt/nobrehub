@@ -23,6 +23,7 @@ export const ROUTES = {
     data_import: '/data-import',
     debug_integrations: '/debug/integracoes',
     debug_database: '/debug/banco-de-dados',
+    debug_imageStyles: '/debug/estilos-imagem',
     publicProjectStatus: (token: string) => `/status/projeto/${token}`,
 
     // CRM
@@ -71,6 +72,17 @@ export const ROUTES = {
         notes: '/estrategico/anotacoes',
         projects: '/estrategico/projetos',
         socialMedia: '/estrategico/social-media',
+    },
+
+    // Estúdio de Criação
+    studio: {
+        root: '/estudio',
+        imageGenerator: '/estudio/gerador-imagens',
+        videoGenerator: '/estudio/gerador-videos',
+        scriptGenerator: '/estudio/gerador-roteiros',
+        logos: '/estudio/logotipos',
+        mascot: '/estudio/mascote',
+        gallery: '/estudio/galeria',
     },
 
     // Settings

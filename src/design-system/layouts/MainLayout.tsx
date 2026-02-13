@@ -13,7 +13,8 @@ export function MainLayout() {
         location.pathname.startsWith(ROUTES.inbox.root) ||
         location.pathname.startsWith(ROUTES.production.root) ||
         location.pathname.startsWith(ROUTES.postSales.root) ||
-        location.pathname.startsWith(ROUTES.strategic.root);
+        location.pathname.startsWith(ROUTES.strategic.root) ||
+        location.pathname.startsWith(ROUTES.studio.root);
 
     return (
         <>

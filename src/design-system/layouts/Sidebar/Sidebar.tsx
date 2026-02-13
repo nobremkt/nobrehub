@@ -40,7 +40,13 @@ import {
     Shuffle,
     Lightbulb,
     Share2,
-    Database
+    Database,
+    Wand2,
+    Film,
+    ScrollText,
+    Stamp,
+    Cat,
+    GalleryHorizontalEnd
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -119,6 +125,21 @@ const navCategories: NavCategory[] = [
             { id: 'socialMedia', label: 'Social Media', path: ROUTES.strategic.socialMedia, icon: <Share2 size={18} /> },
         ]
     },
+    // TODO: Substituir por permissão real quando o módulo "Estúdio de Criação" sair do beta
+    // Por enquanto, usa o mesmo padrão hardcoded de debug (email check no render)
+    {
+        id: 'studio',
+        label: 'Estúdio de Criação',
+        icon: <Wand2 size={20} />,
+        subItems: [
+            { id: 'image-generator', label: 'Gerador de Imagens', path: ROUTES.studio.imageGenerator, icon: <Wand2 size={18} /> },
+            { id: 'video-generator', label: 'Gerador de Vídeos', path: ROUTES.studio.videoGenerator, icon: <Film size={18} /> },
+            { id: 'script-generator', label: 'Gerador de Roteiros', path: ROUTES.studio.scriptGenerator, icon: <ScrollText size={18} /> },
+            { id: 'logos', label: 'Logotipos', path: ROUTES.studio.logos, icon: <Stamp size={18} /> },
+            { id: 'mascot', label: 'Mascote', path: ROUTES.studio.mascot, icon: <Cat size={18} /> },
+            { id: 'gallery', label: 'Galeria', path: ROUTES.studio.gallery, icon: <GalleryHorizontalEnd size={18} /> },
+        ]
+    },
     {
         id: 'debug',
         label: 'Debug',
@@ -129,6 +150,7 @@ const navCategories: NavCategory[] = [
             { id: 'data-import', label: 'Importar Dados', path: ROUTES.data_import, icon: <Upload size={18} /> },
             { id: 'debug-integrations', label: 'Integrações', path: ROUTES.debug_integrations, icon: <Plug size={18} /> },
             { id: 'debug-database', label: 'Banco de Dados', path: ROUTES.debug_database, icon: <Database size={18} /> },
+            { id: 'debug-image-styles', label: 'Estilos de Imagem', path: ROUTES.debug_imageStyles, icon: <Palette size={18} /> },
         ]
     },
     {
@@ -221,8 +243,9 @@ export function Sidebar() {
                             return null;
                         }
 
-                        // Hardcode: Hide debug category for everyone except debug@debug.com
-                        if (category.id === 'debug' && user?.email !== 'debug@debug.com') {
+                        // Hardcode: Hide debug and studio categories for everyone except debug@debug.com
+                        // TODO: Substituir por permissão real quando o módulo "Estúdio de Criação" sair do beta
+                        if ((category.id === 'debug' || category.id === 'studio') && user?.email !== 'debug@debug.com') {
                             return null;
                         }
 
