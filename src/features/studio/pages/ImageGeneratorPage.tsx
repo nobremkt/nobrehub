@@ -1,32 +1,70 @@
-import { useState, useRef, useEffect } from 'react';
-import { Button, Spinner, Dropdown } from '@/design-system';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Button, Spinner, Dropdown, ColorPicker } from '@/design-system';
 import { useSettingsStore } from '@/features/settings/stores/useSettingsStore';
 import { useAuthStore } from '@/stores';
 import { uploadGeneratedImage } from '../services/galleryService';
-import { Wand2, Download, AlertCircle, KeyRound, ImageIcon } from 'lucide-react';
+import { Wand2, Download, AlertCircle, KeyRound, ImageIcon, User, Mountain, Tag, X, Palette, Ratio, Sparkles, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/config';
 import styles from './ImageGeneratorPage.module.css';
+import { MiniSelect } from '../components/MiniSelect';
 
-const ASPECT_RATIOS = [
-    { value: '1:1', label: '1:1', icon: '⬜' },
-    { value: '9:16', label: '9:16', icon: '▯' },
-    { value: '16:9', label: '16:9', icon: '▭' },
-    { value: '2:3', label: '2:3', icon: '▯' },
-    { value: '4:5', label: '4:5', icon: '▯' },
-] as const;
+const ASPECT_RATIO_OPTIONS = [
+    { value: '1:1', label: '1:1' },
+    { value: '9:16', label: '9:16' },
+    { value: '16:9', label: '16:9' },
+    { value: '2:3', label: '2:3' },
+    { value: '4:5', label: '4:5' },
+    { value: '3:4', label: '3:4' },
+    { value: '3:2', label: '3:2' },
+];
 
 const QUALITY_OPTIONS = [
-    { value: '1K', label: '1K', description: 'Rápido' },
-    { value: '2K', label: '2K', description: 'Balanceado' },
-    { value: '4K', label: '4K', description: 'Alta qualidade' },
-] as const;
+    { value: '1K', label: '1K' },
+    { value: '2K', label: '2K' },
+    { value: '4K', label: '4K' },
+];
 
 type InputTab = 'prompt' | 'roteiro';
 
 interface GeneratedImage {
     base64: string;
     mimeType: string;
+}
+
+interface HistoryItem {
+    dataUrl: string;
+    timestamp: number;
+    image: GeneratedImage;
+}
+
+interface ReferenceImage {
+    base64: string;
+    mimeType: string;
+    preview: string; // data URL for thumbnail
+}
+
+type RefSlot = 'character' | 'scenery' | 'logo';
+
+const REF_SLOTS: { key: RefSlot; label: string; icon: typeof User; hint: string }[] = [
+    { key: 'character', label: 'Personagem', icon: User, hint: 'Foto/ilustração do personagem' },
+    { key: 'scenery', label: 'Cenário', icon: Mountain, hint: 'Imagem de fundo/ambiente' },
+    { key: 'logo', label: 'Logotipo', icon: Tag, hint: 'Logo da marca' },
+];
+
+const REF_LABELS: Record<RefSlot, string> = {
+    character: 'Use this image as the MAIN CHARACTER reference for the scene. Maintain the character appearance, features and style:',
+    scenery: 'Use this image as the BACKGROUND/SCENERY reference. Match the environment, lighting and atmosphere:',
+    logo: 'Include this LOGO/BRAND in the generated image. Place it naturally in the composition:',
+};
+
+// ── Color name mapping ──
+import colorNamer from 'color-namer';
+
+function hexToColorName(hex: string): string {
+    const result = colorNamer(hex);
+    const name = result.ntc[0]?.name || 'Color';
+    return `${name} ${hex}`;
 }
 
 export function ImageGeneratorPage() {
@@ -51,6 +89,22 @@ export function ImageGeneratorPage() {
     const generatedImageRef = useRef<GeneratedImage | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [bgColor, setBgColor] = useState('#ffffff');
+
+    // Session history
+    const [sessionHistory, setSessionHistory] = useState<HistoryItem[]>([]);
+
+    // Reference images
+    const [refs, setRefs] = useState<Record<RefSlot, ReferenceImage | null>>({
+        character: null,
+        scenery: null,
+        logo: null,
+    });
+    const fileInputRefs = useRef<Record<RefSlot, HTMLInputElement | null>>({
+        character: null,
+        scenery: null,
+        logo: null,
+    });
 
     const selectedModel = aiModels.find((m) => m.id === selectedModelId);
     const selectedStyle = imageStyles.find((s) => s.id === selectedStyleId);
@@ -58,17 +112,47 @@ export function ImageGeneratorPage() {
         ? selectedModel.provider === 'gemini' ? Boolean(gemini.apiKey) : Boolean(openai.apiKey)
         : false;
 
-    // Build final prompt: replace {user_prompt} in style template, or just use raw text
+    // Only Gemini generateContent models support reference images (not Imagen, not OpenAI)
+    const supportsRefs = selectedModel?.provider === 'gemini' && !selectedModel.modelId.startsWith('imagen');
+
+    const handleRefUpload = useCallback((slot: RefSlot, file: File) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result as string;
+            // Extract base64 from data URL
+            const base64 = dataUrl.split(',')[1];
+            setRefs((prev) => ({
+                ...prev,
+                [slot]: { base64, mimeType: file.type, preview: dataUrl },
+            }));
+        };
+        reader.readAsDataURL(file);
+    }, []);
+
+    const removeRef = useCallback((slot: RefSlot) => {
+        setRefs((prev) => ({ ...prev, [slot]: null }));
+        if (fileInputRefs.current[slot]) {
+            fileInputRefs.current[slot]!.value = '';
+        }
+    }, []);
+
+    // Build final prompt: replace {user_prompt} and {background_color} in style template
     const buildFinalPrompt = (): string => {
         const userText = activeTab === 'prompt' ? prompt : roteiro;
+        const colorValue = hexToColorName(bgColor);
+        let result: string;
         if (selectedStyle) {
             if (selectedStyle.prompt.includes('{user_prompt}')) {
-                return selectedStyle.prompt.replace(/\{user_prompt\}/g, userText);
+                result = selectedStyle.prompt.replace(/\{user_prompt\}/g, userText);
+            } else {
+                result = `${selectedStyle.prompt}\n\n${userText}`;
             }
-            // Fallback: append user text if no placeholder
-            return `${selectedStyle.prompt}\n\n${userText}`;
+        } else {
+            result = userText;
         }
-        return userText;
+        // Replace {background_color} everywhere in the final prompt
+        result = result.replace(/\{background_color\}/g, colorValue);
+        return result;
     };
 
     const handleGenerate = async () => {
@@ -120,11 +204,45 @@ export function ImageGeneratorPage() {
             setError(err.message || 'Erro ao gerar imagem.');
         } finally {
             setIsGenerating(false);
+            // Push to session history
+            const result = generatedImageRef.current;
+            if (result) {
+                const dataUrl = `data:${result.mimeType};base64,${result.base64}`;
+                setSessionHistory((prev) => [
+                    { dataUrl, timestamp: Date.now(), image: result },
+                    ...prev,
+                ].slice(0, 20));
+            }
         }
     };
 
     const generateWithGemini = async (modelId: string, promptText: string) => {
         const isImagen = modelId.startsWith('imagen');
+
+        // Build multimodal parts with labeled reference images
+        const buildParts = (): any[] => {
+            const parts: any[] = [];
+
+            // Add reference images with labels (only for non-Imagen models)
+            if (!isImagen) {
+                for (const slot of REF_SLOTS) {
+                    const refImg = refs[slot.key];
+                    if (refImg) {
+                        parts.push({ text: REF_LABELS[slot.key] });
+                        parts.push({
+                            inlineData: {
+                                mimeType: refImg.mimeType,
+                                data: refImg.base64,
+                            },
+                        });
+                    }
+                }
+            }
+
+            // Add the main prompt
+            parts.push({ text: promptText });
+            return parts;
+        };
 
         const body = isImagen
             ? {
@@ -132,7 +250,7 @@ export function ImageGeneratorPage() {
                 parameters: { aspectRatio, sampleCount: 1 },
             }
             : {
-                contents: [{ parts: [{ text: promptText }] }],
+                contents: [{ parts: buildParts() }],
                 generationConfig: {
                     responseModalities: ['TEXT', 'IMAGE'],
                     imageConfig: {
@@ -278,17 +396,79 @@ export function ImageGeneratorPage() {
                     />
                 </div>
 
-                {/* Style Selection */}
-                <div className={styles.section}>
-                    <label className={styles.sectionLabel}>Estilo</label>
-                    <Dropdown
+                {/* Compact chips: Proportion + Style + Quality */}
+                <div className={styles.chipRow}>
+                    <MiniSelect
+                        options={ASPECT_RATIO_OPTIONS}
+                        value={aspectRatio}
+                        onChange={setAspectRatio}
+                        disabled={isGenerating}
+                        icon={<Ratio size={12} />}
+                    />
+                    <MiniSelect
                         options={styleDropdownOptions}
                         value={selectedStyleId}
-                        onChange={(val) => setSelectedStyleId(val as string)}
-                        placeholder="Selecione um estilo..."
+                        onChange={setSelectedStyleId}
                         disabled={isGenerating}
+                        icon={<Palette size={12} />}
+                    />
+                    <MiniSelect
+                        options={QUALITY_OPTIONS}
+                        value={quality}
+                        onChange={setQuality}
+                        disabled={isGenerating}
+                        icon={<Sparkles size={12} />}
                     />
                 </div>
+
+                {/* Reference Images — only for Gemini generateContent models */}
+                {supportsRefs && (
+                    <div className={styles.section}>
+                        <label className={styles.sectionLabel}>Referências</label>
+                        <div className={styles.refGrid}>
+                            {REF_SLOTS.map((slot) => {
+                                const SlotIcon = slot.icon;
+                                const refData = refs[slot.key];
+                                return (
+                                    <div key={slot.key} className={styles.refSlot}>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className={styles.refFileInput}
+                                            ref={(el) => { fileInputRefs.current[slot.key] = el; }}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleRefUpload(slot.key, file);
+                                            }}
+                                            disabled={isGenerating}
+                                        />
+                                        {refData ? (
+                                            <div className={styles.refPreview}>
+                                                <img src={refData.preview} alt={slot.label} />
+                                                <button
+                                                    className={styles.refRemoveBtn}
+                                                    onClick={() => removeRef(slot.key)}
+                                                    title="Remover"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                className={styles.refUploadBtn}
+                                                onClick={() => fileInputRefs.current[slot.key]?.click()}
+                                                disabled={isGenerating}
+                                            >
+                                                <SlotIcon size={18} />
+                                            </button>
+                                        )}
+                                        <span className={styles.refLabel}>{slot.label}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Tabs + Input */}
                 <div className={styles.section}>
@@ -327,44 +507,21 @@ export function ImageGeneratorPage() {
                         />
                     )}
                 </div>
-
-                {/* Aspect Ratio */}
-                <div className={styles.section}>
-                    <label className={styles.sectionLabel}>Proporção</label>
-                    <div className={styles.optionGrid}>
-                        {ASPECT_RATIOS.map((ratio) => (
-                            <button
-                                key={ratio.value}
-                                className={`${styles.optionBtn} ${aspectRatio === ratio.value ? styles.optionActive : ''}`}
-                                onClick={() => setAspectRatio(ratio.value)}
-                                disabled={isGenerating}
-                            >
-                                <span className={styles.optionIcon}>{ratio.icon}</span>
-                                <span className={styles.optionLabel}>{ratio.label}</span>
-                            </button>
-                        ))}
+                {/* Background Color — only when the selected style uses {background_color} */}
+                {selectedStyle?.prompt.includes('{background_color}') && (
+                    <div className={styles.section}>
+                        <label className={styles.sectionLabel}>
+                            <Palette size={14} />
+                            Cor de Fundo
+                        </label>
+                        <ColorPicker
+                            value={bgColor}
+                            onChange={setBgColor}
+                            disabled={isGenerating}
+                        />
+                        <span className={styles.colorName}>{hexToColorName(bgColor)}</span>
                     </div>
-                </div>
-
-                {/* Quality */}
-                <div className={styles.section}>
-                    <label className={styles.sectionLabel}>Qualidade</label>
-                    <div className={styles.qualityGrid}>
-                        {QUALITY_OPTIONS.map((opt) => (
-                            <button
-                                key={opt.value}
-                                className={`${styles.qualityBtn} ${quality === opt.value ? styles.qualityActive : ''}`}
-                                onClick={() => setQuality(opt.value)}
-                                disabled={isGenerating}
-                            >
-                                <span className={styles.qualityLabel}>{opt.label}</span>
-                                <span className={styles.qualityDesc}>{opt.description}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className={styles.divider} />
+                )}
 
                 {error && (
                     <div className={styles.errorState}>
@@ -424,6 +581,29 @@ export function ImageGeneratorPage() {
                                 <span>Salvando na galeria...</span>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Session History */}
+                {sessionHistory.length > 0 && (
+                    <div className={styles.historyStrip}>
+                        <div className={styles.historyHeader}>
+                            <Clock size={12} />
+                            <span>Recentes</span>
+                        </div>
+                        <div className={styles.historyScroll}>
+                            {sessionHistory.map((item) => (
+                                <button
+                                    key={item.timestamp}
+                                    className={`${styles.historyThumb} ${generatedImage?.base64 === item.image.base64 ? styles.historyThumbActive : ''
+                                        }`}
+                                    onClick={() => setGeneratedImage(item.image)}
+                                    title={new Date(item.timestamp).toLocaleTimeString()}
+                                >
+                                    <img src={item.dataUrl} alt="" />
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
             </main>
