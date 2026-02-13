@@ -136,8 +136,8 @@ export default async function handler(req, res) {
 
         // ── CREATE new lead ─────────────────────────────────────────────────
 
-        // Get the first stage of the "venda" pipeline for new leads
-        const firstStageId = await getFirstStageId(supabase, 'venda');
+        // Get the first stage of the high-ticket pipeline for new leads
+        const firstStageId = await getFirstStageId(supabase, 'high-ticket');
 
         // Auto-distribute: find the salesperson with fewest active leads
         const responsibleId = await getNextSalesperson(supabase);
@@ -149,7 +149,7 @@ export default async function handler(req, res) {
                 phone: cleanPhone,
                 email: leadData.email || null,
                 company: leadData.company || null,
-                pipeline: 'venda',
+                pipeline: 'high-ticket',
                 stage_id: firstStageId,
                 responsible_id: responsibleId,
                 deal_status: 'open',
