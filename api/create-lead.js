@@ -283,11 +283,12 @@ async function getFirstStageId(supabase, pipeline) {
 
 /**
  * Get the next salesperson to assign using "Least Loaded" strategy.
- * Reads distribution config from the `settings` table.
- * Returns user UUID or null if distribution is disabled/unconfigured.
+ * Dynamically discovers all active users with the "Vendedor(a)" role.
+ * Reads enabled/strategy from `settings` table (key: leadDistribution).
+ * Returns user UUID or null if distribution is disabled or no salespeople exist.
  */
 async function getNextSalesperson(supabase) {
-    // Read distribution settings
+    // ── Check if distribution is enabled ────────────────────────────────
     const { data: settingsRow } = await supabase
         .from('settings')
         .select('value')
@@ -300,9 +301,35 @@ async function getNextSalesperson(supabase) {
         ? JSON.parse(settingsRow.value)
         : settingsRow.value;
 
-    if (!settings.enabled || !settings.participants?.length) return null;
+    if (!settings.enabled) return null;
 
-    // Count active leads per participant
+    // ── Auto-discover all active salespeople ─────────────────────────────
+    // Find the "Vendedor(a)" role ID, then get all active users with it
+    const { data: role } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'Vendedor(a)')
+        .maybeSingle();
+
+    if (!role) {
+        console.warn('[CreateLead] Role "Vendedor(a)" not found. Skipping distribution.');
+        return null;
+    }
+
+    const { data: salespeople } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role_id', role.id)
+        .eq('active', true);
+
+    if (!salespeople?.length) {
+        console.warn('[CreateLead] No active salespeople found. Skipping distribution.');
+        return null;
+    }
+
+    const participantIds = salespeople.map((u) => u.id);
+
+    // ── Count active leads per salesperson ───────────────────────────────
     const { data: leads } = await supabase
         .from('leads')
         .select('responsible_id')
@@ -315,11 +342,12 @@ async function getNextSalesperson(supabase) {
         }
     });
 
-    // Find the participant with fewest active leads
-    const sorted = settings.participants
+    // ── Assign to the salesperson with fewest active leads ───────────────
+    const sorted = participantIds
         .map((id) => ({ id, count: counts[id] || 0 }))
         .sort((a, b) => a.count - b.count);
 
+    console.log(`[CreateLead] Distributing to ${sorted[0].id} (${sorted[0].count} open leads)`);
     return sorted[0]?.id || null;
 }
 
