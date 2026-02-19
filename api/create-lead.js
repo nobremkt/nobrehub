@@ -24,6 +24,7 @@
  */
 
 import { getServiceClient, setCorsHeaders } from './_lib/integrationHelper.js';
+import { getLeastLoadedAssignee } from './_lib/distributionHelper.js';
 
 // ─── Source & Tag Configuration ──────────────────────────────────────────────
 
@@ -294,67 +295,7 @@ async function getFirstStageId(supabase, pipeline) {
  * Returns user UUID or null if distribution is disabled or no salespeople exist.
  */
 async function getNextSalesperson(supabase) {
-    // ── Check if distribution is enabled ────────────────────────────────
-    const { data: settingsRow } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'leadDistribution')
-        .maybeSingle();
-
-    if (!settingsRow) return null;
-
-    const settings = typeof settingsRow.value === 'string'
-        ? JSON.parse(settingsRow.value)
-        : settingsRow.value;
-
-    if (!settings.enabled) return null;
-
-    // ── Auto-discover all active salespeople ─────────────────────────────
-    // Find the "Vendedor(a)" role ID, then get all active users with it
-    const { data: role } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('name', 'Vendedor(a)')
-        .maybeSingle();
-
-    if (!role) {
-        console.warn('[CreateLead] Role "Vendedor(a)" not found. Skipping distribution.');
-        return null;
-    }
-
-    const { data: salespeople } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role_id', role.id)
-        .eq('active', true);
-
-    if (!salespeople?.length) {
-        console.warn('[CreateLead] No active salespeople found. Skipping distribution.');
-        return null;
-    }
-
-    const participantIds = salespeople.map((u) => u.id);
-
-    // ── Count active leads per salesperson ───────────────────────────────
-    const { data: leads } = await supabase
-        .from('leads')
-        .select('responsible_id')
-        .eq('deal_status', 'open');
-
-    const counts = {};
-    (leads || []).forEach((row) => {
-        if (row.responsible_id) {
-            counts[row.responsible_id] = (counts[row.responsible_id] || 0) + 1;
-        }
-    });
-
-    // ── Assign to the salesperson with fewest active leads ───────────────
-    const sorted = participantIds
-        .map((id) => ({ id, count: counts[id] || 0 }))
-        .sort((a, b) => a.count - b.count);
-
-    console.log(`[CreateLead] Distributing to ${sorted[0].id} (${sorted[0].count} open leads)`);
-    return sorted[0]?.id || null;
+    return getLeastLoadedAssignee(supabase, '[CreateLead] Distribution');
 }
 
 /**

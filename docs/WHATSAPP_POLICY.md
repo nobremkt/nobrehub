@@ -20,6 +20,12 @@
 
 ## Implementação no Sistema
 
-- **Indicador Visual**: O chat deve mostrar claramente se a janela está aberta ou fechada.
-- **Bloqueio de Input**: O campo de texto deve ser bloqueado APENAS se a janela estiver fechada (`isSessionExpired`).
-- **Ação Requerida**: Se fechada, exibir botão "Enviar Template" ou permitir selecionar um template.
+- **Indicador Visual**: `SessionWarning` exibe 3 estados: ativo (verde), expirando (amarelo com countdown), expirado (vermelho).
+- **Bloqueio de Input**: O campo de texto é bloqueado APENAS se a janela estiver expirada (`isSessionExpired`) E `needsTemplateFirst` for true.
+- **Ação Requerida**: Se expirada, `SessionWarning` exibe botão "Enviar Template" que abre o `SendTemplateModal`.
+- **Playbook**: O botão "Send to Chat" no Playbook também respeita a janela de 24h — se expirada, exibe toast orientando o uso de template.
+
+### Arquivos relevantes
+- `src/features/inbox/components/ChatView/SessionWarning.tsx` — Indicador visual + countdown
+- `src/features/inbox/components/ChatView/ChatView.tsx` — `isInputBlocked` + `isSessionExpired` logic
+- `src/features/inbox/components/SendTemplateModal/SendTemplateModal.tsx` — Modal de template
