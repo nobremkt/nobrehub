@@ -317,8 +317,8 @@
 
 .statusFailed {
     color: var(--color-danger-500);
-    font-weight: bold;
-    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
 }
 
 /* System Messages */

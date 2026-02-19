@@ -1,4 +1,4 @@
-import { FileText, Check, Clock, Eye } from 'lucide-react';
+import { FileText, Check, Clock, Eye, AlertCircle } from 'lucide-react';
 import styles from './ChatBubble.module.css';
 import { AudioPlayer } from './AudioPlayer';
 import { Avatar } from '@/design-system';
@@ -181,7 +181,11 @@ export const ChatBubble = ({
                                     <Check size={14} style={{ marginLeft: '-8px' }} />
                                 </span>
                             )}
-                            {status === 'failed' && <span className={styles.statusFailed}>!</span>}
+                            {status === 'failed' && (
+                                <span className={styles.statusFailed} title="Não entregue">
+                                    <AlertCircle size={14} />
+                                </span>
+                            )}
                         </span>
                     )}
                 </div>
