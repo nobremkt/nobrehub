@@ -74,7 +74,13 @@ export function IntegrationsPage() {
         setIsSaving(true);
         setLastTestResult(null);
 
-        await saveSettings({ provider, baseUrl, enabled });
+        // Auto-set correct base_url per provider
+        const resolvedBaseUrl = provider === 'meta_cloud'
+            ? 'https://graph.facebook.com'
+            : baseUrl;
+
+        setBaseUrl(resolvedBaseUrl);
+        await saveSettings({ provider, baseUrl: resolvedBaseUrl, enabled });
         setIsSaving(false);
     };
 
