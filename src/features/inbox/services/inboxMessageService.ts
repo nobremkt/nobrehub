@@ -129,14 +129,15 @@ export const InboxMessageService = {
         conversationId: string,
         content: string,
         scheduledFor: Date,
-        senderId: string = 'agent'
+        senderId?: string
     ) => {
+        const resolvedSenderId = senderId || getCurrentUserId();
         const { data, error } = await supabase
             .from('messages')
             .insert({
                 conversation_id: conversationId,
                 content,
-                sender_id: senderId,
+                sender_id: resolvedSenderId,
                 sender_type: 'agent',
                 status: 'scheduled',
                 type: 'text',
@@ -213,6 +214,68 @@ export const InboxMessageService = {
             messageId,
             endpoint: '/api/send-media',
             payload: { mediaType, mediaUrl, caption: mediaName, viewOnce },
+        });
+
+        return messageId;
+    },
+
+    /**
+     * Send an interactive message with reply buttons (1-3).
+     */
+    sendInteractiveMessage: async (
+        conversationId: string,
+        body: string,
+        buttons: { id: string; title: string }[],
+        header?: string,
+        senderId?: string
+    ) => {
+        const now = new Date().toISOString();
+        const resolvedSenderId = senderId || getCurrentUserId();
+
+        const { data: convData, error: convError } = await supabase
+            .from('conversations')
+            .select('phone')
+            .eq('id', conversationId)
+            .single();
+
+        if (convError || !convData) throw new Error('Conversation not found');
+
+        const buttonLabels = buttons.map(b => b.title).join(' | ');
+        const previewContent = `${body}\n[${buttonLabels}]`;
+
+        const { data: msgData, error: msgError } = await supabase
+            .from('messages')
+            .insert({
+                conversation_id: conversationId,
+                content: previewContent,
+                sender_id: resolvedSenderId,
+                sender_type: 'agent',
+                status: 'pending',
+                type: 'interactive',
+                metadata: { header, buttons, interactiveType: 'button' },
+                created_at: now,
+            })
+            .select('id')
+            .single();
+
+        if (msgError) throw msgError;
+        const messageId = msgData.id;
+
+        await supabase
+            .from('conversations')
+            .update({
+                last_message_preview: `[Interativa] ${body.slice(0, 40)}`,
+                last_message_at: now,
+                unread_count: 0,
+                updated_at: now,
+            })
+            .eq('id', conversationId);
+
+        await sendVia360Dialog({
+            phone: convData.phone,
+            messageId,
+            endpoint: '/api/send-interactive',
+            payload: { body, header, buttons },
         });
 
         return messageId;

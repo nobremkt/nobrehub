@@ -33,6 +33,8 @@ export const rowToConversation = (row: ConversationRow): Conversation => ({
     assignedTo: row.assigned_to || undefined,
     channel: (row.channel || 'whatsapp') as Conversation['channel'],
     status: (row.status || 'open') as Conversation['status'],
+    dealStatus: (row.deal_status as Conversation['dealStatus']) || undefined,
+    lossReason: row.loss_reason || undefined,
     context: (row.context || 'sales') as Conversation['context'],
     postSalesId: row.post_sales_id || undefined,
     isFavorite: row.is_favorite || false,
@@ -43,16 +45,20 @@ export const rowToConversation = (row: ConversationRow): Conversation => ({
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
 });
 
-export const rowToMessage = (row: MessageRow): Message => ({
-    id: row.id,
-    conversationId: row.conversation_id,
-    content: row.content || '',
-    type: (row.type || 'text') as Message['type'],
-    direction: row.sender_type === 'agent' ? 'out' : 'in',
-    status: (row.status || 'sent') as Message['status'],
-    senderId: row.sender_id || undefined,
-    mediaUrl: row.media_url || undefined,
-    mediaName: (row.metadata as Record<string, unknown> | null)?.mediaName as string | undefined,
-    viewOnce: (row.metadata as Record<string, unknown> | null)?.viewOnce as boolean | undefined,
-    createdAt: row.created_at ? new Date(row.created_at) : new Date(),
-});
+export const rowToMessage = (row: MessageRow): Message => {
+    const meta = row.metadata as Record<string, unknown> | null;
+    return {
+        id: row.id,
+        conversationId: row.conversation_id,
+        content: row.content || '',
+        type: (row.type || 'text') as Message['type'],
+        direction: row.sender_type === 'agent' ? 'out' : 'in',
+        status: (row.status || 'sent') as Message['status'],
+        senderId: row.sender_id || undefined,
+        mediaUrl: row.media_url || undefined,
+        mediaName: meta?.mediaName as string | undefined,
+        viewOnce: meta?.viewOnce as boolean | undefined,
+        metadata: meta || undefined,
+        createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+    };
+};

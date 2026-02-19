@@ -163,10 +163,34 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     },
 
     updateConversationDetails: async (conversationId, data) => {
+        const previousConversation = get().conversations.find(c => c.id === conversationId);
+
+        // Optimistic UI update for sidepanel actions (Ganho/Perdido/Aberto etc.)
+        set((state) => ({
+            conversations: state.conversations.map((conv) =>
+                conv.id === conversationId
+                    ? {
+                        ...conv,
+                        ...data,
+                        updatedAt: new Date(),
+                    }
+                    : conv
+            ),
+        }));
+
         try {
             await InboxService.updateConversationDetails(conversationId, data);
         } catch (error) {
             console.error('Failed to update conversation details:', error);
+
+            // Rollback optimistic update on failure
+            if (previousConversation) {
+                set((state) => ({
+                    conversations: state.conversations.map((conv) =>
+                        conv.id === conversationId ? previousConversation : conv
+                    ),
+                }));
+            }
         }
     },
 

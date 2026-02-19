@@ -26,6 +26,7 @@ import { useTeamStatus } from '@/features/presence/hooks/useTeamStatus';
 import { toast } from 'react-toastify';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 import { CreateProjectModal } from '@/features/production/components/CreateProjectModal';
+import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 
 // Sub-components
 import { DealSection } from './DealSection';
@@ -86,6 +87,7 @@ export const ProfilePanel: React.FC = () => {
     const { sectors, fetchSectors } = useSectorStore();
     const { lossReasons, fetchLossReasons } = useLossReasonStore();
     const teamStatus = useTeamStatus();
+    const { leads: kanbanLeads } = useKanbanStore();
 
     // Modal state
     const [showLossModal, setShowLossModal] = useState(false);
@@ -130,6 +132,12 @@ export const ProfilePanel: React.FC = () => {
 
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const assignedMember = conversation ? collaborators.find(c => c.id === conversation.assignedTo) : null;
+
+    // kanbanStore lead = source of truth for Lead360Modal
+    const kanbanLead = useMemo(() => {
+        if (!conversation) return null;
+        return kanbanLeads.find(l => l.id === conversation.leadId) || null;
+    }, [kanbanLeads, conversation]);
 
     const handleTransfer = (userId: string) => {
         if (!selectedConversationId) return;
@@ -363,19 +371,27 @@ export const ProfilePanel: React.FC = () => {
             <Lead360Modal
                 isOpen={showLead360Modal}
                 onClose={() => setShowLead360Modal(false)}
-                lead={{
+                lead={kanbanLead || {
                     id: conversation.leadId || conversation.id,
                     name: conversation.leadName,
                     phone: conversation.leadPhone,
                     email: conversation.leadEmail || '',
                     company: conversation.leadCompany || '',
-                    status: conversation.dealStatus || 'open',
+                    status: conversation.stage || '',
                     pipeline: (conversation.pipeline || 'high-ticket') as 'high-ticket' | 'low-ticket',
                     order: 0,
                     responsibleId: conversation.assignedTo || '',
                     createdAt: conversation.createdAt,
                     updatedAt: conversation.updatedAt,
                     tags: conversation.tags || [],
+                }}
+                onLeadStatusSync={async (data) => {
+                    await updateConversationDetails(conversation.id, {
+                        dealStatus: data.dealStatus,
+                        status: data.status,
+                        stage: data.stage,
+                        lossReason: data.lossReason,
+                    });
                 }}
             />
         </div>

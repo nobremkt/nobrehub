@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Conversation, DealStatus } from '../../types';
 import { Modal, Button } from '@/design-system';
+import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
 
 interface LossReasonModalProps {
     isOpen: boolean;
@@ -18,13 +19,31 @@ export const LossReasonModal: React.FC<LossReasonModalProps> = ({
     onUpdateConversation,
 }) => {
     const [selectedReason, setSelectedReason] = useState<string>('');
+    const { stages, moveLead, updateLead } = useKanbanStore();
 
     const handleClose = () => {
         onClose();
         setSelectedReason('');
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
+        // Find 'Perdido' stage for the lead's pipeline
+        const lead = useKanbanStore.getState().leads.find(l => l.id === conversation.leadId);
+        const pipeline = lead?.pipeline || 'high-ticket';
+        const perdidoStage = stages.find(s => s.pipeline === pipeline && s.name === 'Perdido');
+
+        if (perdidoStage && conversation.leadId) {
+            try {
+                // Move lead to 'Perdido' stage in kanbanStore + DB
+                await moveLead(conversation.leadId, perdidoStage.id);
+                // Set lostReason on lead
+                await updateLead(conversation.leadId, { lostReason: selectedReason });
+            } catch (error) {
+                console.error('Erro ao marcar lead como perdido:', error);
+            }
+        }
+
+        // Sync denormalized conversation data
         onUpdateConversation(conversation.id, {
             dealStatus: 'lost' as DealStatus,
             lossReason: selectedReason,

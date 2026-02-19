@@ -282,8 +282,15 @@ export const InboxService = {
         if (data.leadName !== undefined) convUpdates.name = data.leadName;
         if (data.leadPhone !== undefined) convUpdates.phone = data.leadPhone;
         if (data.leadEmail !== undefined) convUpdates.email = data.leadEmail;
+        if (data.leadCompany !== undefined) convUpdates.company = data.leadCompany;
         if (data.tags !== undefined) convUpdates.tags = data.tags;
         if (data.notes !== undefined) convUpdates.notes = data.notes;
+        if (data.status !== undefined) convUpdates.status = data.status;
+        if (data.assignedTo !== undefined) convUpdates.assigned_to = data.assignedTo || null;
+        if (data.context !== undefined) convUpdates.context = data.context;
+        if (data.postSalesId !== undefined) convUpdates.post_sales_id = data.postSalesId || null;
+        if (data.dealStatus !== undefined) convUpdates.deal_status = data.dealStatus;
+        if (data.lossReason !== undefined) convUpdates.loss_reason = data.lossReason || null;
         if (data.isFavorite !== undefined) convUpdates.is_favorite = data.isFavorite;
         if (data.isPinned !== undefined) convUpdates.is_pinned = data.isPinned;
         convUpdates.updated_at = new Date().toISOString();
@@ -308,6 +315,8 @@ export const InboxService = {
                 if (data.leadCompany !== undefined) leadUpdates.company = data.leadCompany;
                 if (data.tags !== undefined) leadUpdates.tags = data.tags;
                 if (data.notes !== undefined) leadUpdates.notes = data.notes;
+                if (data.dealStatus !== undefined) leadUpdates.deal_status = data.dealStatus;
+                if (data.lossReason !== undefined) leadUpdates.lost_reason_id = data.lossReason || null;
 
                 if (Object.keys(leadUpdates).length > 0) {
                     leadUpdates.updated_at = new Date().toISOString();
