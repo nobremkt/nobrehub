@@ -31,6 +31,23 @@ interface KanbanState {
     getLeadsByStage: (stageId: string) => Lead[];
 }
 
+function normalizeStageName(name: string): string {
+    return (name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+function getDealStatusForStage(stageId: string, stages: PipelineStage[]): Lead['dealStatus'] {
+    const stage = stages.find((s) => s.id === stageId);
+    const normalized = normalizeStageName(stage?.name || '');
+
+    if (normalized === 'ganho') return 'won';
+    if (normalized === 'perdido') return 'lost';
+    return 'open';
+}
+
 export const useKanbanStore = create<KanbanState>((set, get) => ({
     leads: [],
     stages: [],
@@ -102,6 +119,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     moveLead: async (leadId, newStatus) => {
         // Optimistic update
         const previousLeads = get().leads;
+        const targetDealStatus = getDealStatusForStage(newStatus, get().stages);
 
         set((state) => {
             const leadsInTarget = state.leads.filter(l => l.status === newStatus);
@@ -112,7 +130,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
             return {
                 leads: state.leads.map((lead) =>
                     lead.id === leadId
-                        ? { ...lead, status: newStatus, order: minOrder, updatedAt: new Date() }
+                        ? { ...lead, status: newStatus, order: minOrder, dealStatus: targetDealStatus, updatedAt: new Date() }
                         : lead
                 ),
             };
@@ -124,7 +142,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
             if (updatedLead) {
                 await LeadService.updateLead(leadId, {
                     status: newStatus,
-                    order: updatedLead.order
+                    order: updatedLead.order,
+                    dealStatus: updatedLead.dealStatus || 'open',
                 });
             }
         } catch (error) {
@@ -151,13 +170,20 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
                 .filter(l => l.status === targetStatus && l.id !== leadId)
                 .sort((a, b) => a.order - b.order);
 
+            const targetDealStatus = getDealStatusForStage(targetStatus, state.stages);
+
             // Insere o lead na nova posição
-            targetColumnLeads.splice(newIndex, 0, { ...leadToMove, status: targetStatus });
+            targetColumnLeads.splice(newIndex, 0, {
+                ...leadToMove,
+                status: targetStatus,
+                dealStatus: targetDealStatus,
+            });
 
             // Recalcula os orders da coluna de destino
             targetColumnLeads = targetColumnLeads.map((lead, index) => ({
                 ...lead,
                 order: index,
+                dealStatus: targetDealStatus,
                 updatedAt: lead.id === leadId ? new Date() : lead.updatedAt,
             }));
 
@@ -189,7 +215,11 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
             // Leads in target status that need update
             const targetUpdates = currentLeads
                 .filter(l => l.status === targetStatus)
-                .map(l => LeadService.updateLead(l.id, { status: l.status, order: l.order }));
+                .map(l => LeadService.updateLead(l.id, {
+                    status: l.status,
+                    order: l.order,
+                    dealStatus: l.dealStatus || 'open',
+                }));
 
             await Promise.all(targetUpdates);
 

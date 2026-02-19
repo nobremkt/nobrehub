@@ -6,8 +6,6 @@ import {
     Mail,
     Star,
     Pin,
-    CheckCircle,
-    XCircle,
     Rocket
 } from 'lucide-react';
 import styles from './LeadHeader.module.css';
@@ -23,6 +21,7 @@ interface LeadHeaderProps {
     lead: Lead;
     onStatusChange?: (status: 'won' | 'lost' | 'open', lossReasonId?: string) => void;
     onLeadUpdated?: () => void;
+    tabsNav?: import('react').ReactNode;
 }
 
 // Normaliza telefone para comparação
@@ -30,7 +29,7 @@ const normalizePhone = (phone: string): string => {
     return phone?.replace(/\D/g, '') || '';
 };
 
-export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderProps) {
+export function LeadHeader({ lead, onStatusChange, onLeadUpdated, tabsNav }: LeadHeaderProps) {
     const navigate = useNavigate();
     const { conversations, selectConversation, init } = useInboxStore();
     const { lossReasons, fetchLossReasons } = useLossReasonStore();
@@ -56,6 +55,9 @@ export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderPr
 
     // Verifica se o deal está perdido
     const isDealLost = lead.dealStatus === 'lost';
+
+    // Verifica se o deal está aberto
+    const isDealOpen = !lead.dealStatus || lead.dealStatus === 'open';
 
     // Handler para ligar
     const handleCall = () => {
@@ -122,6 +124,12 @@ export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderPr
         toast.success('Lead marcado como GANHO!');
     };
 
+    // Handler para Aberto
+    const handleOpen = () => {
+        onStatusChange?.('open');
+        toast.info('Lead marcado como ABERTO!');
+    };
+
     // Handler para Perdido — abre modal de motivo
     const handleLostClick = () => {
         setShowLostModal(true);
@@ -142,92 +150,101 @@ export function LeadHeader({ lead, onStatusChange, onLeadUpdated }: LeadHeaderPr
 
     return (
         <header className={styles.header}>
-            {/* Avatar */}
-            <div className={styles.avatar}>
-                <div className={styles.avatarImage}>
-                    {getInitials(lead.name)}
+            <div className={styles.headerMain}>
+                {/* Avatar */}
+                <div className={styles.avatar}>
+                    <div className={styles.avatarImage}>
+                        {getInitials(lead.name)}
+                    </div>
+                    <div className={styles.onlineIndicator} />
                 </div>
-                <div className={styles.onlineIndicator} />
-            </div>
 
-            {/* Lead Name */}
-            <h1 className={styles.leadName}>{lead.name}</h1>
+                {/* Lead Name */}
+                <h1 className={styles.leadName}>{lead.name}</h1>
 
-            {/* Quick Action Icons */}
-            <div className={styles.actionIcons}>
-                <button
-                    className={styles.iconBtn}
-                    onClick={handleCall}
-                    title="Ligar"
-                >
-                    <Phone size={16} />
-                </button>
-                <button
-                    className={styles.iconBtn}
-                    onClick={handleWhatsApp}
-                    title="WhatsApp"
-                >
-                    <MessageSquare size={16} />
-                </button>
-                <button
-                    className={styles.iconBtn}
-                    onClick={handleEmail}
-                    title="Email"
-                >
-                    <Mail size={16} />
-                </button>
-                <button
-                    className={`${styles.iconBtn} ${isFavorite ? styles.active : ''}`}
-                    onClick={handleFavorite}
-                    title="Favorito"
-                >
-                    <Star size={16} fill={isFavorite ? 'currentColor' : 'none'} />
-                </button>
-                <button
-                    className={`${styles.iconBtn} ${isPinned ? styles.active : ''}`}
-                    onClick={handlePin}
-                    title="Fixar"
-                >
-                    <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} />
-                </button>
-            </div>
+                {/* Quick Action Icons */}
+                <div className={styles.actionIcons}>
+                    <button
+                        className={styles.iconBtn}
+                        onClick={handleCall}
+                        title="Ligar"
+                    >
+                        <Phone size={16} />
+                    </button>
+                    <button
+                        className={styles.iconBtn}
+                        onClick={handleWhatsApp}
+                        title="WhatsApp"
+                    >
+                        <MessageSquare size={16} />
+                    </button>
+                    <button
+                        className={styles.iconBtn}
+                        onClick={handleEmail}
+                        title="Email"
+                    >
+                        <Mail size={16} />
+                    </button>
+                    <button
+                        className={`${styles.iconBtn} ${isFavorite ? styles.active : ''}`}
+                        onClick={handleFavorite}
+                        title="Favorito"
+                    >
+                        <Star size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                        className={`${styles.iconBtn} ${isPinned ? styles.active : ''}`}
+                        onClick={handlePin}
+                        title="Fixar"
+                    >
+                        <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} />
+                    </button>
+                </div>
 
-            {/* Separator */}
-            <div className={styles.separator} />
+                {tabsNav ? <div className={styles.tabsInline}>{tabsNav}</div> : null}
 
-            {/* Status Buttons - Ganho/Perdido */}
-            <div className={styles.statusButtons}>
-                <button
-                    className={`${styles.wonBtn} ${isDealWon ? styles.active : ''}`}
-                    onClick={handleWon}
-                    title="Marcar como Ganho"
-                >
-                    <CheckCircle size={16} />
-                    <span>Ganho</span>
-                </button>
-                <button
-                    className={`${styles.lostBtn} ${isDealLost ? styles.active : ''}`}
-                    onClick={handleLostClick}
-                    title="Marcar como Perdido"
-                >
-                    <XCircle size={16} />
-                    <span>Perdido</span>
-                </button>
+                {/* Separator */}
+                <div className={styles.separator} />
 
-                {/* CTA Criar Projeto - aparece quando deal é ganho */}
-                {isDealWon && (
-                    <>
-                        <div className={styles.separator} />
-                        <button
-                            className={styles.createProjectBtn}
-                            onClick={() => setShowCreateProjectModal(true)}
-                            title="Criar Projeto na Produção"
-                        >
-                            <Rocket size={16} />
-                            <span>Criar Projeto</span>
-                        </button>
-                    </>
-                )}
+                {/* Status Buttons - Ganho/Perdido */}
+                <div className={styles.statusButtons}>
+                    <button
+                        className={`${styles.wonBtn} ${isDealWon ? styles.active : ''}`}
+                        onClick={handleWon}
+                        title="Marcar como Ganho"
+                    >
+                        <span>Ganho</span>
+                    </button>
+                    <button
+                        className={`${styles.lostBtn} ${isDealLost ? styles.active : ''}`}
+                        onClick={handleLostClick}
+                        title="Marcar como Perdido"
+                    >
+                        <span>Perdido</span>
+                    </button>
+                    <button
+                        className={`${styles.openBtn} ${isDealOpen ? styles.active : ''}`}
+                        onClick={handleOpen}
+                        title="Marcar como Aberto"
+                    >
+                        <span>Aberto</span>
+                    </button>
+
+                    {/* CTA Criar Projeto - aparece quando deal é ganho */}
+                    {isDealWon && (
+                        <>
+                            <div className={styles.separator} />
+                            <button
+                                className={styles.createProjectBtn}
+                                onClick={() => setShowCreateProjectModal(true)}
+                                title="Criar Projeto na Produção"
+                            >
+                                <Rocket size={16} />
+                                <span>Criar Projeto</span>
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Modal de Motivo de Perda */}

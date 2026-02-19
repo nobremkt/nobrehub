@@ -67,6 +67,7 @@ export function rowToLead(row: LeadRow): Lead {
 /** Converte campos parciais do Lead (camelCase) → updates do banco (snake_case) */
 function leadToDbUpdates(updates: Partial<Lead>): LeadUpdate {
     const db: Record<string, unknown> = {} as Record<string, unknown>;
+    const has = (key: keyof Lead) => Object.prototype.hasOwnProperty.call(updates, key);
 
     if (updates.name !== undefined) db.name = updates.name;
     if (updates.email !== undefined) db.email = updates.email;
@@ -86,13 +87,21 @@ function leadToDbUpdates(updates: Partial<Lead>): LeadUpdate {
     // Deal
     if (updates.dealStatus !== undefined) db.deal_status = updates.dealStatus;
     if (updates.dealValue !== undefined) db.deal_value = updates.dealValue;
-    if (updates.dealClosedAt !== undefined) db.deal_closed_at = updates.dealClosedAt instanceof Date ? updates.dealClosedAt.toISOString() : updates.dealClosedAt;
+    if (has('dealClosedAt')) {
+        db.deal_closed_at = updates.dealClosedAt
+            ? (updates.dealClosedAt instanceof Date ? updates.dealClosedAt.toISOString() : updates.dealClosedAt)
+            : null;
+    }
     if (updates.dealProductId !== undefined) db.deal_product_id = updates.dealProductId;
     if (updates.dealNotes !== undefined) db.deal_notes = updates.dealNotes;
 
     // Loss
-    if (updates.lostReason !== undefined) db.lost_reason_id = updates.lostReason;
-    if (updates.lostAt !== undefined) db.lost_at = updates.lostAt instanceof Date ? updates.lostAt.toISOString() : updates.lostAt;
+    if (has('lostReason')) db.lost_reason_id = updates.lostReason || null;
+    if (has('lostAt')) {
+        db.lost_at = updates.lostAt
+            ? (updates.lostAt instanceof Date ? updates.lostAt.toISOString() : updates.lostAt)
+            : null;
+    }
 
     // Pós-vendas
     if (updates.postSalesId !== undefined) db.post_sales_id = updates.postSalesId;

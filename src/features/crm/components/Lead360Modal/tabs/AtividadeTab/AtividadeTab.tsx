@@ -1,14 +1,22 @@
 
-import { useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Copy, Send } from 'lucide-react';
-import { Checkbox } from '@/design-system';
+import { Activity } from 'lucide-react';
+import { Checkbox, Spinner } from '@/design-system';
 import styles from './AtividadeTab.module.css';
-import { PIPELINE_STAGES, ACTIVITIES, SCRIPTS, SENDABLE_SCRIPT_IDS } from './data';
 import { toast } from 'react-toastify';
 import { Lead } from '@/types/lead.types';
-import { LeadService } from '@/features/crm/services/LeadService';
 import { useInboxStore } from '@/features/inbox/stores/useInboxStore';
+import { useKanbanStore } from '@/features/crm/stores/useKanbanStore';
+import { usePlaybookStore } from '@/features/crm/stores/usePlaybookStore';
+import { ACTIVITY_TYPE_META } from '@/features/crm/types/playbook.types';
+import type { PlaybookBlock } from '@/features/crm/types/playbook.types';
+import {
+    MessageBlock,
+    ChecklistBlock,
+    TipBlock,
+    QuestionBlock,
+} from './PlaybookBlocks';
 
 interface AtividadeTabProps {
     lead: Lead;
@@ -16,105 +24,218 @@ interface AtividadeTabProps {
     onTemplateSelect?: (message: string) => void;
 }
 
-// Helper to get stage number from stage id
-const getStageNumber = (stageId: string) => {
-    const index = PIPELINE_STAGES.findIndex(s => s.id === stageId);
-    return index !== -1 ? index + 1 : null;
-};
-
-// Helper to highlight variables in script content
-const highlightVariables = (content: string) => {
-    // Match patterns like [NOME], [EMPRESA], [BENEFÍCIO], etc.
-    const regex = /\[([A-ZÁÉÍÓÚÂÊÔÀÃÕÇ\/\s]+)\]/g;
-    const parts = content.split(regex);
-
-    return parts.map((part, index) => {
-        // Odd indices are matches (variable names)
-        if (index % 2 === 1) {
-            return (
-                <span key={index} className={styles.variable}>
-                    {'{'}{part}{'}'}
-                </span>
-            );
-        }
-        return part;
-    });
-};
-
-
 export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabProps) {
     const navigate = useNavigate();
-    const { conversations, selectedConversationId, selectConversation, setDraftMessage } = useInboxStore();
+    const { conversations, messages: inboxMessages, selectedConversationId, selectConversation, setDraftMessage } = useInboxStore();
+    const getStagesByPipeline = useKanbanStore(s => s.getStagesByPipeline);
+    const allKanbanStages = useKanbanStore(s => s.stages);
 
-    // Carregar progresso do lead.customFields ou iniciar em 0
-    const initialProgress = (lead.customFields?.playbookProgress as number) || 0;
-    const [completedActivities, setCompletedActivities] = useState(initialProgress);
-    // Estado para controlar qual atividade está selecionada para visualização (script)
-    const [selectedActivityId, setSelectedActivityId] = useState<number>(initialProgress + 1 || 1);
+    const {
+        activities,
+        progress,
+        loading,
+        selectedActivityId,
+        loadPlaybook,
+        selectActivity,
+        toggleActivity,
+        updateScriptChecks,
+    } = usePlaybookStore();
 
-    // O script exibido baseia-se na atividade explicitamente selecionada OU na próxima atividade lógica
-    const activeId = selectedActivityId || (completedActivities + 1);
-    const currentScript = SCRIPTS[activeId] || SCRIPTS[1];
-    const isCurrentScriptSendable = SENDABLE_SCRIPT_IDS.has(activeId);
+    // Derive pipeline from the lead's stage (lead.status holds stage_id)
+    const pipeline = (() => {
+        if (lead.status) {
+            const stage = allKanbanStages.find(s => s.id === lead.status);
+            if (stage) return stage.pipeline;
+        }
+        return lead.pipeline || 'high-ticket';
+    })();
 
-    // LÓGICA DE PROGRESSO VISUAL (Timeline)
-    // O estágio ativo na timeline deve ser baseado na PRÓXIMA atividade a fazer (completedActivities + 1)
-    const nextActivityId = completedActivities + 1;
-    const nextActivity = ACTIVITIES.find(a => a.id === nextActivityId);
+    // Load playbook data on mount
+    useEffect(() => {
+        loadPlaybook(lead.id, pipeline);
+    }, [lead.id, pipeline, loadPlaybook]);
 
-    // Se não houver próxima (tudo completo), o progresso vai até o fim.
-    const currentRealStageId = nextActivity ? nextActivity.stage : PIPELINE_STAGES[PIPELINE_STAGES.length - 1].id;
-    const currentRealStageIndex = PIPELINE_STAGES.findIndex(s => s.id === currentRealStageId);
+    // ─── Computed ────────────────────────────────────────────────────
+    const completedSet = new Set(progress?.completedActivities ?? []);
+    const selectedActivity = activities.find(a => a.id === selectedActivityId);
 
-    // Se tudo estiver concluído, podemos querer mostrar tudo cheio ou manter no último estágio
-    const displayStageIndex = currentRealStageIndex !== -1 ? currentRealStageIndex : (PIPELINE_STAGES.length - 1);
+    // Timeline stages (from KanbanStore, excluding Ganho/Perdido)
+    const allStages = getStagesByPipeline(pipeline as 'high-ticket' | 'low-ticket');
+    const timelineStages = allStages.filter(s =>
+        s.name !== 'Ganho' && s.name !== 'Perdido'
+    );
 
-    const handleStageClick = (index: number) => {
-        // Clicar no estágio foca a primeira atividade daquele estágio para leitura, sem alterar progresso
-        const stageId = PIPELINE_STAGES[index].id;
-        const firstActivityOfStage = ACTIVITIES.findIndex(a => a.stage === stageId);
-        if (firstActivityOfStage !== -1) {
-            setSelectedActivityId(ACTIVITIES[firstActivityOfStage].id);
+    // Progress calculation: which stage is the lead currently progressing through?
+    const getStageProgress = () => {
+        if (activities.length === 0 || timelineStages.length === 0) return 0;
+
+        // Find first incomplete activity
+        const firstIncomplete = activities.find(a => !completedSet.has(a.id));
+        if (!firstIncomplete) return timelineStages.length - 1; // All done
+
+        // Find which stage this activity belongs to
+        const stageIndex = timelineStages.findIndex(s => s.id === firstIncomplete.stageId);
+        return Math.max(0, stageIndex);
+    };
+
+    const displayStageIndex = getStageProgress();
+    const progressPercent = timelineStages.length <= 1
+        ? 0
+        : (displayStageIndex / (timelineStages.length - 1)) * 100;
+
+    // ─── Handlers ───────────────────────────────────────────────────
+
+    const handleStageClick = (stageId: string) => {
+        const firstActivityOfStage = activities.find(a => a.stageId === stageId);
+        if (firstActivityOfStage) {
+            selectActivity(firstActivityOfStage.id);
         }
     };
 
-    const toggleCompletion = useCallback(async (activityId: number) => {
-        // Usar o estado atual, não closure stale
-        setCompletedActivities(prev => {
-            const newProgress = activityId <= prev ? activityId - 1 : activityId;
+    const handleToggleActivity = useCallback(async (activityId: string) => {
+        await toggleActivity(lead.id, activityId, pipeline);
+    }, [lead.id, pipeline, toggleActivity]);
 
-            // Persist to Firebase (fire and forget para evitar problema de closure)
-            LeadService.updateLead(lead.id, {
-                customFields: {
-                    ...lead.customFields,
-                    playbookProgress: newProgress,
+    const handleChecklistToggle = useCallback(async (activityId: string, blockContent: string, index: number) => {
+        let items: string[];
+        try {
+            items = JSON.parse(blockContent);
+        } catch {
+            items = blockContent.split('\n').filter(Boolean);
+        }
+
+        const currentChecks = progress?.scriptChecks?.[activityId] ?? new Array(items.length).fill(false);
+        const newChecks = [...currentChecks];
+        newChecks[index] = !newChecks[index];
+        await updateScriptChecks(lead.id, activityId, newChecks, pipeline);
+    }, [lead.id, pipeline, progress?.scriptChecks, updateScriptChecks]);
+
+    const handleCopy = useCallback((text: string) => {
+        const message = text
+            .replace(/\{NOME\}/g, lead.name || '{NOME}')
+            .replace(/\{EMPRESA\}/g, lead.company || '{EMPRESA}');
+        navigator.clipboard.writeText(message);
+        toast.success('Texto copiado!');
+    }, [lead.name, lead.company]);
+
+    const handleSendToChat = useCallback((text: string) => {
+        const message = text
+            .replace(/\{NOME\}/g, lead.name || '{NOME}')
+            .replace(/\{EMPRESA\}/g, lead.company || '{EMPRESA}');
+
+        if (onTemplateSelect) {
+            onTemplateSelect(message);
+            onClose();
+            return;
+        }
+
+        const normalizePhone = (value?: string) => value?.replace(/\D/g, '') || '';
+        const phone = normalizePhone(lead.phone);
+
+        const selectedConversation = selectedConversationId
+            ? conversations.find(c => c.id === selectedConversationId)
+            : null;
+
+        const existingConversation =
+            conversations.find(c => lead.id && c.leadId === lead.id) ||
+            (phone
+                ? conversations.find(c => normalizePhone(c.leadPhone) === phone && c.channel === 'whatsapp')
+                : null) ||
+            selectedConversation ||
+            null;
+
+        if (!existingConversation && !phone && !lead.id) {
+            toast.error('Lead sem telefone e sem conversa vinculada');
+            return;
+        }
+
+        // Check if WhatsApp 24h window is expired before sending free-text
+        if (existingConversation?.channel === 'whatsapp') {
+            const convMessages = inboxMessages[existingConversation.id] || [];
+            const inboundMsgs = convMessages.filter(m => m.direction === 'in');
+            const lastInbound = inboundMsgs.length > 0
+                ? new Date(inboundMsgs[inboundMsgs.length - 1].createdAt)
+                : null;
+            const hoursSince = lastInbound
+                ? (Date.now() - lastInbound.getTime()) / (1000 * 60 * 60)
+                : Infinity;
+
+            if (hoursSince >= 24) {
+                toast.warning('Janela de 24h expirada — envie um template para reabrir a conversa');
+                return;
+            }
+        }
+
+        setDraftMessage(message);
+        onClose();
+
+        if (existingConversation) {
+            selectConversation(existingConversation.id);
+            navigate(`/inbox/${existingConversation.id}`);
+            return;
+        }
+
+        // No existing conversation — navigate to inbox (InboxService will handle new conversation creation)
+        navigate('/inbox');
+    }, [lead, onClose, onTemplateSelect, conversations, inboxMessages, selectedConversationId, selectConversation, setDraftMessage, navigate]);
+
+    // ─── Block Renderer ─────────────────────────────────────────────
+
+    const renderBlock = (block: PlaybookBlock) => {
+        const activityId = block.activityId;
+
+        switch (block.blockType) {
+            case 'message':
+                return (
+                    <MessageBlock
+                        key={block.id}
+                        block={block}
+                        onCopy={handleCopy}
+                        onSendToChat={handleSendToChat}
+                    />
+                );
+            case 'checklist': {
+                let items: string[];
+                try {
+                    items = JSON.parse(block.content);
+                } catch {
+                    items = block.content.split('\n').filter(Boolean);
                 }
-            }).catch(error => {
-                console.error('Erro ao salvar progresso:', error);
-                toast.error('Erro ao salvar progresso');
-            });
-
-            return newProgress;
-        });
-
-        setSelectedActivityId(activityId);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lead.id]);
-
-    const selectActivity = (activityId: number) => {
-        setSelectedActivityId(activityId);
-        // Não altera mais o progresso visual (timeline)
+                const checks = progress?.scriptChecks?.[activityId] ?? new Array(items.length).fill(false);
+                return (
+                    <ChecklistBlock
+                        key={block.id}
+                        block={block}
+                        checks={checks}
+                        onToggle={(index) => handleChecklistToggle(activityId, block.content, index)}
+                    />
+                );
+            }
+            case 'tip':
+                return <TipBlock key={block.id} block={block} />;
+            case 'question':
+                return <QuestionBlock key={block.id} block={block} />;
+            default:
+                return null;
+        }
     };
 
-    // Calculate progress width based on displayStageIndex (Completed Activities)
-    const totalStages = PIPELINE_STAGES.length;
-    const progressPercent = displayStageIndex === 0 ? 0 : (displayStageIndex / (totalStages - 1)) * 100;
+    // ─── Loading State ──────────────────────────────────────────────
+
+    if (loading) {
+        return (
+            <div className={styles.tabContent} style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
+    // ─── Render ──────────────────────────────────────────────────────
 
     return (
         <div className={styles.tabContent}>
             {/* Pipeline Timeline */}
             <div className={styles.pipelineTimeline}>
-                {/* Track Line & Progress */}
                 <div className={styles.pipelineTrack}>
                     <div
                         className={styles.pipelineProgress}
@@ -122,15 +243,14 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
                     />
                 </div>
 
-                {/* Usando displayStageIndex para classes ativas */}
-                {PIPELINE_STAGES.map((stage, index) => (
+                {timelineStages.map((stage, index) => (
                     <button
                         key={stage.id}
                         className={`${styles.pipelineStage} ${index <= displayStageIndex ? styles.pipelineStageActive : ''} ${index === displayStageIndex ? styles.pipelineStageCurrent : ''}`}
-                        onClick={() => handleStageClick(index)}
+                        onClick={() => handleStageClick(stage.id)}
                     >
                         <span className={styles.pipelineDot}>{index + 1}</span>
-                        <span className={styles.pipelineLabel}>{stage.label}</span>
+                        <span className={styles.pipelineLabel}>{stage.name}</span>
                     </button>
                 ))}
             </div>
@@ -145,14 +265,10 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
                             Próximas Atividades
                         </h3>
                         <div className={styles.activitiesListInner}>
-                            {ACTIVITIES.map((activity) => {
-                                const isCompleted = activity.id <= completedActivities;
-                                // isCurrent agora reflete a atividade SELECIONADA (focada), não necessariamente a próxima a fazer
-                                const isSelected = activity.id === activeId;
-
-                                // Verifica se é a próxima a ser feita para dar destaque visual diferenciado se necessário
-                                // (Opcional, mas mantém a lógica visual de 'current' do CSS original se quisermos usar isSelected ali)
-                                const stageNumber = getStageNumber(activity.stage);
+                            {activities.map((activity, activityIndex) => {
+                                const isCompleted = completedSet.has(activity.id);
+                                const isSelected = activity.id === selectedActivityId;
+                                const typeMeta = ACTIVITY_TYPE_META[activity.activityType];
 
                                 return (
                                     <div
@@ -160,16 +276,22 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
                                         className={`${styles.activityItem} ${isCompleted ? styles.activityCompleted : ''} ${isSelected ? styles.activityCurrent : ''}`}
                                         onClick={() => selectActivity(activity.id)}
                                     >
-                                        {/* StopPropagation no checkbox para não disparar o selectActivity (embora não faria mal selecionar ao marcar) */}
+                                        <span className={styles.stageBadge}>
+                                            {activityIndex + 1}
+                                        </span>
                                         <div onClick={(e) => e.stopPropagation()} className={styles.checkboxContainer}>
                                             <Checkbox
                                                 checked={isCompleted}
-                                                onChange={() => toggleCompletion(activity.id)}
+                                                onChange={() => handleToggleActivity(activity.id)}
                                                 noSound={false}
                                             />
                                         </div>
-                                        <span className={styles.stageBadge}>
-                                            {stageNumber}
+                                        <span
+                                            className={styles.activityTypeIcon}
+                                            title={typeMeta.label}
+                                            style={{ color: typeMeta.color }}
+                                        >
+                                            {typeMeta.icon}
                                         </span>
                                         <span className={styles.activityLabel}>{activity.label}</span>
                                     </div>
@@ -179,98 +301,39 @@ export function AtividadeTab({ lead, onClose, onTemplateSelect }: AtividadeTabPr
                     </div>
                 </div>
 
+                {/* Right Column: Script Panel with Blocks */}
                 <div className={styles.scriptSection}>
-                    <div className={styles.scriptCard}>
-                        <button
-                            className={styles.copyScriptBtn}
-                            title="Copiar Script"
-                            onClick={() => {
-                                const message = currentScript.content
-                                    .replace(/\[NOME\]/g, lead.name || '[NOME]')
-                                    .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
-                                navigator.clipboard.writeText(message);
-                                toast.success('Script copiado!');
-                            }}
-                        >
-                            <Copy size={14} />
-                        </button>
-                        <h4 className={styles.scriptTitle}>
-                            <span className={styles.scriptNumber}>{activeId}. </span>
-                            {currentScript.title}
-                        </h4>
-                        <div className={styles.scriptContent}>{highlightVariables(currentScript.content)}</div>
+                    {selectedActivity ? (
+                        <div className={styles.scriptCard}>
+                            <h4 className={styles.scriptTitle}>
+                                <span
+                                    className={styles.activityTypeIcon}
+                                    style={{ color: ACTIVITY_TYPE_META[selectedActivity.activityType].color }}
+                                >
+                                    {ACTIVITY_TYPE_META[selectedActivity.activityType].icon}
+                                </span>
+                                {selectedActivity.label}
+                            </h4>
 
-                        {/* Botão Enviar Template (somente atividades de mensagem ao lead) */}
-                        {isCurrentScriptSendable ? (
-                            <button
-                                className={styles.sendTemplateBtn}
-                                onClick={() => {
-                                    // Preparar mensagem com variáveis substituídas
-                                    const message = currentScript.content
-                                        .replace(/\[NOME\]/g, lead.name || '[NOME]')
-                                        .replace(/\[EMPRESA\]/g, lead.company || '[EMPRESA]');
-
-                                    // Se tem callback customizado (pós-venda), usar ele e sair
-                                    if (onTemplateSelect) {
-                                        onTemplateSelect(message);
-                                        onClose();
-                                        return;
-                                    }
-
-                                    // Fluxo padrão: resolver conversa por leadId/telefone e navegar para Inbox
-                                    const normalizePhone = (value?: string) => value?.replace(/\D/g, '') || '';
-                                    const phone = normalizePhone(lead.phone);
-
-                                    const selectedConversation = selectedConversationId
-                                        ? conversations.find(c => c.id === selectedConversationId)
-                                        : null;
-
-                                    const existingConversation =
-                                        conversations.find(c => lead.id && c.leadId === lead.id) ||
-                                        (phone
-                                            ? conversations.find(c => normalizePhone(c.leadPhone) === phone && c.channel === 'whatsapp')
-                                            : null) ||
-                                        selectedConversation ||
-                                        null;
-
-                                    if (!existingConversation && !phone && !lead.id) {
-                                        toast.error('Lead sem telefone e sem conversa vinculada');
-                                        return;
-                                    }
-
-                                    // Setar mensagem no input do chat (via store)
-                                    setDraftMessage(message);
-
-                                    // Fechar Modal360
-                                    onClose();
-
-                                    if (existingConversation) {
-                                        selectConversation(existingConversation.id);
-                                        navigate(`/inbox?id=${existingConversation.id}`);
-                                        return;
-                                    }
-
-                                    // Navegar para Inbox com params para buscar/criar conversa
-                                    const params = new URLSearchParams({
-                                        name: lead.name || 'Novo Contato',
-                                        ...(lead.email && { email: lead.email }),
-                                        ...(lead.company && { company: lead.company }),
-                                        ...(lead.id && { leadId: lead.id }),
-                                        ...(phone && { phone }),
-                                    });
-
-                                    navigate(`/inbox?${params.toString()}`);
-                                }}
-                            >
-                                <Send size={16} />
-                                Enviar Template ao Cliente
-                            </button>
-                        ) : (
-                            <div className={styles.internalInstructionHint}>
-                                Esta atividade é uma instrução interna do playbook e não envia mensagem ao lead.
+                            {/* Render blocks */}
+                            <div className={styles.scriptContent}>
+                                {selectedActivity.blocks.map(renderBlock)}
                             </div>
-                        )}
-                    </div>
+
+                            {/* Internal instruction hint (if no message blocks) */}
+                            {!selectedActivity.blocks.some(b => b.blockType === 'message') && (
+                                <div className={styles.internalInstructionHint}>
+                                    Esta atividade é uma instrução interna do playbook e não envia mensagem ao lead.
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className={styles.scriptCard}>
+                            <div className={styles.internalInstructionHint}>
+                                Selecione uma atividade para ver o conteúdo.
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -33,16 +33,30 @@ import { NegociosTab } from './tabs/NegociosTab/NegociosTab';
 import { ConversasTab } from './tabs/ConversasTab/ConversasTab';
 import { HistoricoTab } from './tabs/HistoricoTab/HistoricoTab';
 
+function normalizeStageName(name: string): string {
+    return (name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
 interface Lead360ModalProps {
     isOpen: boolean;
     onClose: () => void;
     lead: Lead | null;
     onTemplateSelect?: (message: string) => void;
+    onLeadStatusSync?: (data: {
+        dealStatus: 'open' | 'won' | 'lost';
+        status: 'open' | 'closed';
+        stage?: string;
+        lossReason?: string;
+    }) => Promise<void> | void;
 }
 
 type TabType = 'ATIVIDADE' | 'CONTATO' | 'EMPRESA' | 'NEGÓCIOS' | 'CONVERSAS' | 'HISTÓRICO';
 
-export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect }: Lead360ModalProps) {
+export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect, onLeadStatusSync }: Lead360ModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('ATIVIDADE');
     const { updateLead, moveLead, stages, leads: storeLeads } = useKanbanStore();
     const { fetchContacts } = useContactsStore();
@@ -57,7 +71,7 @@ export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect
         fetchContacts();
     };
 
-    // Handler para mudar status (Ganho/Perdido)
+    // Handler para mudar status (Ganho/Perdido/Aberto)
     const handleStatusChange = async (status: 'won' | 'lost' | 'open', lossReasonId?: string) => {
         if (!lead) return;
 
@@ -66,11 +80,28 @@ export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect
             const currentStage = stages.find(s => s.id === lead.status);
             const pipeline = currentStage?.pipeline || lead.pipeline || 'high-ticket';
 
-            // Find the target system stage UUID by name + pipeline
-            const targetStageName = status === 'won' ? 'Ganho' : 'Perdido';
-            const targetStage = stages.find(
-                s => s.name === targetStageName && s.pipeline === pipeline
-            );
+            // Find target stage according to requested transition
+            let targetStage = null;
+            let targetStageName = '';
+
+            if (status === 'won' || status === 'lost') {
+                targetStageName = status === 'won' ? 'Ganho' : 'Perdido';
+                targetStage = stages.find(
+                    s => normalizeStageName(s.name) === normalizeStageName(targetStageName) && s.pipeline === pipeline
+                ) || null;
+            } else {
+                // Open: pick first non-terminal stage by order for the same pipeline
+                const nonTerminalStages = stages
+                    .filter(s => s.pipeline === pipeline)
+                    .filter(s => {
+                        const normalized = normalizeStageName(s.name);
+                        return normalized !== 'ganho' && normalized !== 'perdido';
+                    })
+                    .sort((a, b) => a.order - b.order);
+
+                targetStage = nonTerminalStages[0] || null;
+                targetStageName = 'Aberto';
+            }
 
             if (!targetStage) {
                 toast.error(`Stage "${targetStageName}" não encontrado para pipeline ${pipeline}`);
@@ -82,6 +113,14 @@ export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect
                 await updateLead(lead.id, {
                     dealStatus: 'won',
                     dealClosedAt: new Date(),
+                    lostReason: '',
+                    lostAt: undefined,
+                });
+                await onLeadStatusSync?.({
+                    dealStatus: 'won',
+                    status: 'closed',
+                    stage: targetStage.id,
+                    lossReason: undefined,
                 });
             } else if (status === 'lost') {
                 await moveLead(lead.id, targetStage.id);
@@ -89,6 +128,27 @@ export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect
                     dealStatus: 'lost',
                     lostReason: lossReasonId || '',
                     lostAt: new Date(),
+                    dealClosedAt: undefined,
+                });
+                await onLeadStatusSync?.({
+                    dealStatus: 'lost',
+                    status: 'closed',
+                    stage: targetStage.id,
+                    lossReason: lossReasonId || undefined,
+                });
+            } else {
+                await moveLead(lead.id, targetStage.id);
+                await updateLead(lead.id, {
+                    dealStatus: 'open',
+                    dealClosedAt: undefined,
+                    lostReason: '',
+                    lostAt: undefined,
+                });
+                await onLeadStatusSync?.({
+                    dealStatus: 'open',
+                    status: 'open',
+                    stage: targetStage.id,
+                    lossReason: undefined,
                 });
             }
 
@@ -139,20 +199,25 @@ export function Lead360Modal({ isOpen, onClose, lead: leadProp, onTemplateSelect
             size="full"
         >
             <div className={styles.container}>
-                <LeadHeader lead={lead} onStatusChange={handleStatusChange} onLeadUpdated={handleLeadUpdated} />
-
-                <nav className={styles.tabsNav}>
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
+                <LeadHeader
+                    lead={lead}
+                    onStatusChange={handleStatusChange}
+                    onLeadUpdated={handleLeadUpdated}
+                    tabsNav={(
+                        <nav className={styles.tabsNav}>
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                >
+                                    {tab.icon}
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </nav>
+                    )}
+                />
 
                 <div className={styles.content}>
                     {renderTabContent()}

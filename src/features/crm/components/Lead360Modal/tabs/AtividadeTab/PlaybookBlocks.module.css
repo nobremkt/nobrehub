@@ -1,0 +1,199 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   PLAYBOOK BLOCKS — Visual components for each block type
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Shared ─────────────────────────────────────────────────────────── */
+.block {
+    border-radius: var(--radius-lg, 12px);
+    padding: var(--spacing-4, 1rem);
+    margin-bottom: var(--spacing-3, 0.75rem);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.blockHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 0.5rem);
+    margin-bottom: var(--spacing-2, 0.5rem);
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.blockIcon {
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1;
+}
+
+/* ─── Message Block ──────────────────────────────────────────────────── */
+.messageBlock {
+    background: rgba(34, 197, 94, 0.06);
+    border-left: 3px solid var(--color-success, #22C55E);
+}
+
+.messageBlock .blockHeader {
+    color: var(--color-success, #22C55E);
+}
+
+.messageContent {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #fff);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.messageActions {
+    display: flex;
+    gap: var(--spacing-2, 0.5rem);
+    margin-top: var(--spacing-3, 0.75rem);
+    padding-top: var(--spacing-3, 0.75rem);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.actionBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1, 0.25rem);
+    padding: var(--spacing-1, 0.25rem) var(--spacing-3, 0.75rem);
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: 500;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--color-border, #404040);
+    background: var(--color-surface, #262626);
+    color: var(--color-text-secondary, #a3a3a3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+    background: var(--color-border, #404040);
+    color: var(--color-text-primary, #fff);
+}
+
+.actionBtnPrimary {
+    border-color: var(--color-primary-500, #dc2626);
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--color-primary-500, #dc2626);
+}
+
+.actionBtnPrimary:hover {
+    background: var(--color-primary-500, #dc2626);
+    color: white;
+}
+
+/* ─── Checklist Block ────────────────────────────────────────────────── */
+.checklistBlock {
+    background: rgba(99, 102, 241, 0.06);
+    border-left: 3px solid var(--color-info, #6366F1);
+}
+
+.checklistBlock .blockHeader {
+    color: var(--color-info, #6366F1);
+}
+
+.checklistItems {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1, 0.25rem);
+}
+
+.checklistItem {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-2, 0.5rem);
+    padding: var(--spacing-1, 0.25rem) 0;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.checklistItem:hover {
+    opacity: 0.85;
+}
+
+.checklistCheckbox {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-sm, 4px);
+    border: 2px solid var(--color-border, #404040);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-top: 2px;
+}
+
+.checklistCheckbox[data-checked="true"] {
+    background: var(--color-info, #6366F1);
+    border-color: var(--color-info, #6366F1);
+}
+
+.checklistCheckbox[data-checked="true"]::after {
+    content: '✓';
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.checklistLabel {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #fff);
+    line-height: 1.5;
+    flex: 1;
+}
+
+.checklistLabel[data-checked="true"] {
+    text-decoration: line-through;
+    color: var(--color-text-muted, #737373);
+}
+
+/* ─── Tip Block ──────────────────────────────────────────────────────── */
+.tipBlock {
+    background: rgba(245, 158, 11, 0.06);
+    border-left: 3px solid var(--color-warning, #F59E0B);
+}
+
+.tipBlock .blockHeader {
+    color: var(--color-warning, #F59E0B);
+}
+
+.tipContent {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-secondary, #a3a3a3);
+    line-height: 1.6;
+    font-style: italic;
+}
+
+/* ─── Question Block ─────────────────────────────────────────────────── */
+.questionBlock {
+    background: rgba(139, 92, 246, 0.06);
+    border-left: 3px solid #8B5CF6;
+}
+
+.questionBlock .blockHeader {
+    color: #8B5CF6;
+}
+
+.questionContent {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-primary, #fff);
+    line-height: 1.6;
+    padding-left: var(--spacing-2, 0.5rem);
+    border-left: 2px solid rgba(139, 92, 246, 0.2);
+    margin-left: var(--spacing-1, 0.25rem);
+}
+
+/* ─── Variable Highlight ─────────────────────────────────────────────── */
+.variable {
+    background: rgba(220, 38, 38, 0.15);
+    color: var(--color-primary-400, #f87171);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm, 4px);
+    font-weight: 600;
+    font-size: inherit;
+}

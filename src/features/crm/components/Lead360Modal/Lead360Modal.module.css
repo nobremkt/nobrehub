@@ -28,15 +28,14 @@
  * ───────────────────────────────────────────────────────────────────────────── */
 
 .tabsNav {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
-    gap: 0;
-    padding: 0 2rem;
-    background: var(--color-bg-primary, #ffffff);
-    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    gap: 0.25rem;
+    padding: 0;
+    background: transparent;
+    border-bottom: none;
     flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
@@ -52,22 +51,23 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.875rem 1.25rem;
+    height: 32px;
+    padding: 0 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--color-text-secondary, #64748b);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
-    margin-bottom: -1px;
 }
 
 .tab:hover {
     color: var(--color-text-primary, #0f172a);
     background: var(--color-bg-secondary, #f8fafc);
+    border-color: var(--color-border, #e2e8f0);
 }
 
 .tab svg {
@@ -76,7 +76,8 @@
 
 .tabActive {
     color: var(--color-primary-600, #2563eb);
-    border-bottom-color: var(--color-primary-600, #2563eb);
+    border-color: color-mix(in srgb, var(--color-primary-500, #dc2626) 40%, var(--color-border, #e2e8f0));
+    background: color-mix(in srgb, var(--color-primary-500, #dc2626) 10%, var(--color-bg-primary, #ffffff));
 }
 
 .tabActive svg {
@@ -103,11 +104,11 @@
 
 @media (max-width: 768px) {
     .tabsNav {
-        padding: 0 1rem;
+        padding: 0;
     }
 
     .tab {
-        padding: 0.75rem;
+        padding: 0 0.625rem;
     }
 
     .content {
