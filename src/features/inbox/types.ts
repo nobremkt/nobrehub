@@ -58,14 +58,15 @@ export interface Message {
     id: string;
     conversationId: string;
     content: string;
-    type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'system' | 'template';
+    type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'system' | 'template' | 'interactive' | 'reaction';
     direction: 'in' | 'out';
-    status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+    status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'scheduled';
     senderId?: string; // userId if direction is out
     mediaUrl?: string;
     mediaName?: string;
     viewOnce?: boolean; // View once media (image/video)
     scheduledFor?: Date;
+    metadata?: Record<string, unknown>; // Structured data (reactions, interactive, etc.)
     createdAt: Date;
 }
 

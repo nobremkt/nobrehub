@@ -1,18 +1,19 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * 360Dialog WhatsApp Helper
- * Shared logic for sending messages via the 360dialog API.
+ * WhatsApp Provider Helper
+ * Shared logic for sending messages via configured WhatsApp provider.
  * Credentials are resolved on the backend — the client only sends the payload.
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import { supabase } from '@/config/supabase';
+import { buildApiUrl } from '@/config/api';
 import { useSettingsStore } from '../../settings/stores/useSettingsStore';
 
 interface WhatsAppSendParams {
     phone: string;
     messageId: string;
-    endpoint: '/api/send-message' | '/api/send-template' | '/api/send-media';
+    endpoint: '/api/send-message' | '/api/send-template' | '/api/send-media' | '/api/send-interactive';
     payload: Record<string, any>;
 }
 
@@ -25,12 +26,12 @@ export function isWhatsAppEnabled(): boolean {
 }
 
 /**
- * Send a message via the 360dialog WhatsApp API.
+ * Send a message via the configured WhatsApp provider API.
  * The API routes handle credential resolution — we only send the message payload.
  *
  * @returns true if sent successfully, false if failed/skipped
  */
-export async function sendVia360Dialog({
+export async function sendViaWhatsAppProvider({
     phone,
     messageId,
     endpoint,
@@ -48,7 +49,7 @@ export async function sendVia360Dialog({
     const cleanPhone = phone.replace(/\D/g, '');
 
     try {
-        const response = await fetch(endpoint, {
+        const response = await fetch(buildApiUrl(endpoint), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -59,7 +60,7 @@ export async function sendVia360Dialog({
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error(`[360Dialog] Error on ${endpoint}:`, errorData);
+            console.error(`[WhatsApp Provider] Error on ${endpoint}:`, errorData);
             throw new Error(`Failed to send via WhatsApp (${endpoint})`);
         }
 
@@ -73,11 +74,14 @@ export async function sendVia360Dialog({
 
         return true;
     } catch (error) {
-        console.error(`[360Dialog] Failed on ${endpoint}:`, error);
+        console.error(`[WhatsApp Provider] Failed on ${endpoint}:`, error);
         await supabase
             .from('messages')
-            .update({ status: 'error' })
+            .update({ status: 'failed' })
             .eq('id', messageId);
         return false;
     }
 }
+
+// Backward-compatible alias during migration period.
+export const sendVia360Dialog = sendViaWhatsAppProvider;

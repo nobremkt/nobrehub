@@ -8,9 +8,11 @@ import { ChatInput } from './ChatInput';
 import { DateSeparator } from './DateSeparator';
 import { SessionWarning } from './SessionWarning';
 import { SendTemplateModal } from '../SendTemplateModal';
+import { InteractiveMessageModal } from '../InteractiveMessageModal/InteractiveMessageModal';
 import type { TemplateComponent } from '../../types';
 import { Lead360Modal } from '@/features/crm/components/Lead360Modal/Lead360Modal';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import styles from './ChatView.module.css';
 
 /**
@@ -27,16 +29,19 @@ export const ChatView: React.FC = () => {
         selectedConversationId,
         messages,
         sendMessage,
+        updateConversationDetails,
         loadMoreMessages,
         isLoadingMore,
         hasMoreMessages,
     } = useInboxStore();
 
     const { user } = useAuthStore();
+    const { collaborators, fetchCollaborators } = useCollaboratorStore();
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isInteractiveModalOpen, setIsInteractiveModalOpen] = useState(false);
     const [showLead360Modal, setShowLead360Modal] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -44,15 +49,39 @@ export const ChatView: React.FC = () => {
     const isInitialScrollRef = useRef(true);
     const prevConversationIdRef = useRef<string | null>(null);
 
+    useEffect(() => {
+        if (collaborators.length === 0) {
+            fetchCollaborators();
+        }
+    }, [collaborators.length, fetchCollaborators]);
+
     const conversation = conversations.find(c => c.id === selectedConversationId);
     const currentMessages = selectedConversationId ? messages[selectedConversationId] || [] : [];
 
-    // Group messages by date for rendering separators
+    // Build reactionsMap from reaction-type messages
+    const reactionsMap = useMemo(() => {
+        const map = new Map<string, string[]>();
+        for (const msg of currentMessages) {
+            if (msg.type !== 'reaction') continue;
+            const emoji = msg.content || (msg.metadata?.emoji as string);
+            const targetId = msg.metadata?.replyToMessageId as string;
+            if (!emoji || !targetId) continue;
+            const existing = map.get(targetId) || [];
+            existing.push(emoji);
+            map.set(targetId, existing);
+        }
+        return map;
+    }, [currentMessages]);
+
+    // Group non-reaction messages by date for rendering separators
     const messagesWithSeparators = useMemo(() => {
         const result: { type: 'separator' | 'message'; date?: Date; message?: typeof currentMessages[0] }[] = [];
         let lastDateKey = '';
 
         for (const msg of currentMessages) {
+            // Skip reaction messages — they render as emoji badges on the target
+            if (msg.type === 'reaction') continue;
+
             const msgDate = msg.createdAt ? new Date(msg.createdAt) : new Date();
             const dateKey = getDateKey(msgDate);
 
@@ -204,7 +233,7 @@ export const ChatView: React.FC = () => {
                 mediaUrl,
                 type,
                 caption || file.name,
-                'agent',
+                undefined,
                 viewOnce
             );
         } catch (error) {
@@ -232,10 +261,59 @@ export const ChatView: React.FC = () => {
         );
     };
 
+    const handleSendInteractive = async (
+        body: string,
+        buttons: { id: string; title: string }[],
+        header?: string
+    ) => {
+        if (!selectedConversationId) return;
+        await InboxService.sendInteractiveMessage(
+            selectedConversationId,
+            body,
+            buttons,
+            header
+        );
+    };
+
     const handleAssign = async (userId: string | null) => {
         if (!selectedConversationId) return;
-        const currentUserName = user?.name || 'Sistema';
-        await InboxService.assignConversation(selectedConversationId, userId, currentUserName);
+
+        const previousAssignedTo = conversation?.assignedTo;
+        const assigneeName = userId
+            ? collaborators.find(c => c.id === userId)?.name
+            : undefined;
+
+        // Optimistic update to avoid requiring full reload (F5)
+        useInboxStore.setState((state) => ({
+            conversations: state.conversations.map((conv) =>
+                conv.id === selectedConversationId
+                    ? {
+                        ...conv,
+                        assignedTo: userId || undefined,
+                        updatedAt: new Date(),
+                    }
+                    : conv
+            ),
+        }));
+
+        try {
+            // For assignment system logs, actor should be the assignee (ex: Beatriz)
+            const systemActorName = userId ? (assigneeName || user?.name || 'Sistema') : (user?.name || 'Sistema');
+            await InboxService.assignConversation(selectedConversationId, userId, systemActorName);
+        } catch (error) {
+            // Rollback optimistic update if request fails
+            useInboxStore.setState((state) => ({
+                conversations: state.conversations.map((conv) =>
+                    conv.id === selectedConversationId
+                        ? {
+                            ...conv,
+                            assignedTo: previousAssignedTo,
+                        }
+                        : conv
+                ),
+            }));
+            console.error('Failed to assign conversation:', error);
+        }
     };
 
     const handleToggleFavorite = async () => {
@@ -299,7 +377,7 @@ export const ChatView: React.FC = () => {
                     item.type === 'separator' ? (
                         <DateSeparator key={`sep-${index}`} date={item.date!} />
                     ) : (
-                        <MessageBubble key={item.message!.id} message={item.message!} />
+                        <MessageBubble key={item.message!.id} message={item.message!} reactions={reactionsMap.get(item.message!.id)} />
                     )
                 )}
                 <div ref={messagesEndRef} />
@@ -349,6 +427,7 @@ export const ChatView: React.FC = () => {
                 onSend={handleSendMessage}
                 onSendMedia={handleSendMedia}
                 onOpenTemplate={() => setIsTemplateModalOpen(true)}
+                onOpenInteractive={() => setIsInteractiveModalOpen(true)}
                 onScheduleMessage={handleScheduleMessage}
                 disabled={isUploading || isInputBlocked}
                 sessionExpired={isInputBlocked}
@@ -360,6 +439,13 @@ export const ChatView: React.FC = () => {
                 onClose={() => setIsTemplateModalOpen(false)}
                 onSend={handleSendTemplate}
                 conversation={conversation}
+            />
+
+            {/* Interactive Message Modal */}
+            <InteractiveMessageModal
+                isOpen={isInteractiveModalOpen}
+                onClose={() => setIsInteractiveModalOpen(false)}
+                onSend={handleSendInteractive}
             />
 
             {/* Lead360 Modal */}
@@ -379,6 +465,14 @@ export const ChatView: React.FC = () => {
                     createdAt: conversation.createdAt,
                     updatedAt: conversation.updatedAt,
                     tags: conversation.tags || []
+                }}
+                onLeadStatusSync={async (data) => {
+                    await updateConversationDetails(conversation.id, {
+                        dealStatus: data.dealStatus,
+                        status: data.status,
+                        stage: data.stage,
+                        lossReason: data.lossReason,
+                    });
                 }}
             />
         </div>

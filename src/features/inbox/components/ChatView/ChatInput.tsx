@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { ChatInput as DSChatInput, AttachmentOption } from '@/design-system/components/Chat';
-import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar } from 'lucide-react';
+import { Image as ImageIcon, Video, FileText, ClipboardList, Calendar, MousePointerClick } from 'lucide-react';
 import { ScheduleMessagePopup } from './ScheduleMessagePopup';
 import { MediaPreviewModal } from './MediaPreviewModal';
 import { useInboxStore } from '../../stores/useInboxStore';
@@ -10,12 +10,13 @@ interface ChatInputProps {
     onSend: (text: string) => void;
     onSendMedia?: (file: File, type: 'image' | 'video' | 'audio' | 'document', caption?: string, viewOnce?: boolean) => void;
     onOpenTemplate?: () => void;
+    onOpenInteractive?: () => void;
     onScheduleMessage?: (text: string, scheduledFor: Date) => void;
     disabled?: boolean;
     sessionExpired?: boolean;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onScheduleMessage, disabled, sessionExpired }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpenTemplate, onOpenInteractive, onScheduleMessage, disabled, sessionExpired }) => {
     const { draftMessage, setDraftMessage } = useInboxStore();
     const [message, setMessage] = useState('');
     const [isRecording, setIsRecording] = useState(false);
@@ -163,7 +164,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onSendMedia, onOpe
             id: 'template',
             label: 'Template',
             icon: <ClipboardList size={18} />,
-            onClick: () => onOpenTemplate?.()
+            onClick: () => onOpenTemplate?.(),
+        },
+        {
+            id: 'interactive',
+            label: 'Botões Interativos',
+            icon: <MousePointerClick size={18} />,
+            onClick: () => onOpenInteractive?.()
         },
         {
             id: 'schedule',

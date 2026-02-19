@@ -15,6 +15,7 @@ import { ChatView } from '../components/ChatView/ChatView';
 import { ProfilePanel } from '../components/ProfilePanel/ProfilePanel';
 
 import { useInboxStore } from '../stores/useInboxStore';
+import { useVisibilityPause } from '../hooks/useVisibilityPause';
 
 import styles from './InboxPage.module.css';
 
@@ -23,6 +24,9 @@ import { DevToolbar } from '../components/DevToolbar';
 export const InboxPage: React.FC = () => {
     const { init, selectedConversationId, selectConversation } = useInboxStore();
     const { '*': conversationId } = useParams();
+
+    // Pause realtime when tab is hidden
+    useVisibilityPause();
 
     // Inicializa conversas (with proper HMR/unmount cleanup)
     useEffect(() => {
