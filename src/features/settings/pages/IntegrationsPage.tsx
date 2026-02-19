@@ -1,4 +1,5 @@
 import { Card, CardHeader, CardBody, Input, Button, Badge, Switch, Dropdown } from '@/design-system';
+import { buildApiUrl } from '@/config/api';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { useState, useEffect } from 'react';
 import { Save, AlertCircle, CheckCircle2, XCircle, Wifi, WifiOff, Sparkles, Bot } from 'lucide-react';
@@ -65,7 +66,7 @@ export function IntegrationsPage() {
     const openaiModels = aiModels.filter((m) => m.provider === 'openai');
 
     const handleSave = async () => {
-        if (!baseUrl) {
+        if (provider === '360dialog' && !baseUrl) {
             setLastTestResult('error');
             return;
         }
@@ -82,7 +83,7 @@ export function IntegrationsPage() {
         setLastTestResult(null);
 
         try {
-            const response = await fetch('/api/get-templates', {
+            const response = await fetch(buildApiUrl('/api/get-templates'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
@@ -217,9 +218,9 @@ export function IntegrationsPage() {
                         <div className="text-sm text-text-muted">
                             <p className="font-medium text-text-primary mb-1">Configuração</p>
                             <p>
-                                O Nobre Hub usa a <strong>360Dialog API</strong> para enviar e receber mensagens.
-                                A chave API (D360-API-KEY) é configurada como variável de ambiente no servidor
-                                — ela <strong>não é armazenada no navegador</strong>.
+                                O Nobre Hub suporta <strong>360Dialog</strong> e <strong>Meta Cloud API</strong>.
+                                As credenciais são configuradas como variáveis de ambiente no servidor
+                                — elas <strong>não são armazenadas no navegador</strong>.
                             </p>
                         </div>
                     </div>
@@ -230,12 +231,12 @@ export function IntegrationsPage() {
                         options={PROVIDER_OPTIONS}
                         value={provider}
                         onChange={(val) => setProvider(val as '360dialog' | 'meta_cloud')}
-                        disabled={provider === 'meta_cloud'}
                     />
 
                     {provider === 'meta_cloud' && (
-                        <div className="p-3 rounded-lg bg-warning-500/10 text-warning-500 text-sm">
-                            Meta Cloud API será configurada em breve. Use 360Dialog por enquanto.
+                        <div className="p-3 rounded-lg bg-success-500/10 text-success-500 text-sm">
+                            Meta Cloud API ativa: configure no servidor as env vars META_ACCESS_TOKEN,
+                            META_PHONE_NUMBER_ID e META_WABA_ID.
                         </div>
                     )}
 
@@ -243,26 +244,30 @@ export function IntegrationsPage() {
                     <div className="space-y-1">
                         <Input
                             label="Base URL"
-                            placeholder="https://waba-v2.360dialog.io"
+                            placeholder={provider === 'meta_cloud' ? 'https://graph.facebook.com (opcional)' : 'https://waba-v2.360dialog.io'}
                             value={baseUrl}
                             onChange={(e) => setBaseUrl(e.target.value)}
                         />
                         <span className="text-xs text-text-muted">
-                            Padrão: https://waba-v2.360dialog.io
+                            {provider === 'meta_cloud'
+                                ? 'Meta usa https://graph.facebook.com por padrão (configurável por META_GRAPH_BASE_URL).'
+                                : 'Padrão: https://waba-v2.360dialog.io'}
                         </span>
                     </div>
 
                     {/* API Key Info */}
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-text-primary">
-                            API Key (D360-API-KEY)
+                            {provider === 'meta_cloud' ? 'Token (Meta Access Token)' : 'API Key (D360-API-KEY)'}
                         </label>
                         <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-border bg-surface-primary text-text-muted text-sm">
                             <span>••••••••••••••••••••••••••</span>
                         </div>
                         <span className="text-xs text-text-muted">
-                            Configurada como variável de ambiente no servidor (D360_API_KEY).
-                            Para alterar, atualize a env var no painel do Vercel.
+                            {provider === 'meta_cloud'
+                                ? 'Configurado no servidor via META_ACCESS_TOKEN (+ META_PHONE_NUMBER_ID e META_WABA_ID).'
+                                : 'Configurada como variável de ambiente no servidor (D360_API_KEY).'}
+                            {' '}Para alterar, atualize as env vars no painel do Vercel.
                         </span>
                     </div>
                     {lastTestResult && (

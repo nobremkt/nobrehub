@@ -6,6 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 
 let _client = null;
 
+const DEFAULT_META_GRAPH_BASE_URL = 'https://graph.facebook.com';
+const DEFAULT_META_API_VERSION = 'v23.0';
+
 export function getServiceClient() {
     if (_client) return _client;
 
@@ -21,8 +24,8 @@ export function getServiceClient() {
 }
 
 /**
- * Get the 360Dialog credentials from env vars + integration_settings table.
- * Returns { apiKey, baseUrl, enabled, provider } or throws.
+ * Get WhatsApp integration credentials from env vars + integration_settings table.
+ * Supports provider: 360dialog | meta_cloud
  */
 export async function getIntegrationConfig() {
     const supabase = getServiceClient();
@@ -37,22 +40,57 @@ export async function getIntegrationConfig() {
         throw new Error('Integration settings not found: ' + (error?.message || 'No data'));
     }
 
-    const apiKey = process.env.D360_API_KEY;
-    if (!apiKey) {
-        throw new Error('Missing D360_API_KEY environment variable');
+    const provider = data.provider === 'meta_cloud' ? 'meta_cloud' : '360dialog';
+
+    if (provider === '360dialog') {
+        const apiKey = process.env.D360_API_KEY;
+        if (!apiKey) {
+            throw new Error('Missing D360_API_KEY environment variable');
+        }
+
+        // Normalize URL: ensure it ends with /v1 for 360Dialog v2 API
+        let baseUrl = (data.base_url || '').replace(/\/+$/, '');
+        if (!baseUrl) {
+            throw new Error('Missing base_url for 360dialog in integration_settings');
+        }
+        if (!baseUrl.includes('/v1')) {
+            baseUrl = `${baseUrl}/v1`;
+        }
+
+        return {
+            provider,
+            baseUrl,
+            apiKey,
+            enabled: data.enabled,
+        };
     }
 
-    // Normalize URL: ensure it ends with /v1 for 360Dialog v2 API
-    let baseUrl = (data.base_url || '').replace(/\/+$/, '');
-    if (!baseUrl.includes('/v1')) {
-        baseUrl = `${baseUrl}/v1`;
+    const accessToken = process.env.META_ACCESS_TOKEN;
+    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+    const businessAccountId = process.env.META_WABA_ID;
+
+    if (!accessToken) {
+        throw new Error('Missing META_ACCESS_TOKEN environment variable');
     }
+    if (!phoneNumberId) {
+        throw new Error('Missing META_PHONE_NUMBER_ID environment variable');
+    }
+    if (!businessAccountId) {
+        throw new Error('Missing META_WABA_ID environment variable');
+    }
+
+    const graphBaseUrl = (process.env.META_GRAPH_BASE_URL || data.base_url || DEFAULT_META_GRAPH_BASE_URL)
+        .replace(/\/+$/, '');
+    const graphApiVersion = (process.env.META_API_VERSION || DEFAULT_META_API_VERSION).trim();
 
     return {
-        provider: data.provider,
-        baseUrl,
-        apiKey,
+        provider,
         enabled: data.enabled,
+        accessToken,
+        phoneNumberId,
+        businessAccountId,
+        graphBaseUrl,
+        graphApiVersion,
     };
 }
 

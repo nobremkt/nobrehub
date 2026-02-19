@@ -163,7 +163,9 @@ export const useSettingsStore = create<IntegrationsState>()((set, get) => ({
 
     isWhatsAppEnabled: () => {
         const { whatsapp } = get();
-        return whatsapp.enabled && Boolean(whatsapp.baseUrl) && whatsapp.provider === '360dialog';
+        if (!whatsapp.enabled) return false;
+        if (whatsapp.provider === 'meta_cloud') return true;
+        return Boolean(whatsapp.baseUrl);
     },
 
     // ─── AI API Keys (Supabase: ai_api_keys) ────────────────────────────

@@ -1,7 +1,10 @@
 import { getIntegrationConfig, setCorsHeaders } from './_lib/integrationHelper.js';
+import { createRequestLogger } from './_lib/correlationId.js';
 
 export default async function handler(req, res) {
     setCorsHeaders(res);
+    const log = createRequestLogger('send-message', req);
+    log.setHeader(res);
 
     if (req.method === 'OPTIONS') {
         res.status(200).end();
@@ -21,7 +24,7 @@ export default async function handler(req, res) {
     try {
         config = await getIntegrationConfig();
     } catch (error) {
-        console.error('Config error:', error.message);
+        log.error('Config error', { message: error.message });
         return res.status(500).json({ error: 'Integration not configured', message: error.message });
     }
 
@@ -29,7 +32,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'WhatsApp integration is disabled' });
     }
 
-    const fullUrl = `${config.baseUrl}/messages`;
+    const fullUrl = config.provider === 'meta_cloud'
+        ? `${config.graphBaseUrl}/${config.graphApiVersion}/${config.phoneNumberId}/messages`
+        : `${config.baseUrl}/messages`;
 
     const payload = {
         messaging_product: 'whatsapp',
@@ -40,12 +45,19 @@ export default async function handler(req, res) {
     };
 
     try {
-        const response = await fetch(fullUrl, {
-            method: 'POST',
-            headers: {
+        const headers = config.provider === 'meta_cloud'
+            ? {
+                Authorization: `Bearer ${config.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+            : {
                 'D360-API-KEY': config.apiKey,
                 'Content-Type': 'application/json'
-            },
+            };
+
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers,
             body: JSON.stringify(payload)
         });
 
@@ -61,13 +73,14 @@ export default async function handler(req, res) {
             return res.status(response.status).json({
                 error: '360Dialog API Error',
                 status: response.status,
+                provider: config.provider,
                 details: data
             });
         }
 
         return res.status(200).json(data);
     } catch (error) {
-        console.error('Proxy Error:', error.message);
+        log.error('Proxy error', { message: error.message });
         return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
 }

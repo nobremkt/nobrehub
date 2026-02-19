@@ -1,9 +1,10 @@
 import { MessageTemplate } from '../types';
+import { buildApiUrl } from '@/config/api';
 
 export const TemplateService = {
     getTemplates: async (): Promise<MessageTemplate[]> => {
         try {
-            const response = await fetch('/api/get-templates', {
+            const response = await fetch(buildApiUrl('/api/get-templates'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),

@@ -29,7 +29,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'WhatsApp integration is disabled' });
     }
 
-    const fullUrl = `${config.baseUrl}/messages`;
+    const fullUrl = config.provider === 'meta_cloud'
+        ? `${config.graphBaseUrl}/${config.graphApiVersion}/${config.phoneNumberId}/messages`
+        : `${config.baseUrl}/messages`;
 
     let payload = {
         messaging_product: 'whatsapp',
@@ -63,12 +65,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        const response = await fetch(fullUrl, {
-            method: 'POST',
-            headers: {
+        const headers = config.provider === 'meta_cloud'
+            ? {
+                Authorization: `Bearer ${config.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+            : {
                 'D360-API-KEY': config.apiKey,
                 'Content-Type': 'application/json'
-            },
+            };
+
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers,
             body: JSON.stringify(payload)
         });
 
@@ -84,6 +93,7 @@ export default async function handler(req, res) {
             return res.status(response.status).json({
                 error: '360Dialog API Error',
                 status: response.status,
+                provider: config.provider,
                 details: data
             });
         }

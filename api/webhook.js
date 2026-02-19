@@ -19,6 +19,8 @@
  */
 
 import { getServiceClient, setCorsHeaders } from './_lib/integrationHelper.js';
+import { getLeastLoadedAssignee } from './_lib/distributionHelper.js';
+import { createRequestLogger } from './_lib/correlationId.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -53,64 +55,9 @@ function getMessageContent(message) {
 
 // ─── Auto-Distribution ───────────────────────────────────────────────────────
 
-/**
- * Get the next user to assign based on "Least Loaded" strategy.
- * Queries distribution settings and picks the sales user with fewest open conversations.
- */
 async function getNextAssignee(supabase) {
     try {
-        // Check distribution settings
-        const { data: settingsRow } = await supabase
-            .from('settings')
-            .select('value')
-            .eq('key', 'leadDistribution')
-            .maybeSingle();
-
-        const settings = settingsRow?.value;
-        if (!settings?.enabled) {
-            console.log('[Webhook] Distribution disabled, skipping auto-assign');
-            return null;
-        }
-
-        // Get all sales users (Vendedor(a)) as participants
-        const { data: salesUsers, error: usersError } = await supabase
-            .from('users')
-            .select('id, name, role_id')
-            .in('role_id', (
-                await supabase
-                    .from('roles')
-                    .select('id')
-                    .eq('name', 'Vendedor(a)')
-            ).data?.map(r => r.id) || []);
-
-        if (usersError || !salesUsers?.length) {
-            console.log('[Webhook] No sales users found for distribution');
-            return null;
-        }
-
-        // Count open conversations per user
-        const { data: openConvs } = await supabase
-            .from('conversations')
-            .select('assigned_to')
-            .neq('status', 'closed')
-            .not('assigned_to', 'is', null);
-
-        const counts = {};
-        (openConvs || []).forEach(row => {
-            if (row.assigned_to) {
-                counts[row.assigned_to] = (counts[row.assigned_to] || 0) + 1;
-            }
-        });
-
-        // Find the least loaded sales user
-        const ranked = salesUsers.map(u => ({
-            id: u.id,
-            name: u.name,
-            count: counts[u.id] || 0
-        })).sort((a, b) => a.count - b.count);
-
-        console.log(`[Webhook] Distribution: assigning to ${ranked[0].name} (${ranked[0].count} open)`);
-        return ranked[0].id;
+        return await getLeastLoadedAssignee(supabase, '[Webhook] Distribution');
     } catch (err) {
         console.error('[Webhook] Distribution error:', err.message);
         return null;
@@ -121,6 +68,8 @@ async function getNextAssignee(supabase) {
 
 export default async function handler(req, res) {
     setCorsHeaders(res);
+    const log = createRequestLogger('webhook', req);
+    log.setHeader(res);
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -148,8 +97,7 @@ export default async function handler(req, res) {
         const body = req.body;
 
         // Debug: log raw payload structure (top-level keys only)
-        console.log('[Webhook] POST received. Top-level keys:', JSON.stringify(Object.keys(body)));
-        console.log('[Webhook] Raw payload:', JSON.stringify(body).substring(0, 500));
+        log.info('POST received', { keys: Object.keys(body) });
 
         try {
             // ── Normalize payload: support both Meta Cloud API and 360Dialog formats
@@ -308,6 +256,20 @@ async function processIncomingMessage(message, contact) {
         console.log(`[Webhook] Created conversation ${conversationId} for ${phone} (assigned to ${assignee || 'unassigned'})`);
     }
 
+    // ── Idempotency guard — skip if message already exists ─────────────────
+    if (message.id) {
+        const { data: existing } = await supabase
+            .from('messages')
+            .select('id')
+            .eq('whatsapp_message_id', message.id)
+            .maybeSingle();
+
+        if (existing) {
+            console.log(`[Webhook] Duplicate message ${message.id}, skipping insert`);
+            return;
+        }
+    }
+
     // ── Insert message ──────────────────────────────────────────────────────
     const { error: msgError } = await supabase
         .from('messages')
@@ -364,7 +326,7 @@ async function processStatusUpdate(status) {
         sent: 'sent',
         delivered: 'delivered',
         read: 'read',
-        failed: 'error',
+        failed: 'failed',
     };
 
     const mappedStatus = statusMap[newStatus] || newStatus;

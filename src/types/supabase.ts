@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -16,90 +16,167 @@ export type Database = {
     Tables: {
       ai_api_keys: {
         Row: {
+          api_key: string
+          created_at: string
           id: string
           provider: string
-          api_key: string
-          created_at: string | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
+          api_key?: string
+          created_at?: string
           id?: string
           provider: string
-          api_key?: string
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
+          api_key?: string
+          created_at?: string
           id?: string
           provider?: string
-          api_key?: string
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
       ai_image_styles: {
         Row: {
+          created_at: string
           id: string
+          is_default: boolean
           name: string
           prompt: string
-          is_default: boolean
           sort_order: number
-          created_at: string | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          id?: string
+          created_at?: string
+          id: string
+          is_default?: boolean
           name: string
           prompt: string
-          is_default?: boolean
           sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
+          is_default?: boolean
           name?: string
           prompt?: string
-          is_default?: boolean
           sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
       ai_models: {
         Row: {
+          created_at: string
+          enabled: boolean
           id: string
+          model_id: string
           name: string
           provider: string
-          model_id: string
-          enabled: boolean
           sort_order: number
-          created_at: string | null
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          id?: string
+          created_at?: string
+          enabled?: boolean
+          id: string
+          model_id: string
           name: string
           provider: string
-          model_id: string
-          enabled?: boolean
           sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
+          created_at?: string
+          enabled?: boolean
           id?: string
+          model_id?: string
           name?: string
           provider?: string
-          model_id?: string
-          enabled?: boolean
           sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
+      }
+      commercial_sales: {
+        Row: {
+          client_company: string | null
+          client_name: string | null
+          client_phone: string | null
+          created_at: string | null
+          empresa: string | null
+          id: string
+          is_historical: boolean | null
+          nfe: string | null
+          payment_method: string | null
+          pos_venda_name: string | null
+          producer_name: string | null
+          sale_date: string
+          sale_value: number | null
+          seller_id: string | null
+          seller_name: string
+          sinal_value: number | null
+          source_file: string | null
+          source_sheet: string | null
+          total_sale: number | null
+          video_style: string | null
+        }
+        Insert: {
+          client_company?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          empresa?: string | null
+          id?: string
+          is_historical?: boolean | null
+          nfe?: string | null
+          payment_method?: string | null
+          pos_venda_name?: string | null
+          producer_name?: string | null
+          sale_date: string
+          sale_value?: number | null
+          seller_id?: string | null
+          seller_name: string
+          sinal_value?: number | null
+          source_file?: string | null
+          source_sheet?: string | null
+          total_sale?: number | null
+          video_style?: string | null
+        }
+        Update: {
+          client_company?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          empresa?: string | null
+          id?: string
+          is_historical?: boolean | null
+          nfe?: string | null
+          payment_method?: string | null
+          pos_venda_name?: string | null
+          producer_name?: string | null
+          sale_date?: string
+          sale_value?: number | null
+          seller_id?: string | null
+          seller_name?: string
+          sinal_value?: number | null
+          source_file?: string | null
+          source_sheet?: string | null
+          total_sale?: number | null
+          video_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_sales_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversations: {
         Row: {
@@ -198,6 +275,158 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rag_leads_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          id: string
+          is_historical: boolean | null
+          notes: string | null
+          payment_method: string | null
+          source_file: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_historical?: boolean | null
+          notes?: string | null
+          payment_method?: string | null
+          source_file?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_historical?: boolean | null
+          notes?: string | null
+          payment_method?: string | null
+          source_file?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_images: {
+        Row: {
+          aspect_ratio: string
+          batch_id: string | null
+          created_at: string
+          file_path: string | null
+          id: string
+          model: string
+          narration: string | null
+          prompt: string
+          quality: string
+          scene_number: number | null
+          style_name: string | null
+          url: string
+          user_id: string | null
+          user_name: string | null
+          user_photo_url: string | null
+        }
+        Insert: {
+          aspect_ratio?: string
+          batch_id?: string | null
+          created_at?: string
+          file_path?: string | null
+          id: string
+          model: string
+          narration?: string | null
+          prompt: string
+          quality?: string
+          scene_number?: number | null
+          style_name?: string | null
+          url: string
+          user_id?: string | null
+          user_name?: string | null
+          user_photo_url?: string | null
+        }
+        Update: {
+          aspect_ratio?: string
+          batch_id?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          model?: string
+          narration?: string | null
+          prompt?: string
+          quality?: string
+          scene_number?: number | null
+          style_name?: string | null
+          url?: string
+          user_id?: string | null
+          user_name?: string | null
+          user_photo_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_images_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       goals: {
@@ -231,59 +460,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "goals_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      gallery_images: {
-        Row: {
-          id: string
-          url: string
-          prompt: string | null
-          style_name: string | null
-          model: string | null
-          quality: string | null
-          aspect_ratio: string | null
-          file_path: string | null
-          user_id: string | null
-          user_name: string | null
-          user_photo_url: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          url: string
-          prompt?: string | null
-          style_name?: string | null
-          model?: string | null
-          quality?: string | null
-          aspect_ratio?: string | null
-          file_path?: string | null
-          user_id?: string | null
-          user_name?: string | null
-          user_photo_url?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          url?: string
-          prompt?: string | null
-          style_name?: string | null
-          model?: string | null
-          quality?: string | null
-          aspect_ratio?: string | null
-          file_path?: string | null
-          user_id?: string | null
-          user_name?: string | null
-          user_photo_url?: string | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gallery_images_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -370,6 +546,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rag_leads_v"
             referencedColumns: ["id"]
           },
           {
@@ -490,10 +673,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_deal_product_id_fkey"
+            columns: ["deal_product_id"]
+            isOneToOne: false
+            referencedRelation: "rag_products_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_lost_reason_id_fkey"
             columns: ["lost_reason_id"]
             isOneToOne: false
             referencedRelation: "loss_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_lost_reason_id_fkey"
+            columns: ["lost_reason_id"]
+            isOneToOne: false
+            referencedRelation: "rag_loss_reasons_v"
             referencedColumns: ["id"]
           },
           {
@@ -515,6 +712,13 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "rag_pipeline_stages_v"
             referencedColumns: ["id"]
           },
         ]
@@ -598,10 +802,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "rag_conversations_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_reply_to_message_id_fkey"
             columns: ["reply_to_message_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_message_id_fkey"
+            columns: ["reply_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "rag_messages_v"
             referencedColumns: ["id"]
           },
           {
@@ -724,6 +942,134 @@ export type Database = {
         }
         Relationships: []
       }
+      playbook_activities: {
+        Row: {
+          active: boolean
+          activity_type: Database["public"]["Enums"]["playbook_activity_type"]
+          created_at: string | null
+          id: string
+          label: string
+          order: number
+          stage_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          activity_type?: Database["public"]["Enums"]["playbook_activity_type"]
+          created_at?: string | null
+          id?: string
+          label: string
+          order?: number
+          stage_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          activity_type?: Database["public"]["Enums"]["playbook_activity_type"]
+          created_at?: string | null
+          id?: string
+          label?: string
+          order?: number
+          stage_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_activities_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_activities_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "rag_pipeline_stages_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_blocks: {
+        Row: {
+          activity_id: string
+          block_type: Database["public"]["Enums"]["playbook_block_type"]
+          content: string
+          created_at: string | null
+          id: string
+          order: number
+          title: string | null
+        }
+        Insert: {
+          activity_id: string
+          block_type: Database["public"]["Enums"]["playbook_block_type"]
+          content: string
+          created_at?: string | null
+          id?: string
+          order?: number
+          title?: string | null
+        }
+        Update: {
+          activity_id?: string
+          block_type?: Database["public"]["Enums"]["playbook_block_type"]
+          content?: string
+          created_at?: string | null
+          id?: string
+          order?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_blocks_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "playbook_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_progress: {
+        Row: {
+          completed_activities: string[] | null
+          id: string
+          lead_id: string
+          pipeline: string
+          script_checks: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          completed_activities?: string[] | null
+          id?: string
+          lead_id: string
+          pipeline?: string
+          script_checks?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          completed_activities?: string[] | null
+          id?: string
+          lead_id?: string
+          pipeline?: string
+          script_checks?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_progress_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_progress_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rag_leads_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           active: boolean | null
@@ -779,6 +1125,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_checklist_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_projects_v"
             referencedColumns: ["id"]
           },
         ]
@@ -933,6 +1286,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projects_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rag_leads_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projects_post_sales_id_fkey"
             columns: ["post_sales_id"]
             isOneToOne: false
@@ -954,6 +1314,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projects_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "rag_products_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projects_suggested_producer_id_fkey"
             columns: ["suggested_producer_id"]
             isOneToOne: false
@@ -961,6 +1328,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rag_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          content_hash: string
+          content_tsv: unknown
+          created_at: string
+          domain: string
+          embedding: string
+          id: string
+          metadata: Json
+          source_id: string
+          source_view: string
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          content_hash: string
+          content_tsv?: unknown
+          created_at?: string
+          domain: string
+          embedding: string
+          id?: string
+          metadata?: Json
+          source_id: string
+          source_view: string
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          content_hash?: string
+          content_tsv?: unknown
+          created_at?: string
+          domain?: string
+          embedding?: string
+          id?: string
+          metadata?: Json
+          source_id?: string
+          source_view?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       revision_history: {
         Row: {
@@ -996,6 +1408,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revision_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_projects_v"
             referencedColumns: ["id"]
           },
           {
@@ -1096,6 +1515,33 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       social_media_clients: {
         Row: {
           client_name: string
@@ -1176,6 +1622,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "social_media_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rag_social_media_clients_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "social_media_posts_client_id_fkey"
             columns: ["client_id"]
@@ -1275,7 +1728,21 @@ export type Database = {
             foreignKeyName: "strategic_tasks_parent_task_id_fkey"
             columns: ["parent_task_id"]
             isOneToOne: false
+            referencedRelation: "rag_strategic_tasks_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategic_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
             referencedRelation: "strategic_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategic_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_strategic_projects_v"
             referencedColumns: ["id"]
           },
           {
@@ -1320,7 +1787,21 @@ export type Database = {
             foreignKeyName: "task_comments_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "rag_strategic_projects_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "strategic_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "rag_strategic_tasks_v"
             referencedColumns: ["id"]
           },
           {
@@ -1464,6 +1945,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          plain_password: string | null
           role_id: string | null
           sector_id: string | null
           updated_at: string | null
@@ -1477,6 +1959,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          plain_password?: string | null
           role_id?: string | null
           sector_id?: string | null
           updated_at?: string | null
@@ -1490,6 +1973,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          plain_password?: string | null
           role_id?: string | null
           sector_id?: string | null
           updated_at?: string | null
@@ -1506,6 +1990,13 @@ export type Database = {
             foreignKeyName: "users_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
+            referencedRelation: "rag_sectors_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
             referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
@@ -1513,14 +2004,609 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      rag_conversations_v: {
+        Row: {
+          channel: string | null
+          company: string | null
+          created_at: string | null
+          id: string | null
+          last_message_preview: string | null
+          name: string | null
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          channel?: string | null
+          company?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_message_preview?: string | null
+          name?: string | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          channel?: string | null
+          company?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_message_preview?: string | null
+          name?: string | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rag_lead_activities_v: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          lead_id: string | null
+          type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          lead_id?: string | null
+          type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          lead_id?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "rag_leads_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_leads_v: {
+        Row: {
+          company: string | null
+          deal_status: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          pipeline: string | null
+          responsible_name: string | null
+          source: string | null
+          stage_name: string | null
+          temperature: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      rag_loss_reasons_v: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
+      rag_messages_v: {
+        Row: {
+          content: string | null
+          conversation_id: string | null
+          created_at: string | null
+          id: string | null
+          sender_name: string | null
+          status: string | null
+          type: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          sender_name?: string | null
+          status?: string | null
+          type?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          sender_name?: string | null
+          status?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "rag_conversations_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_notes_v: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rag_pipeline_stages_v: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          name: string | null
+          pipeline: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          pipeline?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          pipeline?: string | null
+        }
+        Relationships: []
+      }
+      rag_products_v: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
+      rag_project_checklist_items_v: {
+        Row: {
+          completed: boolean | null
+          id: string | null
+          project_id: string | null
+          text: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          id?: string | null
+          project_id?: string | null
+          text?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          id?: string | null
+          project_id?: string | null
+          text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_checklist_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_checklist_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_projects_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_projects_v: {
+        Row: {
+          client_feedback: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          payment_status: string | null
+          priority: string | null
+          producer_name: string | null
+          status: string | null
+          suggestion_notes: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      rag_sectors_v: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rag_social_media_clients_v: {
+        Row: {
+          client_name: string | null
+          company_name: string | null
+          contact: string | null
+          created_at: string | null
+          id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_name?: string | null
+          company_name?: string | null
+          contact?: string | null
+          created_at?: string | null
+          id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_name?: string | null
+          company_name?: string | null
+          contact?: string | null
+          created_at?: string | null
+          id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rag_social_media_posts_v: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          created_at: string | null
+          id: string | null
+          notes: string | null
+          scheduled_date: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_media_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "rag_social_media_clients_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_media_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "social_media_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_strategic_projects_v: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rag_strategic_tasks_v: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          id: string | null
+          priority: string | null
+          project_id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_strategic_projects_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategic_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "strategic_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_task_comments_v: {
+        Row: {
+          author_name: string | null
+          content: string | null
+          created_at: string | null
+          id: string | null
+          project_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "rag_strategic_projects_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "strategic_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "rag_strategic_tasks_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "strategic_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_commercial_revenue: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          count: number
+          revenue: number
+        }[]
+      }
+      get_commercial_sales_summary: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          total_count: number
+          total_value: number
+        }[]
+      }
+      get_daily_sales_trend: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          closed_count: number
+          sale_day: string
+        }[]
+      }
+      get_financial_expenses: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          total_expense: number
+        }[]
+      }
+      get_monthly_commercial_revenue: {
+        Args: { start_date: string }
+        Returns: {
+          month_key: string
+          revenue: number
+        }[]
+      }
+      get_monthly_financial_expenses: {
+        Args: { start_date: string }
+        Returns: {
+          expense: number
+          month_key: string
+        }[]
+      }
+      get_top_sellers: {
+        Args: { end_date: string; max_results?: number; start_date: string }
+        Returns: {
+          deals: number
+          seller_name: string
+          total_value: number
+        }[]
+      }
       is_admin_or_leader: { Args: never; Returns: boolean }
+      match_rag_chunks: {
+        Args: {
+          filter?: Json
+          filter_domain?: string
+          filter_source_view?: string
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_index: number
+          citation: string
+          content: string
+          domain: string
+          id: string
+          metadata: Json
+          similarity: number
+          source_id: string
+          source_view: string
+          updated_at: string
+        }[]
+      }
+      match_rag_chunks_hybrid: {
+        Args: {
+          filter?: Json
+          filter_domain?: string
+          match_count?: number
+          query_embedding: string
+          query_text: string
+        }
+        Returns: {
+          chunk_index: number
+          citation: string
+          content: string
+          domain: string
+          final_score: number
+          id: string
+          keyword_score: number
+          metadata: Json
+          semantic_score: number
+          source_id: string
+          source_view: string
+          updated_at: string
+        }[]
+      }
+      rag_delete_missing_chunks: {
+        Args: {
+          p_domain: string
+          p_keep_chunk_indexes: number[]
+          p_source_id: string
+          p_source_view: string
+        }
+        Returns: number
+      }
+      rag_upsert_chunk: {
+        Args: {
+          p_chunk_index: number
+          p_content: string
+          p_content_hash: string
+          p_domain: string
+          p_embedding: string
+          p_metadata: Json
+          p_source_id: string
+          p_source_view: string
+        }
+        Returns: undefined
+      }
       user_role: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      playbook_activity_type: "whatsapp" | "call" | "email" | "internal"
+      playbook_block_type: "message" | "checklist" | "tip" | "question"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1534,119 +2620,122 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      playbook_activity_type: ["whatsapp", "call", "email", "internal"],
+      playbook_block_type: ["message", "checklist", "tip", "question"],
+    },
   },
 } as const
