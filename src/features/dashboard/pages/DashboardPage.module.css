@@ -31,18 +31,189 @@
     margin: var(--space-1) 0 0 0;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
- * FILTERS
- * ───────────────────────────────────────────────────────────────────────────── */
-.filters {
+.activePeriod {
+    color: var(--color-primary-500);
+    font-weight: var(--font-weight-semibold);
+}
+
+.headerActions {
     display: flex;
     align-items: center;
     gap: var(--space-3);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FILTER BAR
+ * ───────────────────────────────────────────────────────────────────────────── */
+.filterBar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+}
+
+.filterRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.filterPillGroup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.filterDivider {
+    width: 1px;
+    height: 24px;
+    background: var(--color-border);
+    flex-shrink: 0;
+}
+
+/* Quick filter pills */
+.filterPill {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-in-out);
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.filterPill:hover {
+    border-color: var(--color-border-hover);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+}
+
+.filterPill:focus-visible {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+.filterPillActive {
+    background: var(--color-primary-500) !important;
+    border-color: var(--color-primary-500) !important;
+    color: var(--color-text-primary) !important;
+    font-weight: var(--font-weight-semibold);
+}
+
+.filterPillYear {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+/* Month pills row */
+.yearNav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.yearNavBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-in-out);
+    padding: 0;
+}
+
+.yearNavBtn:hover:not(:disabled) {
+    border-color: var(--color-border-hover);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+}
+
+.yearNavBtn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.yearNavBtn:focus-visible {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+.yearNavLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    min-width: 60px;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.monthPillGroup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+}
+
+.monthPill {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-in-out);
+    white-space: nowrap;
+    min-width: 42px;
+    text-align: center;
+    font-family: inherit;
+}
+
+.monthPill:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    border-color: var(--color-border);
+}
+
+.monthPill:focus-visible {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 10px var(--color-primary-500);
+}
+
+.monthPillActive {
+    background: var(--color-primary-500) !important;
+    border-color: var(--color-primary-500) !important;
+    color: var(--color-text-primary) !important;
+    font-weight: var(--font-weight-semibold);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SECTION FILTER (dropdown)
+ * ───────────────────────────────────────────────────────────────────────────── */
 .filterGroup {
     position: relative;
-    min-width: 160px;
+    min-width: 120px;
 }
 
 .sectionTrigger {
@@ -61,7 +232,6 @@
     color: var(--color-text-primary) !important;
 }
 
-/* Make the label take all available space so icon goes to the right */
 .sectionTrigger>span:first-child {
     flex: 1;
     text-align: left;
@@ -179,5 +349,17 @@
 @media (max-width: 640px) {
     .statsGrid {
         grid-template-columns: 1fr;
+    }
+
+    .filterRow {
+        gap: var(--space-2);
+    }
+
+    .filterDivider {
+        display: none;
+    }
+
+    .monthPillGroup {
+        gap: 2px;
     }
 }

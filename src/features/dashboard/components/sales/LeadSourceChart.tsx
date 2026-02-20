@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { Globe, Mail, Phone, Users, MessageSquare, Instagram } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './SalesStats.module.css';
 
 interface SourceData {
@@ -57,34 +58,36 @@ export function LeadSourceChart({ data }: LeadSourceChartProps) {
                 <div style={{ display: 'flex', gap: '1rem', flex: 1, alignItems: 'center' }}>
                     {/* Donut Chart */}
                     <div style={{ flex: '0 0 140px', height: '140px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={chartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={40}
-                                    outerRadius={65}
-                                    paddingAngle={2}
-                                    dataKey="count"
-                                    isAnimationActive={false}
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        background: 'var(--color-bg-primary)',
-                                        border: '1px solid var(--color-border)',
-                                        borderRadius: '8px',
-                                        fontSize: '12px'
-                                    }}
-                                    formatter={(value) => [`${value} leads`, '']}
-                                    isAnimationActive={false}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <DeferredChart>
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <PieChart>
+                                    <Pie
+                                        data={chartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={65}
+                                        paddingAngle={2}
+                                        dataKey="count"
+                                        isAnimationActive={false}
+                                    >
+                                        {chartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: 'var(--color-bg-primary)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: '8px',
+                                            fontSize: '12px'
+                                        }}
+                                        formatter={(value) => [`${value} leads`, '']}
+                                        isAnimationActive={false}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </DeferredChart>
                     </div>
 
                     {/* Legend */}

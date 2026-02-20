@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { FileWarning } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './ProductionStats.module.css';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 
@@ -33,36 +34,38 @@ export function AlterationsRankingCard() {
                 </div>
 
                 <div style={{ flex: 1, minHeight: '250px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            layout="vertical"
-                            data={data}
-                            margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                        >
-                            <XAxis type="number" hide />
-                            <YAxis
-                                dataKey="name"
-                                type="category"
-                                width={100}
-                                tick={{ fill: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 600 }}
-                                axisLine={false}
-                                tickLine={false}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} isAnimationActive={false} />
-                            <Bar dataKey="points" barSize={20} radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                                <LabelList
-                                    dataKey="points"
-                                    position="right"
-                                    fill="var(--color-text-muted)"
-                                    fontSize={12}
-                                    fontWeight={600}
+                    <DeferredChart>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <BarChart
+                                layout="vertical"
+                                data={data}
+                                margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+                            >
+                                <XAxis type="number" hide />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    width={100}
+                                    tick={{ fill: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 600 }}
+                                    axisLine={false}
+                                    tickLine={false}
                                 />
-                                {data.map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill="#eab308" />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} isAnimationActive={false} />
+                                <Bar dataKey="points" barSize={20} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                                    <LabelList
+                                        dataKey="points"
+                                        position="right"
+                                        fill="var(--color-text-muted)"
+                                        fontSize={12}
+                                        fontWeight={600}
+                                    />
+                                    {data.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill="#eab308" />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </DeferredChart>
                 </div>
             </CardBody>
         </Card>

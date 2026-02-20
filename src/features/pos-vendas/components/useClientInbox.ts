@@ -26,6 +26,7 @@ export function useClientInbox() {
     const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
     const [linkedProjects, setLinkedProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
     const { setDraftMessage } = useInboxStore();
 
     // Chat states
@@ -70,8 +71,10 @@ export function useClientInbox() {
     }, [clientsByAttendant, selectedPostSalesId]);
 
     const selectedClient = useMemo(() => {
-        return clients.find(c => c.id === selectedClientId);
-    }, [clients, selectedClientId]);
+        // Procura nos filtrados primeiro, depois em todos (B5: não perde seleção ao trocar filtro)
+        return clients.find(c => c.id === selectedClientId)
+            || allClients.find(c => c.id === selectedClientId);
+    }, [clients, allClients, selectedClientId]);
 
     const selectedProject = useMemo(() => {
         if (linkedProjects.length === 0) return null;
@@ -184,7 +187,14 @@ export function useClientInbox() {
     }, [conversation?.id]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // M5: Só auto-scroll se o usuário estiver perto do fundo
+        const container = messagesEndRef.current?.parentElement;
+        if (container) {
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+            if (isNearBottom) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
     }, [messages]);
 
     // ─── Handlers ───────────────────────────────────────────────────────
@@ -202,7 +212,7 @@ export function useClientInbox() {
     ) => {
         if (!conversation?.id) return;
         if (!StorageService.validateFileSize(file)) {
-            console.error('Arquivo muito grande. Máximo: 16MB');
+            toast.error('Arquivo muito grande. Máximo: 16MB');
             return;
         }
         setIsUploading(true);
@@ -214,6 +224,7 @@ export function useClientInbox() {
             );
         } catch (error) {
             console.error('Upload falhou:', error);
+            toast.error('Falha ao enviar arquivo.');
         } finally {
             setIsUploading(false);
         }
@@ -234,51 +245,71 @@ export function useClientInbox() {
         await InboxService.scheduleMessage(conversation.id, text, scheduledFor);
     };
 
-    const handleUpdateStatus = async (clientId: string, _newStatus: ClientStatus) => {
+    const handleUpdateStatus = async (clientId: string, newStatus: ClientStatus) => {
         if (!selectedPostSalesId) return;
+        setActionLoading(true);
         try {
             if (!selectedProject?.id) {
-                console.warn('Cannot mark as delivered: no selected project');
+                toast.error('Nenhum projeto selecionado.');
                 return;
             }
-            await PostSalesClientService.markProjectAsDelivered(
-                clientId, selectedProject.id, selectedPostSalesId
-            );
+            if (newStatus === 'entregue') {
+                await PostSalesClientService.markProjectAsDelivered(
+                    clientId, selectedProject.id, selectedPostSalesId
+                );
+                toast.success('Projeto marcado como entregue.');
+            }
         } catch (error) {
             console.error('Error updating status:', error);
+            toast.error('Erro ao atualizar status.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleCompleteClient = async (clientId: string) => {
         if (!selectedPostSalesId) return;
+        setActionLoading(true);
         try {
             await PostSalesClientService.completeClient(
                 clientId, selectedProject?.id, selectedPostSalesId
             );
+            toast.success('Cliente concluído com sucesso!');
         } catch (error) {
             console.error('Error completing client:', error);
+            toast.error('Erro ao concluir cliente.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleRequestRevision = async (clientId: string) => {
         if (!selectedPostSalesId || !selectedProject?.id) return;
+        setActionLoading(true);
         try {
             await PostSalesClientService.requestRevision(
                 clientId, selectedProject.id, 'Alteração solicitada pelo cliente'
             );
+            toast.success('Alteração solicitada.');
         } catch (error) {
             console.error('Error requesting revision:', error);
             toast.error('Erro ao solicitar alteração do projeto.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleApproveClient = async (clientId: string) => {
         if (!selectedPostSalesId) return;
+        setActionLoading(true);
         try {
             await PostSalesClientService.approveClient(clientId, selectedProject?.id);
+            toast.success('Cliente aprovado! Aguardando pagamento.');
         } catch (error) {
             console.error('Error approving client:', error);
             toast.error('Erro ao aprovar cliente.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -309,6 +340,7 @@ export function useClientInbox() {
         selectedPostSalesId,
         selectedAttendant,
         isLoading,
+        actionLoading,
         selectedClientId, setSelectedClientId,
         statusFilter, setStatusFilter,
         clients,

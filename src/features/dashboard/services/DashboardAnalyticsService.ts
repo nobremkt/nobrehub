@@ -71,17 +71,33 @@ export const DashboardAnalyticsService = {
      */
     getAllMetrics: async (filter: DateFilter = 'month'): Promise<UnifiedDashboardMetrics> => {
         // ── Shared data fetch (1 query per table) ──────────────────────
-        const [collaboratorsRes, projectsRes, leadsRes, sectorsRes, rolesRes] = await Promise.all([
+        // Projects may exceed 1000-row default limit, so paginate
+        const fetchAllProjects = async () => {
+            const allRows: Record<string, unknown>[] = [];
+            const PAGE_SIZE = 1000;
+            let from = 0;
+            let hasMore = true;
+            while (hasMore) {
+                const { data } = await supabase.from(PROJECTS_TABLE).select('*').range(from, from + PAGE_SIZE - 1);
+                const rows = (data || []) as Record<string, unknown>[];
+                allRows.push(...rows);
+                hasMore = rows.length === PAGE_SIZE;
+                from += PAGE_SIZE;
+            }
+            return allRows;
+        };
+
+        const [collaboratorsRes, projectRows, leadsRes, sectorsRes, rolesRes] = await Promise.all([
             supabase.from('users').select('*'),
-            supabase.from(PROJECTS_TABLE).select('*'),
+            fetchAllProjects(),
             supabase.from('leads').select('*'),
-            Promise.resolve({ data: [] as Record<string, unknown>[] }),
-            Promise.resolve({ data: [] as Record<string, unknown>[] }),
+            supabase.from('sectors').select('*'),
+            supabase.from('roles').select('*'),
         ]);
 
         const shared: SharedData = {
             collaborators: collaboratorsRes.data || [],
-            projects: projectsRes.data || [],
+            projects: projectRows,
             leads: leadsRes.data || [],
             sectors: sectorsRes.data || [],
             roles: rolesRes.data || [],

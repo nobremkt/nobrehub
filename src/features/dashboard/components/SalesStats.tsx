@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Spinner } from '@/design-system';
 import styles from './sales/SalesStats.module.css';
 import {
@@ -14,55 +14,9 @@ import {
     PipelineOverview,
 } from './sales';
 import { useDashboardStore } from '../stores/useDashboardStore';
-import { DashboardAnalyticsService, SalesMetrics } from '../services/DashboardAnalyticsService';
-
-interface SalesData extends SalesMetrics {
-    pipelineStages: { name: string; count: number; value: number }[];
-}
-
-function useSalesData() {
-    const { dateFilter } = useDashboardStore();
-    const [isLoading, setIsLoading] = useState(true);
-    const [data, setData] = useState<SalesData | null>(null);
-
-    useEffect(() => {
-        let isMounted = true;
-        setIsLoading(true);
-
-        const fetchData = async () => {
-            try {
-                const metrics = await DashboardAnalyticsService.getSalesMetrics(dateFilter);
-
-                if (isMounted) {
-                    // Calculate pipeline stages from status
-                    const pipelineStages = calculatePipelineStages(metrics.leadsByStatus);
-
-                    setData({
-                        ...metrics,
-                        pipelineStages,
-                    });
-                    setIsLoading(false);
-                }
-            } catch (error) {
-                console.error('Error fetching sales metrics:', error);
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        fetchData();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [dateFilter]);
-
-    return { data, isLoading };
-}
 
 // Calculate pipeline stages from status data
-function calculatePipelineStages(statusData: { status: string; count: number }[]) {
+function calculatePipelineStages(statusData: { status: string; count: number; value: number }[]) {
     const stageOrder = ['new', 'contacted', 'qualified', 'negotiation', 'proposal'];
     const stageLabels: Record<string, string> = {
         'new': 'Novos',
@@ -80,7 +34,7 @@ function calculatePipelineStages(statusData: { status: string; count: number }[]
             stages.push({
                 name: stageLabels[stage] || stage,
                 count: found.count,
-                value: found.count * 2500, // Estimated value per lead - TODO: use real estimatedValue
+                value: found.value,
             });
         }
     }
@@ -94,7 +48,22 @@ function calculatePipelineStages(statusData: { status: string; count: number }[]
 }
 
 export function SalesStats() {
-    const { data, isLoading } = useSalesData();
+    const { unifiedMetrics, isLoading, fetchMetrics } = useDashboardStore();
+
+    // Fetch metrics on mount if not already loaded
+    useEffect(() => {
+        if (!unifiedMetrics) {
+            fetchMetrics();
+        }
+    }, [unifiedMetrics, fetchMetrics]);
+
+    const data = unifiedMetrics?.sales;
+
+    // Calculate pipeline stages from status data (memoized)
+    const pipelineStages = useMemo(
+        () => data ? calculatePipelineStages(data.leadsByStatus) : [],
+        [data]
+    );
 
     if (isLoading && !data) {
         return (
@@ -133,7 +102,7 @@ export function SalesStats() {
 
                     {/* Row 3: Pipeline + Top Sellers */}
                     <div className={styles.leftRowBottom}>
-                        <PipelineOverview stages={data.pipelineStages} />
+                        <PipelineOverview stages={pipelineStages} />
                         <TopSellersRanking sellers={data.topSellers} />
                     </div>
                 </div>

@@ -24,29 +24,43 @@ export const ProductionMetricsService = {
         // Fetch collaborators for name resolution, photos, and producer count
         const { nameMap: collaboratorsMap, photoMap: collaboratorsPhotoMap, producerCount } = await getCollaboratorsData(_shared);
 
-        // Fetch all projects (use shared data if available)
-        const projectRows: Record<string, unknown>[] = _shared
-            ? _shared.projects
-            : (await supabase.from(PROJECTS_TABLE).select('*')).data || [];
+        // Fetch all projects — Supabase has a 1000-row default limit, so paginate
+        let projectRows: Record<string, unknown>[] = [];
+        if (_shared) {
+            projectRows = _shared.projects;
+        } else {
+            const PAGE_SIZE = 1000;
+            let from = 0;
+            let hasMore = true;
+            while (hasMore) {
+                const { data } = await supabase.from(PROJECTS_TABLE).select('*').range(from, from + PAGE_SIZE - 1);
+                const rows = data || [];
+                projectRows.push(...rows);
+                hasMore = rows.length === PAGE_SIZE;
+                from += PAGE_SIZE;
+            }
+        }
 
         const allProjects: InternalProject[] = projectRows.map(row => ({
             id: row.id as string,
-            title: (row.title as string) || (row.name as string) || '',
+            title: (row.name as string) || (row.title as string) || '',
             producerId: (row.producer_id as string) || '',
-            producerName: collaboratorsMap[(row.producer_id as string)] || (row.producer_name as string) || 'Desconhecido',
-            category: (row.category as string) || (row.tags as string[])?.[0] || 'Outro',
+            producerName: collaboratorsMap[(row.producer_id as string)] || 'Desconhecido',
+            category: (row.product_type as string) || 'Outro',
             difficulty: row.difficulty as string | undefined,
-            points: Number(row.points) || 1,
+            points: Number(row.base_points) || Number(row.points) || 0,
             status: (row.status as string) || 'entregue',
             type: row.type as string | undefined,
             motivo: row.motivo as string | undefined,
             deliveredAt: parseDate(row.delivered_at),
             createdAt: parseDate(row.created_at) || new Date(),
-            isHistorical: (row.is_historical as boolean) || false
+            isHistorical: (row.source as string) === 'historical' || (row.is_historical as boolean) || false,
+            internalRevisionCount: Number(row.internal_revision_count) || 0,
         }));
 
         // Filter by type: exclude alteracoes from main projects count
-        const isAlteracao = (p: InternalProject) => p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
+        const isAlteracao = (p: InternalProject) =>
+            (p.internalRevisionCount || 0) > 0 || p.type === 'alteracao' || p.status === 'alteracao' || p.status === 'alteracao_interna' || p.status === 'alteracao_cliente';
         const projects = allProjects.filter(p => !isAlteracao(p));
         const alteracoes = allProjects.filter(p => isAlteracao(p));
 

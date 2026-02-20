@@ -5,9 +5,10 @@ import styles from './FinancialStats.module.css';
 interface RevenueCardProps {
     revenue: number;
     previousRevenue?: number;
+    contractedRevenue?: number;
 }
 
-export function RevenueCard({ revenue, previousRevenue }: RevenueCardProps) {
+export function RevenueCard({ revenue, previousRevenue, contractedRevenue }: RevenueCardProps) {
     const change = previousRevenue ? ((revenue - previousRevenue) / previousRevenue) * 100 : 0;
     const isPositive = change >= 0;
 
@@ -16,12 +17,12 @@ export function RevenueCard({ revenue, previousRevenue }: RevenueCardProps) {
             <CardBody style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                     <Banknote size={16} color="var(--color-success-500)" />
-                    FATURAMENTO
+                    FATURAMENTO REAL
                 </div>
                 <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: 1, color: 'var(--color-success-500)' }}>
                     R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
-                {previousRevenue !== undefined && (
+                {previousRevenue !== undefined && previousRevenue > 0 && (
                     <div style={{
                         fontSize: '0.875rem',
                         color: isPositive ? 'var(--color-success-500)' : 'var(--color-error-500)',
@@ -31,6 +32,11 @@ export function RevenueCard({ revenue, previousRevenue }: RevenueCardProps) {
                     }}>
                         {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                         {isPositive ? '+' : ''}{change.toFixed(1)}% vs período anterior
+                    </div>
+                )}
+                {contractedRevenue !== undefined && contractedRevenue > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', opacity: 0.7, marginTop: '0.25rem' }}>
+                        Valor contratado: R$ {contractedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
                 )}
             </CardBody>
@@ -73,7 +79,7 @@ export function ProfitCard({ profit, margin }: { profit: number; margin: number 
                     lineHeight: 1,
                     color: isPositive ? 'var(--color-success-500)' : 'var(--color-error-500)'
                 }}>
-                    R$ {Math.abs(profit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {isPositive ? '' : '- '}R$ {Math.abs(profit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <div style={{
                     fontSize: '0.875rem',

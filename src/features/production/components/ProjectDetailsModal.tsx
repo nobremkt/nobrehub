@@ -183,12 +183,12 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
                                 <span>{dueDate ? new Date(dueDate).toLocaleDateString() : 'Sem prazo'}</span>
                             </div>
                         ) : (
-                            <input
+                            <Input
                                 type="date"
-                                className="bg-surface-primary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
                                 required
+                                fullWidth
                             />
                         )}
                     </div>
@@ -252,23 +252,15 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
                     )}
                 </div>
 
-                <div>
-                    <label className="text-sm font-medium text-text-secondary mb-1.5 block">
-                        Observacoes
-                    </label>
-                    {isReadOnly ? (
-                        <div className="bg-surface-secondary/50 p-3 rounded-md min-h-[4rem] text-sm text-text-primary whitespace-pre-wrap">
-                            {notes || <span className="text-text-muted italic">Sem observacoes.</span>}
-                        </div>
-                    ) : (
-                        <textarea
-                            className="w-full bg-surface-primary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none h-24"
-                            placeholder="Detalhes adicionais do projeto..."
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                        />
-                    )}
-                </div>
+                <Input
+                    label="Observacoes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={isReadOnly ? undefined : "Detalhes adicionais do projeto..."}
+                    disabled={isReadOnly}
+                    fullWidth
+                />
+
 
                 <div className="flex justify-between pt-4 border-t border-border mt-6">
                     <div>
@@ -307,6 +299,6 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }: ProjectDetails
                 variant="danger"
                 isLoading={isLoading}
             />
-        </Modal>
+        </Modal >
     );
 };

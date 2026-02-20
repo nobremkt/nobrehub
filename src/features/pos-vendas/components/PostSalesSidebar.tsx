@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { usePostSalesStore } from '../stores/usePostSalesStore';
+import { PostSalesClientService } from '../services/PostSalesClientService';
 import { Input, Spinner } from '@/design-system';
 import { Search, User, Clock, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 import styles from './PostSalesSidebar.module.css';
@@ -25,8 +26,9 @@ interface PostSalesStats {
 export const PostSalesSidebar = () => {
     const { collaborators, fetchCollaborators, isLoading } = useCollaboratorStore();
     const { sectors, fetchSectors } = useSectorStore();
-    const { selectedPostSalesId, setSelectedPostSalesId, clientsByAttendant } = usePostSalesStore();
+    const { selectedPostSalesId, setSelectedPostSalesId } = usePostSalesStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [teamStats, setTeamStats] = useState<Record<string, PostSalesStats>>({});
 
     // Encontra o setor de pós-vendas
     const postSalesSectorId = useMemo(() => {
@@ -54,15 +56,14 @@ export const PostSalesSidebar = () => {
         );
     }, [postSalesTeam, searchTerm]);
 
-    // Estatísticas por atendente
+    // Estatísticas por atendente (U3: usa dados reais do Supabase)
     const getStats = (attendantId: string): PostSalesStats => {
-        const clients = clientsByAttendant[attendantId] || [];
-        return {
-            aguardando_projeto: clients.filter(c => c.clientStatus === 'aguardando_projeto').length,
-            aguardando_alteracao: clients.filter(c => c.clientStatus === 'aguardando_alteracao').length,
-            entregue: clients.filter(c => c.clientStatus === 'entregue').length,
-            aguardando_pagamento: clients.filter(c => c.clientStatus === 'aguardando_pagamento').length,
-            total: clients.filter(c => c.clientStatus !== 'concluido').length
+        return teamStats[attendantId] || {
+            aguardando_projeto: 0,
+            aguardando_alteracao: 0,
+            entregue: 0,
+            aguardando_pagamento: 0,
+            total: 0
         };
     };
 
@@ -76,6 +77,13 @@ export const PostSalesSidebar = () => {
         if (collaborators.length === 0) fetchCollaborators();
         if (sectors.length === 0) fetchSectors();
     }, [fetchCollaborators, fetchSectors, collaborators.length, sectors.length]);
+
+    // U3: Fetch real stats for all team members from Supabase
+    useEffect(() => {
+        if (postSalesTeam.length === 0) return;
+        const ids = postSalesTeam.map(m => m.id);
+        PostSalesClientService.getClientCountsForTeam(ids).then(setTeamStats);
+    }, [postSalesTeam]);
 
     if (isLoading) {
         return (

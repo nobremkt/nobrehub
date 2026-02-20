@@ -14,21 +14,34 @@ import type { DateFilter, CollaboratorsData, SharedData } from './dashboard.type
 
 export const PROJECTS_TABLE = 'projects';
 
-/** Category colors for the donut chart */
+/** Category colors for the donut chart — supports both uppercase and title-case */
 export const CATEGORY_COLORS: Record<string, string> = {
     '3D PREMIUM': '#8b5cf6',
+    '3D Premium': '#8b5cf6',
     'FLOW': '#06b6d4',
+    'Flow': '#06b6d4',
     'EXPLAINER': '#f59e0b',
+    'Explainer': '#f59e0b',
     'CREATE': '#22c55e',
+    'Create': '#22c55e',
     'POST': '#3b82f6',
+    'Post': '#3b82f6',
     'REELS': '#ec4899',
+    'Reels': '#ec4899',
     'MOTION': '#dc2626',
+    'Motion': '#dc2626',
     'CARROSSEL': '#f97316',
+    'Carrossel': '#f97316',
     'WHITEBOARD': '#84cc16',
+    'Whiteboard': '#84cc16',
     'MASCOTE': '#a855f7',
+    'Mascote': '#a855f7',
     'LOGOTIPO': '#14b8a6',
+    'Logotipo': '#14b8a6',
     'VSL': '#ef4444',
+    'Vsl': '#ef4444',
     'PORTFÓLIO': '#10b981',
+    'Portfólio': '#10b981',
     'Outro': '#6b7280',
 };
 
@@ -62,22 +75,29 @@ export function getDateRange(filter: DateFilter): { start: Date; end: Date } {
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             return { start: monthStart, end: now };
         }
-        case 'year': {
-            const yearStart = new Date(now.getFullYear(), 0, 1);
-            return { start: yearStart, end: now };
+        case '2025': {
+            return { start: new Date(2025, 0, 1), end: new Date(2025, 11, 31, 23, 59, 59) };
+        }
+        case '2026': {
+            return { start: new Date(2026, 0, 1), end: now > new Date(2026, 11, 31) ? new Date(2026, 11, 31, 23, 59, 59) : now };
         }
         case 'quarter': {
             const quarterStart = new Date(now);
             quarterStart.setMonth(quarterStart.getMonth() - 3);
             return { start: quarterStart, end: now };
         }
-        case 'janeiro_2026': {
-            const jan2026Start = new Date(2026, 0, 1);
-            const jan2026End = new Date(2026, 0, 31, 23, 59, 59);
-            return { start: jan2026Start, end: jan2026End };
-        }
-        default:
+        default: {
+            // Handle dynamic YYYY-MM month keys (e.g. '2025-09')
+            const monthMatch = filter.match(/^(\d{4})-(\d{2})$/);
+            if (monthMatch) {
+                const year = parseInt(monthMatch[1], 10);
+                const month = parseInt(monthMatch[2], 10) - 1; // 0-indexed
+                const monthStart = new Date(year, month, 1);
+                const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+                return { start: monthStart, end: monthEnd };
+            }
             return { start: today, end: now };
+        }
     }
 }
 
@@ -110,10 +130,11 @@ export function getGoalDateRange(filter: DateFilter): { start: Date; end: Date }
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             return { start: monthStart, end: monthEnd };
         }
-        case 'year': {
-            const yearStart = new Date(now.getFullYear(), 0, 1);
-            const yearEnd = new Date(now.getFullYear(), 11, 31);
-            return { start: yearStart, end: yearEnd };
+        case '2025': {
+            return { start: new Date(2025, 0, 1), end: new Date(2025, 11, 31) };
+        }
+        case '2026': {
+            return { start: new Date(2026, 0, 1), end: new Date(2026, 11, 31) };
         }
         case 'quarter': {
             const currentMonth = now.getMonth();
@@ -122,13 +143,18 @@ export function getGoalDateRange(filter: DateFilter): { start: Date; end: Date }
             const quarterEnd = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
             return { start: quarterStart, end: quarterEnd };
         }
-        case 'janeiro_2026': {
-            const jan2026Start = new Date(2026, 0, 1);
-            const jan2026End = new Date(2026, 0, 31);
-            return { start: jan2026Start, end: jan2026End };
-        }
-        default:
+        default: {
+            // Handle dynamic YYYY-MM month keys (e.g. '2025-09')
+            const monthMatch = filter.match(/^(\d{4})-(\d{2})$/);
+            if (monthMatch) {
+                const year = parseInt(monthMatch[1], 10);
+                const month = parseInt(monthMatch[2], 10) - 1; // 0-indexed
+                const monthStart = new Date(year, month, 1);
+                const monthEnd = new Date(year, month + 1, 0);
+                return { start: monthStart, end: monthEnd };
+            }
             return { start: today, end: today };
+        }
     }
 }
 

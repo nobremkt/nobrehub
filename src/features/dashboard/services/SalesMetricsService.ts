@@ -2,7 +2,9 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - SALES METRICS SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
- * Calculates sales/CRM dashboard metrics (leads, conversion, pipeline)
+ * Calculates sales/CRM dashboard metrics (leads, conversion, pipeline).
+ * Uses SERVER-SIDE aggregation via Supabase RPC for commercial_sales
+ * to avoid the 1000-row default limit.
  */
 
 import { supabase } from '@/config/supabase';
@@ -10,44 +12,147 @@ import { Lead } from '@/types/lead.types';
 import type { SalesMetrics, SharedData, DateFilter } from './dashboard.types';
 import { getDateRange, parseDate } from './dashboard.helpers';
 
+// Supabase generated types don't include the new RPC functions yet
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rpc = (fn: string, params: Record<string, unknown>) => (supabase as any).rpc(fn, params);
+
+// ─── RPC-based server-side aggregation ──────────────────────────────
+
+interface CommercialSummary {
+    totalCount: number;
+    totalValue: number;
+}
+
+async function fetchCommercialSummary(start: Date, end: Date): Promise<CommercialSummary> {
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+
+    const { data, error } = await rpc('get_commercial_sales_summary', {
+        start_date: startStr,
+        end_date: endStr,
+    });
+
+    if (error) {
+        console.warn('[SalesMetrics] RPC get_commercial_sales_summary error:', error.message);
+        return { totalCount: 0, totalValue: 0 };
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+        totalCount: Number(row?.total_count) || 0,
+        totalValue: Number(row?.total_value) || 0,
+    };
+}
+
+interface TopSeller {
+    name: string;
+    deals: number;
+    value: number;
+}
+
+async function fetchTopSellers(start: Date, end: Date): Promise<TopSeller[]> {
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+
+    const { data, error } = await rpc('get_top_sellers', {
+        start_date: startStr,
+        end_date: endStr,
+        max_results: 10,
+    });
+
+    if (error) {
+        console.warn('[SalesMetrics] RPC get_top_sellers error:', error.message);
+        return [];
+    }
+
+    return (data || []).map((row: { seller_name: string; deals: number; total_value: number }) => ({
+        name: row.seller_name,
+        deals: Number(row.deals) || 0,
+        value: Number(row.total_value) || 0,
+    }));
+}
+
+interface DailyTrend {
+    date: string;
+    closedCount: number;
+}
+
+async function fetchDailyTrend(start: Date, end: Date): Promise<DailyTrend[]> {
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+
+    const { data, error } = await rpc('get_daily_sales_trend', {
+        start_date: startStr,
+        end_date: endStr,
+    });
+
+    if (error) {
+        console.warn('[SalesMetrics] RPC get_daily_sales_trend error:', error.message);
+        return [];
+    }
+
+    return (data || []).map((row: { sale_day: string; closed_count: number }) => ({
+        date: row.sale_day,
+        closedCount: Number(row.closed_count) || 0,
+    }));
+}
+
+// ─── Service ─────────────────────────────────────────────────────────
+
 export const SalesMetricsService = {
     /**
-     * Fetches sales/CRM metrics from leads table
+     * Fetches sales/CRM metrics from leads table and commercial_sales (via RPC)
      */
     getSalesMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<SalesMetrics> => {
         const { start, end } = getDateRange(filter);
 
-        const leadRows: Record<string, unknown>[] = _shared
-            ? _shared.leads
-            : (await supabase.from('leads').select('*')).data || [];
+        // ── Fetch all sources in parallel ───────────────────────────
+        const leadRowsPromise = _shared
+            ? Promise.resolve(_shared.leads)
+            : supabase.from('leads').select('*').then(r => r.data || []);
 
-        const allLeads: Lead[] = leadRows.map(row => ({
+        const [
+            leadRows,
+            commercialSummary,
+            commercialTopSellers,
+            commercialDailyTrend,
+        ] = await Promise.all([
+            leadRowsPromise,
+            fetchCommercialSummary(start, end),
+            fetchTopSellers(start, end),
+            fetchDailyTrend(start, end),
+        ]);
+
+        // ── Process leads (live CRM) ────────────────────────────────
+        const allLeads: Lead[] = (leadRows as Record<string, unknown>[]).map(row => ({
             ...row,
             id: row.id as string,
             createdAt: parseDate(row.created_at) || new Date(),
             updatedAt: parseDate(row.updated_at) || new Date(),
         })) as Lead[];
 
-        // Filter by date range
         const leadsInPeriod = allLeads.filter(l => {
             const relevantDate = l.createdAt;
             return relevantDate >= start && relevantDate <= end;
         });
 
-        // Metrics calculations
+        // Metrics from leads
         const newLeads = leadsInPeriod.length;
         const qualifiedLeads = leadsInPeriod.filter(l => l.status === 'qualified' || l.status === 'negotiation').length;
 
         const closedStatuses = ['won', 'closed', 'contracted'];
         const lostStatuses = ['lost', 'churned'];
+        const openStatuses = ['new', 'qualified', 'negotiation', 'proposal'];
 
-        const closedDeals = leadsInPeriod.filter(l => closedStatuses.includes(l.status)).length;
         const lostDeals = leadsInPeriod.filter(l => lostStatuses.includes(l.status)).length;
 
-        // Pipeline value
+        // Pipeline value — only open/active leads (not closed or lost)
         const pipelineValue = leadsInPeriod
-            .filter(l => !lostStatuses.includes(l.status))
+            .filter(l => openStatuses.includes(l.status))
             .reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
+
+        // closedDeals = commercial sales only (leads closing IS a commercial sale)
+        const closedDeals = commercialSummary.totalCount;
 
         // Conversion rate
         const totalCompleted = closedDeals + lostDeals;
@@ -64,18 +169,30 @@ export const SalesMetricsService = {
             count
         }));
 
-        // Leads by status
-        const statusMap: Record<string, number> = {};
+        // Leads by status (with value aggregation)
+        const statusMap: Record<string, { count: number; value: number }> = {};
         leadsInPeriod.forEach(l => {
-            statusMap[l.status] = (statusMap[l.status] || 0) + 1;
+            if (!statusMap[l.status]) statusMap[l.status] = { count: 0, value: 0 };
+            statusMap[l.status].count += 1;
+            statusMap[l.status].value += l.estimatedValue || 0;
         });
-        const leadsByStatus = Object.entries(statusMap).map(([status, count]) => ({
+        // Add commercial sales as "Vendas Históricas" if any
+        if (commercialSummary.totalCount > 0) {
+            statusMap['Vendas Históricas'] = {
+                count: commercialSummary.totalCount,
+                value: commercialSummary.totalValue || 0,
+            };
+        }
+        const leadsByStatus = Object.entries(statusMap).map(([status, data]) => ({
             status,
-            count
+            count: data.count,
+            value: data.value,
         }));
 
-        // Top sellers
+        // ── Top sellers: merge leads + commercial (server-side) ─────
         const sellerMap: Record<string, { deals: number; value: number }> = {};
+
+        // From leads
         leadsInPeriod.filter(l => closedStatuses.includes(l.status)).forEach(l => {
             const sellerId = l.responsibleId || 'unknown';
             if (!sellerMap[sellerId]) {
@@ -84,34 +201,91 @@ export const SalesMetricsService = {
             sellerMap[sellerId].deals += 1;
             sellerMap[sellerId].value += l.estimatedValue || 0;
         });
+
+        // From commercial sales (already aggregated server-side)
+        commercialTopSellers.forEach(seller => {
+            if (!sellerMap[seller.name]) {
+                sellerMap[seller.name] = { deals: 0, value: 0 };
+            }
+            sellerMap[seller.name].deals += seller.deals;
+            sellerMap[seller.name].value += seller.value;
+        });
+
         const topSellers = Object.entries(sellerMap)
             .map(([name, data]) => ({ name, ...data }))
-            .sort((a, b) => b.deals - a.deals)
-            .slice(0, 5);
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
 
-        // Calculate trend data (leads and closed per day)
-        const trendMap: Record<string, { leads: number; closed: number }> = {};
-        leadsInPeriod.forEach(l => {
-            const dateKey = l.createdAt.toISOString().split('T')[0];
-            if (!trendMap[dateKey]) {
-                trendMap[dateKey] = { leads: 0, closed: 0 };
-            }
-            trendMap[dateKey].leads += 1;
-            if (closedStatuses.includes(l.status)) {
-                trendMap[dateKey].closed += 1;
-            }
-        });
-        const trendData = Object.entries(trendMap)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .slice(-14)
-            .map(([date, data]) => {
-                const d = new Date(date);
-                return {
-                    date: `${d.getDate()}/${d.getMonth() + 1}`,
-                    leads: data.leads,
-                    closed: data.closed
-                };
+        // ── Trend data: merge leads + commercial ──────────────────
+        const isYearFilter = filter === '2025' || filter === '2026';
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        let trendData: { date: string; leads: number; closed: number }[];
+
+        if (isYearFilter) {
+            // Aggregate by month for year filters
+            const monthMap: Record<string, { leads: number; closed: number }> = {};
+
+            leadsInPeriod.forEach(l => {
+                const d = l.createdAt;
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthMap[key]) monthMap[key] = { leads: 0, closed: 0 };
+                monthMap[key].leads += 1;
+                if (closedStatuses.includes(l.status)) {
+                    monthMap[key].closed += 1;
+                }
             });
+
+            // Add commercial daily trend aggregated into months
+            commercialDailyTrend.forEach(day => {
+                const d = new Date(day.date + 'T12:00:00');
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthMap[key]) monthMap[key] = { leads: 0, closed: 0 };
+                monthMap[key].closed += day.closedCount;
+            });
+
+            // Build all 12 months
+            const year = filter === '2025' ? 2025 : 2026;
+            trendData = [];
+            for (let m = 0; m < 12; m++) {
+                const key = `${year}-${String(m + 1).padStart(2, '0')}`;
+                const data = monthMap[key] || { leads: 0, closed: 0 };
+                trendData.push({
+                    date: monthNames[m],
+                    leads: data.leads,
+                    closed: data.closed,
+                });
+            }
+        } else {
+            // Daily aggregation for shorter periods
+            const dayMap: Record<string, { leads: number; closed: number }> = {};
+
+            leadsInPeriod.forEach(l => {
+                const dateKey = l.createdAt.toISOString().split('T')[0];
+                if (!dayMap[dateKey]) dayMap[dateKey] = { leads: 0, closed: 0 };
+                dayMap[dateKey].leads += 1;
+                if (closedStatuses.includes(l.status)) {
+                    dayMap[dateKey].closed += 1;
+                }
+            });
+
+            commercialDailyTrend.forEach(day => {
+                if (!dayMap[day.date]) dayMap[day.date] = { leads: 0, closed: 0 };
+                dayMap[day.date].closed += day.closedCount;
+            });
+
+            trendData = Object.entries(dayMap)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .slice(-14)
+                .map(([date, data]) => {
+                    const d = new Date(date);
+                    return {
+                        date: `${d.getDate()}/${d.getMonth() + 1}`,
+                        leads: data.leads,
+                        closed: data.closed
+                    };
+                });
+        }
 
         // Calculate source data from lead source field
         const sourceMap: Record<string, number> = {};

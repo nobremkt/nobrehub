@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { PieChart as PieIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './ProductionStats.module.css';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 
@@ -43,26 +44,28 @@ export function CategoryDistributionCard() {
                 }}>
                     {/* Donut Chart - Left side (bigger) */}
                     <div style={{ flex: 1, height: '180px', minWidth: '140px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={50}
-                                    outerRadius={80}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                    stroke="none"
-                                    isAnimationActive={false}
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <DeferredChart>
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <PieChart>
+                                    <Pie
+                                        data={data}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={50}
+                                        outerRadius={80}
+                                        paddingAngle={3}
+                                        dataKey="value"
+                                        stroke="none"
+                                        isAnimationActive={false}
+                                    >
+                                        {data.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </DeferredChart>
                     </div>
 
                     {/* Vertical Legend - Right side (narrower, no scroll) */}

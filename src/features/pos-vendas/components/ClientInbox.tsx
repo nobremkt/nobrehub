@@ -6,6 +6,7 @@
  * State & handlers delegated to useClientInbox hook.
  */
 
+import { useState } from 'react';
 import {
     User,
     Clock,
@@ -21,6 +22,7 @@ import {
     Copy
 } from 'lucide-react';
 import { Button, Dropdown, Spinner } from '@/design-system';
+import { ConfirmModal } from '@/design-system/components/ConfirmModal/ConfirmModal';
 import { MessageBubble } from '@/features/inbox/components/ChatView/MessageBubble';
 import { DateSeparator } from '@/features/inbox/components/ChatView/DateSeparator';
 import { ChatInput } from '@/features/inbox/components/ChatView/ChatInput';
@@ -58,6 +60,12 @@ const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export const ClientInbox = () => {
     const cx = useClientInbox();
+    const [confirmAction, setConfirmAction] = useState<{
+        title: string;
+        description: string;
+        actionFn: () => void;
+        variant?: 'danger' | 'warning' | 'info' | 'success';
+    } | null>(null);
 
     // ─── Empty / Loading states ──────────────────────────────────────
     if (!cx.selectedPostSalesId) {
@@ -277,7 +285,13 @@ export const ClientInbox = () => {
                                     {/* Fluxo pós-venda buttons */}
                                     {cx.selectedClient.clientStatus === 'aguardando_projeto' && (
                                         <Button variant="secondary" size="sm"
-                                            onClick={() => cx.handleUpdateStatus(cx.selectedClient!.id, 'entregue')}
+                                            onClick={() => setConfirmAction({
+                                                title: 'Marcar como Entregue',
+                                                description: `Confirma que o projeto foi entregue ao cliente "${cx.selectedClient!.name}"?`,
+                                                actionFn: () => cx.handleUpdateStatus(cx.selectedClient!.id, 'entregue'),
+                                            })}
+                                            disabled={cx.actionLoading}
+                                            isLoading={cx.actionLoading}
                                         >
                                             Marcar Entregue
                                         </Button>
@@ -285,12 +299,24 @@ export const ClientInbox = () => {
                                     {cx.selectedClient.clientStatus === 'entregue' && (
                                         <>
                                             <Button variant="ghost" size="sm"
-                                                onClick={() => cx.handleRequestRevision(cx.selectedClient!.id)}
+                                                onClick={() => setConfirmAction({
+                                                    title: 'Solicitar Alteração',
+                                                    description: `Solicitar alteração no projeto do cliente "${cx.selectedClient!.name}"? O projeto voltará para produção.`,
+                                                    actionFn: () => cx.handleRequestRevision(cx.selectedClient!.id),
+                                                    variant: 'danger',
+                                                })}
+                                                disabled={cx.actionLoading}
                                             >
                                                 Alteração
                                             </Button>
                                             <Button variant="primary" size="sm"
-                                                onClick={() => cx.handleApproveClient(cx.selectedClient!.id)}
+                                                onClick={() => setConfirmAction({
+                                                    title: 'Aprovar Projeto',
+                                                    description: `Confirma que o cliente "${cx.selectedClient!.name}" aprovou o projeto? O status mudará para aguardando pagamento.`,
+                                                    actionFn: () => cx.handleApproveClient(cx.selectedClient!.id),
+                                                })}
+                                                disabled={cx.actionLoading}
+                                                isLoading={cx.actionLoading}
                                             >
                                                 Aprovou ✓
                                             </Button>
@@ -298,14 +324,27 @@ export const ClientInbox = () => {
                                     )}
                                     {cx.selectedClient.clientStatus === 'aguardando_alteracao' && (
                                         <Button variant="secondary" size="sm"
-                                            onClick={() => cx.handleUpdateStatus(cx.selectedClient!.id, 'entregue')}
+                                            onClick={() => setConfirmAction({
+                                                title: 'Alteração Entregue',
+                                                description: `Confirma que a alteração do projeto de "${cx.selectedClient!.name}" foi entregue?`,
+                                                actionFn: () => cx.handleUpdateStatus(cx.selectedClient!.id, 'entregue'),
+                                            })}
+                                            disabled={cx.actionLoading}
+                                            isLoading={cx.actionLoading}
                                         >
                                             Alteração Entregue
                                         </Button>
                                     )}
                                     {cx.selectedClient.clientStatus === 'aguardando_pagamento' && (
                                         <Button variant="primary" size="sm"
-                                            onClick={() => cx.handleCompleteClient(cx.selectedClient!.id)}
+                                            onClick={() => setConfirmAction({
+                                                title: 'Concluir Cliente',
+                                                description: `Confirma que o cliente "${cx.selectedClient!.name}" está 100% concluído? Esta ação não pode ser desfeita.`,
+                                                actionFn: () => cx.handleCompleteClient(cx.selectedClient!.id),
+                                                variant: 'danger',
+                                            })}
+                                            disabled={cx.actionLoading}
+                                            isLoading={cx.actionLoading}
                                         >
                                             Concluir
                                         </Button>
@@ -399,6 +438,21 @@ export const ClientInbox = () => {
                     }}
                 />
             )}
+
+            {/* Confirm Action Modal (U1) */}
+            <ConfirmModal
+                isOpen={!!confirmAction}
+                onClose={() => setConfirmAction(null)}
+                onConfirm={() => {
+                    confirmAction?.actionFn();
+                    setConfirmAction(null);
+                }}
+                title={confirmAction?.title || ''}
+                description={confirmAction?.description || ''}
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                variant={confirmAction?.variant || 'info'}
+            />
         </div>
     );
 };

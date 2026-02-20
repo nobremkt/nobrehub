@@ -35,6 +35,11 @@ const NotesPage = lazy(() => import('@/features/strategic/pages').then(m => ({ d
 const StrategicProjectsPage = lazy(() => import('@/features/strategic/pages').then(m => ({ default: m.StrategicProjectsPage })));
 const SocialMediaPage = lazy(() => import('@/features/strategic/pages').then(m => ({ default: m.SocialMediaPage })));
 
+// Financial pages
+const CashFlowPage = lazy(() => import('@/features/financial').then(m => ({ default: m.CashFlowPage })));
+const TransactionsPage = lazy(() => import('@/features/financial').then(m => ({ default: m.TransactionsPage })));
+const CategoriesPage = lazy(() => import('@/features/financial').then(m => ({ default: m.CategoriesPage })));
+
 // Settings pages
 const AppearancePage = lazy(() => import('@/features/settings/pages').then(m => ({ default: m.AppearancePage })));
 const IntegrationsPage = lazy(() => import('@/features/settings/pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
@@ -142,7 +147,7 @@ export function App() {
 
     return (
         <>
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     {/* Public project status page (no authentication required) */}
                     <Route path="/status/projeto/:token" element={<PublicProjectStatusPage />} />
@@ -189,6 +194,11 @@ export function App() {
                         <Route path={ROUTES.strategic.notes} element={<NotesPage />} />
                         <Route path={ROUTES.strategic.projects} element={<StrategicProjectsPage />} />
                         <Route path={ROUTES.strategic.socialMedia} element={<SocialMediaPage />} />
+
+                        {/* Financeiro */}
+                        <Route path={ROUTES.financial.cashFlow} element={<CashFlowPage />} />
+                        <Route path={ROUTES.financial.transactions} element={<TransactionsPage />} />
+                        <Route path={ROUTES.financial.categories} element={<CategoriesPage />} />
 
                         {/* Estúdio de Criação */}
                         <Route path={ROUTES.studio.imageGenerator} element={<ImageGeneratorPage />} />

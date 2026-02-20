@@ -74,6 +74,14 @@ export const ROUTES = {
         socialMedia: '/estrategico/social-media',
     },
 
+    // Financial
+    financial: {
+        root: '/financeiro',
+        cashFlow: '/financeiro/fluxo-de-caixa',
+        transactions: '/financeiro/transacoes',
+        categories: '/financeiro/categorias',
+    },
+
     // Estúdio de Criação
     studio: {
         root: '/estudio',

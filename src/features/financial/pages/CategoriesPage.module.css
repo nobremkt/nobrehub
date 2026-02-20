@@ -1,0 +1,191 @@
+/* CategoriesPage styles */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-6);
+    padding: var(--spacing-6);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-8);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.headerIcon {
+    color: var(--color-primary-500);
+}
+
+.title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+/* Two-column layout */
+.columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-6);
+}
+
+.columnTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.columnDot {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+}
+
+.columnDot.income {
+    background: #22c55e;
+}
+
+.columnDot.expense {
+    background: #ef4444;
+}
+
+/* Category list */
+.catList {
+    display: flex;
+    flex-direction: column;
+}
+
+.catItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-3) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.catItem:last-child {
+    border-bottom: none;
+}
+
+.catInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.catDot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+}
+
+.catName {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+.catActions {
+    display: flex;
+    gap: var(--spacing-1);
+}
+
+.actionBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.deleteBtn:hover {
+    color: #ef4444;
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+    max-width: 500px;
+}
+
+.colorLabel {
+    display: block;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-2);
+}
+
+.colorGrid {
+    display: flex;
+    gap: var(--spacing-2);
+    flex-wrap: wrap;
+}
+
+.colorSwatch {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.colorSwatch:hover {
+    transform: scale(1.15);
+}
+
+.colorSwatch.selected {
+    border-color: var(--color-text-primary);
+    box-shadow: 0 0 0 2px var(--color-bg-primary), 0 0 0 4px currentColor;
+}
+
+.formActions {
+    display: flex;
+    gap: var(--spacing-3);
+    justify-content: flex-end;
+}
+
+.empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--spacing-6) 0;
+}
+
+@media (max-width: 768px) {
+    .columns {
+        grid-template-columns: 1fr;
+    }
+}

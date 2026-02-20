@@ -2,30 +2,28 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - POST-SALES STATS
  * ═══════════════════════════════════════════════════════════════════════════════
- * Dashboard section for post-sales metrics - includes ranking of post-sellers
+ * Dashboard section for post-sales metrics - real data from imported spreadsheets
  */
 
 import { useEffect } from 'react';
 import { Spinner, Card, CardBody } from '@/design-system';
-import { Headphones, CheckCircle, DollarSign, TrendingUp, Trophy, Star, Users } from 'lucide-react';
+import {
+    DollarSign, TrendingUp, TrendingDown, Trophy, Users,
+    UserMinus, UserCheck, AlertTriangle, Target
+} from 'lucide-react';
 import styles from './PostSalesStats.module.css';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 
-// Color palette for ranking positions
 const RANK_COLORS = [
-    '#fbbf24', // Gold - 1st place
-    '#9ca3af', // Silver - 2nd place  
-    '#cd7f32', // Bronze - 3rd place
+    '#fbbf24', // Gold - 1st
+    '#9ca3af', // Silver - 2nd
+    '#cd7f32', // Bronze - 3rd
     '#4b5563', // 4th
     '#6b7280', // 5th
 ];
 
 const AVATAR_COLORS = [
-    '#dc2626', // Red
-    '#ea580c', // Orange
-    '#059669', // Green
-    '#0891b2', // Cyan
-    '#7c3aed', // Purple
+    '#dc2626', '#ea580c', '#059669', '#0891b2', '#7c3aed',
 ];
 
 function getInitials(name: string): string {
@@ -40,13 +38,18 @@ function formatCurrency(value: number): string {
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
     }).format(value);
+}
+
+function formatNumber(value: number): string {
+    return new Intl.NumberFormat('pt-BR').format(value);
 }
 
 export function PostSalesStats() {
     const { unifiedMetrics, isLoading, fetchMetrics } = useDashboardStore();
 
-    // Fetch metrics on mount if not already loaded
     useEffect(() => {
         if (!unifiedMetrics) {
             fetchMetrics();
@@ -67,188 +70,211 @@ export function PostSalesStats() {
         return null;
     }
 
+    // Color thresholds adjusted for repeat-client model
+    // For a production agency, most clients buy once — 85%+ new is normal
+    const churnColor = data.churnRate >= 95 ? 'var(--color-warning-400)' : data.churnRate >= 85 ? 'var(--color-text-secondary)' : 'var(--color-success-500)';
+    const retentionColor = data.retentionRate >= 15 ? 'var(--color-success-500)' : data.retentionRate >= 5 ? 'var(--color-warning-400)' : 'var(--color-text-secondary)';
+
     return (
         <div className={styles.container}>
-            <div className={styles.mainGrid}>
-                {/* Left Column: Ranking */}
-                <div className={styles.leftColumn}>
-                    {/* Post-Sellers Ranking */}
-                    <Card className={styles.card}>
-                        <CardBody>
-                            <div className={styles.cardTitle}>
-                                <Trophy size={16} color="var(--color-warning-400)" />
-                                RANKING DE PÓS-VENDEDORAS
-                            </div>
-                            {data.topPostSellers.length > 0 ? (
-                                <div className={styles.rankingList}>
-                                    {data.topPostSellers.map((seller, index) => (
-                                        <div key={seller.id} className={styles.rankingItem}>
-                                            <div
-                                                className={styles.rankingRank}
-                                                style={{
-                                                    backgroundColor: index < 3 ? RANK_COLORS[index] : 'var(--color-surface)',
-                                                    color: index < 3 ? '#000' : 'var(--color-text-muted)'
-                                                }}
-                                            >
-                                                {index + 1}º
-                                            </div>
-                                            {seller.profilePhotoUrl ? (
-                                                <div className={styles.rankingAvatar}>
-                                                    <img
-                                                        src={seller.profilePhotoUrl}
-                                                        alt={seller.name}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div
-                                                    className={styles.rankingAvatar}
-                                                    style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}
-                                                >
-                                                    {getInitials(seller.name)}
-                                                </div>
-                                            )}
-                                            <div className={styles.rankingInfo}>
-                                                <div className={styles.rankingName}>{seller.name}</div>
-                                                <div className={styles.rankingStats}>
-                                                    {seller.ticketsResolved} tickets • {seller.avgRating > 0 ? `⭐ ${seller.avgRating.toFixed(1)}` : 'Sem avaliações'}
-                                                </div>
-                                            </div>
-                                            <div className={styles.rankingValue}>
-                                                {formatCurrency(seller.paymentsReceived)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
-                                    <Users size={48} strokeWidth={1} style={{ marginBottom: 'var(--space-2)', opacity: 0.5 }} />
-                                    <p>Nenhuma pós-vendedora cadastrada</p>
-                                    <p style={{ fontSize: '0.75rem' }}>
-                                        Adicione colaboradoras do setor Pós-vendas para ver o ranking
-                                    </p>
-                                </div>
-                            )}
-                        </CardBody>
-                    </Card>
+            {/* KPI Summary Row */}
+            <div className={styles.kpiRow}>
+                {/* Total Recebido */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <DollarSign size={16} />
+                            <span>RECEBIMENTOS</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-success-500)' }}>
+                            {formatCurrency(data.totalReceipts)}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            {formatNumber(data.uniqueClientsReceipts)} clientes no período
+                        </div>
+                    </CardBody>
+                </Card>
 
-                    {/* Payments Summary */}
-                    <Card className={styles.card}>
-                        <CardBody>
-                            <div className={styles.cardTitle}>
-                                <DollarSign size={16} color="var(--color-success-500)" />
-                                PAGAMENTOS RECEBIDOS
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)' }}>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--color-success-500)' }}>
-                                        {formatCurrency(data.totalPaymentsReceived)}
-                                    </div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
-                                        Total recebido no período
-                                    </div>
-                                </div>
-                            </div>
-                        </CardBody>
-                    </Card>
-                </div>
+                {/* Vendas do Pós */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <TrendingUp size={16} />
+                            <span>VENDAS DO PÓS</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-info-500)' }}>
+                            {formatCurrency(data.totalSales)}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            {formatNumber(data.uniqueClientsSales)} clientes no período
+                        </div>
+                    </CardBody>
+                </Card>
 
-                {/* Right Column: Summary Cards — Em breve (placeholder data) */}
-                <div className={styles.rightColumn} style={{ position: 'relative' }}>
-                    {/* Coming Soon overlay */}
-                    <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        zIndex: 10,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(15, 15, 15, 0.7)',
-                        backdropFilter: 'blur(4px)',
-                        borderRadius: 'var(--radius-lg)',
-                        gap: 'var(--spacing-2)',
-                    }}>
-                        <span style={{ fontSize: '2rem' }}>🚧</span>
-                        <span style={{
-                            fontSize: 'var(--font-size-lg)',
-                            fontWeight: 600,
-                            color: 'var(--color-text-primary)',
-                        }}>Em breve</span>
-                        <span style={{
-                            fontSize: 'var(--font-size-sm)',
-                            color: 'var(--color-text-muted)',
-                            textAlign: 'center',
-                            maxWidth: '200px',
-                        }}>
-                            Métricas de tickets e satisfação serão habilitadas em breve
-                        </span>
-                    </div>
+                {/* Churn Rate — first-time buyers */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <UserMinus size={16} />
+                            <span>CLIENTES NOVOS</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: churnColor }}>
+                            {data.churnRate}%
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            {data.commercialClients > 0
+                                ? `${formatNumber(data.commercialClients - data.clientsWithDebits)} de ${formatNumber(data.commercialClients)} primeira compra`
+                                : 'Sem vendas comerciais no período'
+                            }
+                        </div>
+                    </CardBody>
+                </Card>
 
-                    {/* Open Tickets */}
-                    <Card className={styles.card}>
-                        <CardBody className={styles.summaryCard}>
-                            <div className={styles.summaryIcon}>
-                                <Headphones size={18} />
-                                TICKETS ABERTOS
-                            </div>
-                            <div className={styles.summaryValue} style={{ color: data.openTickets > 0 ? 'var(--color-warning-400)' : 'var(--color-success-500)' }}>
-                                {data.openTickets}
-                            </div>
-                            <div className={styles.summarySubtext}>
-                                Aguardando atendimento
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    {/* Resolved Tickets */}
-                    <Card className={styles.card}>
-                        <CardBody className={styles.summaryCard}>
-                            <div className={styles.summaryIcon}>
-                                <CheckCircle size={18} />
-                                TICKETS RESOLVIDOS
-                            </div>
-                            <div className={styles.summaryValue} style={{ color: 'var(--color-success-500)' }}>
-                                {data.resolvedTickets}
-                            </div>
-                            <div className={styles.summarySubtext}>
-                                No período selecionado
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    {/* Customer Satisfaction */}
-                    <Card className={styles.card}>
-                        <CardBody className={styles.summaryCard}>
-                            <div className={styles.summaryIcon}>
-                                <Star size={18} />
-                                SATISFAÇÃO
-                            </div>
-                            <div className={styles.summaryValue} style={{ color: data.customerSatisfaction >= 80 ? 'var(--color-success-500)' : data.customerSatisfaction >= 60 ? 'var(--color-warning-400)' : 'var(--color-error-500)' }}>
-                                {data.customerSatisfaction}%
-                            </div>
-                            <div className={styles.summarySubtext}>
-                                Taxa de aprovação
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    {/* Retention Rate */}
-                    <Card className={styles.card}>
-                        <CardBody className={styles.summaryCard}>
-                            <div className={styles.summaryIcon}>
-                                <TrendingUp size={18} />
-                                RETENÇÃO
-                            </div>
-                            <div className={styles.summaryValue} style={{ color: data.retentionRate >= 85 ? 'var(--color-success-500)' : data.retentionRate >= 70 ? 'var(--color-warning-400)' : 'var(--color-error-500)' }}>
-                                {data.retentionRate}%
-                            </div>
-                            <div className={styles.summarySubtext}>
-                                Clientes que voltam
-                            </div>
-                        </CardBody>
-                    </Card>
-                </div>
+                {/* Retention Rate — returning clients */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <UserCheck size={16} />
+                            <span>RECORRÊNCIA</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: retentionColor }}>
+                            {data.retentionRate}%
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            {data.commercialClients > 0
+                                ? `${formatNumber(data.clientsWithDebits)} clientes recorrentes`
+                                : 'Sem vendas comerciais no período'
+                            }
+                        </div>
+                    </CardBody>
+                </Card>
             </div>
+
+            {/* Secondary KPI Row */}
+            <div className={styles.kpiRow}>
+                {/* LTV */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <Target size={16} />
+                            <span>LTV</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-primary-500)' }}>
+                            {formatCurrency(data.ltv)}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            Valor médio por cliente
+                        </div>
+                    </CardBody>
+                </Card>
+
+                {/* Ticket Médio */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <DollarSign size={16} />
+                            <span>TICKET MÉDIO</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-text-primary)' }}>
+                            {formatCurrency(data.avgReceiptValue)}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            Valor médio por recebimento
+                        </div>
+                    </CardBody>
+                </Card>
+
+                {/* Débitos Pendentes */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <AlertTriangle size={16} />
+                            <span>DÉBITOS PENDENTES</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-warning-400)' }}>
+                            {formatCurrency(data.debitosPending)}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            De {formatCurrency(data.debitosTotal)} total
+                        </div>
+                    </CardBody>
+                </Card>
+
+                {/* CAC */}
+                <Card className={styles.kpiCard}>
+                    <CardBody className={styles.kpiBody}>
+                        <div className={styles.kpiHeader}>
+                            <TrendingDown size={16} />
+                            <span>CAC</span>
+                        </div>
+                        <div className={styles.kpiValue} style={{ color: 'var(--color-warning-400)' }}>
+                            {data.cac > 0 ? formatCurrency(data.cac) : '—'}
+                        </div>
+                        <div className={styles.kpiSubtext}>
+                            {data.cac > 0
+                                ? `Custo por cliente adquirido`
+                                : 'Sem dados de marketing no período'
+                            }
+                        </div>
+                    </CardBody>
+                </Card>
+            </div>
+
+            {/* Bottom: Ranking */}
+            <Card className={styles.card}>
+                <CardBody>
+                    <div className={styles.cardTitle}>
+                        <Trophy size={16} color="var(--color-warning-400)" />
+                        RANKING DE PÓS-VENDEDORAS
+                    </div>
+                    {data.topPostSellers.length > 0 ? (
+                        <div className={styles.rankingList}>
+                            {data.topPostSellers.map((seller, index) => (
+                                <div key={seller.id} className={styles.rankingItem}>
+                                    <div
+                                        className={styles.rankingRank}
+                                        style={{
+                                            backgroundColor: index < 3 ? RANK_COLORS[index] : 'var(--color-surface)',
+                                            color: index < 3 ? '#000' : 'var(--color-text-muted)'
+                                        }}
+                                    >
+                                        {index + 1}º
+                                    </div>
+                                    {seller.profilePhotoUrl ? (
+                                        <div className={styles.rankingAvatar}>
+                                            <img
+                                                src={seller.profilePhotoUrl}
+                                                alt={seller.name}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={styles.rankingAvatar}
+                                            style={{ backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] }}
+                                        >
+                                            {getInitials(seller.name)}
+                                        </div>
+                                    )}
+                                    <div className={styles.rankingInfo}>
+                                        <div className={styles.rankingName}>{seller.name}</div>
+                                        <div className={styles.rankingStats}>
+                                            {formatNumber(seller.receiptCount)} recebimentos • {formatNumber(seller.uniqueClients)} clientes
+                                        </div>
+                                    </div>
+                                    <div className={styles.rankingValue}>
+                                        {formatCurrency(seller.totalReceived)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-8)' }}>
+                            <Users size={48} strokeWidth={1} style={{ marginBottom: 'var(--space-2)', opacity: 0.5 }} />
+                            <p>Nenhum recebimento no período selecionado</p>
+                        </div>
+                    )}
+                </CardBody>
+            </Card>
         </div>
     );
 }

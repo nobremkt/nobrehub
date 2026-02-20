@@ -80,9 +80,13 @@ export const PostSalesInboxService = {
         // Initial fetch
         fetchConversations();
 
-        // Realtime subscription
+        // M1: Use attendant-specific channel name to avoid unnecessary refetches
+        const channelName = postSalesId
+            ? `post_sales_conversations_${postSalesId}`
+            : 'post_sales_conversations_unassigned';
+
         const channel = supabase
-            .channel('post_sales_conversations')
+            .channel(channelName)
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',

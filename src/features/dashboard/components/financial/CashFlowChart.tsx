@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './FinancialStats.module.css';
 
 interface CashFlowData {
@@ -40,62 +41,64 @@ export function CashFlowChart({ data }: CashFlowChartProps) {
                 </div>
 
                 <div style={{ flex: 1, minHeight: '250px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="cashFlowRevenue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="cashFlowExpenses" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                            <XAxis
-                                dataKey="month"
-                                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                                axisLine={{ stroke: 'var(--color-border)' }}
-                                interval="preserveStartEnd"
-                            />
-                            <YAxis
-                                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                                axisLine={{ stroke: 'var(--color-border)' }}
-                                tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    background: 'var(--color-bg-primary)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '8px',
-                                    fontSize: '12px'
-                                }}
-                                formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
-                                isAnimationActive={false}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="revenue"
-                                stroke="#22c55e"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#cashFlowRevenue)"
-                                name="Receita"
-                                isAnimationActive={false}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="expenses"
-                                stroke="#ef4444"
-                                strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#cashFlowExpenses)"
-                                name="Despesas"
-                                isAnimationActive={false}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <DeferredChart>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="cashFlowRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="cashFlowExpenses" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                                    axisLine={{ stroke: 'var(--color-border)' }}
+                                    interval="preserveStartEnd"
+                                />
+                                <YAxis
+                                    tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                                    axisLine={{ stroke: 'var(--color-border)' }}
+                                    tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: 'var(--color-bg-primary)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px',
+                                        fontSize: '12px'
+                                    }}
+                                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                                    isAnimationActive={false}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="revenue"
+                                    stroke="#22c55e"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#cashFlowRevenue)"
+                                    name="Receita"
+                                    isAnimationActive={false}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="expenses"
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    fillOpacity={1}
+                                    fill="url(#cashFlowExpenses)"
+                                    name="Despesas"
+                                    isAnimationActive={false}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </DeferredChart>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem' }}>

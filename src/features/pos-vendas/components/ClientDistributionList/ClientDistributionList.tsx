@@ -11,7 +11,7 @@ import { toast } from 'react-toastify';
 import { useCollaboratorStore } from '@/features/settings/stores/useCollaboratorStore';
 import { useSectorStore } from '@/features/settings/stores/useSectorStore';
 import { PostSalesDistributionService } from '../../services/PostSalesDistributionService';
-import { Lead } from '@/types/lead.types';
+import type { DistributionClient } from '../../services/postSales.helpers';
 import { Button, Spinner } from '@/design-system';
 import {
     Inbox,
@@ -23,10 +23,6 @@ import {
 } from 'lucide-react';
 import { ClientDistributionModal } from './ClientDistributionModal';
 import styles from './ClientDistributionList.module.css';
-
-interface DistributionClient extends Lead {
-    previousAttendant?: string;
-}
 
 export const ClientDistributionList = () => {
     const { collaborators, fetchCollaborators } = useCollaboratorStore();

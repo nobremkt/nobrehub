@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './AdminStats.module.css';
 
 interface ProductivityData {
@@ -41,51 +42,53 @@ export function ProductivityChart({ data }: ProductivityChartProps) {
                 </div>
 
                 <div style={{ flex: 1, minHeight: '250px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={sortedData}
-                            layout="vertical"
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
-                            <XAxis
-                                type="number"
-                                domain={[0, 100]}
-                                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                                axisLine={{ stroke: 'var(--color-border)' }}
-                            />
-                            <YAxis
-                                dataKey="name"
-                                type="category"
-                                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                                axisLine={{ stroke: 'var(--color-border)' }}
-                                width={80}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    background: 'var(--color-bg-primary)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '8px',
-                                    fontSize: '12px'
-                                }}
-                                formatter={(value) => [
-                                    `${value}%`,
-                                    'Produtividade'
-                                ]}
-                                isAnimationActive={false}
-                            />
-                            <Bar
-                                dataKey="productivity"
-                                radius={[0, 4, 4, 0]}
-                                barSize={20}
-                                isAnimationActive={false}
+                    <DeferredChart>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <BarChart
+                                data={sortedData}
+                                layout="vertical"
+                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                             >
-                                {sortedData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={getBarColor(entry.productivity)} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
+                                <XAxis
+                                    type="number"
+                                    domain={[0, 100]}
+                                    tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                                    axisLine={{ stroke: 'var(--color-border)' }}
+                                />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                                    axisLine={{ stroke: 'var(--color-border)' }}
+                                    width={80}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: 'var(--color-bg-primary)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px',
+                                        fontSize: '12px'
+                                    }}
+                                    formatter={(value) => [
+                                        `${value}%`,
+                                        'Produtividade'
+                                    ]}
+                                    isAnimationActive={false}
+                                />
+                                <Bar
+                                    dataKey="productivity"
+                                    radius={[0, 4, 4, 0]}
+                                    barSize={20}
+                                    isAnimationActive={false}
+                                >
+                                    {sortedData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={getBarColor(entry.productivity)} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </DeferredChart>
                 </div>
 
                 {/* Legend */}

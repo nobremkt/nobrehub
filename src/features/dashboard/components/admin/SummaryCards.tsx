@@ -2,7 +2,7 @@ import { Card, CardBody } from '@/design-system';
 import { Users, Clock, Target, Zap } from 'lucide-react';
 import styles from './AdminStats.module.css';
 
-export function TeamSizeCard({ count, activeCount }: { count: number; activeCount: number }) {
+export function TeamSizeCard({ count }: { count: number; activeCount?: number }) {
     return (
         <Card variant="default" className={styles.card}>
             <CardBody className={styles.summaryCard}>
@@ -14,7 +14,7 @@ export function TeamSizeCard({ count, activeCount }: { count: number; activeCoun
                     {count}
                 </div>
                 <div className={styles.summarySubtext}>
-                    {activeCount} ativos agora
+                    colaboradores ativos
                 </div>
             </CardBody>
         </Card>
@@ -57,7 +57,7 @@ export function GoalsMetCard({ percentage }: { percentage: number }) {
                     {percentage}%
                 </div>
                 <div className={styles.summarySubtext}>
-                    este mês • <span style={{ opacity: 0.6 }}>estimativa</span>
+                    média da equipe
                 </div>
             </CardBody>
         </Card>

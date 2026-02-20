@@ -8,6 +8,7 @@
 import { supabase } from '@/config/supabase';
 import type { AdminMetrics, SharedData, DateFilter } from './dashboard.types';
 import { PROJECTS_TABLE, getDateRange, parseDate } from './dashboard.helpers';
+import { GoalTrackingService } from '@/features/settings/services/goalTrackingService';
 
 export const AdminMetricsService = {
     /**
@@ -45,10 +46,25 @@ export const AdminMetricsService = {
             rolesMap[row.id as string] = (row.name as string) || 'Sem Cargo';
         });
 
-        // Fetch projects for productivity calculations (use shared or fetch)
-        const projectsRows: Record<string, unknown>[] = _shared
-            ? _shared.projects
-            : (await supabase.from(PROJECTS_TABLE).select('*')).data || [];
+        // Fetch projects for productivity calculations (use shared or paginated fetch)
+        let projectsRows: Record<string, unknown>[];
+        if (_shared) {
+            projectsRows = _shared.projects;
+        } else {
+            // Paginate to avoid Supabase 1000-row limit
+            const allRows: Record<string, unknown>[] = [];
+            const PAGE_SIZE = 1000;
+            let from = 0;
+            let hasMore = true;
+            while (hasMore) {
+                const { data } = await supabase.from(PROJECTS_TABLE).select('*').range(from, from + PAGE_SIZE - 1);
+                const rows = (data || []) as Record<string, unknown>[];
+                allRows.push(...rows);
+                hasMore = rows.length === PAGE_SIZE;
+                from += PAGE_SIZE;
+            }
+            projectsRows = allRows;
+        }
 
         // Calculate per-collaborator project stats
         const projectsByCollaborator: Record<string, { count: number; points: number }> = {};
@@ -62,7 +78,7 @@ export const AdminMetricsService = {
                     projectsByCollaborator[producerId] = { count: 0, points: 0 };
                 }
                 projectsByCollaborator[producerId].count += 1;
-                projectsByCollaborator[producerId].points += Number(row.points) || 1;
+                projectsByCollaborator[producerId].points += Number(row.base_points) || 1;
             }
         });
 
@@ -74,6 +90,9 @@ export const AdminMetricsService = {
             const isActive = row.active !== false;
             if (isActive) activeCount++;
 
+            // Only include active members in the team overview
+            if (!isActive) return;
+
             const id = row.id as string;
             const projectStats = projectsByCollaborator[id] || { count: 0, points: 0 };
 
@@ -82,7 +101,7 @@ export const AdminMetricsService = {
                 name: (row.name as string) || 'Desconhecido',
                 role: rolesMap[(row.role_id as string)] || (row.role_id as string) || 'Sem Cargo',
                 sector: sectorsMap[(row.sector_id as string)] || (row.sector_id as string) || 'Sem Setor',
-                profilePhotoUrl: row.avatar_url as string | undefined,
+                profilePhotoUrl: (row.avatar_url as string) || (row.profile_photo_url as string) || undefined,
                 projectsDelivered: projectStats.count,
                 pointsEarned: projectStats.points
             });
@@ -130,13 +149,50 @@ export const AdminMetricsService = {
         const activeWithProjects = members.filter(m => m.projectsDelivered > 0).length;
         const efficiency = activeCount > 0 ? Math.round((activeWithProjects / activeCount) * 100) : 0;
 
+        // ── Compute real goalsMet from GoalTrackingService ────────────
+        let goalsMet = 0;
+        try {
+            const membersWithSectors = members.filter(m => m.sector && m.sector !== 'Sem Setor');
+            if (membersWithSectors.length > 0) {
+                // Build sector name -> sector ID reverse map
+                const sectorIdMap: Record<string, string> = {};
+                sectorsRows.forEach(row => {
+                    sectorIdMap[(row.name as string) || ''] = row.id as string;
+                });
+
+                // Get goal progress for each active member (batch, max 10 to avoid overload)
+                const batch = membersWithSectors.slice(0, 10);
+                const progressResults = await Promise.allSettled(
+                    batch.map(m => {
+                        const sectorId = sectorIdMap[m.sector] || '';
+                        return sectorId
+                            ? GoalTrackingService.getCollaboratorProgress(m.id, sectorId)
+                            : Promise.resolve(null);
+                    })
+                );
+
+                const percentages: number[] = [];
+                progressResults.forEach(result => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        percentages.push(result.value.progress.overallPercentage);
+                    }
+                });
+
+                if (percentages.length > 0) {
+                    goalsMet = Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length);
+                }
+            }
+        } catch (err) {
+            console.warn('[AdminMetrics] Error computing goalsMet:', err);
+        }
+
         return {
             activeUsers: activeCount,
             totalCollaborators,
-            teamSize: totalCollaborators,
+            teamSize: activeCount,
             activeMembers: activeCount,
             avgWorkload,
-            goalsMet: 85, // Placeholder
+            goalsMet,
             efficiency,
             members,
             productivityData,

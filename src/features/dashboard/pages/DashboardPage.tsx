@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/stores';
-import { Button, Dropdown, Checkbox } from '@/design-system';
-import { RefreshCw } from 'lucide-react';
+import { Button, Checkbox } from '@/design-system';
+import { RefreshCw, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GeneralStats, SalesStats, ProductionStats, AdminStats, FinancialStats, PostSalesStats } from '../components';
 import { useDashboardStore } from '../stores/useDashboardStore';
 import { useUISound } from '@/hooks';
@@ -9,20 +9,38 @@ import { usePermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@/config/permissions';
 import styles from './DashboardPage.module.css';
 
-const DATE_FILTER_OPTIONS = [
-    { value: 'today', label: 'Hoje' },
-    { value: 'yesterday', label: 'Ontem' },
-    { value: 'week', label: 'Semana' },
-    { value: 'month', label: 'Mês atual' },
-    { value: 'quarter', label: 'Últimos 3 meses' },
-    { value: 'year', label: 'Último ano' },
-    { value: 'janeiro_2026', label: '📊 Janeiro 2026 (Importado)' },
+
+const MONTH_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
+
+const MONTH_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const QUICK_FILTERS = [
+    { value: 'today', label: 'Hoje' },
+    { value: 'week', label: 'Semana' },
+    { value: 'month', label: 'Mês' },
+    { value: 'quarter', label: 'Trimestre' },
+] as const;
 
 export function DashboardPage() {
     const { user } = useAuthStore();
     const { can } = usePermission();
     const { dateFilter, setDateFilter, fetchMetrics } = useDashboardStore();
+    const { playSound } = useUISound();
+
+    // Determine the currently selected year for month navigation
+    const currentYear = new Date().getFullYear();
+    const [selectedYear, setSelectedYear] = useState(() => {
+        // If dateFilter is a year like '2025' or a month like '2025-06', extract the year
+        if (/^\d{4}$/.test(dateFilter)) return parseInt(dateFilter);
+        if (/^\d{4}-\d{2}$/.test(dateFilter)) return parseInt(dateFilter.split('-')[0]);
+        return currentYear;
+    });
+
+    // Check if isYearView mode (shows month pills)
+    const isYearOrMonthFilter = /^\d{4}(-\d{2})?$/.test(dateFilter);
 
     // Permission checks for each section
     const permissions = useMemo(() => ({
@@ -33,7 +51,7 @@ export function DashboardPage() {
         postSales: can(PERMISSIONS.VIEW_DASHBOARD_POST_SALES),
     }), [can]);
 
-    // Section visibility state (only for sections user has permission to see)
+    // Section visibility state
     const [visibleSections, setVisibleSections] = useState({
         general: true,
         sales: true,
@@ -44,18 +62,41 @@ export function DashboardPage() {
     });
 
     const [showSectionFilter, setShowSectionFilter] = useState(false);
-    const { playSound } = useUISound();
 
-    const handleDateChange = useCallback((value: string | number) => {
-        if (value === 'custom') {
-            // TODO: Open date picker modal
-            return;
-        }
+    const handleFilterChange = useCallback((value: string) => {
+        playSound('click');
         setDateFilter(value as any);
-    }, [setDateFilter]);
+    }, [setDateFilter, playSound]);
+
+    const handleYearClick = useCallback((year: number) => {
+        playSound('click');
+        setSelectedYear(year);
+        setDateFilter(String(year) as any);
+    }, [setDateFilter, playSound]);
+
+    const handleMonthClick = useCallback((monthIndex: number) => {
+        playSound('click');
+        const key = `${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}`;
+        setDateFilter(key as any);
+    }, [setDateFilter, selectedYear, playSound]);
+
+    const handleYearNav = useCallback((delta: number) => {
+        playSound('click');
+        const newYear = selectedYear + delta;
+        setSelectedYear(newYear);
+        // If currently on a year filter, update it
+        if (dateFilter === String(selectedYear)) {
+            setDateFilter(String(newYear) as any);
+        }
+        // If on a month filter, update to same month in new year
+        if (/^\d{4}-\d{2}$/.test(dateFilter)) {
+            const month = dateFilter.split('-')[1];
+            setDateFilter(`${newYear}-${month}` as any);
+        }
+    }, [dateFilter, selectedYear, setDateFilter, playSound]);
 
     const handleRefresh = useCallback(() => {
-        fetchMetrics();
+        fetchMetrics(true);
     }, [fetchMetrics]);
 
     const handleSectionToggle = useCallback(() => {
@@ -70,7 +111,30 @@ export function DashboardPage() {
         }));
     }, [playSound]);
 
-    // Check if user has any dashboard section permissions
+    // Check if a quick filter is active
+    const isQuickFilterActive = (value: string) => dateFilter === value;
+
+    // Check if a specific month is active
+    const isMonthActive = (monthIndex: number) => {
+        const key = `${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}`;
+        return dateFilter === key;
+    };
+
+    // Check if year is active (whole year, not a specific month)
+    const isYearActive = dateFilter === String(selectedYear);
+
+    // Determine active filter label for the subtitle
+    const getActiveLabel = () => {
+        const quick = QUICK_FILTERS.find(f => f.value === dateFilter);
+        if (quick) return quick.label;
+        if (/^\d{4}$/.test(dateFilter)) return dateFilter;
+        if (/^\d{4}-\d{2}$/.test(dateFilter)) {
+            const [y, m] = dateFilter.split('-');
+            return `${MONTH_NAMES[parseInt(m) - 1]} ${y}`;
+        }
+        return 'Mês';
+    };
+
     const hasAnySectionPermission = permissions.sales || permissions.production || permissions.financial || permissions.admin || permissions.postSales;
 
     return (
@@ -82,22 +146,12 @@ export function DashboardPage() {
                         Olá, {user?.name?.split(' ')[0] || 'Visitante'}! 👋
                     </h1>
                     <p className={styles.welcomeSubtitle}>
-                        Visão geral das métricas
+                        Visão geral das métricas • <span className={styles.activePeriod}>{getActiveLabel()}</span>
                     </p>
                 </div>
 
-                <div className={styles.filters}>
-                    {/* Date Filter */}
-                    <div className={styles.filterGroup}>
-                        <Dropdown
-                            options={DATE_FILTER_OPTIONS}
-                            value={dateFilter}
-                            onChange={handleDateChange}
-                            placeholder="Período"
-                        />
-                    </div>
-
-                    {/* Section Visibility Filter - only show if user has any section permissions */}
+                <div className={styles.headerActions}>
+                    {/* Section Visibility Filter */}
                     {hasAnySectionPermission && (
                         <div className={styles.filterGroup}>
                             <Button
@@ -115,7 +169,6 @@ export function DashboardPage() {
 
                             {showSectionFilter && (
                                 <div className={styles.sectionDropdown}>
-                                    {/* Visão Geral - always available */}
                                     <div className={styles.sectionOption}>
                                         <Checkbox
                                             checked={visibleSections.general}
@@ -123,59 +176,29 @@ export function DashboardPage() {
                                             label="Visão Geral"
                                         />
                                     </div>
-
-                                    {/* Sales - permission required */}
                                     {permissions.sales && (
                                         <div className={styles.sectionOption}>
-                                            <Checkbox
-                                                checked={visibleSections.sales}
-                                                onChange={() => toggleSection('sales')}
-                                                label="Vendas"
-                                            />
+                                            <Checkbox checked={visibleSections.sales} onChange={() => toggleSection('sales')} label="Vendas" />
                                         </div>
                                     )}
-
-                                    {/* Production - permission required */}
                                     {permissions.production && (
                                         <div className={styles.sectionOption}>
-                                            <Checkbox
-                                                checked={visibleSections.production}
-                                                onChange={() => toggleSection('production')}
-                                                label="Produção"
-                                            />
+                                            <Checkbox checked={visibleSections.production} onChange={() => toggleSection('production')} label="Produção" />
                                         </div>
                                     )}
-
-                                    {/* Financial - permission required */}
                                     {permissions.financial && (
                                         <div className={styles.sectionOption}>
-                                            <Checkbox
-                                                checked={visibleSections.financial}
-                                                onChange={() => toggleSection('financial')}
-                                                label="Financeiro"
-                                            />
+                                            <Checkbox checked={visibleSections.financial} onChange={() => toggleSection('financial')} label="Financeiro" />
                                         </div>
                                     )}
-
-                                    {/* Admin - permission required */}
                                     {permissions.admin && (
                                         <div className={styles.sectionOption}>
-                                            <Checkbox
-                                                checked={visibleSections.admin}
-                                                onChange={() => toggleSection('admin')}
-                                                label="Administração"
-                                            />
+                                            <Checkbox checked={visibleSections.admin} onChange={() => toggleSection('admin')} label="Administração" />
                                         </div>
                                     )}
-
-                                    {/* Post-Sales - permission required */}
                                     {permissions.postSales && (
                                         <div className={styles.sectionOption}>
-                                            <Checkbox
-                                                checked={visibleSections.postSales}
-                                                onChange={() => toggleSection('postSales')}
-                                                label="Pós-Venda"
-                                            />
+                                            <Checkbox checked={visibleSections.postSales} onChange={() => toggleSection('postSales')} label="Pós-Venda" />
                                         </div>
                                     )}
                                 </div>
@@ -191,47 +214,122 @@ export function DashboardPage() {
                 </div>
             </div>
 
+            {/* ──── FILTER BAR ──── */}
+            <div className={styles.filterBar}>
+                {/* Row 1: Quick filters + Year buttons */}
+                <div className={styles.filterRow}>
+                    <div className={styles.filterPillGroup}>
+                        {QUICK_FILTERS.map(f => (
+                            <button
+                                key={f.value}
+                                className={`${styles.filterPill} ${isQuickFilterActive(f.value) ? styles.filterPillActive : ''}`}
+                                onClick={() => handleFilterChange(f.value)}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className={styles.filterDivider} />
+
+                    <div className={styles.filterPillGroup}>
+                        <button
+                            className={`${styles.filterPill} ${styles.filterPillYear} ${isYearOrMonthFilter && selectedYear === 2025 ? styles.filterPillActive : ''}`}
+                            onClick={() => handleYearClick(2025)}
+                        >
+                            2025
+                        </button>
+                        <button
+                            className={`${styles.filterPill} ${styles.filterPillYear} ${isYearOrMonthFilter && selectedYear === 2026 ? styles.filterPillActive : ''}`}
+                            onClick={() => handleYearClick(2026)}
+                        >
+                            2026
+                        </button>
+                    </div>
+                </div>
+
+                {/* Row 2: Month pills (only visible when year/month filter is active) */}
+                {isYearOrMonthFilter && (
+                    <div className={styles.filterRow}>
+                        <div className={styles.yearNav}>
+                            <button className={styles.yearNavBtn} onClick={() => handleYearNav(-1)}>
+                                <ChevronLeft size={14} />
+                            </button>
+                            <span className={styles.yearNavLabel}>
+                                <Calendar size={14} />
+                                {selectedYear}
+                            </span>
+                            <button className={styles.yearNavBtn} onClick={() => handleYearNav(1)} disabled={selectedYear >= currentYear}>
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+
+                        <div className={styles.filterDivider} />
+
+                        <div className={styles.monthPillGroup}>
+                            <button
+                                className={`${styles.monthPill} ${isYearActive ? styles.monthPillActive : ''}`}
+                                onClick={() => handleYearClick(selectedYear)}
+                            >
+                                Ano todo
+                            </button>
+                            {MONTH_SHORT.map((m, i) => (
+                                <button
+                                    key={i}
+                                    className={`${styles.monthPill} ${isMonthActive(i) ? styles.monthPillActive : ''}`}
+                                    onClick={() => handleMonthClick(i)}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* General Stats - always visible */}
-            <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.general ? styles.visible : styles.hidden}`}>
-                <h2 className={styles.sectionTitle}>Visão Geral</h2>
-                <GeneralStats />
-            </section>
+            {visibleSections.general && (
+                <section className={styles.section}>
+                    <h2 className={styles.sectionTitle}>Visão Geral</h2>
+                    <GeneralStats />
+                </section>
+            )}
 
             {/* Sales Stats - permission required */}
-            {permissions.sales && (
-                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.sales ? styles.visible : styles.hidden}`}>
+            {permissions.sales && visibleSections.sales && (
+                <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Vendas</h2>
                     <SalesStats />
                 </section>
             )}
 
             {/* Production Stats - permission required */}
-            {permissions.production && (
-                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.production ? styles.visible : styles.hidden}`}>
+            {permissions.production && visibleSections.production && (
+                <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Produção</h2>
                     <ProductionStats />
                 </section>
             )}
 
             {/* Financial Stats - permission required */}
-            {permissions.financial && (
-                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.financial ? styles.visible : styles.hidden}`}>
+            {permissions.financial && visibleSections.financial && (
+                <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Financeiro</h2>
                     <FinancialStats />
                 </section>
             )}
 
             {/* Post-Sales Stats - permission required */}
-            {permissions.postSales && (
-                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.postSales ? styles.visible : styles.hidden}`}>
+            {permissions.postSales && visibleSections.postSales && (
+                <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Pós-Venda</h2>
                     <PostSalesStats />
                 </section>
             )}
 
             {/* Admin Stats - permission required */}
-            {permissions.admin && (
-                <section className={`${styles.section} ${styles.animatedSection} ${visibleSections.admin ? styles.visible : styles.hidden}`}>
+            {permissions.admin && visibleSections.admin && (
+                <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Administração</h2>
                     <AdminStats />
                 </section>
@@ -239,4 +337,3 @@ export function DashboardPage() {
         </div>
     );
 }
-

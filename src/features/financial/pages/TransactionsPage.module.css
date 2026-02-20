@@ -1,0 +1,195 @@
+/* TransactionsPage styles */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-6);
+    padding: var(--spacing-6);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-8);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.headerIcon {
+    color: var(--color-primary-500);
+}
+
+.title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    gap: var(--spacing-3);
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.searchWrap {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Table */
+.table {
+    display: flex;
+    flex-direction: column;
+}
+
+.tableHeader,
+.tableRow {
+    display: grid;
+    grid-template-columns: 100px 90px 140px 1fr 140px 80px;
+    gap: var(--spacing-3);
+    align-items: center;
+    padding: var(--spacing-3) var(--spacing-2);
+}
+
+.tableHeader {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.tableRow {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.1s ease;
+}
+
+.tableRow:hover {
+    background: var(--color-surface);
+}
+
+.tableRow:last-child {
+    border-bottom: none;
+}
+
+.cellDate {
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.typeBadge {
+    display: inline-block;
+    padding: 2px var(--spacing-2);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.badgeIncome {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.badgeExpense {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.cellCategory {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--color-text-secondary);
+}
+
+.catDot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+}
+
+.cellDesc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cellAmount {
+    font-weight: var(--font-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.cellAmount.income {
+    color: #22c55e;
+}
+
+.cellAmount.expense {
+    color: #ef4444;
+}
+
+.cellActions {
+    display: flex;
+    gap: var(--spacing-1);
+    justify-content: flex-end;
+}
+
+.actionBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.deleteBtn:hover {
+    color: #ef4444;
+}
+
+.empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--spacing-8) 0;
+}
+
+@media (max-width: 768px) {
+
+    .tableHeader,
+    .tableRow {
+        grid-template-columns: 80px 80px 1fr 100px;
+    }
+
+    .cellCategory,
+    .cellActions {
+        display: none;
+    }
+}

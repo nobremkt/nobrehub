@@ -9,12 +9,13 @@ import { getStatusLabel, getStatusColor } from '../utils/projectStatus';
 
 
 // Tabs Configuration
-type TabType = 'production' | 'changes' | 'finished';
+type TabType = 'production' | 'changes' | 'finished' | 'delivered';
 
 const TABS: { id: TabType; label: string; statuses: string[] }[] = [
     { id: 'production', label: 'Produção', statuses: ['aguardando', 'em-producao'] },
     { id: 'changes', label: 'Alterações', statuses: ['alteracao', 'alteracao_interna', 'alteracao_cliente'] },
     { id: 'finished', label: 'Finalizados', statuses: ['revisado', 'a-revisar'] },
+    { id: 'delivered', label: 'Entregues', statuses: ['entregue', 'concluido'] },
 ];
 
 export const ProjectBoard = () => {
@@ -27,7 +28,9 @@ export const ProjectBoard = () => {
         setHighlightedProjectId
     } = useProductionStore();
     const { user } = useAuthStore();
-    const [selectedProject, setSelectedProject] = useState<any>(null);
+    // P1: Derive selectedProject from live projects array (no stale state)
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
     const [activeTab, setActiveTab] = useState<TabType>('production');
 
 
@@ -169,7 +172,7 @@ export const ProjectBoard = () => {
                                 id={`project-card-${project.id}`}
                                 variant="elevated"
                                 className="group hover:border-primary-500/50 transition-all cursor-pointer border-l-4 border-l-transparent"
-                                onClick={() => setSelectedProject(project)}
+                                onClick={() => setSelectedProjectId(project.id)}
                             >
                                 <div className="flex items-center justify-between gap-4">
 
@@ -325,7 +328,7 @@ export const ProjectBoard = () => {
                 selectedProject && (
                     <ProjectDetailsModal
                         isOpen={!!selectedProject}
-                        onClose={() => setSelectedProject(null)}
+                        onClose={() => setSelectedProjectId(null)}
                         project={selectedProject}
                     />
                 )

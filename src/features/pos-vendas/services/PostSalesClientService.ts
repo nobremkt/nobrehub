@@ -262,14 +262,13 @@ export const PostSalesClientService = {
             // Get project data for revision counts
             const { data: project, error: getError } = await supabase
                 .from(PROJECTS_TABLE)
-                .select('client_revision_count, internal_revision_count')
+                .select('client_revision_count')
                 .eq('id', projectId)
                 .single();
 
             if (getError) throw new Error('Project not found: ' + projectId);
 
             const currentClientRevisionCount = Number(project?.client_revision_count || 0);
-            const currentInternalRevisionCount = Number(project?.internal_revision_count || 0);
 
             // Insert into revision_history table
             await supabase
@@ -285,7 +284,6 @@ export const PostSalesClientService = {
                 .from(PROJECTS_TABLE)
                 .update({
                     status: 'alteracao_cliente',
-                    internal_revision_count: currentInternalRevisionCount + 1,
                     client_revision_count: currentClientRevisionCount + 1,
                     client_approval_status: 'changes_requested',
                     updated_at: new Date().toISOString()
@@ -319,10 +317,11 @@ export const PostSalesClientService = {
 
             if (leadError) throw leadError;
 
-            // Update project
+            // Update project — B3: set to 'concluido' on client approval
             const { error: projectError } = await supabase
                 .from(PROJECTS_TABLE)
                 .update({
+                    status: 'concluido',
                     client_approval_status: 'approved',
                     client_approved_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
@@ -336,5 +335,51 @@ export const PostSalesClientService = {
             console.error('Error approving client:', error);
             throw error;
         }
+    },
+
+    /**
+     * U3: Fetch client counts per status for a list of attendant IDs.
+     * Returns a map: attendantId → { aguardando_projeto, aguardando_alteracao, entregue, aguardando_pagamento, total }
+     */
+    getClientCountsForTeam: async (attendantIds: string[]): Promise<Record<string, {
+        aguardando_projeto: number;
+        aguardando_alteracao: number;
+        entregue: number;
+        aguardando_pagamento: number;
+        total: number;
+    }>> => {
+        const result: Record<string, { aguardando_projeto: number; aguardando_alteracao: number; entregue: number; aguardando_pagamento: number; total: number }> = {};
+
+        // Initialize all attendants
+        for (const id of attendantIds) {
+            result[id] = { aguardando_projeto: 0, aguardando_alteracao: 0, entregue: 0, aguardando_pagamento: 0, total: 0 };
+        }
+
+        if (attendantIds.length === 0) return result;
+
+        try {
+            const { data, error } = await supabase
+                .from(LEADS_TABLE)
+                .select('post_sales_id, client_status')
+                .in('post_sales_id', attendantIds)
+                .in('client_status', ACTIVE_CLIENT_STATUSES);
+
+            if (error) throw error;
+
+            for (const row of data || []) {
+                const atId = row.post_sales_id as string;
+                const status = row.client_status as ClientStatus;
+                if (result[atId] && status !== 'concluido') {
+                    if (status in result[atId]) {
+                        (result[atId] as Record<string, number>)[status]++;
+                    }
+                    result[atId].total++;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching team client counts:', error);
+        }
+
+        return result;
     }
 };

@@ -6,6 +6,7 @@ export const PERMISSIONS = {
     MANAGE_POST_SALES_DISTRIBUTION: 'manage_post_sales_distribution',
     VIEW_ADMIN: 'view_admin',
     VIEW_STRATEGIC: 'view_strategic',
+    VIEW_FINANCIAL: 'view_financial',
     // Dashboard section permissions
     VIEW_DASHBOARD_SALES: 'view_dashboard_sales',
     VIEW_DASHBOARD_PRODUCTION: 'view_dashboard_production',
@@ -22,6 +23,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
     [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Distribuição\nPós-Vendas',
     [PERMISSIONS.VIEW_ADMIN]: 'Configurações',
     [PERMISSIONS.VIEW_STRATEGIC]: 'Estratégico',
+    [PERMISSIONS.VIEW_FINANCIAL]: 'Financeiro',
     // Dashboard
     [PERMISSIONS.VIEW_DASHBOARD_SALES]: '📊 Vendas',
     [PERMISSIONS.VIEW_DASHBOARD_POST_SALES]: '📊 Pós-Vendas',
@@ -38,6 +40,7 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
     [PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION]: 'Distribuir clientes entre pós-vendedores',
     [PERMISSIONS.VIEW_ADMIN]: 'Acesso a configurações: cargos, setores, equipe e permissões',
     [PERMISSIONS.VIEW_STRATEGIC]: 'Acesso ao módulo estratégico e planejamento',
+    [PERMISSIONS.VIEW_FINANCIAL]: 'Acesso ao módulo financeiro: fluxo de caixa, transações e categorias',
     // Dashboard
     [PERMISSIONS.VIEW_DASHBOARD_SALES]: 'Ver métricas e indicadores de vendas no dashboard',
     [PERMISSIONS.VIEW_DASHBOARD_POST_SALES]: 'Ver métricas de pós-vendas no dashboard',
@@ -59,6 +62,7 @@ export const PERMISSION_ORDER: string[] = [
     PERMISSIONS.MANAGE_POST_SALES_DISTRIBUTION,
     PERMISSIONS.VIEW_STRATEGIC,
     PERMISSIONS.VIEW_ADMIN,
+    PERMISSIONS.VIEW_FINANCIAL,
     // Dashboard
     PERMISSIONS.VIEW_DASHBOARD_SALES,
     PERMISSIONS.VIEW_DASHBOARD_POST_SALES,

@@ -58,12 +58,14 @@ export const PostSalesDistributionService = {
 
         fetchQueue();
 
+        // M2: Filter to only distribution-relevant changes
         const channel = supabase
             .channel('post_sales_distribution_queue')
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
                 table: LEADS_TABLE,
+                filter: 'post_sales_distribution_status=eq.pending',
             }, () => {
                 fetchQueue();
             })

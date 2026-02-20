@@ -7,7 +7,7 @@
 
 // ─── Date Filter ────────────────────────────────────────────────────────────
 
-export type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'year' | 'janeiro_2026';
+export type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | '2025' | '2026' | (string & {});
 
 // ─── Internal ───────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ export interface InternalProject {
     deliveredAt?: Date;
     createdAt: Date;
     isHistorical?: boolean;
+    internalRevisionCount?: number;
 }
 
 // ─── Production Metrics ─────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ export interface SalesMetrics {
     pipelineValue: number;
     conversionRate: number;
     leadsByPipeline: { pipeline: string; count: number }[];
-    leadsByStatus: { status: string; count: number }[];
+    leadsByStatus: { status: string; count: number; value: number }[];
     topSellers: { name: string; deals: number; value: number }[];
     trendData: { date: string; leads: number; closed: number }[];
     sourceData: { source: string; count: number }[];
@@ -116,43 +117,49 @@ export interface AdminMetrics {
 // ─── Financial Metrics ──────────────────────────────────────────────────────
 
 export interface FinancialMetrics {
+    /** Real revenue: actual money received (from manager's spreadsheet / real_revenue table) */
     revenue: number;
     previousRevenue: number;
+    /** Contracted revenue: value sold in commercial_sales (not yet collected) */
+    contractedRevenue: number;
     expenses: number;
+    /** profit = revenue (real) - expenses */
     profit: number;
+    /** margin = profit / revenue (real) */
     margin: number;
     avgTicket: number;
     cashFlow: { month: string; revenue: number; expenses: number; balance: number }[];
     operationalCosts: { name: string; value: number; color: string }[];
-    accounts: {
-        receivable: number;
-        payable: number;
-        overdue: number;
-    };
 }
 
 // ─── Post-Sales Metrics ─────────────────────────────────────────────────────
 
 export interface PostSalesMetrics {
-    openTickets: number;
-    resolvedTickets: number;
-    avgResolutionTime: number;
-    customerSatisfaction: number;
+    totalReceipts: number;
+    totalSales: number;
+    uniqueClientsReceipts: number;
+    uniqueClientsSales: number;
     churnRate: number;
     retentionRate: number;
-    npsScore: number;
-    ticketsTrend: { date: string; opened: number; resolved: number }[];
-    totalPaymentsReceived: number;
-    paymentsTrend: { date: string; amount: number }[];
+    /** Number of commercial clients in the period */
+    commercialClients: number;
+    /** Of those, how many ended up with pending debits */
+    clientsWithDebits: number;
+    ltv: number;
+    avgReceiptValue: number;
+    debitosPending: number;
+    debitosTotal: number;
+    cac: number;
     topPostSellers: {
         id: string;
         name: string;
         profilePhotoUrl?: string;
-        paymentsReceived: number;
-        ticketsResolved: number;
-        avgRating: number;
+        totalReceived: number;
+        receiptCount: number;
+        uniqueClients: number;
     }[];
 }
+
 
 // ─── Unified ────────────────────────────────────────────────────────────────
 

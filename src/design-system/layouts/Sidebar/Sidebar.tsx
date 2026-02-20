@@ -46,7 +46,11 @@ import {
     ScrollText,
     Stamp,
     Cat,
-    GalleryHorizontalEnd
+    GalleryHorizontalEnd,
+    DollarSign,
+    TrendingUp,
+    ArrowUpDown,
+    FolderOpen
 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/stores';
 import { ROUTES } from '@/config';
@@ -123,6 +127,17 @@ const navCategories: NavCategory[] = [
             { id: 'notes', label: 'Anotações', path: ROUTES.strategic.notes, icon: <FileText size={18} /> },
             { id: 'strategicProjects', label: 'Projetos', path: ROUTES.strategic.projects, icon: <Briefcase size={18} /> },
             { id: 'socialMedia', label: 'Social Media', path: ROUTES.strategic.socialMedia, icon: <Share2 size={18} /> },
+        ]
+    },
+    {
+        id: 'financial',
+        label: 'Financeiro',
+        icon: <DollarSign size={20} />,
+        permission: PERMISSIONS.VIEW_FINANCIAL,
+        subItems: [
+            { id: 'cash-flow', label: 'Fluxo de Caixa', path: ROUTES.financial.cashFlow, icon: <TrendingUp size={18} /> },
+            { id: 'transactions', label: 'Transações', path: ROUTES.financial.transactions, icon: <ArrowUpDown size={18} /> },
+            { id: 'categories', label: 'Categorias', path: ROUTES.financial.categories, icon: <FolderOpen size={18} /> },
         ]
     },
     // TODO: Substituir por permissão real quando o módulo "Estúdio de Criação" sair do beta

@@ -1,6 +1,7 @@
 import { Card, CardBody } from '@/design-system';
 import { Rocket, Target, Flame, Trophy } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { DeferredChart } from '../DeferredChart';
 import styles from './ProductionStats.module.css';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 
@@ -47,53 +48,55 @@ export function ProductionGoalCard() {
 
                     {/* Gauge Container - Pointer Events Disabled */}
                     <div style={{ width: '100%', height: '100%', minHeight: '180px', pointerEvents: 'none' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <defs>
-                                    <linearGradient id="goalGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#f87171" /> {/* Lighter Red (400) */}
-                                        <stop offset="100%" stopColor="#991b1b" /> {/* Darker Red (800) */}
-                                    </linearGradient>
-                                </defs>
+                        <DeferredChart>
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <PieChart>
+                                    <defs>
+                                        <linearGradient id="goalGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#f87171" /> {/* Lighter Red (400) */}
+                                            <stop offset="100%" stopColor="#991b1b" /> {/* Darker Red (800) */}
+                                        </linearGradient>
+                                    </defs>
 
-                                {/* Track (Background) */}
-                                <Pie
-                                    data={bgData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={75}
-                                    dataKey="value"
-                                    startAngle={90}
-                                    endAngle={-270}
-                                    stroke="none"
-                                    isAnimationActive={false}
-                                >
-                                    <Cell fill="var(--color-bg-secondary)" />
-                                </Pie>
+                                    {/* Track (Background) */}
+                                    <Pie
+                                        data={bgData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={75}
+                                        dataKey="value"
+                                        startAngle={90}
+                                        endAngle={-270}
+                                        stroke="none"
+                                        isAnimationActive={false}
+                                    >
+                                        <Cell fill="var(--color-bg-secondary)" />
+                                    </Pie>
 
-                                {/* Value (Foreground) */}
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={75}
-                                    startAngle={90}
-                                    endAngle={-270}
-                                    dataKey="value"
-                                    stroke="none"
-                                    cornerRadius={10}
-                                    paddingAngle={0}
-                                    isAnimationActive={false}
-                                >
-                                    {/* Value Segment with Gradient */}
-                                    <Cell fill="url(#goalGradient)" />
-                                    {/* Remainder Segment Transparent */}
-                                    <Cell fill="transparent" />
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
+                                    {/* Value (Foreground) */}
+                                    <Pie
+                                        data={data}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={75}
+                                        startAngle={90}
+                                        endAngle={-270}
+                                        dataKey="value"
+                                        stroke="none"
+                                        cornerRadius={10}
+                                        paddingAngle={0}
+                                        isAnimationActive={false}
+                                    >
+                                        {/* Value Segment with Gradient */}
+                                        <Cell fill="url(#goalGradient)" />
+                                        {/* Remainder Segment Transparent */}
+                                        <Cell fill="transparent" />
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </DeferredChart>
                     </div>
 
                     {/* Centered Label */}

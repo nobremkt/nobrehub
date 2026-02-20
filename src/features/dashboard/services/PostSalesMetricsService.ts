@@ -2,69 +2,96 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * NOBRE HUB - POST-SALES METRICS SERVICE
  * ═══════════════════════════════════════════════════════════════════════════════
- * Calculates post-sales dashboard metrics (tickets, retention, payments)
- * Note: Currently returns placeholder data - requires tickets/payments collections
+ * Calculates post-sales dashboard metrics from imported data via RPC
  */
 
 import { supabase } from '@/config/supabase';
 import type { PostSalesMetrics, SharedData, DateFilter } from './dashboard.types';
-import { findIdsByName, POS_VENDAS_SECTOR_NAME } from './dashboard.helpers';
+import { getDateRange } from './dashboard.helpers';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rpc = supabase.rpc.bind(supabase) as (fn: string, params: Record<string, unknown>) => any;
+
+interface RpcTopSeller {
+    id: string;
+    name: string;
+    total_received: number;
+    receipt_count: number;
+    unique_clients: number;
+}
 
 export const PostSalesMetricsService = {
     /**
-     * Fetches post-sales metrics
-     * Note: Currently returns placeholder data - requires tickets/payments collections
+     * Fetches post-sales metrics from real data via RPC
      */
-    getPostSalesMetrics: async (_filter: DateFilter = 'month', _shared?: SharedData): Promise<PostSalesMetrics> => {
-        const collabRows: Record<string, unknown>[] = _shared
-            ? _shared.collaborators
-            : (await supabase.from('users').select('*')).data || [];
+    getPostSalesMetrics: async (filter: DateFilter = 'month', _shared?: SharedData): Promise<PostSalesMetrics> => {
+        const { start, end } = getDateRange(filter);
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
 
-        // Resolve pós-vendas sector IDs by name
-        const sectorRows = _shared?.sectors || [];
-        const posVendasSectorIds = findIdsByName(sectorRows, POS_VENDAS_SECTOR_NAME);
+        // Call the RPC function
+        const { data, error } = await rpc('get_post_sales_kpis', {
+            p_start_date: startStr,
+            p_end_date: endStr,
+        });
 
-        // Filter post-sales team members (excluding DEBUG account)
-        const postSalesTeam = collabRows.filter(row =>
-            (row.email as string) !== 'debug@debug.com' &&
-            (posVendasSectorIds.has(row.sector_id as string) || (row.sector_id as string) === POS_VENDAS_SECTOR_NAME)
-        );
-
-        // TODO: Fetch from payments collection when available
-        const topPostSellers = postSalesTeam.map(row => ({
-            id: row.id as string,
-            name: (row.name as string) || 'Desconhecido',
-            profilePhotoUrl: (row.avatar_url as string) || undefined,
-            paymentsReceived: 0,
-            ticketsResolved: 0,
-            avgRating: 0,
-        })).sort((a, b) => b.paymentsReceived - a.paymentsReceived).slice(0, 5);
-
-        // Generate trend data (placeholder - zeros)
-        const ticketsTrend: PostSalesMetrics['ticketsTrend'] = [];
-        const paymentsTrend: PostSalesMetrics['paymentsTrend'] = [];
-
-        const now = new Date();
-        for (let i = 13; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
-
-            ticketsTrend.push({ date: dateStr, opened: 0, resolved: 0 });
-            paymentsTrend.push({ date: dateStr, amount: 0 });
+        if (error) {
+            console.error('[PostSalesMetrics] RPC error:', error);
+            // Return zeros on error
+            return {
+                totalReceipts: 0,
+                totalSales: 0,
+                uniqueClientsReceipts: 0,
+                uniqueClientsSales: 0,
+                churnRate: 0,
+                retentionRate: 0,
+                commercialClients: 0,
+                clientsWithDebits: 0,
+                ltv: 0,
+                avgReceiptValue: 0,
+                debitosPending: 0,
+                debitosTotal: 0,
+                cac: 0,
+                topPostSellers: [],
+            };
         }
 
+        const kpis = data as Record<string, unknown>;
+
+        // Resolve profile photo URLs for top sellers
+        const collabRows = _shared?.collaborators ||
+            (await supabase.from('users').select('id, avatar_url')).data || [];
+
+        const photoMap: Record<string, string> = {};
+        for (const row of collabRows) {
+            const r = row as Record<string, unknown>;
+            if (r.avatar_url) photoMap[r.id as string] = r.avatar_url as string;
+        }
+
+        const rawSellers = (kpis.topPostSellers as RpcTopSeller[]) || [];
+        const topPostSellers = rawSellers.map(s => ({
+            id: s.id,
+            name: s.name,
+            profilePhotoUrl: photoMap[s.id] || undefined,
+            totalReceived: Number(s.total_received) || 0,
+            receiptCount: Number(s.receipt_count) || 0,
+            uniqueClients: Number(s.unique_clients) || 0,
+        }));
+
         return {
-            openTickets: 0,
-            resolvedTickets: 0,
-            avgResolutionTime: 0,
-            customerSatisfaction: 0,
-            churnRate: 0,
-            retentionRate: 0,
-            npsScore: 0,
-            ticketsTrend,
-            totalPaymentsReceived: 0,
-            paymentsTrend,
+            totalReceipts: Number(kpis.totalReceipts) || 0,
+            totalSales: Number(kpis.totalSales) || 0,
+            uniqueClientsReceipts: Number(kpis.uniqueClientsReceipts) || 0,
+            uniqueClientsSales: Number(kpis.uniqueClientsSales) || 0,
+            churnRate: Number(kpis.churnRate) || 0,
+            retentionRate: Number(kpis.retentionRate) || 0,
+            commercialClients: Number(kpis.commercialClients) || 0,
+            clientsWithDebits: Number(kpis.clientsWithDebits) || 0,
+            ltv: Number(kpis.ltv) || 0,
+            avgReceiptValue: Number(kpis.avgReceiptValue) || 0,
+            debitosPending: Number(kpis.debitosPending) || 0,
+            debitosTotal: Number(kpis.debitosTotal) || 0,
+            cac: Number(kpis.cac) || 0,
             topPostSellers,
         };
     },

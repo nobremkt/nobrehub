@@ -72,7 +72,7 @@ export function TeamOverview({ members }: TeamOverviewProps) {
                             {/* Info */}
                             <div className={styles.memberInfo}>
                                 <div className={styles.memberName}>{member.name}</div>
-                                <div className={styles.memberRole}>{member.role}</div>
+                                <div className={styles.memberRole}>{member.sector}</div>
                                 {/* Productivity bar */}
                                 <div className={styles.productivityBar} style={{ marginTop: '4px' }}>
                                     <div

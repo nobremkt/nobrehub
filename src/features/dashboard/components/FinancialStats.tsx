@@ -3,7 +3,7 @@
  * NOBRE HUB - FINANCIAL STATS
  * ═══════════════════════════════════════════════════════════════════════════════
  * Dashboard section for financial metrics - derives data from sales/leads
- * Note: Expenses and accounts are estimates until a full financial module is implemented
+ * Dashboard section for financial metrics - real data from Supabase
  */
 
 import { useEffect } from 'react';
@@ -16,7 +16,7 @@ import {
     AvgTicketCard,
     CashFlowChart,
     OperationalCostsChart,
-    AccountsOverview,
+    FinancialKPIs,
 } from './financial';
 import { useDashboardStore } from '../stores/useDashboardStore';
 
@@ -59,13 +59,18 @@ export function FinancialStats() {
                         />
                     </div>
                     <div className={styles.leftRowMiddle}>
-                        <AccountsOverview data={data.accounts} />
+                        <FinancialKPIs
+                            revenue={data.revenue}
+                            expenses={data.expenses}
+                            margin={data.margin}
+                            operationalCosts={data.operationalCosts}
+                        />
                     </div>
                 </div>
 
                 {/* Right Column: Summary Cards */}
                 <div className={styles.rightColumn}>
-                    <RevenueCard revenue={data.revenue} previousRevenue={data.previousRevenue} />
+                    <RevenueCard revenue={data.revenue} previousRevenue={data.previousRevenue} contractedRevenue={data.contractedRevenue} />
                     <ExpensesCard expenses={data.expenses} />
                     <ProfitCard profit={data.profit} margin={data.margin} />
                     <AvgTicketCard avgTicket={data.avgTicket} />
